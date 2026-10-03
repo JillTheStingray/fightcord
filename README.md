@@ -3,6 +3,8 @@
 **Fightcade, but it looks and works like Discord**, plus a stack of tools for competitive players.
 One installer, no other downloads, everything runs inside the Fightcade app on your PC.
 
+![A Fightcade channel with Fightcord: Discord-style channel rail, chat and member list](docs/screenshots/channel.png)
+
 > Fightcord is a fan-made, client-side mod. It is **not** made by, affiliated with or endorsed by
 > Fightcade or Discord.
 
@@ -11,6 +13,8 @@ One installer, no other downloads, everything runs inside the Fightcade app on y
 Get **`FightcordSetup.exe`** from the [latest release](https://github.com/JillTheStingray/fightcord/releases/latest),
 close Fightcade, run it and press **Install**. That's it: start Fightcade and a short welcome screen
 walks you through the rest.
+
+<img src="docs/screenshots/welcome.png" alt="The welcome screen: pick a theme and accent colour" width="720">
 
 - Windows 10 / 11, the regular Fightcade 2 desktop app. No admin rights needed.
 - The installer finds Fightcade by itself (Documents, OneDrive, `C:\Fightcade`, or a running
@@ -34,6 +38,10 @@ walks you through the rest.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 
+| | |
+|---|---|
+| ![The Discover page: your games and live matches to watch](docs/screenshots/discover.png) | ![Settings: profiles and every module on one screen](docs/screenshots/settings.png) |
+
 **For competitive players**
 - **Scout card:** your opponent's rank, ELO (real or estimated), win odds and your head-to-head,
   the moment they challenge you.
@@ -48,11 +56,20 @@ walks you through the rest.
 - **Match analytics:** win rate by opponent rank, ping, hour of day and set length, plus a tilt
   check.
 
+| | |
+|---|---|
+| ![An incoming challenge with the scout card: ELO, win odds, head-to-head](docs/screenshots/scout.png) | ![Training goals next to tonight's record](docs/screenshots/goals.png) |
+| ![Rank & ELO history](docs/screenshots/progress.png) | ![Match analytics](docs/screenshots/analytics.png) |
+
 **Social**
 - **Friends list** with online / match alerts and a Watch button, plus **player notes & tags**.
 - **Lobby feed:** joins, matches you can watch, upsets and win streaks in each channel.
 - **Discord status:** shows your game, opponent and match timer on your Discord profile.
 - Lobby **music** (bring your own track; none is included).
+
+<img src="docs/screenshots/feed.png" alt="The lobby feed: upsets, streaks and matches to watch" width="720">
+
+<sub>Screenshots use made-up players and chat.</sub>
 
 Everything can be switched on or off: **Ctrl+,** opens the settings (or type `/fightcord`, and
 `/help` lists every chat command). The **Lite / Full / Competitive** profiles switch whole groups at once.

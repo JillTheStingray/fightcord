@@ -81,6 +81,12 @@
     n.style.removeProperty('order');
     ['fcmRank', 'fcmSig', 'fcmHead'].forEach(k => delete n.dataset[k]);
   });
+  // README screenshots: made-up names, chat and avatars instead of the real ones (demo.js)
+  const DEMO = q.get('demo') === '1';
+  if (DEMO) {
+    await new Promise(res => { const s = document.createElement('script'); s.src = 'demo.js'; s.onload = s.onerror = res; document.head.appendChild(s); });
+    window.__demoScrub(doc, 'TurtleTime');
+  }
   document.body.append(...doc.body.childNodes);
 
   const bar = document.createElement('div');
@@ -89,7 +95,7 @@
     '<a href="?s=' + encodeURIComponent(snap) + '&theme=0">no theme</a>' +
     '<a href="?s=' + encodeURIComponent(snap) + '">theme</a>' +
     '<a href="snapshots/' + encodeURIComponent(snap) + '/screenshot.png" target="_blank">real screenshot</a>';
-  document.body.appendChild(bar);
+  if (!DEMO) document.body.appendChild(bar);
 
   if (q.get('plugins') === '0') return;
 
@@ -127,7 +133,7 @@
     users[el.textContent.trim()] = { away: i % 5 === 3, ping: 20 + i * 7, playing: i % 4 === 1 ? { quarkId: 'q' + i } : undefined };
   });
   const FCADE = window.FCADE = { globalUsers: users, genericCallbacks: {}, channels: [],
-    _data: { global: { localUser: { name: q.get('me') || 'Me' } } } };
+    _data: { global: { localUser: { name: (q.get('me') || (DEMO ? 'TurtleTime' : 'Me')) } } } };
   const app = document.querySelector('#app'); if (app) app.__vue__ = FCADE;
 
   // ---- FC's view switch (welcome = home, search = results), enough for discover.js ----
@@ -261,7 +267,7 @@
   FCADE.removeChallengeNotifications = (user, channel, id, why) => window.__spy.cleared.push([channel, id, why]);
   FCADE.getChannelComponentById = (id) => ({ challengeUser: (u, ft) => window.__spy.challengeCalls.push([u && (u.name || u.id), ft, id]) });
   names.forEach((n, i) => { const u = users[n]; u.ping = [35, 70, 120, 190, 260, 55][i % 6]; u.wlan = i % 4 === 2; u.proxy = i % 7 === 5; });
-  if (users[q.get('me') || 'Me']) users[q.get('me') || 'Me'].country = { iso_code: 'nl', full_name: 'Netherlands' };
+  if (users[(q.get('me') || (DEMO ? 'TurtleTime' : 'Me'))]) users[(q.get('me') || (DEMO ? 'TurtleTime' : 'Me'))].country = { iso_code: 'nl', full_name: 'Netherlands' };
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, o) => {
     if (String(url).indexOf('web.fightcade.com/api') < 0) return realFetch(url, o);
@@ -287,6 +293,8 @@
     return new Response(JSON.stringify(data), { status: 200 });
   };
   if (q.get('history')) _files['./match-history.json'] = decodeURIComponent(q.get('history'));
+  if (DEMO) names.concat([LU.name]).forEach(n => { const u = users[n] || LU; u.gravatar = window.__demoHash(n); });
+  if (DEMO) window.__demoSeed(_files, names, joinedName, (FCADE.channels.find(c => c.name === joinedName) || {}).gameid || 'sfiii3nr1');
   if (q.get('view')) FCADE.selectChannel(q.get('view') === 'search' ? 'search-channel' : 'welcome-channel',
     q.get('cat') ? { category: q.get('cat') } : undefined);
 
