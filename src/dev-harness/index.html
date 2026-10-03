@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FC plugin harness</title>
+<style>
+  :root { --mainColor-darker:#14161a; --mainColor-light:rgba(255,255,255,.25); --accentColor:#4169e1; }
+  body { background:#0e1013; color:#e6e6e6; font-family:system-ui, sans-serif; margin:0; display:flex; }
+  .col { padding:16px; }
+  .left { flex:1; }
+  .right { width:340px; border-left:1px solid #222; }
+  .channelWrapper { border:1px solid #222; border-radius:8px; overflow:hidden; }
+  .chatContent { height:280px; overflow-y:auto; padding:10px; background:#111418; }
+  .messageWrapper { margin-bottom:8px; }
+  .author { color:#8ab4ff; font-weight:bold; }
+  .chatInput { position:relative; border-top:1px solid #222; background:#15181d; padding:8px; }
+  .chatInput input.input { width:100%; box-sizing:border-box; background:#0e1013; color:#fff;
+    border:1px solid #262b33; border-radius:4px; padding:8px 44px 8px 10px; outline:none; }
+  .option { display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 0; border-bottom:1px solid #1d2026; }
+  .title { font-size:13px; }
+  .usersListWrapper { margin-top:14px; }
+  .userItem { padding:4px 0; font-size:13px; }
+  h3 { font-size:12px; text-transform:uppercase; opacity:.5; margin:0 0 8px; }
+  /* --- Fightcade quirks reproduced on purpose ---------------------------
+     FC ships Electron 8 (Chromium 80): flexbox gap does not exist there.
+     FC also sets a width on chat images, which stretches unconstrained flags. */
+  * { gap: 0 !important; }
+  img { width: 100%; }
+  #sent { margin-top:10px; font-size:13px; white-space:pre-wrap; background:#111418; border:1px solid #222;
+    border-radius:6px; padding:8px; min-height:40px; }
+</style>
+</head>
+<body>
+<div class="col left">
+  <h3>chat</h3>
+  <div class="channelWrapper">
+    <div class="chatContent">
+      <div class="messageWrapper"><span class="author">RyuFan99</span>
+        <div class="blocksContainer"><div class="blocks"><span class="regular">𝔥𝔢𝔶 𝔤𝔤 𝔴𝔭 2026</span></div></div></div>
+      <div class="messageWrapper"><span class="author">ChunLiMain</span>
+        <div class="blocksContainer"><div class="blocks"><span class="regular">Ｇｏｏｄ　ｇａｍｅ　ｄｕｄｅ</span></div></div></div>
+      <div class="messageWrapper"><span class="author">ComboKid</span>
+        <div class="blocksContainer"><div class="blocks"><span class="regular">c̷̭̀ȕ̴̡r̷̛̻ṣ̶̈e̸̜͝d̥̠ͦ text</span></div></div></div>
+      <div class="messageWrapper"><span class="author">Normal</span>
+        <div class="blocksContainer"><div class="blocks"><span class="regular">plain ascii stays put</span></div></div></div>
+    </div>
+    <div class="chatInput"><input class="input" type="text" placeholder="type here, press Enter"></div>
+  </div>
+  <div id="sent">(sent messages appear here)</div>
+
+  <div class="usersListWrapper">
+    <h3>users online</h3>
+    <div class="userItem"><span class="playerName">RyuFan99</span></div>
+    <div class="userItem"><span class="playerName">ChunLiMain</span></div>
+  </div>
+</div>
+
+<div class="col right">
+  <h3>settings (frontend)</h3>
+  <div class="frontendOptions">
+    <div class="option" data-v-abc123>
+      <div class="title" data-v-abc123>Temporarily mute chat</div>
+      <input data-v-abc123 type="checkbox" id="chatMuted">
+    </div>
+    <div class="option" data-v-abc123>
+      <div class="title" data-v-abc123>Auto AFK</div>
+      <input data-v-abc123 type="checkbox" id="autoAfk">
+    </div>
+  </div>
+</div>
+
+  <h3 style="margin-top:22px;">login screen settings (no chat-mute row)</h3>
+  <div class="loginView">
+    <div class="frontendOptions">
+      <div class="option" data-v-xyz789>
+        <div class="title" data-v-xyz789>Language</div>
+        <select data-v-xyz789 class="selectValue"><option>English</option></select>
+      </div>
+      <div class="option" data-v-xyz789>
+        <div class="title" data-v-xyz789>Color theme</div>
+        <select data-v-xyz789 class="selectValue"><option>PlayerOne</option></select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Node-ish shims so the plugins load unmodified -------------------------
+const _files = {};
+function makeRequire() {
+  return function (m) {
+    if (m === 'fs') return {
+      existsSync: (p) => p in _files,
+      readFileSync: (p) => _files[p] || '{}',
+      writeFileSync: (p, v) => { _files[p] = v; },
+      appendFileSync: (p, v) => { _files[p] = (_files[p] || '') + v; },
+      mkdirSync: () => {}
+    };
+    if (m === 'path') return { join: (...a) => a.join('/') };
+    throw new Error('no module ' + m);
+  };
+}
+window.__dirname = '.';
+
+// ---- fake FC Vue root ------------------------------------------------------
+const FCADE = {
+  activeChannelId: 'sfiii3nr1-1',
+  channels: [{ id: 'sfiii3nr1-1', name: 'Street Fighter III 3rd Strike', gameid: 'sfiii3nr1' }],
+  globalUsers: {
+    RyuFan99: { country: { iso_code: 'jp', full_name: 'Japan' }, away: false, ping: 42,
+      channelRank: { 'Street Fighter III 3rd Strike': 5 }, playing: { quarkId: 'q1' } },
+    ChunLiMain: { country: { iso_code: 'br', full_name: 'Brazil' }, away: true, ping: 120,
+      channelRank: { 'Street Fighter III 3rd Strike': 3 } }
+  },
+  _data: { global: { localUser: { name: 'Me' }, setTheme: () => {} } },
+  genericCallbacks: {}
+};
+document.querySelector('.channelWrapper').__vue__ = FCADE;
+Object.defineProperty(document.querySelector('body'), '__fcadeRoot', { value: FCADE });
+const appDiv = document.createElement('div');
+appDiv.id = 'app';
+appDiv.__vue__ = FCADE;
+document.body.appendChild(appDiv);
+
+// ---- fake FC API so the scout card can render fully ------------------------
+const realFetch = window.fetch;
+window.fetch = async (url, opts) => {
+  if (!opts || !opts.body || String(url).indexOf('fightcade.com') === -1) return realFetch(url, opts);
+  const body = JSON.parse(opts.body);
+  const payload = body.req === 'getuser'
+    ? { user: { name: body.username, gameinfo: { sfiii3nr1: { rank: 5, elo: 1783, num_matches: 412 } } } }
+    : { results: { results: [
+        { gameid:'sfiii3nr1', date: Date.now()-3600e3,  players:[{name:body.username,score:2},{name:'Me',score:1}] },
+        { gameid:'sfiii3nr1', date: Date.now()-86400e3, players:[{name:body.username,score:0},{name:'Me',score:2}] },
+        { gameid:'sfiii3nr1', date: Date.now()-3*86400e3, players:[{name:body.username,score:3},{name:'Daigo',score:0}] },
+        { gameid:'sfiii3nr1', date: Date.now()-9*86400e3, players:[{name:body.username,score:1},{name:'Kuroda',score:3}] },
+        { gameid:'sfiii3nr1', date: Date.now()-11*86400e3, players:[{name:body.username,score:2},{name:'AVeryLongOpponentNameIndeed',score:0}] },
+        { gameid:'sfiii3nr1', date: Date.now()-40*86400e3, players:[{name:body.username},{name:'NoScoreGuy'}] }
+      ] } };
+  return { status: 200, text: async () => JSON.stringify(payload) };
+};
+
+// ---- "send" behaviour: Enter clears the box and logs what would be sent ----
+const input = document.querySelector('.chatInput input.input');
+input.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const out = document.getElementById('sent');
+  out.textContent = input.value;
+  input.value = '';
+});
+
+// ---- load the plugins ------------------------------------------------------
+function loadPlugin(src, done) {
+  fetch(src, { cache: 'no-store' }).then(r => r.text()).then(code => {
+    const module = { exports: {} };
+    const fn = new Function('module', 'exports', 'require', '__dirname', code);
+    fn(module, module.exports, makeRequire(), '.');
+    module.exports(FCADE);
+    window[src] = module.exports;
+    done && done();
+  });
+}
+loadPlugin('../emoji.js', () => loadPlugin('../fontstyle.js', () => loadPlugin('../scout.js', () => loadPlugin('../snapshot.js', () => loadPlugin('../translate.js')))));
+window._files = _files;
+</script>
+</body>
+</html>

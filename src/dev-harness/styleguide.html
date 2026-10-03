@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Fightcord style guide</title>
+<!--
+  Every fightcord-core.js design-system component, in every theme preset.
+    /dev-harness/styleguide.html[?theme=dark|amoled|classic|neon][&accent=%23eb459e]
+  Open the "Live" buttons to try toasts, popovers, menus, modals and pages.
+-->
+<style>
+  * { gap: 0 !important; }                     /* Chromium 80: no flex gap */
+  html, body { margin: 0; }
+  /* the theme palettes, as discord-theme.js sets them */
+  html.dark    { --dc-bg: #1b1a1f; --dc-bg2: #1b1a1f; --dc-bg3: #131215; --dc-input: #212327; --dc-hover: #1f1e24; --dc-select: #2c2b30; --dc-float: #111113;
+                 --dc-divider: #28272c; --dc-text: #dfdfe2; --dc-head: #f9f9f9; --dc-muted: #818189; --dc-faint: #65676b; --dc-btn: #2c2b30; --dc-btn-h: #37363c; }
+  html.amoled  { --dc-bg: #000; --dc-bg2: #000; --dc-bg3: #000; --dc-input: #121214; --dc-hover: #0a0a0b; --dc-select: #1c1c20; --dc-float: #0b0b0c;
+                 --dc-divider: #1a1a1d; --dc-text: #eeeef0; --dc-head: #fff; --dc-muted: #9a9aa3; --dc-faint: #65676b; --dc-btn: #1c1c20; --dc-btn-h: #26262b; }
+  html.classic { --dc-bg: #313338; --dc-bg2: #2b2d31; --dc-bg3: #1e1f22; --dc-input: #383a40; --dc-hover: #2e3035; --dc-select: #35373c; --dc-float: #111214;
+                 --dc-divider: #3f4147; --dc-text: #dbdee1; --dc-head: #f2f3f5; --dc-muted: #949ba4; --dc-faint: #6d6f78; --dc-btn: #4e5058; --dc-btn-h: #6d6f78; }
+  html.neon    { --dc-bg: #0d0f1f; --dc-bg2: #111427; --dc-bg3: #080a15; --dc-input: #161a33; --dc-hover: #151936; --dc-select: #1b2045; --dc-float: #070814;
+                 --dc-divider: #1e2344; --dc-text: #dde1f5; --dc-head: #fff; --dc-muted: #8a90b8; --dc-faint: #5d6390; --dc-btn: #1d2247; --dc-btn-h: #283064; --dc-link: #22e3f2; }
+  body { background: var(--fc-s3); color: var(--fc-text); font-family: var(--fc-font); }
+  #bar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; padding: 10px 24px; background: var(--fc-s1); border-bottom: 1px solid var(--fc-divider); }
+  #bar b { margin-right: 16px; color: var(--fc-head); }
+  #bar .fc-chip { margin-right: 6px; }
+  main { padding: 8px 24px 80px; max-width: 1100px; }
+  h2 { margin: 28px 0 10px; font: 700 12px var(--fc-font); text-transform: uppercase; letter-spacing: .04em; color: var(--fc-muted); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; }
+  .row > * { margin: 0 10px 10px 0; }
+  .swatch { width: 120px; padding: 8px; border-radius: 8px; background: var(--fc-s1); font-size: 11px; }
+  .swatch i { display: block; height: 32px; margin-bottom: 6px; border-radius: 4px; }
+  .cols { display: flex; flex-wrap: wrap; }
+  .cols > * { flex: 1 1 320px; margin: 0 12px 12px 0; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<main id="main"></main>
+<script>
+(async function () {
+  const q = new URLSearchParams(location.search);
+  const theme = q.get('theme') || 'classic';
+  document.documentElement.className = theme;
+  if (q.get('accent')) document.documentElement.style.setProperty('--dc-blurple', q.get('accent'));
+
+  // the core needs fs / path: an in-memory stand-in
+  const files = {};
+  const fsStub = {
+    readFileSync: (p) => { if (!(p in files)) throw new Error('ENOENT'); return files[p]; }, writeFileSync: (p, v) => { files[p] = v; },
+    readdirSync: () => [], statSync: () => { throw new Error('ENOENT'); }, accessSync: () => { throw new Error('ENOENT'); },
+    readFile: (p, e, cb) => (typeof e === 'function' ? e : cb)(new Error('ENOENT')), writeFile: (p, v, cb) => { files[p] = v; cb && cb(null); },
+    appendFile: (p, v, cb) => cb && cb(null), rename: (a, b, cb) => { files[b] = files[a]; cb && cb(null); }, unlink: (p, cb) => cb && cb(null),
+    stat: (p, cb) => cb(new Error('ENOENT')), mkdir: (p, o, cb) => (typeof o === 'function' ? o : cb)(null)
+  };
+  const req = (m) => m === 'fs' ? fsStub : m === 'path' ? { join: (...a) => a.join('/'), dirname: (p) => p.replace(/\/[^/]*$/, ''), basename: (p) => p.split('/').pop() } : (() => { throw new Error('no ' + m); })();
+  const mod = { exports: {} };
+  new Function('module', 'exports', 'require', '__dirname', await (await fetch('../fightcord-core.js', { cache: 'no-store' })).text())(mod, mod.exports, req, '.');
+  const names = ['KenjiRival', 'ParryKing', 'sakura_main', 'TurtleTime'];
+  const root = { _data: { global: { localUser: { name: 'Me' } } }, globalUsers: {
+    KenjiRival: { gravatar: '' }, ParryKing: { away: true }, sakura_main: { playing: { quarkId: 'q1' } } } };
+  const fc = mod.exports.boot(root, { version: 'styleguide' });
+  const { ui, fmt, data } = fc;
+  const E = fmt.esc;
+
+  document.getElementById('bar').innerHTML = '<b>Fightcord style guide</b>' +
+    ['dark', 'amoled', 'classic', 'neon'].map(t => `<a href="?theme=${t}" style="text-decoration:none">${ui.chip(t, { on: t === theme, act: t })}</a>`).join('') +
+    `<span style="margin-left:auto" class="fc-muted">accent</span>` +
+    ['#5865f2', '#eb459e', '#23a55a', '#f0b232'].map(c => `<a href="?theme=${theme}&accent=${encodeURIComponent(c)}" style="display:inline-block;width:16px;height:16px;margin-left:6px;border-radius:50%;background:${c}"></a>`).join('');
+
+  const sec = (title, html) => `<h2>${E(title)}</h2>${html}`;
+  const tokens = ['--fc-navy', '--fc-blurple', '--fc-violet', '--fc-cyan', '--fc-accent', '--fc-success', '--fc-danger', '--fc-warning', '--fc-link',
+    '--fc-s0', '--fc-s1', '--fc-s2', '--fc-s3', '--fc-s4', '--fc-divider', '--fc-text', '--fc-head', '--fc-muted', '--fc-faint'];
+  const store = fc.config('styleguide', { on: true, mode: 'warn', vol: 0.4, nick: 'Me', color: '#5865f2' });
+
+  document.getElementById('main').innerHTML =
+    sec('Tokens', `<div class="row">${tokens.map(t => `<div class="swatch"><i style="background:var(${t})"></i>${t}</div>`).join('')}</div>`) +
+    sec('Buttons', `<div class="row">${ui.btn('Primary')}${ui.btn('Secondary', { kind: 'sec' })}${ui.btn('Ghost', { kind: 'ghost' })}${ui.btn('Danger', { kind: 'danger' })}` +
+      `${ui.btn('Success', { kind: 'success' })}${ui.btn('Brand', { kind: 'brand', icon: 'bolt' })}${ui.btn('Disabled', { disabled: true })}</div>` +
+      `<div class="row">${ui.btn('Challenge', { icon: 'sword' })}${ui.btn('Watch', { kind: 'sec', icon: 'eye', size: 'sm' })}${ui.btn('Large', { size: 'lg', icon: 'play' })}` +
+      `${ui.btn('', { kind: 'ghost', icon: 'gear', title: 'Settings' })}${ui.btn('', { kind: 'sec', icon: 'more', size: 'sm' })}</div>`) +
+    sec('Chips, rank tags, badges', `<div class="row">${ui.chip('All')}${ui.chip('Friends', { on: true, icon: 'star' })}${ui.chip('FT5', { act: 'x' })}` +
+      `${[6, 5, 4, 3, 2, 1, 0].map(r => ui.tag(r)).join('')}${ui.badge(3)}${ui.badge(120)}<span class="fc-kbd">Ctrl</span><span class="fc-kbd">,</span><span class="fc-spin"></span></div>`) +
+    sec('Avatars', `<div class="row">${names.map((n, i) => ui.avatar(n, { size: [24, 32, 40, 56][i], status: 'auto' })).join('')}${ui.avatar('Nobody', { size: 40, status: 'off' })}</div>`) +
+    sec('Cards and tiles', `<div class="cols"><div class="fc-card raised"><div class="fc-card-h">${ui.icon('trophy')}Tonight</div>` +
+      `<div class="row">${ui.tile('7–3', 'Record', { sub: '70% win rate', trend: 'up' })}${ui.tile('4', 'Win streak')}${ui.tile('1h 05m', 'Played')}</div></div>` +
+      `<div class="fc-card"><div class="fc-card-h">${ui.icon('target')}Goals</div><div class="row">${ui.ring(0.7, { size: 48, label: '7/10' })}` +
+      `<div class="fc-grow"><div style="margin-bottom:6px">Win 10 sets today</div>${ui.progress(0.7)}</div></div>` +
+      `<div class="row" style="margin-top:12px">${ui.ring(0.35, { size: 40, color: 'var(--fc-warning)', label: '35%' })}<div class="fc-grow">${ui.progress(0.35, 'var(--fc-warning)')}</div></div></div></div>`) +
+    sec('Tabs', ui.tabs([['all', 'All', 128], ['ranked', 'Ranked', 40], ['h2h', 'Head-to-head'], ['analytics', 'Analytics']], 'ranked')) +
+    sec('Charts', `<div class="cols"><div class="fc-card">${ui.chart.line([{ points: [[0, 1450], [1, 1480], [2, 1470], [3, 1530], [4, 1560], [5, 1555], [6, 1610]], area: true }],
+        { w: 460, h: 170, dots: true, yLabel: (v) => Math.round(v), xLabels: [[0, 'Mon'], [3, 'Thu'], [6, 'Sun']] })}</div>` +
+      `<div class="fc-card">${ui.chart.bars(['S', 'A', 'B', 'C', 'D', 'E'].map((r, i) => ({ label: r, value: [38, 45, 52, 61, 70, 82][i], text: [38, 45, 52, 61, 70, 82][i] + '%', color: data.rankColor(r) })), { w: 460, h: 170, max: 100 })}</div></div>`) +
+    sec('Empty state', `<div class="fc-card">${ui.empty({ icon: 'chart', title: 'No sets yet', sub: 'Play a few ranked sets and your stats show up here.', action: 'Import my history' })}</div>`) +
+    sec('Settings block', `<div class="fc-card" id="setHost" style="max-width:640px"></div>`) +
+    sec('Live', `<div class="row">${ui.btn('Toast', { act: 'toast' })}${ui.btn('Success toast', { act: 'toast-ok', kind: 'success' })}` +
+      `${ui.btn('Danger toast', { act: 'toast-bad', kind: 'danger' })}${ui.btn('Popover', { act: 'pop', kind: 'sec' })}${ui.btn('Menu', { act: 'menu', kind: 'sec', icon: 'more' })}` +
+      `${ui.btn('Modal', { act: 'modal', kind: 'sec' })}${ui.btn('Confirm', { act: 'confirm', kind: 'sec' })}${ui.btn('Page', { act: 'page', kind: 'sec' })}${ui.btn('Chime', { act: 'chime', kind: 'ghost', icon: 'music' })}</div>`) +
+    sec('Icons', `<div class="row">${Object.keys(ui.ICONS).map(n => `<span title="${n}" style="display:inline-flex;flex-direction:column;align-items:center;width:64px;font-size:10px;color:var(--fc-muted)">${ui.icon(n)}<span style="margin-top:4px">${n}</span></span>`).join('')}</div>`);
+
+  // a settings block through the real fc.settings path
+  const host = document.getElementById('setHost');
+  host.setAttribute('data-sec', 'styleguide');
+  host.classList.add('fcordPane');
+  fc.settings.block({ id: 'sg', section: 'styleguide', title: 'Challenge filters', hint: '— example block', store, fields: [
+    { key: 'on', type: 'switch', label: 'Filter challenges', hint: 'Warn or decline challenges that match your rules' },
+    { key: 'mode', type: 'select', label: 'When a rule matches', options: [['warn', 'Warn me'], ['decline', 'Decline it']], show: (d) => d.on },
+    { key: 'vol', type: 'slider', label: 'Sound volume', scale: 100, unit: '%' },
+    { key: 'nick', type: 'text', label: 'Nickname' },
+    { key: 'color', type: 'color', label: 'Accent colour' },
+    { type: 'button', label: 'Reset everything', button: 'Reset', kind: 'danger', act: 'reset', onClick: () => { store.reset(); fc.settings.refresh('sg'); } },
+    { type: 'note', label: 'Fields are rendered once and patched when values change.' }
+  ] });
+  fc.settings.mount(host, 'styleguide');
+
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-act]');
+    if (!a) return;
+    const act = a.getAttribute('data-act');
+    if (act === 'toast') ui.toast('KenjiRival is online', { sub: 'Your friend just joined Street Fighter III', icon: 'users', actions: [{ label: 'Challenge', fn: () => {} }, { label: 'Later', fn: () => {} }] });
+    if (act === 'toast-ok') ui.toast('Goal complete: win 10 sets', { kind: 'success', sub: 'Nice session!' });
+    if (act === 'toast-bad') ui.toast('Fightcord had a problem with Stats', { kind: 'danger', sub: 'It’s switched off until Fightcade restarts.', actions: [{ label: 'Copy details', fn: () => {} }] });
+    if (act === 'pop') ui.popover(a, `<div style="padding:4px 6px"><div class="row">${ui.avatar('KenjiRival', { size: 40, status: 'on' })}<div><b style="color:var(--fc-head)">KenjiRival</b><div class="fc-muted" style="font-size:12px">${ui.tag(6)} 2,105 ELO · Japan</div></div></div></div>`, { width: 260 });
+    if (act === 'menu') ui.menu(a, [{ label: 'Challenge', icon: 'sword', fn: () => {} }, { label: 'Head-to-head', icon: 'chart', fn: () => {} }, { label: 'Add note', icon: 'note', fn: () => {} }, 'sep', { label: 'Block', icon: 'shield', danger: true, fn: () => {} }]);
+    if (act === 'modal') ui.modal({ title: 'Share your session', body: '<p style="margin:0 0 8px">A 1200×630 card of tonight’s sets.</p>' + ui.progress(0.6), actions: [{ label: 'Cancel' }, { label: 'Copy image' }] });
+    if (act === 'confirm') ui.confirm('Clear history?', 'This removes all 1,204 recorded sets.', { ok: 'Clear', danger: true });
+    if (act === 'page') ui.page('demo', { title: 'Stats', icon: 'chart', tools: ui.btn('Share', { size: 'sm', kind: 'sec', icon: 'share' }),
+      render: (b) => { b.innerHTML = ui.tabs([['o', 'Overview'], ['a', 'Analytics']], 'o') + '<div style="margin-top:16px">' + ui.tile('1,204', 'Sets') + ' ' + ui.tile('58%', 'Win rate', { trend: 'up' }) + '</div>' + ui.empty({ icon: 'trend', title: 'Rank history', sub: 'Coming in M3.' }); } });
+    if (act === 'chime') fc.sound.play('success');
+  });
+})();
+</script>
+</body>
+</html>

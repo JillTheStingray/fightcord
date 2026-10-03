@@ -1,0 +1,346 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FC snapshot harness</title>
+<!--
+  Replays a snapshot taken in the real client with snapshot.js (Ctrl+Shift+S):
+    /dev-harness/snapshot.html?s=<folder name under dev-harness/snapshots/>
+  Copy the folder from <Fightcade>/.../inject/plugins/fc-snapshots/ into
+  dev-harness/snapshots/ first. Static markup + FC's real CSS, no Vue.
+  Add &plugins=0 to see the bare snapshot, &theme=0 to skip the Discord theme.
+-->
+<style>
+  /* Fightcade quirks reproduced on purpose (Electron 8 / Chromium 80): no flex gap. */
+  * { gap: 0 !important; }
+  #harnessBar { position:fixed; right:8px; bottom:8px; z-index:2147483647; font:12px system-ui,sans-serif;
+    background:#000c; color:#fff; padding:6px 10px; border-radius:6px; }
+  #harnessBar a { color:#8ab4ff; margin-left:8px; }
+</style>
+</head>
+<body>
+<script>
+(async function () {
+  const q = new URLSearchParams(location.search);
+  const snap = q.get('s');
+  if (!snap) { document.body.textContent = 'Pass ?s=<snapshot folder name>'; return; }
+  const base = 'snapshots/' + encodeURIComponent(snap) + '/';
+
+  let [domText, cssText, vars] = await Promise.all([
+    fetch(base + 'dom.html').then(r => r.text()),
+    fetch(base + 'styles.css').then(r => r.text()),
+    fetch(base + 'vars.json').then(r => r.json()).catch(() => ({}))
+  ]);
+
+  // FC uses site-relative asset paths (static/flags/pe.png, url("static/ui/...")) --
+  // point them back at web.fightcade.com, or they'd resolve against this server
+  const FC = 'https://web.fightcade.com/';
+  const fixStatic = (t) => t
+    .replace(/(url\((?:&quot;|["'])?)\/?(static\/)/g, '$1' + FC + '$2')
+    .replace(/((?:src|href)=")\/?(static\/)/g, '$1' + FC + '$2')
+    .replace(/https?:\/\/localhost:\d+\/(static\/)/g, FC + '$1');
+  domText = fixStatic(domText);
+  cssText = fixStatic(cssText);
+
+  // FC's real stylesheet (and any cross-origin ones it linked, e.g. icon fonts)
+  (vars.externalStylesheets || []).forEach(href => {
+    if (!href) return;
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l);
+  });
+  const st = document.createElement('style'); st.id = 'fcSnapshotCss'; st.textContent = cssText;
+  document.head.appendChild(st);
+
+  // the captured <html>/<body> attributes + body markup
+  const doc = new DOMParser().parseFromString(domText, 'text/html');
+  document.documentElement.className = doc.documentElement.className;
+  const hs = doc.documentElement.getAttribute('style'); if (hs) document.documentElement.setAttribute('style', hs);
+  document.body.className = doc.body.className;
+  const bs = doc.body.getAttribute('style'); if (bs) document.body.setAttribute('style', bs);
+  // drop injected UI from our own plugins; they get re-added live below
+  doc.body.querySelectorAll('.fontStyleBtn, .emojiBtn, .fsBlock, .emjBlock, .scoutBlock, .dcBlock, .trBlock, .fcxBlock, ' +
+      '#fontStyleToast, #emojiToast, .fcTr, .fcxEmbed, #fcxBar, #fcxJump, #fcScoutCard, #fcxToast, #fcTrToast, ' +
+      '.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcmBlock, #fcmsOverlay, .fcmsBlock, #fcmsToast, .fcmsPill, ' +
+      '#fcordModal, #fcordToast, #fcfToast, #fcsStats, .fcordOpenBlock, .fcfBlock, .fcm-top, .fcfWarn, .fcScoutOdds, ' +
+      '#fcdNav, #fcdYours, #fcdLive, #fcdResults, #fcdGame, #fcdGameDim, #fcdQuick, .fcdAmbient, .fcdSpot, .fcdBlock, .fcdHeroArt, .fcdHeroText, .fcdArrows, #fcdStyle')
+    .forEach(n => n.remove());
+  // FC's original timestamps (chat-extras rewrote them)
+  doc.body.querySelectorAll('[data-fcx-orig]').forEach(n => { n.textContent = n.dataset.fcxOrig; });
+  // state our plugins left on FC's own elements when the snapshot was taken
+  doc.body.querySelectorAll('[data-tr-src], [data-tr-dismissed], [data-fcx-url], [data-fcx-orig]').forEach(n => {
+    ['trSrc', 'trDismissed', 'fcxUrl', 'fcxOrig', 'fcxShown'].forEach(k => delete n.dataset[k]);
+  });
+  doc.body.querySelectorAll('.fcx-mention, .fcx-mention-head, .fcx-new-first, .dc-live, .dc-art').forEach(n =>
+    n.classList.remove('fcx-mention', 'fcx-mention-head', 'fcx-new-first', 'dc-live', 'dc-art'));
+  doc.body.querySelectorAll('.fcd-joined').forEach(n => n.classList.remove('fcd-joined'));
+  doc.body.querySelectorAll('[data-fcd-row], [data-fcd-edge], [data-fcd-when], [data-fcd-live], [data-fcd-title], [data-fcd-count]').forEach(n => {
+    ['data-fcd-row', 'data-fcd-edge', 'data-fcd-when', 'data-fcd-live', 'data-fcd-title', 'data-fcd-count'].forEach(k => n.removeAttribute(k));
+    n.style && n.style.removeProperty('--fcd-i');
+  });
+  doc.body.querySelectorAll('.fcm-row, .fcm-list').forEach(n => {
+    n.classList.remove('fcm-row', 'fcm-hidden', 'fcm-first', 'fcm-list', 'fcm-grouped', 'fcm-colors');
+    n.style.removeProperty('order');
+    ['fcmRank', 'fcmSig', 'fcmHead'].forEach(k => delete n.dataset[k]);
+  });
+  document.body.append(...doc.body.childNodes);
+
+  const bar = document.createElement('div');
+  bar.id = 'harnessBar';
+  bar.innerHTML = 'snapshot: <b>' + snap + '</b> · ' + (vars.window || []).join('x') +
+    '<a href="?s=' + encodeURIComponent(snap) + '&theme=0">no theme</a>' +
+    '<a href="?s=' + encodeURIComponent(snap) + '">theme</a>' +
+    '<a href="snapshots/' + encodeURIComponent(snap) + '/screenshot.png" target="_blank">real screenshot</a>';
+  document.body.appendChild(bar);
+
+  if (q.get('plugins') === '0') return;
+
+  // ---- stub FC root + node-ish shims, same as index.html ----
+  const _files = {}, _mtimes = {};
+  window._files = _files; window._mtimes = _mtimes;
+  // the welcome screen only when asked: ?welcome=1 (first run) or ?welcome=news (after an update)
+  _files['./fightcord.json'] = JSON.stringify({ version: '1.9.2' });
+  if (q.get('welcome') !== '1') _files['./welcome-config.json'] = JSON.stringify({ firstRunDone: true, seen: q.get('welcome') === 'news' ? '' : '9.9' });
+  const req = (m) => {
+    if (m === 'fs') return {
+      existsSync: (p) => p in _files, readFileSync: (p) => _files[p] || '{}',
+      writeFileSync: (p, v) => { _files[p] = v; _mtimes[p] = Date.now() + Math.random(); }, appendFileSync: () => {}, mkdirSync: () => {},
+      statSync: (p) => { if (!(p in _files)) throw new Error('ENOENT ' + p); return { mtimeMs: _mtimes[p] || 1 }; },
+      readdirSync: (d) => Object.keys(_files).filter(k => k.startsWith(d + '/') && k.indexOf('/', d.length + 1) < 0).map(k => k.slice(d.length + 1)),
+      unlinkSync: (p) => { delete _files[p]; },
+      copyFileSync: (a, b) => { _files[b] = _files[a]; },
+      accessSync: (p) => { if (!(p in _files)) throw new Error('ENOENT ' + p); },
+      // the async calls fightcord-core.js uses (config / history / debug log saves)
+      readFile: (p, enc, cb) => { cb = typeof enc === 'function' ? enc : cb; setTimeout(() => p in _files ? cb(null, _files[p]) : cb(new Error('ENOENT ' + p)), 0); },
+      writeFile: (p, v, cb) => { _files[p] = v; _mtimes[p] = Date.now() + Math.random(); setTimeout(() => cb && cb(null), 0); },
+      appendFile: (p, v, cb) => { _files[p] = (_files[p] || '') + v; setTimeout(() => cb && cb(null), 0); },
+      rename: (a, b, cb) => { _files[b] = _files[a]; _mtimes[b] = Date.now() + Math.random(); delete _files[a]; setTimeout(() => cb && cb(null), 0); },
+      unlink: (p, cb) => { delete _files[p]; setTimeout(() => cb && cb(null), 0); },
+      stat: (p, cb) => setTimeout(() => p in _files ? cb(null, { size: String(_files[p]).length, mtimeMs: _mtimes[p] || 1 }) : cb(new Error('ENOENT ' + p)), 0),
+      mkdir: (p, o, cb) => setTimeout(() => (typeof o === 'function' ? o : cb)(null), 0)
+    };
+    if (m === 'path') return { join: (...a) => a.join('/'), dirname: (p) => String(p).replace(/\/[^/]*$/, '') || '.',
+      basename: (p) => String(p).split('/').pop() };
+    throw new Error('no module ' + m);
+  };
+  // names from the snapshot's user list, so avatars/status have something to read
+  const users = {};
+  document.querySelectorAll('.usersListWrapper .playerName').forEach((el, i) => {
+    users[el.textContent.trim()] = { away: i % 5 === 3, ping: 20 + i * 7, playing: i % 4 === 1 ? { quarkId: 'q' + i } : undefined };
+  });
+  const FCADE = window.FCADE = { globalUsers: users, genericCallbacks: {}, channels: [],
+    _data: { global: { localUser: { name: q.get('me') || 'Me' } } } };
+  const app = document.querySelector('#app'); if (app) app.__vue__ = FCADE;
+
+  // ---- FC's view switch (welcome = home, search = results), enough for discover.js ----
+  const opts = (cls) => [...document.querySelectorAll('.welcomeWrapper .filterItem.' + cls + ' option')].map(o => o.textContent.trim());
+  FCADE._data.global.filtersOptions = { genres: opts('genre'), years: opts('year'), systems: opts('system') };
+  FCADE._data.global.localUser.favoritesChannels = (q.get('favs') || '').split('|').filter(Boolean);
+  FCADE._data.global.isGameChannel = (id) => !/-channel$/.test(id);
+  const gameWrappers = [...document.querySelectorAll('#app > .channelWrapper')];
+  FCADE.channels = [{ id: 'welcome-channel' }, { id: 'search-channel' }].concat(gameWrappers.map(w => {
+    const t = w.querySelector('.channelInfo .name.title');
+    const name = t ? (t.getAttribute('title') || t.textContent.replace(/^#/, '')).trim() : '';
+    const rom = w.querySelector('.channelInfo .name[title="Rom name"]')?.textContent.trim() || '';
+    return { id: name, name, gameid: rom, _el: w };
+  }).filter(c => c.name));
+  const sc = { favorites: false, textFilter: '', genreFilter: 0, systemFilter: 0, yearFilter: 0, rankedFilter: 0,
+    $refs: { paginatedList: { fetchingData: false, totalChannels: 0 } } };
+  FCADE.$refs = { 'search-channel': sc, 'welcome-channel': { results: [] } };
+  const views = { 'welcome-channel': '.welcomeWrapper', 'search-channel': '.searchWrapper' };
+  FCADE.selectChannel = (id, p) => {
+    window.__lastSelect = [id, p];
+    FCADE.activeChannelId = id;
+    document.querySelectorAll('.settingsWrapper, .notificationsWrapper').forEach(n => { n.style.display = 'none'; });
+    ['.welcomeWrapper', '.searchWrapper', '.aboutWrapper', '.patreonWrapper'].forEach(sel => {
+      const n = document.querySelector('#app > ' + sel); if (n) n.style.display = 'none';
+    });
+    gameWrappers.forEach(n => { n.style.display = 'none'; });
+    if (views[id]) document.querySelector('#app > ' + views[id]).style.display = '';
+    else { const c = FCADE.channels.find(x => x.id === id); if (c && c._el) c._el.style.display = ''; }
+    if (id !== 'search-channel') return;
+    const G = FCADE._data.global.filtersOptions;
+    Object.assign(sc, { favorites: false, textFilter: '', genreFilter: 0, systemFilter: 0, yearFilter: 0, rankedFilter: 0 });
+    if (p) {
+      ['textFilter', 'genreFilter', 'systemFilter', 'yearFilter', 'rankedFilter'].forEach(k => { if (p[k]) sc[k] = p[k]; });
+      if (p.category) {
+        sc.favorites = p.category === 'My Favorites';
+        sc.genreFilter = Math.max(0, G.genres.indexOf(p.category));
+        sc.systemFilter = Math.max(0, G.systems.indexOf(p.category));
+      }
+    }
+    if (sc.requestChannels) sc.requestChannels(0);          // FC's onSelect does this
+    // fake results: the welcome view's game cards (same channel-preview component)
+    const res = document.querySelector('.searchResultsWrapper');
+    let grid = res.querySelector('.searchResultsGrid');
+    if (!grid) {
+      grid = document.createElement('div'); grid.className = 'searchResultsGrid';
+      const dv = [...res.attributes].find(a => a.name.startsWith('data-v-'));
+      if (dv) grid.setAttribute(dv.name, '');
+      res.insertBefore(grid, res.querySelector('.no-results'));
+    }
+    const cards = [...document.querySelectorAll('.welcomeWrapper .channelPreviewWrapper')];
+    const n = sc.textFilter ? 3 : cards.length;
+    grid.innerHTML = '';
+    cards.slice(0, n).forEach(c => {
+      const w = document.createElement('div'); w.className = 'channelWrapper';
+      const dv = grid.getAttribute && [...grid.attributes].find(a => a.name.startsWith('data-v-'));
+      if (dv) w.setAttribute(dv.name, '');
+      const cc = c.cloneNode(true); cc.classList.remove('fcd-joined'); w.appendChild(cc); grid.appendChild(w);
+    });
+    res.querySelector('.no-results') && (res.querySelector('.no-results').style.display = 'none');
+    let tw = res.querySelector('.titleWrapper');
+    if (!tw.querySelector('h3')) { const h = document.createElement('h3'); tw.appendChild(h); }
+    tw.querySelector('h3').textContent = sc.favorites ? 'Search Favorites' : (sc.textFilter || sc.genreFilter || sc.systemFilter) ? 'Search Results' : 'All Games';
+    sc.$refs.paginatedList.totalChannels = sc.textFilter ? n : 312;
+  };
+  // ---- Discover stand-ins: catalog, paged search data, live matches, API, spies ----
+  window.__fcdTest = true;
+  window.__spy = { uris: [], joins: [], favs: [], declines: [], challenges: [] };
+  window.__fcdOpenUri = (u) => window.__spy.uris.push(u);
+  const LU = FCADE._data.global.localUser;
+  FCADE.joinChannel = (n) => window.__spy.joins.push(n);
+  FCADE.favChannel = (n, on) => {
+    window.__spy.favs.push([n, on]);
+    const f = LU.favoritesChannels, i = f.indexOf(n);
+    if (on && i < 0) f.push(n);
+    if (!on && i >= 0) f.splice(i, 1);
+  };
+  LU.role = 0; LU.perks = { maxNumFavorites: 10 };
+  LU.channels = FCADE.channels.filter(c => c.name).map(c => c.name);
+  FCADE.channels.forEach(c => { if (c.name) { c.emulator = 'fbneo'; c.spectators = true; } });
+  const cardChans = [...document.querySelectorAll('.welcomeWrapper .channelPreviewWrapper, .searchResultsGrid .channelPreviewWrapper')].map(c => {
+    const sys = c.querySelector('.system')?.textContent.trim() || '';
+    const t = c.getAttribute('title') || '';
+    const name = sys && t.endsWith(' - ' + sys) ? t.slice(0, -(sys.length + 3)) : t;
+    const m = (c.querySelector('.thumbnail')?.getAttribute('data-src') || '').match(/previews\/([^.]+)\.png/);
+    return { name, gameid: m ? m[1] : '', system: sys, ranked: !!c.querySelector('.rankedStatus'), available_for: 0,
+      clients: parseInt((c.querySelector('.num-users')?.textContent || '0').replace(/\D/g, ''), 10) || 0 };
+  });
+  const extra = [
+    ['Street Fighter III 3rd Strike: Fight for the Future (Japan 990512, NO CD)', 'sfiii3nr1'],
+    ["The King of Fighters '98 - The Slugfest / King of Fighters '98 - dream match never ends (NGM-2420)", 'kof98'],
+    ['Garou - Mark of the Wolves (NGM-2530)', 'garou'], ['Vampire Savior: The Lord of Vampire (Euro 970519)', 'vsav'],
+    ["Street Fighter II' - Champion Edition (street fighter 2' 920513 etc)", 'sf2ce'], ['Super Street Fighter II Turbo (World 940223)', 'ssf2t'],
+    ['Marvel vs. Capcom 2 New Age of Heroes (USA, Rev A)', 'mvsc2u'], ['Capcom vs. SNK 2 (USA)', 'cvs2'],
+    ["JoJo's Bizarre Adventure (Japan 990913)", 'jojoba'], ['Street Fighter Alpha 3 (Euro 980904)', 'sfa3'],
+    ['Street Fighter III 3rd Strike: Fight for the Future (4rd Arrange Edition 2013) [HACK]', 'sfiii4n'],
+    ['The King of Fighters 2002 (NGM-2650)', 'kof2002'], ['Samurai Shodown II (NGM-063)', 'samsho2']];
+  const byName = new Map(cardChans.filter(c => c.name).map(c => [c.name, c]));
+  extra.forEach(([name, gameid], i) => { if (!byName.has(name)) byName.set(name, { name, gameid, system: 'Arcade FC2', clients: 40 - i * 2, ranked: i % 2 === 0, available_for: 0 }); });
+  for (let i = 0; i < 60; i++) byName.set('Filler Game ' + i + ' (World)', { name: 'Filler Game ' + i + ' (World)', gameid: 'filler' + i, system: i % 3 ? 'Arcade FC2' : 'Megadrive', clients: Math.max(0, 30 - i), ranked: false, available_for: 0 });
+  const allChans = [...byName.values()].sort((a, b) => b.clients - a.clients);
+  FCADE._data.global.channelsList = { forNotifications: allChans.map(c => ({ textToCompare: (c.gameid + ' ' + c.name).toLowerCase(), gameId: c.gameid, channelName: c.name, thumbnail: '' })) };
+  const PER = 12;
+  sc.channels = []; sc.page = 0;
+  sc.requestChannels = (page) => {
+    const list = sc.$refs.paginatedList;
+    const t = (sc.textFilter || '').toLowerCase();
+    let pool = allChans.filter(c => !t || c.name.toLowerCase().includes(t));
+    if (+sc.rankedFilter === 1) pool = pool.filter(c => c.ranked);
+    if (sc.systemFilter) { const sn = FCADE._data.global.filtersOptions.systems[sc.systemFilter]; pool = pool.filter(c => c.system === sn); }
+    list.fetchingData = true; sc.channels = []; sc.page = page || 0;
+    setTimeout(() => {
+      sc.channels = pool.slice(sc.page * PER, sc.page * PER + PER).map(c => Object.assign({}, c, { alreadyJoined: LU.channels.includes(c.name) }));
+      list.totalChannels = pool.length; list.fetchingData = false;
+    }, 150);
+  };
+  const joinedName = LU.channels[0];
+  const names = Object.keys(users);
+  names.forEach((n, i) => {
+    const u = users[n];
+    u.channels = joinedName ? [joinedName] : []; u.channelRank = { [joinedName]: (i % 6) + 1 };
+    u.country = { iso_code: ['jp', 'us', 'br', 'pe', 'fr', 'es'][i % 6] }; u.playing = undefined;
+  });
+  for (let k = 0; k < 3 && 2 * k + 1 < names.length; k++) {
+    const pl = { channelId: joinedName, quarkId: 'Q' + k, gameId: (FCADE.channels.find(c => c.name === joinedName) || {}).gameid || 'sfiii3nr1', port: 7000 + k };
+    users[names[2 * k]].playing = pl; users[names[2 * k + 1]].playing = Object.assign({}, pl);
+  }
+  FCADE.connectionCallbacks = { onChallengeRequest: function (user, channel, id, ranked) { window.__spy.challenges.push([user.name, channel, id, ranked]); } };
+  FCADE.declineChallenge = (channel, user, id) => window.__spy.declines.push([channel, user && user.name, id]);
+  window.__spy.accepts = []; window.__spy.challengeCalls = []; window.__spy.cleared = [];
+  FCADE.acceptChallenge = (channel, user, id, ranked) => window.__spy.accepts.push([channel, user && user.name, id, ranked]);
+  FCADE.removeChallengeNotifications = (user, channel, id, why) => window.__spy.cleared.push([channel, id, why]);
+  FCADE.getChannelComponentById = (id) => ({ challengeUser: (u, ft) => window.__spy.challengeCalls.push([u && (u.name || u.id), ft, id]) });
+  names.forEach((n, i) => { const u = users[n]; u.ping = [35, 70, 120, 190, 260, 55][i % 6]; u.wlan = i % 4 === 2; u.proxy = i % 7 === 5; });
+  if (users[q.get('me') || 'Me']) users[q.get('me') || 'Me'].country = { iso_code: 'nl', full_name: 'Netherlands' };
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (url, o) => {
+    if (String(url).indexOf('web.fightcade.com/api') < 0) return realFetch(url, o);
+    const body = JSON.parse((o && o.body) || '{}');
+    await new Promise(r => setTimeout(r, 300));
+    let data = { res: 'OK', results: [] };
+    if (body.req === 'searchrankings') {
+      const off = body.offset || 0, lim = body.limit || 100;
+      const all = Array.from({ length: 300 }, (_, i) => ({ name: names[i] || 'Ranked' + i, country: { iso_code: ['jp', 'us', 'br'][i % 3] },
+        gameinfo: { [body.gameid]: { rank: i < 40 ? 6 : i < 120 ? 5 : i < 220 ? 4 : 3, num_matches: 5000 - i * 10, time_played: (900 - i * 2) * 3600 } } }));
+      data = { res: 'OK', results: { results: all.slice(off, off + lim), count: all.length } };
+    }
+    if (body.req === 'getuser') {
+      const i = names.indexOf(body.username);
+      data = { res: 'OK', user: { name: body.username, gameinfo: { sfiii3nr1: { rank: i < 0 ? 4 : i < 40 ? 6 : 5, num_matches: 1234 } } } };
+    }
+    if (body.req === 'searchquarks' && body.username) data = { res: 'OK', results: { results: body.offset ? [] : Array.from({ length: 40 }, (_, i) => ({
+      quarkid: 'imp' + i, gameid: 'sfiii3nr1', channelname: 'Street Fighter III 3rd Strike: Fight for the Future (Japan 990512, NO CD)',
+      date: Date.now() - (i + 1) * 20 * 3600e3, duration: 600, num_matches: i % 9 === 0 ? 0 : 5,
+      players: [{ name: body.username, score: i % 3 ? 3 : 1 }, { name: names[(i % 6) + 1] || 'Opp', score: i % 3 ? 1 : 3 }] })) } };
+    else if (body.req === 'searchquarks') data = { res: 'OK', results: { results: Array.from({ length: 9 }, (_, i) => ({ quarkid: '17906' + i, gameid: body.gameid, emulator: 'fbneo', date: Date.now() - i * 3600e3 - 60e3, live: i === 0,
+      players: [{ name: names[i] || 'A', score: i === 0 ? null : 3, country: { iso_code: 'us' } }, { name: names[i + 1] || 'B', score: i === 0 ? null : i % 3, country: { iso_code: 'jp' } }] })) } };
+    return new Response(JSON.stringify(data), { status: 200 });
+  };
+  if (q.get('history')) _files['./match-history.json'] = decodeURIComponent(q.get('history'));
+  if (q.get('view')) FCADE.selectChannel(q.get('view') === 'search' ? 'search-channel' : 'welcome-channel',
+    q.get('cat') ? { category: q.get('cat') } : undefined);
+
+  const load = async (src) => {
+    const code = await fetch(src, { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
+    if (!code) return;
+    const module = { exports: {} };
+    new Function('module', 'exports', 'require', '__dirname', code)(module, module.exports, req, '.');
+    const file = src.replace('../', '');
+    // through the core's module registry, like the real loader (falls back to a plain call)
+    const fc = window.fightcord;
+    if (fc && fc.modules) { fc.modules.register(file, module.exports); fc.modules.start(file); }
+    else module.exports(FCADE);
+    (window.__fcPlugins = window.__fcPlugins || {})[file] = module.exports;
+  };
+  // Fightcord core first (the loader does the same), then the plugins
+  const coreMod = { exports: {} };
+  const coreCode = await fetch('../fightcord-core.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
+  if (coreCode) {
+    new Function('module', 'exports', 'require', '__dirname', coreCode)(coreMod, coreMod.exports, req, '.');
+    coreMod.exports.boot(FCADE, { version: 'harness', safe: q.get('safe') === '1' });
+    (window.__fcPlugins = window.__fcPlugins || {})['fightcord-core.js'] = coreMod.exports;
+  }
+  // simulations for testing (window.__sim): challenges, matches, joins, ...
+  await new Promise(res => { const s = document.createElement('script'); s.src = 'sim.js'; s.onload = s.onerror = res; document.head.appendChild(s); });
+  if (q.get('theme') !== '0') await load('../discord-theme.js');
+  await load('../emoji.js');
+  await load('../fontstyle.js');
+  await load('../scout.js');
+  await load('../member-list.js');
+  await load('../match-screens.js');
+  await load('../translate.js');
+  await load('../chat-extras.js');
+  await load('../discover.js');
+  await load('../challenge-filters.js');
+  await load('../stats.js');
+  await load('../friends.js');
+  await load('../notes.js');
+  await load('../challenge-card.js');
+  await load('../channel-banner.js');
+  await load('../hover-cards.js');
+  await load('../profile-card.js');
+  await load('../context-menu.js');
+  await load('../inbox.js');
+  await load('../backgrounds.js');
+  await load('../music.js');
+  await load('../branding.js');
+  await load('../analytics.js');
+  await load('../progress.js');
+  await load('../goals.js');
+  await load('../feed.js');
+  await load('../welcome.js');
+  await load('../fightcord.js');
+})();
+</script>
+</body>
+</html>

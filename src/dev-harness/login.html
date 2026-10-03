@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FC login harness</title>
+<style>
+  :root { --mainColor-darker:#241326; --mainColor-light:rgba(255,255,255,.25); --accentColor:#4169e1; }
+  body { margin:0; min-height:100vh; background:linear-gradient(120deg,#2a1330,#4a2350);
+    color:#e6e6e6; font-family:system-ui, sans-serif; display:flex; align-items:center; justify-content:center; }
+  /* Fightcade quirks reproduced on purpose: Electron 8 = Chromium 80 (no flex gap),
+     and FC sets a width on images. */
+  * { gap: 0 !important; }
+  img { width: 100%; }
+  .loginBox { background:rgba(0,0,0,.35); padding:26px 34px; border-radius:4px; width:420px; }
+  h2 { text-align:center; letter-spacing:1px; font-size:15px; margin:0 0 18px; }
+  label { display:block; text-align:center; font-size:11px; letter-spacing:1px; opacity:.6; margin-top:14px; }
+  input { width:100%; box-sizing:border-box; background:transparent; border:0; border-bottom:1px solid #6b4a72;
+    color:#fff; padding:6px 2px; outline:none; }
+  .connect { display:block; margin:22px auto 0; background:#fff; color:#3a1f40; border:0; padding:9px 22px;
+    font-weight:bold; letter-spacing:1px; cursor:pointer; }
+</style>
+</head>
+<body>
+  <div class="loginBox">
+    <h2>LOG IN</h2>
+    <label>USERNAME</label><input type="text">
+    <label>PASSWORD</label><input type="password">
+    <button class="connect">CONNECT</button>
+  </div>
+
+<script>
+// ---- Node-ish shims so the plugins load unmodified -------------------------
+const _files = {};
+function makeRequire() {
+  return function (m) {
+    if (m === 'fs') return {
+      existsSync: (p) => p in _files,
+      readFileSync: (p) => _files[p] || '{}',
+      writeFileSync: (p, v) => { _files[p] = v; }
+    };
+    if (m === 'path') return { join: (...a) => a.join('/') };
+    throw new Error('no module ' + m);
+  };
+}
+
+// Pre-login there is no Vue user yet; the loader still hands over the root.
+const FCADE = { _data: { global: { setTheme: () => {} } }, genericCallbacks: {} };
+const appDiv = document.createElement('div');
+appDiv.id = 'app';
+appDiv.__vue__ = FCADE;
+document.body.appendChild(appDiv);
+
+function loadPlugin(src, done) {
+  fetch(src).then(r => r.text()).then(code => {
+    const module = { exports: {} };
+    new Function('module', 'exports', 'require', '__dirname', code)(module, module.exports, makeRequire(), '.');
+    module.exports(FCADE);
+    done && done();
+  });
+}
+loadPlugin('../fontstyle.js', () => loadPlugin('../scout.js'));
+</script>
+</body>
+</html>

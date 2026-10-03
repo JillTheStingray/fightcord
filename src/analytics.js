@@ -1,0 +1,247 @@
+/**
+ * Fightcord match analytics
+ *
+ * An "Analytics" tab on the Stats page: your win rate broken down by opponent rank, the rank
+ * gap, ping, hour of day and weekday (a heatmap), first-to length, game and where a set falls
+ * in your session -- plus a tilt check (how you do after losing twice in a row) and plain-
+ * language insights ("you play best vs B-ranks under 100 ms").
+ *
+ * Works from fc.history. Sets recorded from 2.0 on carry the ranks, ping and FT; imported or
+ * older sets only count where they have the data. Optional: a "take a break?" nudge after
+ * three losses in a row.
+ */
+'use strict';
+
+let fc = null;
+let store = null, cfg = null;          // analytics-config.json
+
+const RANKS = ['S', 'A', 'B', 'C', 'D', 'E'];
+const RANK_OF = (n) => ['', 'E', 'D', 'C', 'B', 'A', 'S'][+n || 0] || '';
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const PING = [['<60', 0, 60], ['60–100', 60, 100], ['100–150', 100, 150], ['150+', 150, 1e9]];
+const MIN_N = 5;                       // a bucket needs this many results before it's trusted
+
+/* --------------------------------------------------------------- the maths */
+
+const known = (s) => s && (s.result === 'won' || s.result === 'lost');
+function rec() { return { w: 0, l: 0, n: 0, rate: null }; }
+function add(r, s) { if (s.result === 'won') r.w++; else r.l++; r.n++; r.rate = r.w / r.n; }
+
+// A session runs 5 AM -> 5 AM
+function sessionKey(at) {
+    const d = new Date(at);
+    if (d.getHours() < 5) d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+
+function pingBucket(ms) {
+    if (typeof ms !== 'number' || !(ms > 0)) return '';
+    const b = PING.find(p => ms >= p[1] && ms < p[2]);
+    return b ? b[0] : '';
+}
+
+// every breakdown at once, from sets in any order
+function analyze(input) {
+    const sets = (input || []).filter(known).slice().sort((a, b) => (a.at || 0) - (b.at || 0));
+    const out = {
+        total: rec(), byOppRank: {}, byGap: {}, byPing: {}, byHour: [], heat: [], byFt: {}, byGame: {},
+        byPos: { first: rec(), early: rec(), late: rec() },
+        tilt: { after2: rec(), fresh: rec() }, withRanks: 0, withPing: 0
+    };
+    RANKS.concat('?').forEach(r => { out.byOppRank[r] = rec(); });
+    for (let g = -3; g <= 3; g++) out.byGap[g] = rec();
+    PING.forEach(p => { out.byPing[p[0]] = rec(); });
+    for (let h = 0; h < 24; h++) out.byHour.push(rec());
+    for (let d = 0; d < 7; d++) { out.heat.push([]); for (let h = 0; h < 24; h++) out.heat[d].push(rec()); }
+
+    let lossRun = 0, lastSession = '', pos = 0;
+    sets.forEach(s => {
+        add(out.total, s);
+        const opp = RANK_OF(s.oppRank);
+        add(out.byOppRank[opp || '?'], s);
+        if (opp) out.withRanks++;
+        if (s.oppRank && s.myRank) add(out.byGap[Math.max(-3, Math.min(3, s.oppRank - s.myRank))], s);
+        const pb = pingBucket(s.ping);
+        if (pb) { add(out.byPing[pb], s); out.withPing++; }
+        const d = new Date(s.at || 0);
+        add(out.byHour[d.getHours()], s);
+        add(out.heat[(d.getDay() + 6) % 7][d.getHours()], s);
+        if (typeof s.ft === 'number') { const k = s.ft ? 'FT' + s.ft : 'casual'; add(out.byFt[k] || (out.byFt[k] = rec()), s); }
+        const game = String(s.channel || s.game || '').replace(/\s*\([^)]*\)\s*$/, '') || 'Unknown game';
+        add(out.byGame[game] || (out.byGame[game] = rec()), s);
+        // where in the session
+        const sk = sessionKey(s.at || 0);
+        pos = sk === lastSession ? pos + 1 : 1;
+        lastSession = sk;
+        add(pos === 1 ? out.byPos.first : pos <= 5 ? out.byPos.early : out.byPos.late, s);
+        // tilt: how sets go right after two (or more) losses in a row, within the session
+        if (pos === 1) lossRun = 0;
+        add(lossRun >= 2 ? out.tilt.after2 : out.tilt.fresh, s);
+        lossRun = s.result === 'lost' ? lossRun + 1 : 0;
+    });
+    out.insights = insights(out, sets);
+    return out;
+}
+
+const pct = (x) => Math.round(x * 100) + '%';
+
+// plain-language findings, strongest first (only from buckets with enough results)
+function insights(a, sets) {
+    const out = [];
+    const overall = a.total.rate;
+    if (a.total.n < MIN_N) return out;
+    // tilt
+    const t = a.tilt.after2;
+    if (t.n >= MIN_N && t.rate < overall - 0.08)
+        out.push({ kind: 'tilt', score: overall - t.rate, text: 'After two losses in a row you win ' + pct(t.rate) + ' (usually ' + pct(overall) + ') — a short break may help.' });
+    else if (t.n >= MIN_N && t.rate >= overall)
+        out.push({ kind: 'tilt', score: 0.05, text: 'You bounce back well: ' + pct(t.rate) + ' after two losses in a row.' });
+    // warm-up
+    const f = a.byPos.first, later = rec();
+    [a.byPos.early, a.byPos.late].forEach(r => { later.w += r.w; later.l += r.l; later.n += r.n; });
+    later.rate = later.n ? later.w / later.n : null;
+    if (f.n >= MIN_N && later.n >= MIN_N && later.rate - f.rate >= 0.1)
+        out.push({ kind: 'warmup', score: later.rate - f.rate, text: 'Your first set of a session: ' + pct(f.rate) + ', later ones: ' + pct(later.rate) + ' — warm up in training mode first?' });
+    // time of day (3-hour blocks)
+    const blocks = [];
+    for (let b = 0; b < 8; b++) {
+        const r = rec();
+        for (let h = b * 3; h < b * 3 + 3; h++) { r.w += a.byHour[h].w; r.l += a.byHour[h].l; r.n += a.byHour[h].n; }
+        r.rate = r.n ? r.w / r.n : null;
+        if (r.n >= MIN_N) blocks.push({ from: b * 3, r });
+    }
+    if (blocks.length >= 2) {
+        blocks.sort((x, y) => y.r.rate - x.r.rate);
+        const best = blocks[0], worst = blocks[blocks.length - 1];
+        const label = (h) => String(h).padStart(2, '0') + ':00–' + String((h + 3) % 24).padStart(2, '0') + ':00';
+        if (best.r.rate - worst.r.rate >= 0.1) {
+            out.push({ kind: 'time', score: best.r.rate - worst.r.rate, text: 'You play best ' + label(best.from) + ' (' + pct(best.r.rate) + ') and worst ' + label(worst.from) + ' (' + pct(worst.r.rate) + ').' });
+        }
+    }
+    // the matchup you're best at: opponent rank x ping
+    let bestCombo = null;
+    RANKS.forEach(rk => PING.forEach(([pb, lo, hi]) => {
+        const r = rec();
+        sets.forEach(s => { if (RANK_OF(s.oppRank) === rk && s.ping >= lo && s.ping < hi) add(r, s); });
+        if (r.n >= MIN_N + 3 && (!bestCombo || r.rate > bestCombo.r.rate)) bestCombo = { rk, pb, r };          // a narrow slice: wants more sets
+    }));
+    if (bestCombo && bestCombo.r.rate > overall + 0.05)
+        out.push({ kind: 'combo', score: bestCombo.r.rate - overall, text: 'You play best vs ' + bestCombo.rk + '-ranks at ' + bestCombo.pb + ' ms: ' + pct(bestCombo.r.rate) + ' over ' + bestCombo.r.n + ' sets.' });
+    // ping
+    const lowP = a.byPing['<60'], highP = a.byPing['150+'];
+    if (lowP.n >= MIN_N && highP.n >= MIN_N && lowP.rate - highP.rate >= 0.12)
+        out.push({ kind: 'ping', score: lowP.rate - highP.rate, text: 'Lag costs you: ' + pct(lowP.rate) + ' under 60 ms, ' + pct(highP.rate) + ' over 150 ms — the ping filter can warn you.' });
+    // stepping up
+    const up = rec();
+    [1, 2, 3].forEach(g => { const r = a.byGap[g]; up.w += r.w; up.l += r.l; up.n += r.n; });
+    up.rate = up.n ? up.w / up.n : null;
+    if (up.n >= MIN_N) out.push({ kind: 'gap', score: 0.04, text: 'Against higher ranks you win ' + pct(up.rate) + ' (' + up.w + '–' + up.l + ').' });
+    // first-to length
+    const fts = Object.keys(a.byFt).filter(k => a.byFt[k].n >= MIN_N).sort((x, y) => a.byFt[y].rate - a.byFt[x].rate);
+    if (fts.length >= 2 && a.byFt[fts[0]].rate - a.byFt[fts[fts.length - 1]].rate >= 0.1)
+        out.push({ kind: 'ft', score: 0.03, text: 'Your best set length is ' + fts[0] + ' (' + pct(a.byFt[fts[0]].rate) + '); ' + fts[fts.length - 1] + ' is your weakest (' + pct(a.byFt[fts[fts.length - 1]].rate) + ').' });
+    return out.sort((x, y) => y.score - x.score);
+}
+
+/* --------------------------------------------------------------------- tab */
+
+const E = (s) => fc.fmt.esc(s);
+const rateColor = (r) => r == null ? 'var(--fc-s4)' : r >= 0.6 ? '#23a55a' : r >= 0.5 ? '#7bc96f' : r >= 0.4 ? '#f0b232' : '#f23f43';
+
+function bars(entries, opts) {
+    const o = opts || {};
+    const list = entries.filter(([, r]) => r.n > 0);
+    if (!list.length) return '<div class="fc-muted">No sets with this information yet.</div>';
+    return fc.ui.chart.bars(list.map(([label, r]) => ({
+        label, value: Math.round(r.rate * 100), text: Math.round(r.rate * 100) + '%',
+        color: o.color ? o.color(label, r) : (r.n < MIN_N ? 'var(--fc-faint)' : rateColor(r.rate)),
+        title: label + ': ' + r.w + '–' + r.l + ' (' + r.n + ' sets)' + (r.n < MIN_N ? ' — too few to trust yet' : '')
+    })), { w: o.w || 440, h: 160, max: 100 });
+}
+
+function heatHtml(a) {
+    let max = 1;
+    a.heat.forEach(row => row.forEach(r => { max = Math.max(max, r.n); }));
+    const cell = (r, d, h) => `<i style="background:${r.n ? rateColor(r.rate) : 'transparent'};opacity:${r.n ? (0.35 + 0.65 * r.n / max).toFixed(2) : 1}" ` +
+        `title="${DAYS[d]} ${String(h).padStart(2, '0')}:00 — ${r.n ? r.w + '–' + r.l + ' (' + pct(r.rate) + ')' : 'no sets'}"></i>`;
+    return `<div class="anHeat">${a.heat.map((row, d) => `<div class="row"><b>${DAYS[d]}</b>${row.map((r, h) => cell(r, d, h)).join('')}</div>`).join('')}` +
+        `<div class="row hours"><b></b>${[0, 3, 6, 9, 12, 15, 18, 21].map(h => `<span>${String(h).padStart(2, '0')}</span>`).join('')}</div></div>`;
+}
+
+function tabHtml(ctx) {
+    const a = analyze(ctx.sets);
+    if (a.total.n < MIN_N) return fc.ui.empty({ icon: 'trend', title: 'Not enough sets yet',
+        sub: 'Analytics needs at least ' + MIN_N + ' sets with a known result' + (ctx.game || ctx.period !== 'all' ? ' in these filters' : '') + '. Keep playing — or import your history.' });
+    const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
+    const t = a.tilt.after2;
+    const bestHour = a.byHour.map((r, h) => ({ h, r })).filter(x => x.r.n >= MIN_N).sort((x, y) => y.r.rate - x.r.rate)[0];
+    const missing = a.total.n - a.withRanks;
+    return `<div class="fcsTop">
+            ${fc.ui.tile(String(a.total.n), 'sets analysed', { sub: missing ? missing + ' without ranks (older / imported)' : '' })}
+            ${fc.ui.tile(pct(a.total.rate), 'win rate')}
+            ${fc.ui.tile(t.n ? pct(t.rate) : '—', 'after 2 losses in a row', { trend: t.n >= MIN_N ? (t.rate < a.total.rate - 0.08 ? 'down' : 'up') : '' })}
+            ${fc.ui.tile(bestHour ? String(bestHour.h).padStart(2, '0') + ':00' : '—', 'your best hour', { sub: bestHour ? pct(bestHour.r.rate) + ' over ' + bestHour.r.n + ' sets' : 'needs more sets' })}
+        </div>
+        <div class="fcsGrid">
+            ${card('What stands out', a.insights.length ? a.insights.map(i => `<div class="anIns ${i.kind}">${fc.ui.icon({ tilt: 'flame', warmup: 'clock', time: 'clock', combo: 'target', ping: 'bolt', gap: 'trend', ft: 'sword' }[i.kind] || 'info')}<span>${E(i.text)}</span></div>`).join('')
+                : '<div class="fc-muted">Nothing stands out yet — your results look even across the board.</div>', true)}
+            ${card('By opponent rank', bars(RANKS.concat('?').map(r => [r, a.byOppRank[r]]), { color: (l, r) => r.n < MIN_N ? 'var(--fc-faint)' : (l === '?' ? '#80848e' : fc.data.rankColor(l)) }))}
+            ${card('By rank gap <small>— them minus you</small>', bars([-3, -2, -1, 0, 1, 2, 3].map(g => [(g > 0 ? '+' : '') + g, a.byGap[g]])))}
+            ${card('By ping', bars(PING.map(p => [p[0], a.byPing[p[0]]])))}
+            ${card('By set length', bars(Object.keys(a.byFt).sort().map(k => [k, a.byFt[k]])))}
+            ${card('Where in the session', bars([['1st set', a.byPos.first], ['2nd–5th', a.byPos.early], ['6th+', a.byPos.late]]))}
+            ${card('By game', bars(Object.keys(a.byGame).sort((x, y) => a.byGame[y].n - a.byGame[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, a.byGame[k]])))}
+            ${card('When you win <small>— weekday × hour, greener = better, brighter = more sets</small>', heatHtml(a), true)}
+        </div>`;
+}
+
+const CSS = `
+.fcsTab .fcsCard svg.fc-chart { width: 100%; height: auto; }
+.anIns { display: flex; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--fc-divider); font-size: 14px; }
+.anIns:first-of-type { border-top: 0; }
+.anIns .fc-ic { flex: none; width: 18px; height: 18px; margin: 1px 10px 0 0; color: var(--fc-accent); }
+.anIns.tilt .fc-ic { color: var(--fc-danger); }
+.anHeat { overflow-x: auto; }
+.anHeat .row { display: flex; align-items: center; height: 18px; margin-bottom: 3px; }
+.anHeat .row b { flex: none; width: 36px; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
+.anHeat .row i { flex: 1 1 0; min-width: 10px; height: 16px; margin-right: 3px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--fc-divider); }
+.anHeat .row.hours span { flex: 3 1 0; font-size: 10px; color: var(--fc-muted); }
+`;
+
+/* -------------------------------------------------------------------- nudge */
+
+let nudgedAt = 0;
+function onSet() {
+    if (!cfg.tiltNudge) return;
+    const last = fc.history.all().slice(-3);
+    if (last.length === 3 && last.every(s => s.result === 'lost') && Date.now() - nudgedAt > 30 * 60000) {
+        nudgedAt = Date.now();
+        fc.ui.toast('Three losses in a row', { icon: 'flame', kind: 'warning', ms: 9000,
+            sub: 'Your stats say you play better after a short break. Stretch, drink some water, come back fresh.' });
+    }
+}
+
+/* ------------------------------------------------------------------- module */
+
+function start(f) {
+    fc = f;
+    store = fc.config('analytics', { tiltNudge: false });
+    cfg = store.data;
+    fc.ui.style('anStyle', CSS);
+    fc.own(() => fc.ui.style('anStyle', null));
+    const stats = fc.modules.get('stats');
+    if (stats && stats.addTab) fc.own(stats.addTab({ id: 'analytics', label: 'Analytics', order: 10, html: tabHtml }));
+    fc.on('set:recorded', onSet);
+    fc.settings.block({
+        id: 'analytics', section: 'match', title: 'Match analytics', hint: '— the Analytics tab on your stats page', store, order: 30,
+        fields: [
+            { key: 'tiltNudge', type: 'switch', label: '“Take a break?” after three losses in a row', hint: 'A gentle reminder, at most every 30 minutes' },
+            { type: 'button', label: 'See your analytics', button: 'Open', act: 'open', onClick: () => { const s = fc.modules.get('stats'); const st = fc.modules.get('fightcord'); if (st) st.close(); if (s) s.open({ tab: 'analytics' }); } }
+        ]
+    });
+    return api;
+}
+
+const api = { analyze, pingBucket, sessionKey, MIN_N };
+
+module.exports = { id: 'analytics', name: 'Match analytics', needs: ['stats'], start, analyze, pingBucket, sessionKey, MIN_N };

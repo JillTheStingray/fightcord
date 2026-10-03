@@ -1,0 +1,10 @@
+{
+  "name": "fightcade-discord-rpc",
+  "version": "1.0.0",
+  "description": "Discord Rich Presence for Fightcade — shows your game, lobby/match/spectate status, opponent, ranks, and a match timer. Runs entirely inside Fightcade's Electron client.",
+  "license": "MIT",
+  "dependencies": {
+    "discord-rpc": "^4.0.1"
+  },
+  "private": true
+}

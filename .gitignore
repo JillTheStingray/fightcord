@@ -1,0 +1,11 @@
+build/
+dist/
+rpc/node_modules/
+node_modules/
+# real Fightcade captures: chat, player names, account details -- never commit
+src/dev-harness/snapshots/
+# your own music stays on your PC
+*.mp3
+*.ogg
+*.wav
+*.m4a
