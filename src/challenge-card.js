@@ -28,6 +28,32 @@ const mod = (id) => fc.modules.get(id);
 const cards = new Map();         // "channel|id" -> { el, d, timer }
 const shown = [];                // for the harness
 const MAX = 3;
+const waiting = [];              // queue mode: challenges in arrival order, behind the card on screen
+
+// Queue mode (its switch, or streamer mode): one card at a time, the rest wait their turn,
+// and nothing pops up mid-match. -> 'show' | 'wait'
+function decide(queueMode, visible, inMatch) {
+    if (!queueMode) return 'show';
+    return visible > 0 || inMatch ? 'wait' : 'show';
+}
+const streaming = () => { const s = mod('streamer'); return !!(s && s.active && s.active()); };
+const queueMode = () => !!(cfg.queue || streaming());
+const meInMatch = () => { try { return fc.app.inMatch(fc.app.me()); } catch (e) { return false; } };
+
+function updateWaiting() {
+    cards.forEach(c => {
+        const q = c.el.querySelector('.ccQueue');
+        if (q) { q.textContent = waiting.length ? T('{n} more waiting', { n: waiting.length }) : ''; q.hidden = !waiting.length; }
+    });
+}
+
+// the next one in line (or, with queue mode off again, everyone still waiting)
+function next() {
+    if (!waiting.length) return;
+    if (!queueMode()) { waiting.splice(0).forEach(d => show(d)); return; }
+    if (cards.size || meInMatch()) return;
+    show(waiting.shift(), true);
+}
 
 function stack() {
     let s = document.getElementById('ccStack');
@@ -39,11 +65,12 @@ function stack() {
     return s;
 }
 
-function show(d) {
+function show(d, fromQueue) {
     if (!cfg.enabled || !d || !d.name) return;
     if (!d.demo && fc.app.isMe(d.name)) return;
     const k = d.channel + '|' + d.id;
-    if (cards.has(k)) return;
+    if (cards.has(k) || (!fromQueue && waiting.some(w => w.channel + '|' + w.id === k))) return;
+    if (!d.demo && !fromQueue && decide(queueMode(), cards.size, meInMatch()) === 'wait') { waiting.push(d); updateWaiting(); return; }
     if (cards.size >= MAX) close([...cards.keys()][0]);
     const u = fc.app.user(d.name)[1] || {};
     const cc = u.country && u.country.iso_code ? String(u.country.iso_code).toLowerCase() : '';
@@ -59,6 +86,7 @@ function show(d) {
         <div class="ccGlow"></div>
         <div class="ccHead">${fc.ui.icon('sword', 'ccIco')}<span class="ccTitle">${E(T('Incoming challenge'))}</span>
             <span class="ccGame" title="${E(d.channel)}">${E(shortName(d.channel))}</span>
+            <span class="ccQueue" hidden></span>
             <span class="ccFt ${ft ? 'ranked' : ''}">${E(ft ? T('FT{ft} ranked', { ft }) : T('Casual'))}</span>
             ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'hide', title: 'Hide this card (the challenge stays in chat)', cls: 'ccX' })}</div>
         <div class="ccVs">
@@ -88,6 +116,7 @@ function show(d) {
     shown.push({ name: d.name, channel: d.channel, id: d.id, ranked: d.ranked, at: Date.now() });
     if (shown.length > 50) shown.shift();
     setTimeout(() => el.classList.add('in'), 16);
+    updateWaiting();
     if (cfg.sound && !d.silent) ring();
     fillOdds(el, d.name);
 }
@@ -128,6 +157,14 @@ function close(k) {
     c.el.classList.remove('in');
     c.el.classList.add('out');
     setTimeout(() => c.el.remove(), 260);
+    if (waiting.length) setTimeout(next, 300);
+}
+
+// a challenge that was cancelled before its turn came
+function drop(k) {
+    const i = waiting.findIndex(w => w.channel + '|' + w.id === k);
+    if (i >= 0) { waiting.splice(i, 1); updateWaiting(); }
+    close(k);
 }
 
 function userObj(d) {
@@ -184,6 +221,8 @@ const CSS = `
 .ccHead .ccIco { width: 14px; height: 14px; margin-right: 6px; color: var(--fc-head); }
 .ccTitle { font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-head); }
 .ccGame { flex: 1; min-width: 0; margin-left: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ccQueue { flex: none; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: var(--fc-accent-soft); color: var(--fc-head); }
+.ccQueue[hidden] { display: none; }
 .ccFt { flex: none; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: rgba(255,255,255,.08); color: var(--fc-text); }
 .ccFt.ranked { background: rgba(240,178,50,.16); color: var(--fc-warning); }
 .ccHead .ccX { margin-left: 6px; }
@@ -225,16 +264,20 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('challenge-card', { enabled: true, sound: true });
+    store = fc.config('challenge-card', { enabled: true, sound: true, queue: false });
     cfg = store.data;
     window.__fcCardLoaded = true;
     fc.ui.style('ccStyle', CSS);
-    fc.own(() => { fc.ui.style('ccStyle', null); [...cards.keys()].forEach(close); window.__fcCardLoaded = false; });
+    fc.own(() => { fc.ui.style('ccStyle', null); waiting.length = 0; [...cards.keys()].forEach(close); window.__fcCardLoaded = false; });
 
     // after the filters (their warnings are in ctx.warn) and Fightcade's own handler
     fc.hooks.challenge((ctx) => show({ user: ctx.user, name: ctx.name, channel: ctx.channel, id: ctx.id, ranked: ctx.ranked, warn: ctx.warn.slice() }), { order: 10 });
     // accepted / declined / cancelled anywhere -> Fightcade clears its notifications -> close our card
-    fc.hooks.method(() => fc.app.root(), 'removeChallengeNotifications', { before(user, channel, id) { close(channel + '|' + id); } });
+    fc.hooks.method(() => fc.app.root(), 'removeChallengeNotifications', { before(user, channel, id) { drop(channel + '|' + id); } });
+    // finished a match: the first one waiting gets its card
+    fc.on('match:end', () => setTimeout(next, 1500));
+    fc.tick(() => { if (waiting.length && !cards.size) next(); }, 3000, { whileHidden: true });     // the match:end event can lag the score lookup
+    fc.on('streamer', () => setTimeout(next, 50));
 
     fc.settings.block({
         id: 'challenge-card', section: 'challenges', title: 'Challenge card', hint: '— a big Accept / Decline card for incoming challenges',
@@ -242,6 +285,7 @@ function start(f) {
         fields: [
             { key: 'enabled', type: 'switch', label: 'Show the challenge card' },
             { key: 'sound', type: 'switch', label: 'Ring when a challenge comes in', show: (d) => d.enabled, onChange: (v) => { if (v) ring(); } },
+            { key: 'queue', type: 'switch', label: 'Queue challenges', hint: 'One card at a time in the order they came in, none mid-match (always on in streamer mode)', show: (d) => d.enabled, onChange: () => next() },
             { type: 'button', label: 'Preview the card', button: 'Preview', act: 'preview', onClick: preview }
         ]
     });
@@ -252,9 +296,11 @@ const api = {
     show: (d) => show(d),
     preview: () => preview(),
     _cards: cards,
+    _waiting: waiting,
+    _next: () => next(),
     _shown: shown,
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'challenge-card', name: 'Challenge card', start };
-Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));
+module.exports = { id: 'challenge-card', name: 'Challenge card', start, decide };
+Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });

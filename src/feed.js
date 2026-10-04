@@ -57,7 +57,8 @@ function push(it) {
     if (items.length > MAX) items.splice(0, items.length - MAX);
     save();
     fc.emit('feed:item', it);
-    if (it.big && cfg.toastBig && it.kind !== 'friend') fc.ui.toast(it.plain || T('Something happened'), { icon: ICON[it.kind] || 'bell', ms: 7000, onClick: () => open(it.ch) });
+    const st = fc.modules.get('streamer');
+    if (it.big && cfg.toastBig && it.kind !== 'friend' && !(st && st.quiet && st.quiet())) fc.ui.toast(it.plain || T('Something happened'), { icon: ICON[it.kind] || 'bell', ms: 7000, onClick: () => open(it.ch) });
     render();
     refreshPills();
 }

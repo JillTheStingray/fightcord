@@ -43,6 +43,11 @@ const NEWS = [
     { v: '2.2', title: 'Fightcord 2.2', items: [
         ['globe', N_('Português e Español'), N_('Fightcord now speaks Brazilian Portuguese and Spanish, installer included. Settings → My Fightcord → Language (Automatic follows Windows).')],
         ['chat', N_('Chat translation in your language'), N_('The chat translator now translates other players into the language Fightcord is in, out of the box.')]
+    ] },
+    { v: '2.3', title: 'Fightcord 2.3', items: [
+        ['target', N_('Find a match'), N_('The new button in the channel header lists who’s free near your rank, on a good ping, with your odds and a Challenge button. Or type /find.')],
+        ['eye', N_('Streamer mode'), N_('Ctrl+Shift+H blurs other players’ names, avatars and chat, and lines challenges up one at a time. Settings → Streamer mode.')],
+        ['play', N_('OBS overlay'), N_('A scoreboard for your stream: you vs your opponent, the score and tonight’s record. Switch it on under Settings → Streamer mode.')]
     ] }
 ];
 

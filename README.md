@@ -51,6 +51,8 @@ walks you through the rest.
   leaves ranked sets unfinished.
 - **Challenge filters:** warn about or auto-decline challenges by ping, Wi-Fi / VPN, country,
   set length, rank, players you haven't met, or a block list.
+- **Find a match:** one button lists who's free right now near your rank, on a good ping, new to
+  you or close in your head-to-head, with your odds and a Challenge button.
 - **Match screens:** VS / YOU WON! / YOU LOST!, and tonight's record in the channel header.
 - **Stats:** your history, head-to-heads, streaks, and a share card.
 - **Rank & ELO history:** a chart of your rank over time per game, and a celebration when you rank
@@ -72,6 +74,12 @@ walks you through the rest.
   event you ring the bell on), with a button to open the channel.
 - **Discord status:** shows your game, opponent and match timer on your Discord profile.
 - Lobby **music** (bring your own track; none is included).
+
+**Streaming**
+- **Streamer mode:** Ctrl+Shift+H blurs other players' names, avatars and chat on screen, keeps
+  incoming challenges in a queue (one at a time, none mid-match) and quiets pop-ups that name people.
+- **OBS overlay:** a scoreboard (you vs your opponent, ranks, the score, tonight's record) to add
+  in OBS as a Browser Source.
 
 <img src="docs/screenshots/feed.png" alt="The lobby feed: upsets, streaks and matches to watch" width="720">
 
@@ -95,6 +103,7 @@ Fightcord has no server and no analytics. It only talks to:
 | Avatars, a font | Gravatar, Google Fonts | like Fightcade does |
 | Updates | this GitHub repo | once a day |
 | Discord status | the Discord app on your PC | while Discord status is on |
+| OBS overlay | a page at `127.0.0.1` that only this PC can open | while the overlay is on (Settings → Streamer mode) |
 
 Settings, notes, friends and match history stay in Fightcord's folder on your PC
 (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Settings → Backup & restore saves them
@@ -103,8 +112,8 @@ to a file.
 ## Fair play
 
 Fightcord only changes what you see and click in the Fightcade app. It never touches the
-emulator, game memory, inputs or netcode, and it never plays, accepts or declines matches on its
-own: challenge filters only decline challenges you told them to.
+emulator, game memory, inputs or netcode, and it never plays matches or sends, accepts or declines
+challenges on its own: challenge filters only decline challenges you told them to.
 
 ## FAQ
 

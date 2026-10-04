@@ -54,6 +54,8 @@ de bienvenida corta te guía con el resto.
   alguien suele abandonar sets ranked.
 - **Filtros de desafío:** avisan o rechazan desafíos automáticamente por ping, Wi-Fi / VPN, país,
   formato del set, rango, jugadores con los que nunca jugaste, o una lista de bloqueo.
+- **Buscar partida:** un botón muestra quién está libre ahora cerca de tu rango, con buen ping,
+  nuevo para ti o parejo en el cara a cara, con tus probabilidades y un botón Desafiar.
 - **Pantallas de partida:** VS / ¡GANASTE! / ¡PERDISTE!, y el récord de la noche arriba del canal.
 - **Estadísticas:** tu historial, cara a cara, rachas y una tarjeta para compartir.
 - **Historial de rango y ELO:** un gráfico de tu rango en el tiempo para cada juego, con una
@@ -76,6 +78,13 @@ de bienvenida corta te guía con el resto.
   (o cualquier evento en el que toques la campanita), con un botón para abrir el canal.
 - **Estado en Discord:** muestra tu juego, tu rival y el tiempo de partida en tu perfil de Discord.
 - **Música** en el lobby (trae tu propia pista; no viene ninguna incluida).
+
+**Para streamers**
+- **Modo streamer:** Ctrl+Shift+H difumina los nombres, avatares y el chat de los demás jugadores
+  en pantalla, pone los desafíos en fila (uno a la vez, ninguno durante la partida) y silencia los
+  avisos con nombres.
+- **Overlay de OBS:** un marcador (tú vs tu rival, rangos, el marcador y el récord de la noche)
+  para agregar en OBS como fuente de Navegador.
 
 <img src="docs/screenshots/feed.png" alt="El feed del lobby: sorpresas, rachas y partidas para ver" width="720">
 
@@ -100,6 +109,7 @@ Fightcord no tiene servidor ni recolecta datos. Solo se comunica con:
 | Avatares, una fuente | Gravatar, Google Fonts | como lo hace Fightcade |
 | Actualizaciones | este repositorio de GitHub | una vez al día |
 | Estado en Discord | la app de Discord en tu PC | mientras el estado en Discord está activado |
+| Overlay de OBS | una página en `127.0.0.1` que solo esta PC puede abrir | mientras el overlay está activado (Configuración → Modo streamer) |
 
 La configuración, las notas, los amigos y el historial de partidas quedan en la carpeta de Fightcord
 en tu PC (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Configuración → Copia de
@@ -108,8 +118,8 @@ seguridad lo guarda todo en un archivo.
 ## Juego limpio
 
 Fightcord solo cambia lo que ves y donde haces clic en la app de Fightcade. Nunca toca el emulador,
-la memoria del juego, los controles ni el netcode, y nunca juega, acepta ni rechaza partidas por su
-cuenta: los filtros de desafío solo rechazan los desafíos que tú les indicaste.
+la memoria del juego, los controles ni el netcode, y nunca juega partidas ni envía, acepta o rechaza
+desafíos por su cuenta: los filtros de desafío solo rechazan los desafíos que tú les indicaste.
 
 ## Preguntas frecuentes
 

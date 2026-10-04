@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.3.0
+
+- **Find a match.** A new button in the channel header (or `/find`) lists who's free in the channel
+  right now, near your rank and on a good ping. People new to you and close rivalries come first.
+  Each row has your odds and a **Challenge** button, which uses Fightcade's own challenge, so it asks
+  for the FT as usual. Anyone your challenge filters would decline is left out. Settings → Scout &
+  challenges → Find a match (highest ping, rank range).
+- **Streamer mode.** Ctrl+Shift+H (or `/streamer`) blurs other players' names, avatars and chat
+  messages. Your own name and messages stay readable, and your e-mail is hidden. A red LIVE pill
+  shows while it's on. Feed and friend pop-ups stay quiet. Fightcade's own text is never changed;
+  it's all CSS.
+- **Challenge queue.** In streamer mode, or with Settings → Scout & challenges → Challenge card →
+  Queue challenges, incoming challenges show one card at a time in the order they came in, with
+  "2 more waiting". Nothing pops up mid-match; the first one waiting appears when it ends. Fightcord
+  still never accepts or declines anything by itself.
+- **OBS overlay.** Settings → Streamer mode → OBS overlay starts a small scoreboard page at
+  `http://127.0.0.1:7979/` to add in OBS as a Browser Source. It shows you vs your opponent, ranks,
+  the score (updated every 15 s) and tonight's record. It only answers this PC.
+
 ## 2.2.0
 
 - **Português (Brasil) e Español.** All of Fightcord (every screen, setting, toast and the welcome tour)

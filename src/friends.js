@@ -142,6 +142,8 @@ function alert(k, title, sub, name, kind) {
     if (alerts.length > 100) alerts.shift();
     fc.emit('friends:alert', a);
     if (!cfg.notify) return;
+    const st = fc.modules.get('streamer');
+    if (st && st.quiet && st.quiet()) return;           // streaming: it would name them on screen
     fc.ui.toast(title, { sub, icon: 'star', kind: 'warning', ms: 7000, onClick: open,
         actions: kind === 'match' && watchUrl(statusOf(name)) ? [{ label: 'Watch', fn: () => openUri(watchUrl(statusOf(name))) }] : [] });
     if (cfg.sound) fc.sound.play('ping');

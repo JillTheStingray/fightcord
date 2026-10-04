@@ -250,6 +250,8 @@
     }, 150);
   };
   const joinedName = LU.channels[0];
+  // the channel on screen, as Fightcade has it
+  if (!FCADE.activeChannelId && joinedName && !q.get('view')) FCADE.activeChannelId = joinedName;
   const names = Object.keys(users);
   names.forEach((n, i) => {
     const u = users[n];
@@ -356,6 +358,8 @@
   await load('../feed.js');
   await load('../welcome.js');
   await load('../events.js');
+  await load('../find-match.js');
+  await load('../streamer.js');
   await load('../fightcord.js');
 })();
 </script>

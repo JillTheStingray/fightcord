@@ -58,11 +58,11 @@ const APP_FROM = 900;
 const PLUGINS = [
     ['discord-theme.js', N_('Discord theme')], ['branding.js', N_('FightCord logo')], ['discover.js', N_('Search tab (Discover)')], ['chat-extras.js', N_('Chat extras')],
     ['translate.js', N_('Translator')], ['emoji.js', N_(':emoji: shortcodes')], ['fontstyle.js', N_('Chat font styles')],
-    ['member-list.js', N_('Member list')], ['scout.js', N_('Scout card, ELO & odds')], ['challenge-filters.js', N_('Challenge filters')],
+    ['member-list.js', N_('Member list')], ['scout.js', N_('Scout card, ELO & odds')], ['challenge-filters.js', N_('Challenge filters')], ['find-match.js', N_('Find a match')],
     ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
     ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
     ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
-    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')],
     ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 
