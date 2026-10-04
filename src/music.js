@@ -177,7 +177,7 @@ function testSound() {
 
 function nowText() {
     const cur = currentTrack();
-    return state.playing && audio && !audio.paused ? '♪ ' + T('Now playing: {track}', { track: pretty(cur) }) : (state.reason || (cur ? T('Ready: {track}', { track: pretty(cur) }) : ''));
+    return state.playing && audio && !audio.paused ? T('Now playing: {track}', { track: pretty(cur) }) : (state.reason || (cur ? T('Ready: {track}', { track: pretty(cur) }) : ''));
 }
 
 function listHtml() {

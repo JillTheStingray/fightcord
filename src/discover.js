@@ -127,7 +127,6 @@ const historySets = () => fc.history.all();
 /* ------------------------------------------------------------- shared data */
 
 const RANKS = ['', 'E', 'D', 'C', 'B', 'A', 'S'];
-const RANK_COLOR = { S: '#ffd166', A: '#ff7b72', B: '#c792ea', C: '#6aa9ff', D: '#6ee7a0', E: '#9aa4b2' };
 
 function rankLetter(r) {
     if (typeof r === 'string' && /^[A-Za-z]$/.test(r)) return r.toUpperCase();
@@ -135,7 +134,7 @@ function rankLetter(r) {
 }
 function rankPill(r) {
     const L = rankLetter(r);
-    return L ? `<span class="fcdRank" style="background:${RANK_COLOR[L]}">${L}</span>` : '';
+    return L ? fc.ui.tag(L, '', 16).replace('class="fc-tag"', 'class="fc-tag fcdRank"') : '';
 }
 function flagImg(cc) {
     cc = String(cc || '').toLowerCase();
@@ -787,10 +786,7 @@ html.fcd-on .searchResultsWrapper .spinnerWrapper::after {
 
 const CSS2 = `
 /* ============================ shared bits =============================== */
-.fcdRank {
-    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 5px;
-    border-radius: 4px; font-size: 10px; font-weight: 800; color: #111; flex: none;
-}
+.fcdRank { margin-left: 5px; }
 .fcdFlag { width: 16px; height: 11px; margin-right: 5px; border-radius: 2px; flex: none; vertical-align: middle; }
 .fcdAva { width: 44px; height: 44px; border-radius: 50%; background: var(--dc-bg3, #1e1f22); flex: none; }
 .fcdSys {
@@ -1376,7 +1372,7 @@ function spotButtons(ch) {
     return (joined
         ? '<span class="fcdBtn go" data-act="open">▶ ' + ET('Open') + '</span>'
         : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ ${ET('Join')}</span>`) +
-        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ ' + ET('Favourited') : '☆ ' + ET('Favourite')}</span>` +
+        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? fc.ui.ic('star', 'fill') + ET('Favourited') : fc.ui.ic('star') + ET('Favourite')}</span>` +
         '<span class="fcdBtn" data-act="details">ⓘ ' + ET('Details') + '</span>';
 }
 
@@ -1384,8 +1380,8 @@ function spotMeta(ch) {
     const parts = [];
     if (ch.clients != null) parts.push(`<span><span class="fcdDot"></span>${ET('{n} playing', { n: Number(ch.clients).toLocaleString(fc.t.locale()) })}</span>`);
     const live = isJoinedName(ch.name) ? liveCount(ch.name) : 0;
-    if (live) parts.push(`<span>⚔ ${esc(T.plural(live, '{n} match live', '{n} matches live'))}</span>`);
-    if (ch.ranked) parts.push('<span>🏆 ' + ET('Ranked') + '</span>');
+    if (live) parts.push(`<span>${fc.ui.ic('swords')}${esc(T.plural(live, '{n} match live', '{n} matches live'))}</span>`);
+    if (ch.ranked) parts.push('<span>' + fc.ui.ic('trophy') + ET('Ranked') + '</span>');
     if (ch.system) parts.push(`<span>${esc(ch.system)}</span>`);
     return parts.join('');
 }
@@ -1398,7 +1394,7 @@ function renderSpot(header, changed) {
     const text = sp.querySelector('.fcdSpotText');
     if (changed) {
         const paren = (ch.name.match(/\(([^)]*)\)\s*$/) || [])[1] || '';
-        text.innerHTML = `<div class="fcdSpotKicker">★ Spotlight · #${spot.idx + 1} most played</div>
+        text.innerHTML = `<div class="fcdSpotKicker">${fc.ui.ic('star', 'fill')}Spotlight · #${spot.idx + 1} most played</div>
             <div class="fcdSpotTitle">${esc(shortName(ch.name))}</div>
             ${paren ? `<div class="fcdSpotSub">${esc(paren)}</div>` : ''}
             <div class="fcdSpotMeta"></div><div class="fcdSpotBtns"></div>
@@ -1721,7 +1717,7 @@ function tileSub(it) {
         const n = onlineIn(it.full);
         return n ? '<span class="fcdOn"></span>' + ET('{n} online', { n }) : ET('Joined');
     }
-    return '★ ' + ET('Favourite');
+    return fc.ui.ic('star', 'fill') + ET('Favourite');
 }
 
 const artState = {};   // url -> 'loading' | 'ok' | 'fail'
@@ -1829,8 +1825,8 @@ function decorateSearch(wrap) {
     if (sc) {
         const parts = [];
         const g = +sc.genreFilter || 0, s = +sc.systemFilter || 0, y = +sc.yearFilter || 0;
-        if (sc.favorites) parts.push('⭐ ' + T('Favourites'));
-        if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + T(L.allGenres[g]));
+        if (sc.favorites) parts.push(T('Favourites'));
+        if (g > 0) parts.push(T(L.allGenres[g]));
         if (s > 0) parts.push(L.allSystems[s]);
         const years = glob()?.filtersOptions?.years;
         if (y > 0 && years) parts.push(String(years[y]));
@@ -1923,7 +1919,7 @@ function liveCardHtml(m) {
         : `<div class="fcdLiveVs solo">${side(a, ET('in a match'))}</div>`;
     const c = liveChan(m);
     const act = m.players.includes(me) ? ET("You're playing")
-        : canWatch(m) ? '<span class="fcdWatch" data-watch="1">👁 ' + ET('Watch') + '</span>'
+        : canWatch(m) ? '<span class="fcdWatch" data-watch="1">' + fc.ui.ic('eye') + ET('Watch') + '</span>'
         : `<span class="fcdLiveDet" data-det="1" title="${ET(c && c.spectators === false ? 'Spectating is off in this channel' : 'Open the game page')}">${ET('Details')}</span>`;
     return `<div class="fcdLiveCard" data-q="${esc(m.quark)}" data-art="${esc(art)}">
         <div class="fcdLiveBg" style="background-image:url(&quot;${esc(art)}&quot;) !important"></div>
@@ -1993,7 +1989,7 @@ function ensureGamePanel() {
     dim.addEventListener('click', (e) => { if (e.isTrusted || window.__fcdTest) closeGame(); });
     panel = document.createElement('aside');
     panel.id = 'fcdGame';
-    panel.innerHTML = `<div class="fcdGHead"><div class="fcdGBg"></div><div class="fcdGArt"></div><div class="fcdGClose" title="${ET('Close (Esc)')}">✕</div></div>
+    panel.innerHTML = `<div class="fcdGHead"><div class="fcdGBg"></div><div class="fcdGArt"></div><div class="fcdGClose" title="${ET('Close (Esc)')}">${fc.ui.icon('close')}</div></div>
         <div class="fcdGScroll"><div class="fcdGTop"></div><div class="fcdGDyn"></div></div>`;
     panel.addEventListener('click', onGameClick);
     panel.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -2092,7 +2088,7 @@ function liveSection(ch) {
             const [a, b] = m.players.map(n => playerBits(n, m.channel));
             const who = (p, r) => p ? `<div class="fcdGSide${r ? ' r' : ''}">${r ? '' : flagImg(p.cc)}<b>${esc(p.name)}</b>${rankPill(p.rank)}${r ? '&nbsp;' + flagImg(p.cc) : ''}</div>` : '<div class="fcdGSide"></div>';
             const act = m.players.includes(me) ? '<span class="fcdGRight">' + ET('you') + '</span>'
-                : canWatch(m) ? `<span class="fcdWatch" data-watch="${esc(m.quark)}">👁 ${ET('Watch')}</span>` : '';
+                : canWatch(m) ? `<span class="fcdWatch" data-watch="${esc(m.quark)}">${fc.ui.ic('eye')}${ET('Watch')}</span>` : '';
             return `<div class="fcdGRow"><div class="fcdGMatch"><span class="fcdLiveTag">● ${durText(m.since)}</span>${who(a)}<span class="fcdGVs">VS</span>${who(b, true)}</div>${act}</div>`;
         }).join('');
     }
@@ -2142,27 +2138,27 @@ function renderGame() {
     const joined = isJoinedName(ch.name);
     const fav = isFavName(ch.name);
     const tags = (c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : '') +
-        (c.ranked ? '<span class="fcdSys">🏆 ' + ET('Ranked') + '</span>' : '') +
+        (c.ranked ? '<span class="fcdSys">' + fc.ui.ic('trophy') + ET('Ranked') + '</span>' : '') +
         (c.genre ? `<span class="fcdSys">${ET(c.genre)}</span>` : '') +
         (c.year ? `<span class="fcdSys">${esc(String(c.year))}</span>` : '') +
-        (joined ? '<span class="fcdJoined">✓ ' + ET('Joined') + '</span>' : '') + (fav ? '<span class="fcdSys">★ ' + ET('Favourite') + '</span>' : '');
+        (joined ? '<span class="fcdJoined">' + fc.ui.ic('check') + ET('Joined') + '</span>' : '') + (fav ? '<span class="fcdSys">' + fc.ui.ic('star', 'fill') + ET('Favourite') + '</span>' : '');
     const live = joined ? liveMatches().filter(m => m.channel === ch.name).length : 0;
     const stats = (c.clients != null ? `<span><span class="fcdDot"></span>${ET('{n} playing', { n: Number(c.clients).toLocaleString(fc.t.locale()) })}</span>` : '') +
-        (live ? `<span>⚔ ${ET('{n} live', { n: live })}</span>` : '');
+        (live ? `<span>${fc.ui.ic('swords')}${ET('{n} live', { n: live })}</span>` : '');
     const jb = joined ? '' : joinBlock(c), fb = favBlock(c);
     const btns = (joined ? '<span class="fcdBtn go" data-act="open">▶ ' + ET('Open channel') + '</span>'
         : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ ${ET('Join')}</span>`) +
-        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ ' + ET('Favourited') : '☆ ' + ET('Favourite')}</span>` +
+        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? fc.ui.ic('star', 'fill') + ET('Favourited') : fc.ui.ic('star') + ET('Favourite')}</span>` +
         '<span class="fcdBtn" data-act="results">' + ET('Show in results') + '</span>';
     const top = panel.querySelector('.fcdGTop');
     [['.fcdGTags', tags], ['.fcdGStats', stats], ['.fcdGBtns', btns]].forEach(([sel, html]) => {
         const el = top.querySelector(sel);
         if (el && el.__html !== html) { el.innerHTML = html; el.__html = html; }
     });
-    const dyn = `<section><h4>🔴 ${ET('Live now')}</h4>${liveSection(c)}</section>
-        <section><h4>📊 ${ET('You')}</h4>${youSection(c)}</section>
-        <section><h4>🏆 ${ET('Top players')}</h4>${topSection()}</section>
-        <section><h4>🕘 ${ET('Recent matches')}</h4>${recentSection()}</section>`;
+    const dyn = `<section><h4>${fc.ui.ic('live', 'fcdLiveIc')}${ET('Live now')}</h4>${liveSection(c)}</section>
+        <section><h4>${fc.ui.ic('chart')}${ET('You')}</h4>${youSection(c)}</section>
+        <section><h4>${fc.ui.ic('trophy')}${ET('Top players')}</h4>${topSection()}</section>
+        <section><h4>${fc.ui.ic('clock')}${ET('Recent matches')}</h4>${recentSection()}</section>`;
     if (dyn !== game.dyn) { game.dyn = dyn; panel.querySelector('.fcdGDyn').innerHTML = dyn; }
 }
 
@@ -2292,8 +2288,8 @@ function quickRowHtml(en, i, query) {
     const bits = [];
     if (c.system) bits.push(`<span>${esc(c.system)}</span>`);
     if (c.clients != null) bits.push(`<span><span class="fcdDot"></span>${Number(c.clients).toLocaleString('en-US')}</span>`);
-    if (c.ranked) bits.push('<span>🏆 ' + ET('Ranked') + '</span>');
-    if (isJoinedName(en.name)) bits.push('<span style="color:#2dc770">✓ ' + ET('Joined') + '</span>');
+    if (c.ranked) bits.push('<span>' + fc.ui.ic('trophy') + ET('Ranked') + '</span>');
+    if (isJoinedName(en.name)) bits.push('<span style="color:#2dc770">' + fc.ui.ic('check') + ET('Joined') + '</span>');
     return `<div class="fcdQRow" data-i="${i}">
         <div class="fcdQThumb" style="background-image:url(&quot;${esc(en.gameid ? artUrl(en.gameid) : '')}&quot;) !important"></div>
         <div class="fcdQText"><div class="fcdQName">${query ? highlight(en.name, query) : esc(en.name)}</div>
@@ -2461,11 +2457,11 @@ function cardHtml(c, i) {
     const jb = joined ? '' : joinBlock(c), fb = favBlock(c);
     return `<div class="fcdCard${i != null ? ' pop' : ''}" data-name="${esc(c.name)}" data-art="${esc(art)}"${i != null ? ` style="animation-delay:${Math.min(i, 24) * 22}ms"` : ''}>
         <div class="fcdCardArt" style="background-image:url(&quot;${esc(art)}&quot;) !important"></div>
-        <div class="fcdCardPill"><span class="fcdDot"></span>${Number(c.clients || 0).toLocaleString('en-US')}${c.ranked ? '<span class="fcdRk">R</span>' : ''}${fav ? '<span class="fcdFv">★</span>' : ''}</div>
-        <div class="fcdCardActs"><span data-act="${fb ? '' : 'fav'}" class="${fb ? 'dis' : ''}" title="${esc(fb)}">${fav ? '★ Unfav' : '☆ Fav'}</span>${joined
+        <div class="fcdCardPill"><span class="fcdDot"></span>${Number(c.clients || 0).toLocaleString('en-US')}${c.ranked ? '<span class="fcdRk">R</span>' : ''}${fav ? '<span class="fcdFv">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</div>
+        <div class="fcdCardActs"><span data-act="${fb ? '' : 'fav'}" class="${fb ? 'dis' : ''}" title="${esc(fb)}">${fav ? fc.ui.ic('star', 'fill') + 'Unfav' : fc.ui.ic('star') + 'Fav'}</span>${joined
             ? '<span class="go" data-act="open">' + ET('Open') + '</span>'
             : `<span class="go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">${ET('Join')}</span>`}</div>
-        <div class="fcdCardInfo"><div class="fcdCardName">${esc(c.name)}</div>${c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : ''}${joined ? '<span class="fcdJoined">✓ ' + ET('Joined') + '</span>' : ''}</div>
+        <div class="fcdCardInfo"><div class="fcdCardName">${esc(c.name)}</div>${c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : ''}${joined ? '<span class="fcdJoined">' + fc.ui.ic('check') + ET('Joined') + '</span>' : ''}</div>
     </div>`;
 }
 
@@ -2473,8 +2469,8 @@ function resultsTitle(sc) {
     const L = filterLists();
     const parts = [];
     const g = +sc.genreFilter || 0, s = +sc.systemFilter || 0, y = +sc.yearFilter || 0;
-    if (sc.favorites) parts.push('⭐ ' + T('Favourites'));
-    if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + T(L.allGenres[g]));
+    if (sc.favorites) parts.push(T('Favourites'));
+    if (g > 0) parts.push(T(L.allGenres[g]));
     if (s > 0) parts.push(L.allSystems[s]);
     const years = glob()?.filtersOptions?.years;
     if (y > 0 && years) parts.push(String(years[y]));
@@ -2490,7 +2486,7 @@ function ensureResultsBox(content) {
     box.id = 'fcdResults';
     box.innerHTML = `<div class="fcdResBar"><div class="fcdResTitle"><span class="t"></span><span class="c"></span></div>
         <div class="fcdSeg"><span data-sort="players">${ET('Most players')}</span><span data-sort="az">A–Z</span></div>
-        <span class="fcdChip" data-chip="has">● ${ET('Has players')}</span><span class="fcdChip" data-chip="ranked">🏆 ${ET('Ranked only')}</span></div>
+        <span class="fcdChip" data-chip="has">● ${ET('Has players')}</span><span class="fcdChip" data-chip="ranked">${fc.ui.ic('trophy')}${ET('Ranked only')}</span></div>
         <div class="fcdResStatus"></div><div class="fcdResGrid"></div><div id="fcdResSentinel"></div>`;
     box.addEventListener('click', onResultsClick);
     content.appendChild(box);            // after FC's header and results; FC's results are hidden by CSS

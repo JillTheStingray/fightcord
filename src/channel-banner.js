@@ -102,8 +102,8 @@ function build(wrapper, ch) {
 function update(b, ch) {
     const s = statsFor(ch);
     const bits = [`<span class="on"><i></i>${E(T('{n} online', { n: s.online }))}</span>`];
-    if (s.live) bits.push(`<span>⚔ ${E(T.plural(s.live, '{n} live match', '{n} live matches'))}</span>`);
-    if (s.rank) bits.push(`<span>${E(T('your rank'))} <b style="color:${fc.data.rankColor(s.rank)}">${s.rank}</b></span>`);
+    if (s.live) bits.push(`<span>${fc.ui.ic('swords')}${E(T.plural(s.live, '{n} live match', '{n} live matches'))}</span>`);
+    if (s.rank) bits.push(`<span>${E(T('your rank'))} ${fc.ui.tag(s.rank, '', 16)}</span>`);
     if (s.w + s.l) bits.push(`<span>${E(T('you'))} <b>${s.w}–${s.l}</b> (${Math.round(s.w / (s.w + s.l) * 100)}%)</span>`);
     const line = bits.join('<span class="dot">·</span>');
     const ln = b.querySelector('.cbnLine');

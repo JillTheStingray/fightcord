@@ -346,7 +346,8 @@ const CSS = `
 .fcsc-main { display: flex; margin-top: 8px; }
 .fcsc-main > .fc-btn + .fc-btn { margin-left: 8px; }
 .fcsc-fr.on { color: var(--fc-warning); }
-.fcScoutBadge { cursor: pointer; opacity: .35; margin-left: 4px; font-size: 10px; }
+.fcScoutBadge { cursor: pointer; opacity: .35; margin-left: 4px; }
+.fcScoutBadge .fc-ic { width: 11px; height: 11px; vertical-align: -1px; }
 .fcScoutBadge:hover { opacity: .9; }
 .fcScoutOdds { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; vertical-align: middle; }
 .fcScoutOdds.up { color: var(--fc-success); background: rgba(35,165,90,.14); }
@@ -359,7 +360,7 @@ const cleanName = (text) => String(text || '').trim().replace(/[:\s]+$/, '');
 
 function addBadges() {
     if (!cfg.enabled || !cfg.showBadges) return;
-    const badge = (name) => `<span class="fcScoutBadge" data-scout="${E(name)}" title="${E(T('Scout {name}', { name }))}">🔍</span>`;
+    const badge = (name) => `<span class="fcScoutBadge" data-scout="${E(name)}" title="${E(T('Scout {name}', { name }))}">${fc.ui.icon('search')}</span>`;
     document.querySelectorAll('.chatContent span.author:not([data-scout-done]), .usersListWrapper .userItem .playerName:not([data-scout-done])').forEach(el => {
         el.dataset.scoutDone = '1';
         const name = cleanName(el.classList.contains('author') ? el.firstChild && el.firstChild.textContent : el.textContent);
@@ -458,7 +459,7 @@ function start(f) {
         fields: [
             { key: 'enabled', type: 'switch', label: 'Scout cards', hint: 'Profile cards with rank, ELO, odds and your record' },
             { key: 'onChallenge', type: 'switch', label: 'Open on a challenge', hint: 'Only when the challenge card is off', show: (d) => d.enabled },
-            { key: 'showBadges', type: 'switch', label: 'Name badges', hint: '🔍 next to names in chat and the member list', show: (d) => d.enabled },
+            { key: 'showBadges', type: 'switch', label: 'Name badges', hint: 'A magnifier next to names in chat and the member list', show: (d) => d.enabled },
             { key: 'showQuits', type: 'switch', label: 'Unfinished sets', hint: 'Warn when someone often leaves ranked sets before the FT is reached', show: (d) => d.enabled },
             { type: 'note', label: 'Or type /scout <name> in chat.' }
         ]

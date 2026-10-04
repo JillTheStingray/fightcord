@@ -93,7 +93,7 @@ function show(d, fromQueue) {
             <div class="ccP me">${fc.ui.avatar(me, { size: 44 })}<b>${E(me)}</b></div>
             <div class="ccVsTxt">VS</div>
             <div class="ccP them"><div class="ccRing">${fc.ui.avatar(d.name, { size: 56 })}</div>
-                <b>${fc.ui.flag(cc)}${E(d.name)}${fr && fr.isFriend && fr.isFriend(d.name) ? ' <span class="ccStar">★</span>' : ''}</b>
+                <b>${fc.ui.flag(cc)}${E(d.name)}${fr && fr.isFriend && fr.isFriend(d.name) ? ' <span class="ccStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</b>
                 <span class="ccMeta">${rank ? fc.ui.tag(rank) + ' ' : ''}${E(conn)}</span></div>
         </div>
         <div class="ccStats">
@@ -102,7 +102,7 @@ function show(d, fromQueue) {
             <div class="ccStat"><span>${E(T('You vs them'))}</span><b>${vs.w || vs.l ? vs.w + '–' + vs.l : E(T('first time'))}</b></div>
         </div>
         ${nt && nt.chips ? `<div class="ccNotes">${nt.chips(d.name)}</div>` : ''}
-        ${(d.warn || []).length ? `<div class="ccWarn">⚠ ${d.warn.map(w => E(T(w))).join(' · ')}</div>` : ''}
+        ${(d.warn || []).length ? `<div class="ccWarn">${fc.ui.ic('warn')}${d.warn.map(w => E(T(w))).join(' · ')}</div>` : ''}
         <div class="ccBtns">
             <span class="ccBtn accept" data-cc="accept">${E(ft ? T('Accept FT{ft}', { ft }) : T('Accept'))}</span>
             <span class="ccBtn decline" data-cc="decline">${E(T('Decline'))}</span>
@@ -142,7 +142,7 @@ function fillOdds(el, name) {
             const w = document.createElement('div');
             w.className = 'ccWarn ccQuits';
             w.title = scout.quitsNote(q) + '. ' + T('Could also be disconnects.');
-            w.textContent = '⚠ ' + T('Leaves sets unfinished: {n} of {total} ranked', { n: q.unfinished, total: q.ranked });
+            w.innerHTML = fc.ui.ic('warn') + E(T('Leaves sets unfinished: {n} of {total} ranked', { n: q.unfinished, total: q.ranked }));
             const btns = el.querySelector('.ccBtns');
             if (btns && !el.querySelector('.ccQuits')) btns.parentNode.insertBefore(w, btns);
         }

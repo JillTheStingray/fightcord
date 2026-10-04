@@ -155,7 +155,7 @@ function renderRow(item, info) {
             const bits = [];
             if (info.country) bits.push(E(info.country));
             if (info.ping != null && !isNaN(info.ping)) bits.push(`<span class="fcm-ms ${pingLevel(info.ping)}">${info.ping} ms</span>`);
-            if (info.net) bits.push(`<span class="fcm-net">${info.net === 'VPN' ? '🛡 VPN' : '📶 Wi-Fi'}</span>`);
+            if (info.net) bits.push(`<span class="fcm-net">${info.net === 'VPN' ? fc.ui.ic('shield') + 'VPN' : fc.ui.ic('wifi') + 'Wi-Fi'}</span>`);
             sub.innerHTML = (info.flagCss ? `<span class="fcm-flag" style="background-image:${E(info.flagCss)}"></span>` : '') + bits.join(' · ');
         }
 
@@ -180,7 +180,7 @@ function renderRow(item, info) {
         } else if (lv) lv.remove();
 
         // ★ for friends, right after the name
-        if (friend) { const star = afterName(nag, 'fcm-fr'); star.textContent = '★'; star.title = T('Friend'); }
+        if (friend) { const star = afterName(nag, 'fcm-fr'); star.innerHTML = fc.ui.ic('star', 'fill'); star.title = T('Friend'); }
         else { const s = nag.querySelector(':scope > .fcm-fr'); if (s) s.remove(); }
 
         // notes: coloured dots for the player's tags
@@ -200,7 +200,7 @@ function renderRow(item, info) {
             const tag = afterName(nag, 'fcm-vs', '.fcScoutBadge');
             tag.className = 'fcm-vs ' + (vs.w > vs.l ? 'ahead' : vs.w < vs.l ? 'behind' : 'even');
             // unscored sets only: "played", not a misleading 0–0
-            tag.textContent = (vs.w || vs.l) ? '⚔ ' + vs.w + '–' + vs.l : '⚔';
+            tag.innerHTML = fc.ui.ic('swords') + ((vs.w || vs.l) ? vs.w + '–' + vs.l : '');
             tag.title = T("You've played {name}: {w}–{l}", { name: info.name, w: vs.w, l: vs.l }) +
                 (vs.sets > vs.w + vs.l ? ' (' + T.plural(vs.sets, '{n} set', '{n} sets') + ')' : '') + (vs.last ? ' · ' + T('last {when}', { when: fc.fmt.day(vs.last) }) : '') + '\n' + T('(from your most recent sets)');
         } else { const t = nag.querySelector(':scope > .fcm-vs'); if (t) t.remove(); }
@@ -233,7 +233,7 @@ function liveLine(info) {
     const watch = c && c.spectators !== false && !fc.app.isMe(info.name)
         ? fc.data.watchUrl({ emu: c.emulator, rom: p.gameId, quark: p.quarkId, port: p.port }) : '';
     return `<span class="dot"></span>${opp ? 'vs <b>' + E(opp) + '</b>' : E(T('in a match'))}${mins != null ? ' · ' + (mins < 1 ? E(T('just started')) : mins + 'm') : ''}` +
-        (watch ? `<span class="w" data-watch="${E(watch)}" title="${E(T('Watch this match'))}">👁 ${E(T('Watch'))}</span>` : '');
+        (watch ? `<span class="w" data-watch="${E(watch)}" title="${E(T('Watch this match'))}">${fc.ui.ic('eye')}${E(T('Watch'))}</span>` : '');
 }
 
 function hiddenByFilter(info) {
@@ -288,10 +288,14 @@ function processList(list, grouped) {
             const first = grouped && r.visible && !firstDone;
             if (first) firstDone = true;
             if (r.item.classList.contains('fcm-first') !== first) r.item.classList.toggle('fcm-first', first);
-            const label = gi === -2 ? '⚔ ' + T('Playing now') : gi === -1 ? '★ ' + T('Friends') : RANKS[gi] === '?' ? T('Unranked') : T('Rank {rank}', { rank: RANKS[gi] });
+            const label = gi === -2 ? T('Playing now') : gi === -1 ? T('Friends') : RANKS[gi] === '?' ? T('Unranked') : T('Rank {rank}', { rank: RANKS[gi] });
             const head = first ? label + ' — ' + count : '';
-            if (first) { if (r.item.dataset.fcmHead !== head) r.item.dataset.fcmHead = head; }
-            else if (r.item.dataset.fcmHead) delete r.item.dataset.fcmHead;
+            if (first) {
+                if (r.item.dataset.fcmHead !== head) r.item.dataset.fcmHead = head;
+                // the group's picture: Fightcade's rank badge, or an icon
+                const pic = gi === -2 ? fc.ui.iconUrl('swords', false, '#949ba4') : gi === -1 ? fc.ui.iconUrl('star', true, '#f0b232') : 'url("' + fc.data.rankImg(RANKS[gi]) + '")';
+                if (r.item.style.getPropertyValue('--fcm-hi') !== pic) r.item.style.setProperty('--fcm-hi', pic);
+            } else if (r.item.dataset.fcmHead) { delete r.item.dataset.fcmHead; r.item.style.removeProperty('--fcm-hi'); }
         });
     });
 }
@@ -361,7 +365,8 @@ ${P} .userItem.fcm-hidden { display: none !important; }
 ${P} .userItem.fcm-row.fcm-first { margin-top: 30px !important; }
 ${P} .userItem.fcm-row.fcm-first::before {
     content: attr(data-fcm-head); position: absolute; left: 8px; top: -24px; pointer-events: none; white-space: nowrap;
-    font: 500 14px/18px var(--fc-font); color: var(--fc-muted); letter-spacing: 0; }
+    font: 500 14px/18px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
+    padding-left: 22px; background: var(--fcm-hi) no-repeat left center / 16px 16px; }
 ${P} .userItem.fcm-row .flagWrapper,
 ${P} .userItem.fcm-row .rankWrapper,
 ${P} .userItem.fcm-row .pingWrapper { display: none !important; }
@@ -489,7 +494,7 @@ function start(f) {
             opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch) and Friends at the top'), on),
             opt('rankColors', N_('Rank-coloured names'), N_('S gold · A red · B purple · C blue · D green'), on),
             opt('bars', N_('Signal bars'), N_('Instead of the ping number'), on),
-            opt('played', N_('Played before'), N_('⚔ your record with people you recently played'), on),
+            opt('played', N_('Played before'), N_('Your record with people you recently played'), on),
             opt('top', N_('Leaderboard spot'), N_('#12 next to players in this game’s top 300'), on)
         ]
     });

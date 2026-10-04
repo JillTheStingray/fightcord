@@ -302,6 +302,9 @@
   if (q.get('view')) FCADE.selectChannel(q.get('view') === 'search' ? 'search-channel' : 'welcome-channel',
     q.get('cat') ? { category: q.get('cat') } : undefined);
 
+  // Fightcade's rank badges from dev-harness/static/ranks (copied from <Fightcade>\emulator\fbneo\ui, not in the repo);
+  // without them the badges fall back to letters
+  window.__fcStatic = 'static/';
   const load = async (src) => {
     const code = await fetch(src, { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
     if (!code) return;

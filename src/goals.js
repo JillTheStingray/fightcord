@@ -221,7 +221,7 @@ function blockHtml() {
             <input class="fc-input" type="number" min="10" max="100" value="60" data-f="rate" title="${E(T('Win rate %'))}" hidden>
             <select class="fc-select" data-f="scope">${scopes}</select>${fc.ui.btn('Add', { kind: 'success', size: 'sm', icon: 'plus', act: 'add' })}</div>
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Pop-up when a goal is done'))}</b><small>${E(T('With a chime'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="notify"${cfg.notify ? ' checked' : ''}><i class="fc-switch"></i></label>
-        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Ring by the 🏆 session pill'))}</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
+        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Ring by the session pill'))}</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Last-session summary'))}</b><small>${E(T('The first time you play after a session, with its share card'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="summary"${cfg.summary ? ' checked' : ''}><i class="fc-switch"></i></label>`;
 }
 

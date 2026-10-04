@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.1
+
+- **Fightcade's own rank badges.** Everywhere Fightcord shows a rank now uses Fightcade's badges
+  (?, E, D, C, B, A, S) instead of coloured letters. That includes the scout and challenge cards,
+  Find a match, the member list's group headers, the VS and rank-up screens, Discover, Stats and the
+  OBS overlay. Name colours and charts now use the same colours as the badges.
+- **Icons instead of emoji.** The trophy, swords, fire, eye, stars, warning, Wi-Fi / VPN and other
+  emoji used as icons are now clean line icons that follow your theme colours. This covers the
+  right-click menu and the emoji button by the chat box too. Emoji you type in chat are untouched.
+- Discover's results title no longer shows a genre icon's name ("sword Fighter").
+
 ## 2.3.0
 
 - **Find a match.** A new button in the channel header (or `/find`) lists who's free in the channel

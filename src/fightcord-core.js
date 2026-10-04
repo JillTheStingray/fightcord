@@ -147,7 +147,8 @@ const fmt = {
 /* ========================================================================== data */
 
 const RANKS = ['', 'E', 'D', 'C', 'B', 'A', 'S'];            // Fightcade's rank numbers 1-6
-const RANK_COLOR = { S: '#ffd166', A: '#ff7b72', B: '#c792ea', C: '#6aa9ff', D: '#6ee7a0', E: '#9aa4b2' };
+// Fightcade's rank colours (from its badges, static/ranks/rank1-6.png), a little lighter for text on dark
+const RANK_COLOR = { S: '#ef5a86', A: '#b968cc', B: '#22b8e6', C: '#f3c84a', D: '#c4c3c1', E: '#d08a4e' };
 const PALETTE = ['#5865f2', '#3ba55c', '#faa61a', '#ed4245', '#eb459e', '#1abc9c', '#9b59b6', '#e67e22'];
 // Rank letters stand for 300-point ELO bands (S is open-ended; 2300 caps the estimate).
 const ELO_BANDS = { 1: [400, 700], 2: [700, 1000], 3: [1000, 1300], 4: [1300, 1600], 5: [1600, 1900], 6: [1900, 2300] };
@@ -164,6 +165,15 @@ const data = {
     },
     rankNum(r) { return typeof r === 'number' ? (RANKS[r] ? r : 0) : Math.max(0, RANKS.indexOf(String(r || '').toUpperCase())); },
     rankColor(r) { return RANK_COLOR[data.rankLetter(r)] || '#9aa4b2'; },
+    // Fightcade's own pictures (rank badges, flags): same-origin inside Fightcade, its website elsewhere
+    // (window.__fcStatic points the harness at local copies)
+    staticUrl(p) {
+        const base = (typeof window !== 'undefined' && window.__fcStatic) ||
+            (typeof location !== 'undefined' && /fightcade\.com$/.test(location.hostname) ? location.origin + '/static/' : FC_ORIGIN + 'static/');
+        return base + p;
+    },
+    // Fightcade's rank badge: rank0.png = unknown, rank1-6 = E-S
+    rankImg(r) { return data.staticUrl('ranks/rank' + data.rankNum(r) + '.png'); },
 
     // the same name always gets the same colour
     hashColor(name, palette) {
@@ -1427,7 +1437,7 @@ const ICONS = {
     play: '<path d="M7 4v16l13-8z"/>',
     trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6v4H9z"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-    flame: '<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5.5.8 1.2 1.5 1.8 2.5 2C12 7 12 5 12 3z"/>',
+    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -1454,11 +1464,31 @@ const ICONS = {
     more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>',
     shield: '<path d="M12 3l8 3v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6z"/>',
-    bug: '<rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M7 13H3M21 13h-4M8 9 5 6M16 9l3-3M7 18l-3 2M17 18l3 2M9 5a3 3 0 0 1 6 0"/>'
+    bug: '<rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M7 13H3M21 13h-4M8 9 5 6M16 9l3-3M7 18l-3 2M17 18l3 2M9 5a3 3 0 0 1 6 0"/>',
+    // from Lucide (ISC license): swords, wifi, ban, log-out, handshake
+    swords: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/>',
+    wifi: '<path d="M12 20h.01M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0"/>',
+    ban: '<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+    handshake: '<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/>',
+    live: '<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/>',
+    at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
+    smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>'
 };
+
+// an icon as a CSS url(): a mask (black) or a picture in one colour, for ::before / ::after and backgrounds
+function iconUrl(name, fill, color) {
+    const c = color || 'black';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${fill ? c : 'none'}" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.info}</svg>`;
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+}
+// ready-made masks: -webkit-mask: var(--fc-i-check) center / contain no-repeat; background: currentColor
+const MASKS = ['check', 'close', 'swords', 'star', 'user', 'ban', 'copy', 'edit', 'handshake', 'search', 'at', 'bell'];
 
 const STYLE = `
 :root {
+  ${MASKS.map(n => '--fc-i-' + n + ': ' + iconUrl(n) + ';').join('\n  ')}
+  --fc-i-star-fill: ${iconUrl('star', true)};
   --fc-navy: #0d0f1f; --fc-blurple: #4f63f0; --fc-violet: #8b5cf6; --fc-cyan: #22e3f2;
   --fc-brand: linear-gradient(135deg, #4f63f0, #8b5cf6);
   --fc-accent: var(--dc-blurple, #5865f2); --fc-accent-h: var(--dc-blurple-h, #4752c4); --fc-accent-soft: var(--dc-accent-soft, rgba(88,101,242,.22));
@@ -1518,8 +1548,13 @@ html.fc-still *, html.fc-still *::before, html.fc-still *::after { animation-dur
 .fc-chip[data-act]:hover { background: var(--fc-btn-h); }
 .fc-chip.on { background: var(--fc-accent-soft); color: var(--fc-head); box-shadow: inset 0 0 0 1px var(--fc-accent); }
 .fc-chip > .fc-ic { width: 12px; height: 12px; margin-right: 4px; }
-.fc-tag { display: inline-block; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--fc-r1); text-align: center;
-  font: 800 11px/18px var(--fc-font); color: #111; background: var(--c, #9aa4b2); vertical-align: middle; }
+.fc-tag { display: inline-block; flex: none; width: var(--sz, 18px); height: var(--sz, 18px); vertical-align: middle; line-height: 0; }
+.fc-tag > img { display: block; width: 100%; height: 100%; }
+.fc-tag.nf { width: auto; min-width: var(--sz, 18px); padding: 0 4px; border-radius: var(--fc-r1); text-align: center;
+  font: 800 11px/var(--sz, 18px) var(--fc-font); color: #111; background: var(--c, #9aa4b2); }
+.fc-tag.nf::before { content: attr(data-r); }
+.fc-ic.inl { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: .3em; }
+.fc-ic.fill { fill: currentColor; }
 .fc-flag { width: 20px !important; height: 14px !important; object-fit: cover; border-radius: 2px; vertical-align: -2px; }
 .fc-badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--fc-pill); text-align: center;
   font: 700 11px/16px var(--fc-font); color: #fff; background: var(--fc-danger); }
@@ -1699,6 +1734,10 @@ const ui = {
         return st;
     },
     icon(name, cls) { return `<svg class="fc-ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.info}</svg>`; },
+    // an icon in a line of text, sized to the text ('fill' for a solid one: ic('star', 'fill'))
+    ic(name, cls) { return ui.icon(name, 'inl' + (cls ? ' ' + cls : '')); },
+    // an icon as a CSS url() (masks for ::before, or a one-colour picture: iconUrl('star', true, '#f0b232'))
+    iconUrl: (name, fill, color) => iconUrl(name, fill, color),
 
     // fc.ui.btn('Save', { kind: 'sec'|'ghost'|'danger'|'success'|'brand', size: 'sm'|'lg', icon, act, title, attrs })
     btn(label, o) {
@@ -1711,10 +1750,12 @@ const ui = {
         const p = o || {};
         return `<span class="fc-chip${p.on ? ' on' : ''}"${p.act ? ` data-act="${fmt.esc(p.act)}"` : ''}${p.title ? ` title="${fmt.esc(tr(p.title))}"` : ''}>${p.icon ? ui.icon(p.icon) : ''}${fmt.esc(tr(label))}</span>`;
     },
-    // rank badge: 'S' / 6
-    tag(rank, title) {
+    // rank badge: 'S' / 6 / 0 (unknown) -> Fightcade's own badge picture; the letter if it can't load
+    tag(rank, title, size) {
         const l = data.rankLetter(rank) || '?';
-        return `<span class="fc-tag" style="--c:${data.rankColor(rank)}"${title ? ` title="${fmt.esc(title)}"` : ''}>${l}</span>`;
+        const t = title || (l === '?' ? tr('Unknown rank') : tr('Rank {rank}', { rank: l }));
+        return `<span class="fc-tag" data-r="${l}" style="--c:${data.rankColor(rank)}${size ? ';--sz:' + (+size) + 'px' : ''}" title="${fmt.esc(t)}">` +
+            `<img src="${fmt.esc(data.rankImg(rank))}" alt="${l}" draggable="false" onerror="this.parentNode.classList.add('nf');this.remove()"></span>`;
     },
     badge: (n) => n ? `<span class="fc-badge">${n > 99 ? '99+' : n}</span>` : '',
     // Fightcade's flag picture for a country code (a missing one just disappears)

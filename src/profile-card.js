@@ -49,7 +49,7 @@ function cardHtml() {
             <div class="pcStatus ${d.status}">${statusText}</div>
             <div class="pcGrid">
                 <div class="pcBox"><span>${E(T('Tonight'))}</span><b>${d.tonight ? d.tRec.w + '–' + d.tRec.l : '—'}</b>
-                    <small>${E(d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? '🔥 ' + T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : d.tonight ? T.plural(d.tonight, '{n} set', '{n} sets') : T('no sets yet'))}</small></div>
+                    <small>${d.tStreak.n >= 2 && d.tStreak.kind === 'won' ? fc.ui.ic('flame', 'fill') : ''}${E(d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : d.tonight ? T.plural(d.tonight, '{n} set', '{n} sets') : T('no sets yet'))}</small></div>
                 <div class="pcBox"><span>${E(T('All time'))}</span><b>${t ? t.w + '–' + t.l : '—'}</b>
                     <small>${E(t && t.rate != null ? Math.round(t.rate * 100) + '% · ' + T.plural(t.n, '{n} set', '{n} sets') : T('play a set first'))}</small></div>
                 <div class="pcBox"><span>${E(T('Best streak'))}</span><b>${d.st && d.st.bestW ? d.st.bestW + 'W' : '—'}</b><small>${E(T('longest run of wins'))}</small></div>
@@ -66,7 +66,7 @@ function cardHtml() {
             <div class="pcBtns">
                 ${fc.ui.btn('Stats', { kind: 'sec', size: 'sm', icon: 'chart', attrs: 'data-pc="stats"' })}${fc.ui.btn('Friends', { kind: 'sec', size: 'sm', icon: 'users', attrs: 'data-pc="friends"' })}${fc.ui.btn('Settings', { kind: 'sec', size: 'sm', icon: 'gear', attrs: 'data-pc="settings"' })}
             </div>
-            <div class="pcRow danger" data-pc="logout">↩ ${E(T('Log out'))}</div>
+            <div class="pcRow danger" data-pc="logout">${fc.ui.ic('logout')}${E(T('Log out'))}</div>
         </div>`;
 }
 
@@ -165,7 +165,7 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 #pcCard .pcRow { display: flex; align-items: center; height: 32px; padding: 0 8px; border-radius: 4px; cursor: pointer; font-weight: 500; }
 #pcCard .pcRow:hover { background: var(--fc-accent); color: #fff; }
 #pcCard .pcRow.on { font-weight: 700; color: var(--fc-head); }
-#pcCard .pcRow.on::after { content: '✓'; margin-left: auto; }
+#pcCard .pcRow.on::after { content: ''; width: 14px; height: 14px; margin-left: auto; background: currentColor; -webkit-mask: var(--fc-i-check) center / contain no-repeat; }
 #pcCard .pcRow .dot { width: 10px; height: 10px; margin-right: 10px; border-radius: 50%; }
 #pcCard .pcRow .dot.on { background: #23a55a; } #pcCard .pcRow .dot.away { background: #f0b232; }
 #pcCard .pcRow.danger { margin-top: 4px; color: #f23f43; }

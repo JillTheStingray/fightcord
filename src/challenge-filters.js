@@ -131,7 +131,7 @@ function tagRow(name, reasons) {
     if (!row || row.querySelector('.fcfWarn')) return;
     const pill = document.createElement('span');
     pill.className = 'fcfWarn';
-    pill.textContent = '⚠ ' + reasons.map(r => r.text).join(' · ');
+    pill.innerHTML = fc.ui.ic('warn') + fc.fmt.esc(reasons.map(r => r.text).join(' · '));
     pill.title = T('Challenge filters (warn only)');
     row.appendChild(pill);
 }

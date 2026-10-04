@@ -8,7 +8,7 @@
  * Usage:
  *   - type  :so   -> a suggestion popup appears (↑/↓, Tab/Enter to pick, Esc)
  *   - type  :sob: -> converted on the spot (and again on send, as a safety net)
- *   - 🙂 button by the chat box opens a searchable picker
+ *   - a smiley button by the chat box opens a searchable picker
  *   - /emoji                 help + your custom shortcodes
  *     /emoji add salt 🧂     add your own shortcode
  *     /emoji del salt        remove it
@@ -511,10 +511,10 @@ function ensureChatButton() {
             if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
             btn = document.createElement('div');
             btn.className = 'emojiBtn';
-            btn.textContent = '🙂';
+            btn.innerHTML = fc.ui.icon('smile');
             btn.title = T('Emoji (or type :name: in chat)');
             btn.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);z-index:50;' +
-                'cursor:pointer;font-size:14px;line-height:1;padding:3px 4px;border-radius:4px;' +
+                'cursor:pointer;font-size:14px;line-height:0;padding:3px;border-radius:4px;' +
                 'background:rgba(0,0,0,.35);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
                 'opacity:.75;user-select:none;';
             btn.addEventListener('mouseenter', () => btn.style.opacity = '1');

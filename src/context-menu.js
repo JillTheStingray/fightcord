@@ -15,8 +15,8 @@ let fc = null;
 const mod = (id) => fc.modules.get(id);
 
 const ICON = {
-    profile: '👤', challenge: '⚔', ignore: '🚫', mention: '@', copy: '📋',
-    'fc:friend': '☆', 'fc:notes': '✎', 'fc:h2h': '🤝', 'fc:scout': '🔍', 'fc:copy': '📋'
+    profile: 'user', challenge: 'swords', ignore: 'ban', mention: 'at', copy: 'copy',
+    'fc:friend': 'star', 'fc:notes': 'edit', 'fc:h2h': 'handshake', 'fc:scout': 'search', 'fc:copy': 'copy'
 };
 const handled = [];        // for the harness
 
@@ -82,11 +82,11 @@ function decorate() {
             row.classList.toggle('fccmOurs', ours);
             row.classList.toggle('fccmFirst', ours && !(items[i - 1] && String(items[i - 1].id).indexOf('fc:') === 0));
             row.classList.toggle('fccmDanger', it.id === 'ignore');
-            const ic = it.id === 'fc:friend' && /Remove/.test(it.text) ? '★' : (ICON[it.id] || '');
+            const ic = it.id === 'fc:friend' && /Remove/.test(it.text) ? 'star-fill' : (ICON[it.id] || '');
             if (ic && row.getAttribute('data-fcicon') !== ic) row.setAttribute('data-fcicon', ic);
         });
         const ch = menu.querySelector(':scope > .challengeButtonWrapper > *');
-        if (ch) ch.setAttribute('data-fcicon', '⚔');
+        if (ch) ch.setAttribute('data-fcicon', 'swords');
     });
 }
 
@@ -105,9 +105,11 @@ const CSS = `
     color: var(--fc-text) !important; background: none !important; background-image: none !important; box-shadow: none !important;
     text-shadow: none !important; cursor: pointer !important; transition: background-color .08s ease, color .08s ease !important; }
 .mask > .menu.fccm .contextMenuItemsWrapper > *::before, .mask > .menu.fccm .challengeButtonWrapper > *::before {
-    content: attr(data-fcicon) !important; position: absolute !important; left: 9px !important; top: 50% !important;
-    width: 18px !important; margin-top: -10px !important; text-align: center !important; font-size: 14px !important; line-height: 20px !important;
-    opacity: .85 !important; }
+    content: '' !important; position: absolute !important; left: 10px !important; top: 50% !important;
+    width: 16px !important; height: 16px !important; margin-top: -8px !important; opacity: .85 !important;
+    background: currentColor !important; -webkit-mask: center / contain no-repeat !important; }
+${['user', 'swords', 'ban', 'at', 'copy', 'star', 'star-fill', 'edit', 'handshake', 'search'].map(n =>
+    `.mask > .menu.fccm [data-fcicon="${n}"]::before { -webkit-mask-image: var(--fc-i-${n}) !important; }`).join('\n')}
 .mask > .menu.fccm .contextMenuItemsWrapper > *:hover, .mask > .menu.fccm .challengeButtonWrapper > *:hover {
     background: var(--fc-accent) !important; color: #fff !important; }
 .mask > .menu.fccm .challengeButtonWrapper { margin: 0 0 4px !important; padding: 0 0 4px !important; background: none !important;

@@ -9,3 +9,5 @@ src/dev-harness/snapshots/
 *.ogg
 *.wav
 *.m4a
+# local copies of Fightcade's own pictures (rank badges) for the harness
+src/dev-harness/static/

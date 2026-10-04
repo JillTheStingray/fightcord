@@ -167,7 +167,7 @@ function playerHtml(p, side) {
         <img class="avatar" src="${E(p.avatar)}">
         <div class="pname">${E(p.name)}</div>
         <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
-            `${p.rank ? `<span class="rank" style="color:${fc.data.rankColor(p.rank)}">${E(p.rank)}</span>` : ''}</div>
+            `${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
     </div>`;
 }
 
@@ -189,8 +189,8 @@ function showVs(meName, oppName) {
 function rematchHtml(rm) {
     if (!rm || !rm.opp || !cfg.rematch) return '';
     const st = challengeState(rm.opp, rm.channel);
-    const label = '⚔ ' + T('Rematch') + (typeof rm.ft === 'number' ? (rm.ft ? ' FT' + rm.ft : ' ' + T('(casual)')) : '');
-    return `<span class="rematch${st.ok ? '' : ' off'}" title="${E(st.ok ? T('Challenge {name} again', { name: rm.opp }) : st.why)}">${E(label)}</span>`;
+    const label = T('Rematch') + (typeof rm.ft === 'number' ? (rm.ft ? ' FT' + rm.ft : ' ' + T('(casual)')) : '');
+    return `<span class="rematch${st.ok ? '' : ' off'}" title="${E(st.ok ? T('Challenge {name} again', { name: rm.opp }) : st.why)}">${fc.ui.ic('swords')}${E(label)}</span>`;
 }
 
 function wireRematch(rm) {
@@ -200,7 +200,7 @@ function wireRematch(rm) {
         e.stopPropagation();
         if (b.classList.contains('off')) return;
         const st = challenge(rm.opp, typeof rm.ft === 'number' ? rm.ft : undefined, rm.channel);
-        if (st.ok) { b.textContent = '✔ ' + T('Challenge sent'); b.classList.add('sent'); setTimeout(closeOverlay, 900); }
+        if (st.ok) { b.innerHTML = fc.ui.ic('check') + E(T('Challenge sent')); b.classList.add('sent'); setTimeout(closeOverlay, 900); }
         else { b.textContent = st.why; b.classList.add('off'); }
     });
 }
@@ -224,7 +224,7 @@ function showResult(kind, mine, theirs, oppName, game, extras) {
         <div class="rays"></div>${bits}
         <div class="big">${title}</div>
         <div class="sub">${E(score)}${oppName ? 'vs ' + E(oppName) : ''}<small>${E(game || '')}</small>
-            ${ex.streak ? `<span class="streak ${kind === 'won' ? 'hot' : 'cold'}">${E(ex.streak)}</span>` : ''}
+            ${ex.streak ? `<span class="streak ${kind === 'won' ? 'hot' : 'cold'}">${ex.hot ? fc.ui.ic('flame', 'fill') : ''}${E(ex.streak)}</span>` : ''}
             ${(ex.lines || []).length ? `<span class="extra">${ex.lines.map(E).join('  ·  ')}</span>` : ''}
             ${rematchHtml(ex.rematch)}
         </div>`, ex.rematch && ex.rematch.opp ? 8000 : 4800);
@@ -256,7 +256,7 @@ function extrasFor(kind, opp, before, elo) {
         ex.lines.push('ELO ' + elo.end.toLocaleString('en-US') + (d ? ' (' + (d > 0 ? '+' : '−') + Math.abs(d) + ')' : ''));
     }
     const st = streakOf(H().all());
-    if (kind === 'won' && st.kind === 'won' && st.n >= 2) ex.streak = '🔥 ' + T('{n} WIN STREAK', { n: st.n });
+    if (kind === 'won' && st.kind === 'won' && st.n >= 2) { ex.streak = T('{n} WIN STREAK', { n: st.n }); ex.hot = true; }
     else if (kind === 'lost' && before.kind === 'won' && before.n >= 2) ex.streak = T('Streak of {n} ended', { n: before.n });
     const vs = recordVs(opp);
     if (opp && (vs.w || vs.l || vs.d)) ex.lines.push(T("You're {record} vs {name}", { record: fc.fmt.wl(vs), name: opp }));
@@ -331,8 +331,8 @@ function refreshSessionPill() {
             pill.addEventListener('click', (e) => { e.stopPropagation(); toggleSessionCard(pill); });
             actions.insertBefore(pill, actions.firstChild);
         }
-        const txt = '🏆 ' + fc.fmt.wl(r);
-        if (pill.textContent !== txt) pill.textContent = txt;
+        const txt = fc.fmt.wl(r);
+        if (pill.textContent !== txt) pill.innerHTML = fc.ui.ic('trophy') + E(txt);
     });
 }
 
@@ -354,7 +354,7 @@ function toggleSessionCard(anchor) {
     }).join('');
     box.innerHTML = `
         <div class="h">${E(T('Tonight'))} <span>— ${r.w}W · ${r.l}L${r.d ? ' · ' + r.d + 'D' : ''}${r.unknown ? ' · ' + E(T('{n} unknown', { n: r.unknown })) : ''}</span></div>
-        ${st.n >= 2 ? `<div class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${E(st.kind === 'won' ? '🔥 ' + T('{n} win streak', { n: st.n }) : T('{n} losses in a row', { n: st.n }))}</div>` : ''}
+        ${st.n >= 2 ? `<div class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${st.kind === 'won' ? fc.ui.ic('flame', 'fill') + E(T('{n} win streak', { n: st.n })) : E(T('{n} losses in a row', { n: st.n }))}</div>` : ''}
         <table>${rows}</table>
         <div class="f">${fc.ui.btn('Clear', { kind: 'ghost', size: 'sm', act: 'clear', title: 'Start a fresh session (the history is kept)' })}` +
             `${sets.length ? fc.ui.btn('Share', { kind: 'ghost', size: 'sm', icon: 'share', act: 'share' }) : ''}` +
@@ -617,9 +617,9 @@ const CSS = `
     letter-spacing: -.02em; text-transform: uppercase; text-shadow: 0 .6vmin 0 rgba(0,0,0,.55), 0 0 4vmin rgba(0,0,0,.6);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #fcmsOverlay .pmeta { margin-top: 1.6vmin; color: rgba(255,255,255,.85); font-size: 2.6vmin; font-weight: 600; }
-#fcmsOverlay .pmeta img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; vertical-align: -.3vmin; margin-right: 1vmin; }
-#fcmsOverlay .rank { display: inline-block; margin-left: 1.2vmin; padding: .2vmin 1.2vmin; border-radius: .8vmin;
-    font-weight: 900; background: rgba(0,0,0,.45); }
+#fcmsOverlay .pmeta > img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; vertical-align: -.3vmin; margin-right: 1vmin; }
+#fcmsOverlay .rank { display: inline-flex; align-items: center; margin-left: 1.2vmin; }
+#fcmsOverlay .rank .fc-tag { --sz: 4.6vmin; }
 #fcmsOverlay .vsword { position: absolute; left: 50%; top: 50%; font-weight: 900; font-style: italic; font-size: 24vmin;
     line-height: 1; color: #fff; transform: translate(-50%,-50%);
     text-shadow: 0 0 3vmin #fff, 0 0 8vmin #f0b232, 0 1vmin 0 #b3261e;
@@ -733,7 +733,7 @@ function start(f) {
         const a = String(arg || '').toLowerCase();
         const opp = standIn(), game = gameName();
         if (a === 'test') showVs(fc.app.me() || T('You'), opp);
-        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: '🔥 ' + T('{n} WIN STREAK', { n: 3 }), lines: [T("You're {record} vs {name}", { record: '4–2', name: opp }), T('Tonight {record}', { record: '7–3' })] });
+        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: T('{n} WIN STREAK', { n: 3 }), hot: true, lines: [T("You're {record} vs {name}", { record: '4–2', name: opp }), T('Tonight {record}', { record: '7–3' })] });
         else if (a === 'lose') showResult('lost', 1, 3, opp, game, { streak: T('Streak of {n} ended', { n: 3 }), lines: [T("You're {record} vs {name}", { record: '4–3', name: opp }), T('Tonight {record}', { record: '7–4' })] });
         else if (a === 'draw') showResult('draw', 2, 2, opp, game);
         else fc.ui.toast(T(cfg.enabled ? 'Match screens: on' : 'Match screens: off'), { icon: 'sword', ms: 9000,
@@ -748,7 +748,7 @@ function start(f) {
             { key: 'vs', type: 'switch', label: 'VS screen', hint: 'When a challenge is accepted', show: (d) => d.enabled },
             { key: 'result', type: 'switch', label: 'Result screen', hint: 'YOU WON! / YOU LOST! after the set', show: (d) => d.enabled },
             { key: 'rematch', type: 'switch', label: 'Rematch button', hint: 'On the result screen, same FT when known', show: (d) => d.enabled && d.result },
-            { key: 'session', type: 'switch', label: 'Session tracker', hint: '🏆 tonight’s record in the channel header', show: (d) => d.enabled, onChange: refreshSessionPill },
+            { key: 'session', type: 'switch', label: 'Session tracker', hint: 'Tonight’s record in the channel header', show: (d) => d.enabled, onChange: refreshSessionPill },
             { key: 'volume', type: 'slider', label: 'Volume', scale: 100, unit: '%', onChange: () => play('vs') },
             { type: 'note', label: T('Sounds: vs / win / lose / draw (.wav .mp3 .ogg) in {dir}', { dir: SOUND_DIR }) }
         ]

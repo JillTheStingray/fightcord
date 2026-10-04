@@ -118,7 +118,8 @@ function onKeyDown(e) {
 /* ------------------------------------------------------------- OBS overlay */
 
 // what the overlay shows (pure, so it can be tested)
-// m: { me, myRank, myCc, opp, oppRank, oppCc, game, ft, score: {mine, theirs} | null, session: {w, l}, showOpp }
+// m: { me, myRank, myCc, opp, oppRank, oppCc, game, ft, score: {mine, theirs} | null, session: {w, l}, showOpp,
+//      rankImg(letter) -> Fightcade's badge url }
 function overlayState(m) {
     const o = m || {};
     const playing = !!o.opp;
@@ -126,8 +127,9 @@ function overlayState(m) {
         playing,
         game: o.game || '',
         ft: o.ft || null,
-        me: { name: o.me || '', rank: o.myRank || '', cc: o.myCc || '' },
-        opp: playing ? { name: o.showOpp === false ? T('Opponent') : o.opp, rank: o.oppRank || '', cc: o.showOpp === false ? '' : (o.oppCc || '') } : null,
+        me: { name: o.me || '', rank: o.myRank || '', img: o.myRank && o.rankImg ? o.rankImg(o.myRank) : '', cc: o.myCc || '' },
+        opp: playing ? { name: o.showOpp === false ? T('Opponent') : o.opp, rank: o.oppRank || '', img: o.oppRank && o.rankImg ? o.rankImg(o.oppRank) : '',
+            cc: o.showOpp === false ? '' : (o.oppCc || '') } : null,
         score: playing && o.score ? { mine: +o.score.mine || 0, theirs: +o.score.theirs || 0 } : null,
         session: o.session && (o.session.w || o.session.l) ? { w: o.session.w || 0, l: o.session.l || 0 } : null,
         labels: { tonight: T('Tonight'), waiting: T('Waiting for a match'), vs: 'VS' }
@@ -162,7 +164,7 @@ function gather() {
         opp, oppRank: opp ? rankOf(oppU) : '', oppCc: String((oppU && oppU.country && oppU.country.iso_code) || '').toLowerCase(),
         game: shortName(chName), ft: typeof ft === 'number' && ft > 0 ? ft : null,
         score: pl && live.quark === pl.quarkId ? live.score : null,
-        session, showOpp: cfg.overlayOpp !== false
+        session, showOpp: cfg.overlayOpp !== false, rankImg: (l) => fc.data.rankImg(l)
     });
 }
 
@@ -192,13 +194,14 @@ html,body{margin:0;background:transparent;font-family:'Segoe UI',system-ui,sans-
 .row{display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;white-space:nowrap}
 .p{display:flex;align-items:center}
 .r{display:inline-block;min-width:20px;margin:0 6px;padding:0 4px;border-radius:4px;background:#4f63f0;font-size:14px;line-height:20px;text-align:center}
+.ri{width:24px;height:24px;margin:0 6px}
 .sc{margin:0 14px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.1);font-variant-numeric:tabular-nums}
 .vs{margin:0 14px;color:#22e3f2;font-style:italic}
 .sub{margin-top:4px;font-size:13px;font-weight:600;color:#a8aed6;text-align:center;white-space:nowrap}
 .hide{display:none}
 </style></head><body><div id="b"><div class="row"><span class="p" id="me"></span><span class="sc hide" id="sc"></span><span class="vs hide" id="vs">VS</span><span class="p" id="op"></span></div><div class="sub" id="sub"></div></div>
 <script>
-function side(el,p,rev){el.textContent='';if(!p)return;var n=document.createElement('span');n.textContent=p.name;var r=null;if(p.rank){r=document.createElement('span');r.className='r';r.textContent=p.rank}var parts=rev?[r,n]:[n,r];parts.forEach(function(x){if(x)el.appendChild(x)})}
+function side(el,p,rev){el.textContent='';if(!p)return;var n=document.createElement('span');n.textContent=p.name;var r=null;if(p.rank){r=document.createElement('span');r.className='r';r.textContent=p.rank;if(p.img){var i=document.createElement('img');i.className='ri';i.alt=p.rank;i.src=p.img;var t=r;i.onerror=function(){i.replaceWith(t)};r=i}}var parts=rev?[r,n]:[n,r];parts.forEach(function(x){if(x)el.appendChild(x)})}
 function draw(s){side(document.getElementById('me'),s.me,true);side(document.getElementById('op'),s.opp,false);
 var sc=document.getElementById('sc'),vs=document.getElementById('vs');
 if(s.playing&&s.score){sc.textContent=s.score.mine+' \\u2013 '+s.score.theirs;sc.classList.remove('hide');vs.classList.add('hide')}

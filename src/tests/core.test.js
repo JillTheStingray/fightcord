@@ -53,8 +53,15 @@ test('ranks: letters, numbers, colours', () => {
     assert.equal(data.rankLetter('Z'), '');
     assert.equal(data.rankNum('B'), 4);
     assert.equal(data.rankNum(3), 3);
-    assert.equal(data.rankColor('S'), '#ffd166');
+    assert.equal(data.rankColor('S'), '#ef5a86');
     assert.equal(data.rankColor(null), '#9aa4b2');
+});
+
+test('ranks: Fightcade badge pictures (rank0 = unknown, rank1-6 = E-S)', () => {
+    assert.equal(data.rankImg('S'), 'https://web.fightcade.com/static/ranks/rank6.png');
+    assert.equal(data.rankImg(1), 'https://web.fightcade.com/static/ranks/rank1.png');
+    assert.equal(data.rankImg('?'), 'https://web.fightcade.com/static/ranks/rank0.png');
+    assert.equal(data.rankImg(0), 'https://web.fightcade.com/static/ranks/rank0.png');
 });
 
 test('urls: art strips fc1_, watch and replay links', () => {

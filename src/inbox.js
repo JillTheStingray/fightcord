@@ -127,7 +127,7 @@ function render() {
             ${fc.ui.avatar(a.name, { size: 36 })}<div class="tx"><div class="t">${E(a.title)}</div>
             <div class="s">${E(a.sub || '')}${a.sub ? ' · ' : ''}${fc.fmt.ago(a.at)}</div></div>
             ${a.name ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'chart', act: 'h2h', title: 'Head-to-head' }) + fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', act: 'scout', title: 'Scout' }) : ''}</div>`).join('')
-        : fc.ui.empty({ icon: 'users', title: 'No friend activity yet', sub: 'Add friends with ☆ on a scout card or the Friends page.' });
+        : fc.ui.empty({ icon: 'users', title: 'No friend activity yet', sub: 'Add friends from a scout card or the Friends page.' });
     if (fl.__html !== fhtml) { fl.__html = fhtml; fl.innerHTML = fhtml; }
     // an empty Mentions / Challenges tab says so
     const shown = tab === 'mentions' ? mentions : tab === 'challenges' ? challenges : -1;
@@ -188,7 +188,7 @@ html.fcin-on .notificationsSection .fcin-new::after, #fcInboxFriends .fcinF.fcin
     box-shadow: 0 0 8px var(--fc-accent); }
 html.fcin-on .notificationsSection .notifications-empty { font-size: 0 !important; }
 html.fcin-on .notificationsSection .notifications-empty > * { display: none !important; }
-html.fcin-on .notificationsSection .notifications-empty::before { content: '🎉'; font-size: 44px; margin-bottom: 10px; }
+html.fcin-on .notificationsSection .notifications-empty::before { content: ''; width: 44px; height: 44px; margin-bottom: 10px; background: var(--fc-muted); -webkit-mask: var(--fc-i-bell) center / contain no-repeat; }
 html.fcin-on .notificationsSection .notifications-empty::after { content: 'You\\'re all caught up'; font-size: 16px; font-weight: 600; color: var(--fc-muted); }
 #fcInboxFriends .fcinF { display: flex; align-items: center; }
 #fcInboxFriends .fcinF .tx { flex: 1; min-width: 0; }

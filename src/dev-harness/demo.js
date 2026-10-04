@@ -63,7 +63,7 @@
         if (myId && meFake) map.set(myId, meFake);
         originals = [...map.keys()];
         // Cerberus' floating buttons were in the capture; Fightcord users don't have Cerberus
-        doc.querySelectorAll('.cerb-fabs-container, .cerb-fab-btn').forEach(n => n.remove());
+        doc.querySelectorAll('.cerb-fabs-container, .cerb-fab-btn, .cerb-rank-badge, .fcScoutBadge').forEach(n => n.remove());
 
         // chat lines -> banter (before names, so mentions inside lines go too)
         let li = 0;

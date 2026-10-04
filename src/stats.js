@@ -101,7 +101,7 @@ function setRow(s) {
     return `<div class="fcsSet">${mark}<span class="o" ${s.opp ? `data-opp="${E(s.opp)}"` : ''} title="${s.opp ? ET('Head-to-head with {name}', { name: s.opp }) : ''}">${E(s.opp || '?')}</span><span class="sc">${score}</span>
         <span class="g" title="${E(s.channel || s.game || '')}">${E(gameOf(s))}</span><span class="t">${when(s.at)}</span>
         ${url ? fc.ui.btn('Replay', { size: 'sm', icon: 'play', cls: 'fcsRp', title: 'Watch the replay in Fightcade', attrs: `data-replay="${E(url)}"` }) : '<span class="fcsRp none"></span>'}
-        ${s.quark ? `<span class="fcsStar${s.star ? ' on' : ''}" data-star="${E(s.quark)}" title="${ET(s.star ? 'Remove from highlights' : 'Keep in highlights')}">${s.star ? '★' : '☆'}</span>` : '<span class="fcsStar none"></span>'}
+        ${s.quark ? `<span class="fcsStar${s.star ? ' on' : ''}" data-star="${E(s.quark)}" title="${ET(s.star ? 'Remove from highlights' : 'Keep in highlights')}">${s.star ? fc.ui.ic('star', 'fill') : fc.ui.ic('star')}</span>` : '<span class="fcsStar none"></span>'}
     </div>`;
 }
 
@@ -171,13 +171,13 @@ function h2hHtml() {
     const statusText = { off: ET('Not in your channels'), playing: '● ' + ET('In a match'), away: ET('Away'), on: '● ' + ET('Online') }[status];
     const byTime = sets.slice().sort((a, b) => a.at - b.at);
     const first = byTime[0], last = byTime[byTime.length - 1];
-    const cur = st.cur.n ? (st.cur.kind === 'won' ? '🔥 ' + st.cur.n + 'W' : st.cur.n + 'L') : '—';
+    const cur = st.cur.n ? (st.cur.kind === 'won' ? fc.ui.ic('flame', 'fill') + st.cur.n + 'W' : st.cur.n + 'L') : '—';
     const md = (s) => s ? new Date(s.at).toLocaleDateString(fc.t.locale(), { month: 'short', day: 'numeric' }) : '—';
     return `<div class="fcsHH">
         ${fc.ui.btn('All stats', { kind: 'ghost', size: 'sm', icon: 'arrowLeft', act: 'back', cls: 'fcsBack' })}
         <div class="fcsHHead">
             ${fc.ui.avatar(name, { size: 72, status, ring: 'var(--fc-s2)' })}
-            <div class="who"><div class="nm">${info ? fc.ui.flag(info.country) : ''}${E(name)}${isFr ? ' <span class="fr">★</span>' : ''}</div>
+            <div class="who"><div class="nm">${info ? fc.ui.flag(info.country) : ''}${E(name)}${isFr ? ' <span class="fr">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</div>
                 <div class="st ${status}">${statusText}</div>
                 ${nt && nt.chips ? nt.chips(name) : ''}</div>
             <div class="acts">
@@ -227,7 +227,7 @@ function onH2HAction(act, el) {
 function overviewHtml() {
     const all = allSets();
     if (!all.length) return fc.ui.empty({ icon: 'chart', title: 'No sets recorded yet',
-        sub: 'They’re saved as you play (the 🏆 session tracker), or bring in your recent Fightcade matches.', action: 'Import my Fightcade history', act: 'import' });
+        sub: 'They’re saved as you play (the session tracker), or bring in your recent Fightcade matches.', action: 'Import my Fightcade history', act: 'import' });
     const sets = filteredSets();
     const t = tally(sets);
     const st = streaks(sets);
@@ -256,7 +256,7 @@ function overviewHtml() {
             ${tile(t.rate == null ? '—' : pct(t.rate), ET('win rate') + bar(t.rate))}
             ${tile(fc.fmt.num(t.n), ET('sets played'))}
             ${tile(t.gw + '–' + t.gl, ET('games won–lost'))}
-            ${tile(st.cur.n ? (st.cur.kind === 'won' ? '🔥 ' : '') + st.cur.n + (st.cur.kind === 'won' ? 'W' : 'L') : '—', ET('current streak'))}
+            ${tile(st.cur.n ? (st.cur.kind === 'won' ? fc.ui.ic('flame', 'fill') : '') + st.cur.n + (st.cur.kind === 'won' ? 'W' : 'L') : '—', ET('current streak'))}
             ${tile(st.bestW + 'W', ET('longest win streak'))}
         </div>
         <div class="fcsGrid">
@@ -271,7 +271,7 @@ function overviewHtml() {
                     <i class="l" style="height:${Math.round(x.l / maxS * 100)}%"></i><i class="w" style="height:${Math.round(x.w / maxS * 100)}%"></i></div>
                     <span>${new Date(k + 'T12:00:00').toLocaleDateString(fc.t.locale(), { month: 'numeric', day: 'numeric' })}</span></div>`).join('')}</div>` : none, true)}
             ${highlights.length ? card(ET('Highlights') + ' <small>— ' + ET('your starred sets') + '</small>', highlights.map(setRow).join(''), true) : ''}
-            ${card(ET('Recent sets') + ' <small>— ' + ET('☆ keeps one in Highlights') + '</small>', recent.length ? recent.map(setRow).join('') : none, true)}
+            ${card(ET('Recent sets') + ' <small>— ' + ET('the star keeps one in Highlights') + '</small>', recent.length ? recent.map(setRow).join('') : none, true)}
         </div>`;
 }
 

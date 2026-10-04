@@ -225,7 +225,7 @@ function render() {
     const body = `<div class="frAddRow"><input class="fc-input frInput" type="text" placeholder="${E(T('Add a friend by Fightcade name'))}" spellcheck="false">` +
         fc.ui.btn('Add', { kind: 'success', act: 'add' }) + `<span class="frNote"></span></div>` +
         (!all.length
-            ? fc.ui.empty({ icon: 'users', title: 'No friends yet', sub: 'Add someone with the box above, or hit ☆ Add friend on anyone’s scout card.' })
+            ? fc.ui.empty({ icon: 'users', title: 'No friends yet', sub: 'Add someone with the box above, or press Add friend on anyone’s scout card.' })
             : `<h4>${E(T('Online'))} — ${on.length}</h4>${on.length ? on.map(rowHtml).join('') : '<div class="fc-muted frMuted">' + E(T('Nobody in your channels right now.')) + '</div>'}` +
               (off.length ? `<h4>${E(T('Not in your channels'))} — ${off.length}</h4>${off.map(rowHtml).join('')}` : ''));
     const box = page.body;

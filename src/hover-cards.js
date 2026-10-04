@@ -44,7 +44,7 @@ function cardHtml(name, chanHint) {
         const c = fc.app.channel(playing.channelId);
         const watch = c && c.spectators !== false && !isMe ? fc.data.watchUrl({ emu: c.emulator, rom: playing.gameId, quark: playing.quarkId, port: playing.port }) : '';
         playLine = `<div class="hcPlay"><div class="t">${E(T('In a match'))}${opp ? ' vs <b>' + E(opp) + '</b>' : ''}</div>
-            <div class="g">${E(shortName(playing.channelId))}</div>${watch ? `<span class="hcWatch" data-watch="${E(watch)}">👁 ${E(T('Watch'))}</span>` : ''}</div>`;
+            <div class="g">${E(shortName(playing.channelId))}</div>${watch ? `<span class="hcWatch" data-watch="${E(watch)}">${fc.ui.ic('eye')}${E(T('Watch'))}</span>` : ''}</div>`;
     }
     const vs = !isMe ? fc.history.recordVs(name) : null;
     const isFr = !!(fr && fr.isFriend && fr.isFriend(name));
@@ -53,7 +53,7 @@ function cardHtml(name, chanHint) {
     return `<div class="hcBanner" style="background:${fc.data.hashColor(name)}"></div>
         <div class="hcAva ${status}"><img src="${E(fc.data.avatarUrl(name, u && u.gravatar, 160))}" alt="" onerror="this.style.visibility='hidden'"><i></i></div>
         <div class="hcBody">
-            <div class="hcName">${E(name)}${isFr ? ' <span class="hcStar">★</span>' : ''}</div>
+            <div class="hcName">${E(name)}${isFr ? ' <span class="hcStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</div>
             <div class="hcMeta">${fc.ui.flag(cc)}${E((u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '')}
                 ${rank ? fc.ui.tag(rank) : ''}</div>
             ${conn ? `<div class="hcConn">${E(conn)}</div>` : ''}

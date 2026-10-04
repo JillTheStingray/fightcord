@@ -161,7 +161,7 @@ function celebrate(F, T, game) {
     }
     o.innerHTML = `<div class="glow" style="--c:${fc.data.rankColor(T)}"></div>${bits}
         <div class="big">${fc.fmt.esc(fc.t('RANK UP!'))}</div>
-        <div class="ranks"><span class="r from" style="--c:${fc.data.rankColor(F)}">${F}</span><span class="arrow">→</span><span class="r to" style="--c:${fc.data.rankColor(T)}">${T}</span></div>
+        <div class="ranks"><span class="r from" style="--c:${fc.data.rankColor(F)}">${fc.ui.tag(F)}</span><span class="arrow">→</span><span class="r to" style="--c:${fc.data.rankColor(T)}">${fc.ui.tag(T)}</span></div>
         <div class="game">${fc.fmt.esc(game)}</div><div class="hint">${fc.fmt.esc(fc.t('click to close'))}</div>`;
     o.addEventListener('mousedown', (e) => e.stopPropagation());
     o.addEventListener('click', (e) => { e.stopPropagation(); o.classList.add('out'); setTimeout(() => o.remove(), 400); });
@@ -212,8 +212,8 @@ function tabHtml(ctx) {
     return `<div class="prgGames">${romsWith.map(r => fc.ui.chip(gameName(r), { on: r === tabRom, act: 'prg-rom:' + r })).join('')}
             ${cfg.track ? fc.ui.btn('Check now', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'prg-now', title: 'Ask Fightcade for your rank in this game now' }) : ''}</div>
         <div class="fcsTop">
-            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.last.rank)} ${s.last.elo != null ? (s.last.est ? '~' : '') + fc.fmt.num(s.last.elo) : ''}</div><div class="k">${T('now')}${s.last.elo != null ? ' · ELO' + (s.last.est ? ' ' + T('(estimated)') : '') : ''}</div></div>
-            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank)}</div><div class="k">${T('best ever · {when}', { when: day(s.best.at) })}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.last.rank, '', 26)} ${s.last.elo != null ? (s.last.est ? '~' : '') + fc.fmt.num(s.last.elo) : ''}</div><div class="k">${T('now')}${s.last.elo != null ? ' · ELO' + (s.last.est ? ' ' + T('(estimated)') : '') : ''}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank, '', 26)}</div><div class="k">${T('best ever · {when}', { when: day(s.best.at) })}</div></div>
             <div class="fc-tile fcsBig${s.eloChange > 0 ? ' up' : s.eloChange < 0 ? ' down' : ''}"><div class="v">${s.eloChange == null ? '—' : (s.eloChange > 0 ? '+' : '') + s.eloChange}</div><div class="k">${T('ELO since {when}', { when: day(s.first.at) })}</div></div>
             <div class="fc-tile fcsBig"><div class="v">${s.last.pos ? '#' + s.last.pos : '—'}</div><div class="k">${T('leaderboard')}${s.bestPos ? ' · ' + T('best #{n}', { n: s.bestPos.pos }) : ''}</div></div>
             <div class="fc-tile fcsBig"><div class="v">${fc.fmt.num(s.matchesSince)}</div><div class="k">${T('matches since {when}', { when: day(s.first.at) })}</div></div>
@@ -264,8 +264,9 @@ const CSS = `
     text-shadow: 0 0 4vmin rgba(79,99,240,.8), 0 1vmin 0 #2b2f8a; animation: prgPunch .6s .1s cubic-bezier(.2,1.7,.4,1) both; }
 @keyframes prgPunch { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
 #prgOverlay .ranks { position: relative; display: flex; align-items: center; margin-top: 3vmin; animation: fcRise .5s .5s both; }
-#prgOverlay .r { width: 14vmin; height: 14vmin; border-radius: 3vmin; display: flex; align-items: center; justify-content: center;
-    font-size: 9vmin; font-weight: 900; color: #111; background: var(--c); box-shadow: 0 0 5vmin var(--c); }
+#prgOverlay .r { width: 14vmin; height: 14vmin; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5vmin var(--c); }
+#prgOverlay .r .fc-tag { --sz: 14vmin; }
+#prgOverlay .r .fc-tag.nf { font-size: 9vmin; border-radius: 3vmin; }
 #prgOverlay .r.from { opacity: .45; transform: scale(.8); }
 #prgOverlay .arrow { margin: 0 4vmin; font-size: 7vmin; color: #fff; }
 #prgOverlay .game { position: relative; margin-top: 3vmin; font-size: 2.6vmin; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: rgba(255,255,255,.75); }

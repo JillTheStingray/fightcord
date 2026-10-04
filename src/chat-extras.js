@@ -576,12 +576,12 @@ html.fcx-syscards body .chatContent .messageWrapper.challengeError .message {
     display: inline-flex !important; align-items: center !important; height: 24px !important; padding: 0 10px 0 8px !important;
     border-radius: 12px !important; font-size: 13px !important; font-weight: 600 !important; line-height: 24px !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.accepted { color: #2dc770 !important; background: rgba(35,165,90,.14) !important; }
-html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.accepted::before { content: '✓' !important; margin-right: 6px !important; font-weight: 800 !important; }
+html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.accepted::before { content: '' !important; display: inline-block !important; width: 14px !important; height: 14px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-check) center / contain no-repeat !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined { color: #f23f43 !important; background: rgba(242,63,67,.12) !important; }
-html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined::before { content: '✕' !important; margin-right: 6px !important; font-weight: 800 !important; }
+html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined::before { content: '' !important; display: inline-block !important; width: 14px !important; height: 14px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-close) center / contain no-repeat !important; }
 html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title {
     color: var(--fc-text) !important; background: var(--fc-accent-soft) !important; }
-html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title::before { content: '⚔' !important; margin-right: 6px !important; }
+html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title::before { content: '' !important; display: inline-block !important; width: 15px !important; height: 15px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-swords) center / contain no-repeat !important; }
 html.fcx-syscards body .chatContent .messageWrapper.challengeError .message { color: #f23f43 !important; background: rgba(242,63,67,.12) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.endgame.fcx-won .endgameMessageWrapper {
     border-left-color: #23a55a !important; background: linear-gradient(90deg, rgba(35,165,90,.14), transparent 70%), var(--fc-input) !important; }
