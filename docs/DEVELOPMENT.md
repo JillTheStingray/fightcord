@@ -559,6 +559,20 @@ The pure logic (`analyze`, `evaluate`, `periodStart`, `mergePoint`, `summarize`)
   - Replay from Settings → About.
   - Harness: `?welcome=1` shows the first run, `?welcome=news` shows "What's new".
 - Core: `fc.ui.layer(close)` puts your own overlay on the shared Esc stack.
+- **Unfinished sets (scout.js):** `summariseQuarks` counts `quits {ranked, unfinished, behind}`.
+  - A searchquarks row has `ranked` = the FT (0 = casual); a ranked row where max(score) < ranked was left unfinished.
+  - `quitsNote` shows from 4+ ranked and 2+ unfinished sets.
+  - The challenge card adds "Leaves sets unfinished" at >= 20%.
+- **events.js:** Fightcade events `{name, date, region, link, image, gameid, channel}` are collected from:
+  - `root.$refs['welcome-channel'].results[*].events`
+  - `.eventPreviewWrapper.__vue__.event`
+  - channel MOTD `.messageWrapper.__vue__.data.events`
+
+  Reminders:
+  - Reminders are automatic for games you've joined or played in the last 30 days, plus picked ones.
+  - Bells (`.evBell`) on cards and `.eventsItem` tiles add or remove a reminder.
+  - `dueStages` gives 'soon' (lead min) / 'start' (until 30 min in). A 'soon' reminder waits while you're in a match.
+  - Settings: events-config.json. Harness: `__sim.event(name, inMinutes, {gameid, channel})`.
 - Core: `fc.elo` captures exact ELO from Fightcade's playing events. It hooks `root.onUserPlayingStateChanges(user, isStart, channel, quark, gameid, playerid, port, ranked, elo, rank, scores)`; the elo is above 0 only for Fightcade Patreon supporters.
   - `value(name, rom)` gives the number, or null to fall back to the estimate. `mine(rom)` gives `{elo, at, start, end}`, persisted as `myElo` in fightcord-core-config.json.
   - The `elo:real` event feeds scout, Progress (real points) and match-screens (`eloStart`/`eloEnd` per set, the "ELO 1,654 (+12)" result line).

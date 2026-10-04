@@ -288,8 +288,8 @@
     }
     if (body.req === 'searchquarks' && body.username) data = { res: 'OK', results: { results: body.offset ? [] : Array.from({ length: 40 }, (_, i) => ({
       quarkid: 'imp' + i, gameid: 'sfiii3nr1', channelname: 'Street Fighter III 3rd Strike: Fight for the Future (Japan 990512, NO CD)',
-      date: Date.now() - (i + 1) * 20 * 3600e3, duration: 600, num_matches: i % 9 === 0 ? 0 : 5,
-      players: [{ name: body.username, score: i % 3 ? 3 : 1 }, { name: names[(i % 6) + 1] || 'Opp', score: i % 3 ? 1 : 3 }] })) } };
+      date: Date.now() - (i + 1) * 20 * 3600e3, duration: 600, num_matches: i % 9 === 0 ? 0 : 5, ranked: i % 5 === 4 ? 0 : 3,
+      players: [{ name: body.username, score: i % 4 === 1 ? 0 : i % 3 ? 3 : 1 }, { name: names[(i % 6) + 1] || 'Opp', score: i % 4 === 1 ? 1 : i % 3 ? 1 : 3 }] })) } };
     else if (body.req === 'searchquarks') data = { res: 'OK', results: { results: Array.from({ length: 9 }, (_, i) => ({ quarkid: '17906' + i, gameid: body.gameid, emulator: 'fbneo', date: Date.now() - i * 3600e3 - 60e3, live: i === 0,
       players: [{ name: names[i] || 'A', score: i === 0 ? null : 3, country: { iso_code: 'us' } }, { name: names[i + 1] || 'B', score: i === 0 ? null : i % 3, country: { iso_code: 'jp' } }] })) } };
     return new Response(JSON.stringify(data), { status: 200 });
@@ -349,6 +349,7 @@
   await load('../goals.js');
   await load('../feed.js');
   await load('../welcome.js');
+  await load('../events.js');
   await load('../fightcord.js');
 })();
 </script>

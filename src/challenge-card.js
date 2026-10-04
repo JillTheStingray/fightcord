@@ -105,6 +105,16 @@ function fillOdds(el, name) {
             odds.title = '~' + Math.round(data.odds.game * 100) + '% per game, ' + p + '% to win the FT' + data.odds.ft;
             el.querySelector('.ccBar i').style.width = p + '%';
         } else setTxt('.ccOdds', '—');
+        // they often leave ranked sets unfinished (1 in 5 or more): say so before you accept
+        const q = data && data.quits;
+        if (q && scout.quitsNote && scout.quitsNote(q) && q.unfinished / q.ranked >= 0.2) {
+            const w = document.createElement('div');
+            w.className = 'ccWarn ccQuits';
+            w.title = scout.quitsNote(q) + '. Could also be disconnects.';
+            w.textContent = '⚠ Leaves sets unfinished: ' + q.unfinished + ' of ' + q.ranked + ' ranked';
+            const btns = el.querySelector('.ccBtns');
+            if (btns && !el.querySelector('.ccQuits')) btns.parentNode.insertBefore(w, btns);
+        }
     }).catch(() => { setTxt('.ccElo', '—'); setTxt('.ccOdds', '—'); });
 }
 

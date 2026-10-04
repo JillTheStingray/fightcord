@@ -55,7 +55,7 @@ const PLUGINS = [
     ['translate.js', 'Translator'], ['emoji.js', ':emoji: shortcodes'], ['fontstyle.js', 'Chat font styles'],
     ['member-list.js', 'Member list'], ['scout.js', 'Scout card, ELO & odds'], ['challenge-filters.js', 'Challenge filters'],
     ['match-screens.js', 'Match screens & session tracker'], ['stats.js', 'Stats, head-to-head & share card'],
-    ['analytics.js', 'Match analytics'], ['progress.js', 'Rank & ELO history'], ['goals.js', 'Training goals'], ['feed.js', 'Lobby feed'], ['welcome.js', 'Welcome screen & tour'], ['friends.js', 'Friends'], ['notes.js', 'Player notes & tags'],
+    ['analytics.js', 'Match analytics'], ['progress.js', 'Rank & ELO history'], ['goals.js', 'Training goals'], ['feed.js', 'Lobby feed'], ['welcome.js', 'Welcome screen & tour'], ['events.js', 'Event reminders'], ['friends.js', 'Friends'], ['notes.js', 'Player notes & tags'],
     ['challenge-card.js', 'Challenge card'], ['channel-banner.js', 'Channel banner'], ['hover-cards.js', 'Member hover cards'],
     ['profile-card.js', 'Profile popout'], ['context-menu.js', 'Right-click menu'], ['inbox.js', 'Notification inbox'], ['backgrounds.js', 'Animated backgrounds'], ['music.js', 'Background music'], ['discord-rpc.js', 'Discord status'],
     ['snapshot.js', 'Snapshot tool (dev)']

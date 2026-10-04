@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0
+
+- **Unfinished sets.** The scout card counts how often a player left ranked sets before anyone
+  reached the FT ("Left 3 of 12 ranked sets unfinished (2 while behind)"), and the challenge card
+  warns when it's 1 in 5 or more, before you accept. It comes from the same recent sets the scout
+  card already loads; it can also be disconnects. Settings → Scout & challenges → Unfinished sets.
+- **Event reminders.** Fightcade's tournaments (on the home page and in game channels) now remind
+  you 30 minutes before they start (15 / 30 / 60) and when they begin, with Open channel and Info.
+  Automatic for games you've joined or played lately; ring the bell on any event card to add or
+  remove one. `/events` lists what's coming. Settings → Search tab → Event reminders.
+
 ## 2.0.1
 
 - **Exact ELO for Fightcade supporters.** Fightcade sends your real ELO to Patreon supporters

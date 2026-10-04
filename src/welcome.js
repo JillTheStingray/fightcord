@@ -30,6 +30,11 @@ const NEWS = [
         ['target', 'Training goals', 'Win 5 sets, beat 3 A-ranks, play an hour… tracked live by the ring next to your session record.'],
         ['chart', 'Match analytics', 'Win rate by opponent rank, ping and hour of day, plus a tilt check. Stats → Analytics.'],
         ['bell', 'Lobby feed', 'The Feed button in every channel: joins, matches you can watch, upsets and streaks.']
+    ] },
+    { v: '2.1', title: 'Fightcord 2.1', items: [
+        ['warn', 'Unfinished sets', 'The scout and challenge cards warn when someone often leaves ranked sets before the FT is reached.'],
+        ['bell', 'Event reminders', 'A heads-up before tournaments for your games start, with a button to open the channel. Ring the bell on any event card to add it.'],
+        ['trend', 'Exact ELO', 'Fightcade supporters now see their real ELO on the scout card, the Progress chart and after every set.']
     ] }
 ];
 

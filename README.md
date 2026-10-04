@@ -45,7 +45,8 @@ walks you through the rest.
 **For competitive players**
 - **Scout card:** your opponent's rank, ELO, win odds and your head-to-head, the moment they
   challenge you. ELO is exact for Fightcade Patreon supporters (Fightcade only sends it to them),
-  estimated from rank and leaderboard spot for everyone else.
+  estimated from rank and leaderboard spot for everyone else. It also warns when someone often
+  leaves ranked sets unfinished.
 - **Challenge filters:** warn about or auto-decline challenges by ping, Wi-Fi / VPN, country,
   set length, rank, players you haven't met, or a block list.
 - **Match screens:** VS / YOU WON! / YOU LOST!, and tonight's record in the channel header.
@@ -65,6 +66,8 @@ walks you through the rest.
 **Social**
 - **Friends list** with online / match alerts and a Watch button, plus **player notes & tags**.
 - **Lobby feed:** joins, matches you can watch, upsets and win streaks in each channel.
+- **Event reminders:** a heads-up before Fightcade tournaments for your games start (or any
+  event you ring the bell on), with a button to open the channel.
 - **Discord status:** shows your game, opponent and match timer on your Discord profile.
 - Lobby **music** (bring your own track; none is included).
 

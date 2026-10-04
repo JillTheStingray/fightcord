@@ -22,6 +22,7 @@ const DEFAULTS = {
     onChallenge: true,       // pop the card when someone challenges you (if the challenge card is off)
     showBadges: true,        // 🔍 next to names
     historyLimit: 25,        // how many recent sets to summarise
+    showQuits: true,         // warn about ranked sets they left unfinished
     cacheTtlMin: 5
 };
 
@@ -35,7 +36,7 @@ const mod = (id) => fc.modules.get(id);
 function summariseQuarks(rows, name, me) {
     const lname = String(name || '').toLowerCase();
     const lme = String(me || '').toLowerCase();
-    const out = { form: { w: 0, l: 0 }, h2h: { w: 0, l: 0, last: null }, recent: [], scored: 0 };
+    const out = { form: { w: 0, l: 0 }, h2h: { w: 0, l: 0, last: null }, recent: [], scored: 0, quits: { ranked: 0, unfinished: 0, behind: 0 } };
     for (const row of rows.slice(0, (cfg && cfg.historyLimit) || 25)) {
         const players = Array.isArray(row.players) ? row.players : [];
         const them = players.find(p => (p.name || '').toLowerCase() === lname);
@@ -43,8 +44,18 @@ function summariseQuarks(rows, name, me) {
         if (!them || !opp) continue;
         const mine = typeof them.score === 'number' ? them.score : null;
         const theirs = typeof opp.score === 'number' ? opp.score : null;
-        const date = fc.data.quarkDate(row);
+        const date = fc ? fc.data.quarkDate(row) : (row.date || null);          // (no fc in the unit tests)
         out.recent.push({ opp: opp.name, mine, theirs, date, gameid: row.gameid || row.gameId || '' });
+        // ranked = the FT (0 = casual): a ranked set where nobody reached it was left unfinished,
+        // most likely by whoever was behind (or a disconnect)
+        const ft = +row.ranked || 0;
+        if (ft > 0 && mine !== null && theirs !== null) {
+            out.quits.ranked++;
+            if (Math.max(mine, theirs) < ft) {
+                out.quits.unfinished++;
+                if (mine < theirs) out.quits.behind++;
+            }
+        }
         if (mine === null || theirs === null || mine === theirs) continue;
         out.scored++;
         const won = mine > theirs;
@@ -183,6 +194,12 @@ function stateOf(info) {
         : info ? { k: 'on', t: 'Looking to play' } : { k: 'off', t: 'Not in your channels' };
 }
 
+// "Left 3 of 12 ranked sets unfinished (2 while behind)" -- only once there's enough to go on
+function quitsNote(q) {
+    if (!q || (cfg && cfg.showQuits === false) || q.ranked < 4 || q.unfinished < 2) return '';
+    return 'Left ' + q.unfinished + ' of ' + q.ranked + ' ranked sets unfinished' + (q.behind ? ' (' + q.behind + ' while behind)' : '');
+}
+
 function sectionsHtml(name, data) {
     if (!data) return `<div class="fcsc-sec fc-muted"><span class="fc-spin"></span> Loading…</div>`;
     if (data.error) return `<div class="fcsc-sec fc-muted">Match history unavailable — ${E(data.error)}</div>`;
@@ -198,9 +215,11 @@ function sectionsHtml(name, data) {
           `<span class="fc-muted"> to win an FT${o.ft}</span>${winBar(Math.round(o.set * 100), 100 - Math.round(o.set * 100))}` +
           `<div class="fcsc-note">You ${E(fc.data.fmtElo(data.myElo))} vs ${E(fc.data.fmtElo(data.elo))}${(data.elo.est || data.myElo.est) ? ' · estimated from rank and leaderboard spot' : ''}</div>`
         : '';
-    const form = data.scored
+    const q = quitsNote(data.quits);
+    const form = (data.scored
         ? `<b>${f.w}W – ${f.l}L</b><span class="fc-muted"> in the last ${data.scored} sets</span>${winBar(f.w, f.l)}`
-        : '<span class="fc-muted">No recent sets</span>';
+        : '<span class="fc-muted">No recent sets</span>') +
+        (q ? `<div class="fcsc-quits" title="Ranked sets that ended before anyone reached the FT. Could also be disconnects.">${fc.ui.icon('warn')}${E(q)}</div>` : '');
     const vs = (h.w || h.l)
         ? `<b class="${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h.w} – ${h.l}</b><span class="fc-muted">${h.last ? ' · last ' + E(fc.fmt.day(h.last)) : ''}</span>${winBar(h.w, h.l)}`
         : '<span class="fc-muted">Never played</span>';
@@ -306,6 +325,9 @@ const CSS = `
 .fcsc b.up { color: var(--fc-success); }
 .fcsc b.down { color: var(--fc-danger); }
 .fcsc-note { margin-top: 3px; font-size: 11px; color: var(--fc-muted); }
+.fcsc-quits { display: flex; align-items: center; margin-top: 6px; padding: 4px 8px; border-radius: var(--fc-r1); font-size: 12px; font-weight: 600;
+    color: var(--fc-warning); background: rgba(240, 178, 50, .12); }
+.fcsc-quits .fc-ic { width: 14px; height: 14px; margin-right: 6px; flex: none; }
 .fcsc-bar { height: 4px; margin-top: 6px; border-radius: 2px; overflow: hidden; background: rgba(242,63,67,.5); }
 .fcsc-bar > i { display: block; height: 100%; background: var(--fc-success); }
 .fcsc-sets { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -433,6 +455,7 @@ function start(f) {
             { key: 'enabled', type: 'switch', label: 'Scout cards', hint: 'Profile cards with rank, ELO, odds and your record' },
             { key: 'onChallenge', type: 'switch', label: 'Open on a challenge', hint: 'Only when the challenge card is off', show: (d) => d.enabled },
             { key: 'showBadges', type: 'switch', label: 'Name badges', hint: '🔍 next to names in chat and the member list', show: (d) => d.enabled },
+            { key: 'showQuits', type: 'switch', label: 'Unfinished sets', hint: 'Warn when someone often leaves ranked sets before the FT is reached', show: (d) => d.enabled },
             { type: 'note', label: 'Or type /scout <name> in chat.' }
         ]
     });
@@ -449,6 +472,7 @@ const api = {
     leaderboard: (g) => fc.api.leaderboard(g),
     knownFt,
     summariseQuarks,
+    quitsNote: (q) => quitsNote(q),
     // old names, kept until every module is on the core
     localUserInfo: (name) => fc.app.userInfo(name),
     connText: (info) => fc.fmt.conn(info),

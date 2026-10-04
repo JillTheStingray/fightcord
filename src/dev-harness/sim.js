@@ -59,6 +59,19 @@
         leave(name) { delete users()[name]; },
         away(name, on) { if (users()[name]) users()[name].away = on !== false; },
 
+        // a Fightcade event on the home page, starting in n minutes (for the reminders)
+        event(name, inMinutes, o) {
+            const p = o || {};
+            const ch = p.channel || joined();
+            const gameid = p.gameid || (F().channels.find(c => c.name === ch) || {}).gameid || 'sfiii3nr1';
+            const ev = { name, date: Date.now() + (inMinutes || 0) * 60000, region: p.region || 'EU', link: p.link || 'https://example.com/event', image: '', gameid, channel: { name: ch } };
+            const w = F().$refs['welcome-channel'];
+            let sec = (w.results || []).find(s => s && s.title === 'Events');
+            if (!sec) { sec = { title: 'Events', events: [] }; w.results = (w.results || []).concat([sec]); }
+            sec.events.push(ev);
+            return ev;
+        },
+
         // Fightcade's playing event with an exact ELO (what Patreon supporters get); start = match began
         elo(name, value, start, rank) {
             const ch = joined();

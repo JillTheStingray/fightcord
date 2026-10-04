@@ -51,6 +51,19 @@ const SCENES = [
         F.open(ch);
         await sleep(800);` },
     { name: 'goals', snap: CHANNEL, run: `document.querySelector('.fcglPill').click(); await sleep(800);` },
+    { name: 'events', snap: '2026-09-28T22-53-10-browse-search', view: 'home', keepToasts: true, run: `
+        // static captures have no Vue data: give the event cards their events (odd ones = your game)
+        [...document.querySelectorAll('.eventPreviewWrapper')].forEach((c, i) => { c.__vue__ = { event: {
+            name: c.querySelector('.name').textContent.trim(), date: Date.now() + (i + 1) * 5 * 3600e3, region: 'EU',
+            link: 'https://example.com', gameid: i % 2 ? 'sfiii3nr1' : 'garou', channel: { name: 'Game ' + i } } }; });
+        document.body.appendChild(document.createElement('i'));
+        await sleep(800);
+        const card = document.querySelector('.eventPreviewWrapper');
+        if (card) card.scrollIntoView({ block: 'center' });
+        fightcord.modules.get('events')._check();
+        __sim.event('Saturday Showdown', 29);
+        fightcord.modules.get('events')._check();
+        await sleep(600);` },
     { name: 'welcome', snap: CHANNEL, run: `fightcord.modules.get('welcome').open(0); await sleep(1000);` },
     { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` }
 ];
@@ -125,7 +138,7 @@ function cdp(wsUrl) {
             const code = `(async () => { const sleep = (ms) => new Promise(r => setTimeout(r, ms));
                 ${PRELUDE}
                 ${sc.run}
-                document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
+                ${sc.keepToasts ? '' : "document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());"}
                 document.getAnimations().forEach(a => { try { a.finish(); } catch (e) {} });
                 await sleep(400);
                 return JSON.stringify(window.__demoLeaks ? window.__demoLeaks() : ['demo mode did not load']); })()`;

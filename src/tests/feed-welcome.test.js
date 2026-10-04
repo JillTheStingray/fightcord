@@ -39,5 +39,7 @@ test('welcome: news shows once, only when this version has it', () => {
     assert.equal(n('1.9', '1.9.3'), null, 'seen already');
     assert.equal(n('1.9', '2.0.0'), null, '2.0 final: the same news, not again');
     assert.equal(n('', '1.8.0'), null, 'an older version has no news yet');
+    assert.equal(n('1.9', '2.1.0').v, '2.1', '2.0 users get the 2.1 news once');
+    assert.equal(n('2.1', '2.1.3'), null);
     assert.ok(welcome.NEWS.every(x => x.items.length && x.title));
 });
