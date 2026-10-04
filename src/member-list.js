@@ -30,6 +30,10 @@ const DEFAULTS = {
 };
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
+// continents, translated where shown: N_('Europe') N_('North America') N_('South America') N_('Asia') N_('Africa') N_('Oceania')
 const mod = (id) => fc.modules.get(id);
 
 /* ------------------------------------------------------------------ regions */
@@ -176,7 +180,7 @@ function renderRow(item, info) {
         } else if (lv) lv.remove();
 
         // ★ for friends, right after the name
-        if (friend) { const star = afterName(nag, 'fcm-fr'); star.textContent = '★'; star.title = 'Friend'; }
+        if (friend) { const star = afterName(nag, 'fcm-fr'); star.textContent = '★'; star.title = T('Friend'); }
         else { const s = nag.querySelector(':scope > .fcm-fr'); if (s) s.remove(); }
 
         // notes: coloured dots for the player's tags
@@ -188,7 +192,7 @@ function renderRow(item, info) {
             const top = afterName(nag, 'fcm-top', '.fcScoutBadge');
             top.className = 'fcm-top' + (info.top <= 10 ? ' gold' : info.top <= 100 ? ' silver' : '');
             top.textContent = '#' + info.top;
-            top.title = '#' + info.top + ' on the leaderboard for this game';
+            top.title = T('#{n} on the leaderboard for this game', { n: info.top });
         } else { const t = nag.querySelector(':scope > .fcm-top'); if (t) t.remove(); }
 
         // ⚔ 3–1 right after the name
@@ -197,8 +201,8 @@ function renderRow(item, info) {
             tag.className = 'fcm-vs ' + (vs.w > vs.l ? 'ahead' : vs.w < vs.l ? 'behind' : 'even');
             // unscored sets only: "played", not a misleading 0–0
             tag.textContent = (vs.w || vs.l) ? '⚔ ' + vs.w + '–' + vs.l : '⚔';
-            tag.title = "You've played " + info.name + ': ' + vs.w + '–' + vs.l +
-                (vs.sets > vs.w + vs.l ? ' (' + vs.sets + ' sets)' : '') + (vs.last ? ' · last ' + fc.fmt.day(vs.last) : '') + '\n(from your most recent sets)';
+            tag.title = T("You've played {name}: {w}–{l}", { name: info.name, w: vs.w, l: vs.l }) +
+                (vs.sets > vs.w + vs.l ? ' (' + T.plural(vs.sets, '{n} set', '{n} sets') + ')' : '') + (vs.last ? ' · ' + T('last {when}', { when: fc.fmt.day(vs.last) }) : '') + '\n' + T('(from your most recent sets)');
         } else { const t = nag.querySelector(':scope > .fcm-vs'); if (t) t.remove(); }
     }
 
@@ -207,7 +211,7 @@ function renderRow(item, info) {
     if (cfg.bars) {
         if (!bars) { bars = document.createElement('span'); bars.className = 'fcm-bars'; bars.innerHTML = '<i></i><i></i><i></i>'; item.appendChild(bars); }
         bars.className = 'fcm-bars ' + pingLevel(info.ping);
-        bars.title = (info.ping != null && !isNaN(info.ping) ? info.ping + ' ms' : 'ping unknown') + (info.net ? ' · ' + info.net : '');
+        bars.title = (info.ping != null && !isNaN(info.ping) ? info.ping + ' ms' : T('ping unknown')) + (info.net ? ' · ' + info.net : '');
     } else if (bars) bars.remove();
 }
 
@@ -228,8 +232,8 @@ function liveLine(info) {
     const c = fc.app.channel(p.channelId);
     const watch = c && c.spectators !== false && !fc.app.isMe(info.name)
         ? fc.data.watchUrl({ emu: c.emulator, rom: p.gameId, quark: p.quarkId, port: p.port }) : '';
-    return `<span class="dot"></span>${opp ? 'vs <b>' + E(opp) + '</b>' : 'in a match'}${mins != null ? ' · ' + (mins < 1 ? 'just started' : mins + 'm') : ''}` +
-        (watch ? `<span class="w" data-watch="${E(watch)}" title="Watch this match">👁 Watch</span>` : '');
+    return `<span class="dot"></span>${opp ? 'vs <b>' + E(opp) + '</b>' : E(T('in a match'))}${mins != null ? ' · ' + (mins < 1 ? E(T('just started')) : mins + 'm') : ''}` +
+        (watch ? `<span class="w" data-watch="${E(watch)}" title="${E(T('Watch this match'))}">👁 ${E(T('Watch'))}</span>` : '');
 }
 
 function hiddenByFilter(info) {
@@ -284,7 +288,7 @@ function processList(list, grouped) {
             const first = grouped && r.visible && !firstDone;
             if (first) firstDone = true;
             if (r.item.classList.contains('fcm-first') !== first) r.item.classList.toggle('fcm-first', first);
-            const label = gi === -2 ? '⚔ Playing now' : gi === -1 ? '★ Friends' : RANKS[gi] === '?' ? 'Unranked' : 'Rank ' + RANKS[gi];
+            const label = gi === -2 ? '⚔ ' + T('Playing now') : gi === -1 ? '★ ' + T('Friends') : RANKS[gi] === '?' ? T('Unranked') : T('Rank {rank}', { rank: RANKS[gi] });
             const head = first ? label + ' — ' + count : '';
             if (first) { if (r.item.dataset.fcmHead !== head) r.item.dataset.fcmHead = head; }
             else if (r.item.dataset.fcmHead) delete r.item.dataset.fcmHead;
@@ -298,12 +302,12 @@ function chipBarHtml() {
     const f = cfg.filter;
     const chip = (key, label, on, title) => `<span class="fcm-chip${on ? ' on' : ''}" data-chip="${key}" title="${E(title || '')}">${label}</span>`;
     const active = f.ranks.length || f.lowPing || f.region;
-    return RANKS.map(r => chip('rank:' + r, r, f.ranks.includes(r), r === '?' ? 'Unranked' : 'Rank ' + r)).join('') +
-        chip('lowPing', '&lt; 100 ms', f.lowPing, 'Only players under 100 ms') +
-        chip('region', 'My region', f.region, myContinent() ? 'Only players in ' + myContinent() : 'Your country is unknown') +
-        (active ? chip('clear', '×', false, 'Clear filters') : '') +
-        `<span class="fcm-sort" title="Sort">` +
-        ['name', 'ping', 'top'].map(s => `<span class="fcm-seg${cfg.sort === s ? ' on' : ''}" data-sort="${s}">${{ name: 'Name', ping: 'Ping', top: 'Top' }[s]}</span>`).join('') +
+    return RANKS.map(r => chip('rank:' + r, r, f.ranks.includes(r), r === '?' ? T('Unranked') : T('Rank {rank}', { rank: r }))).join('') +
+        chip('lowPing', '&lt; 100 ms', f.lowPing, T('Only players under 100 ms')) +
+        chip('region', E(T('My region')), f.region, myContinent() ? T('Only players in {region}', { region: T(myContinent()) }) : T('Your country is unknown')) +
+        (active ? chip('clear', '×', false, T('Clear filters')) : '') +
+        `<span class="fcm-sort" title="${E(T('Sort'))}">` +
+        ['name', 'ping', 'top'].map(s => `<span class="fcm-seg${cfg.sort === s ? ' on' : ''}" data-sort="${s}">${E(T({ name: 'Name', ping: 'Ping', top: 'Top' }[s]))}</span>`).join('') +
         `</span>`;
 }
 
@@ -480,13 +484,13 @@ function start(f) {
     fc.settings.block({
         id: 'member-list', section: 'members', title: 'Member list', hint: '— only you see this', store, order: 10,
         fields: [
-            opt('enabled', 'Discord-style member list'),
-            opt('group', 'Group by rank', 'Like Discord roles', on),
-            opt('activity', 'Activity sections', 'Playing now (with vs + Watch) and Friends at the top', on),
-            opt('rankColors', 'Rank-coloured names', 'S gold · A red · B purple · C blue · D green', on),
-            opt('bars', 'Signal bars', 'Instead of the ping number', on),
-            opt('played', 'Played before', '⚔ your record with people you recently played', on),
-            opt('top', 'Leaderboard spot', '#12 next to players in this game’s top 300', on)
+            opt('enabled', N_('Discord-style member list')),
+            opt('group', N_('Group by rank'), N_('Like Discord roles'), on),
+            opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch) and Friends at the top'), on),
+            opt('rankColors', N_('Rank-coloured names'), N_('S gold · A red · B purple · C blue · D green'), on),
+            opt('bars', N_('Signal bars'), N_('Instead of the ping number'), on),
+            opt('played', N_('Played before'), N_('⚔ your record with people you recently played'), on),
+            opt('top', N_('Leaderboard spot'), N_('#12 next to players in this game’s top 300'), on)
         ]
     });
     sweep();

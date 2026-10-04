@@ -578,6 +578,25 @@ The pure logic (`analyze`, `evaluate`, `periodStart`, `mergePoint`, `summarize`)
   - The `elo:real` event feeds scout, Progress (real points) and match-screens (`eloStart`/`eloEnd` per set, the "ELO 1,654 (+12)" result line).
   - Harness: `__sim.elo(name, elo, start)`.
 
+## Translations (2.2)
+
+- **`fc.t('English text', { vars })`:** the dictionaries are keyed by the English text.
+  - `{name}` placeholders are filled from `vars`; a missing translation stays English.
+  - `fc.t.plural(n, '{n} set', '{n} sets')`, `fc.t.lang()`, `fc.t.locale()`.
+  - The language comes from `fightcord-core-config.json` `lang`: 'auto' follows `navigator.language`. It's set at boot, before any module starts; changing it needs a restart.
+- **Dictionaries:** `i18n-pt.js` / `i18n-es.js` (`{ id, start() {}, strings }`). The loader skips `i18n-*.js`, and the core `require`s the one it needs. The harness: `?lang=pt`.
+- **The core's builders translate what they're given:** `ui.btn / chip / tile / tabs / empty / toast / modal / page`, settings titles / labels / hints / options / notes, `/help` descriptions.
+  - So static English passed to them needs no wrapping.
+  - Sentences with values do: `T('Win {n} sets', { n })`. Text defined before a module starts is marked `N_('…')` and translated where it's shown.
+- **Module helpers:** `T` (translate), `ET` (escape + translate), `N_` (mark only), `T.plural`.
+- **`node tools/i18n-check.js`:**
+  - extracts every key (including `label: / hint: / title: / sub:` properties and `opt/sw/sel(…)` helpers)
+  - reports missing / unused keys and broken `{placeholders}`
+  - `--missing pt` prints a JSON skeleton to fill in; `--left file.js` lists English still shown raw
+  - `tests/i18n.test.js` fails the build on gaps.
+- **Installer:** `L.T("…")` / `L.F("… {0}", x)` with tables generated from `installer/i18n.json` by `installer/make_i18n.js` (ASCII escapes; build.ps1 runs it). `--lang=pt` forces a language.
+- **Chat translator:** `target: ''` (the new default) means the language Fightcord is in.
+
 ## fightcord-core.js
 
 The shared core that every module runs on. The loader loads it first, then the modules, and

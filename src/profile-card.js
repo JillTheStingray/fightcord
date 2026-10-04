@@ -10,6 +10,8 @@
 
 let fc = null;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
 const avatar = (name) => fc.data.avatarUrl(name, (fc.app.user(name)[1] || {}).gravatar, 160);
@@ -38,33 +40,33 @@ function data() {
 function cardHtml() {
     const d = data();
     const t = d.tally;
-    const statusText = { live: 'In a match', away: 'Away', on: 'Online' }[d.status];
+    const statusText = E(T({ live: 'In a match', away: 'Away', on: 'Online' }[d.status]));
     const art = d.main && d.main.rom ? fc.data.artUrl(d.main.rom, 'https://web.fightcade.com/') : '';
     return `<div class="pcBanner"${art ? ` style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45)),url(&quot;${E(art)}&quot;),var(--fc-brand)"` : ''}></div>
         <div class="pcAva ${d.status}"><img src="${E(avatar(d.me))}" alt="" onerror="this.style.visibility='hidden'"><i></i></div>
         <div class="pcBody">
-            <div class="pcName">${E(d.me || 'You')}</div>
+            <div class="pcName">${E(d.me || T('You'))}</div>
             <div class="pcStatus ${d.status}">${statusText}</div>
             <div class="pcGrid">
-                <div class="pcBox"><span>Tonight</span><b>${d.tonight ? d.tRec.w + '–' + d.tRec.l : '—'}</b>
-                    <small>${d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? '🔥 ' + d.tStreak.n + ' win streak' : d.tStreak.n + ' losses in a row') : d.tonight ? fc.fmt.plural(d.tonight, 'set') : 'no sets yet'}</small></div>
-                <div class="pcBox"><span>All time</span><b>${t ? t.w + '–' + t.l : '—'}</b>
-                    <small>${t && t.rate != null ? Math.round(t.rate * 100) + '% · ' + t.n + ' sets' : 'play a set first'}</small></div>
-                <div class="pcBox"><span>Best streak</span><b>${d.st && d.st.bestW ? d.st.bestW + 'W' : '—'}</b><small>longest run of wins</small></div>
-                <div class="pcBox main"><span>Main game</span><b title="${E(d.main ? d.main.name : '')}">${E(d.main ? d.main.name : '—')}</b>
-                    <small>${d.main ? fc.fmt.plural(d.main.n, 'set') : ''}</small></div>
+                <div class="pcBox"><span>${E(T('Tonight'))}</span><b>${d.tonight ? d.tRec.w + '–' + d.tRec.l : '—'}</b>
+                    <small>${E(d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? '🔥 ' + T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : d.tonight ? T.plural(d.tonight, '{n} set', '{n} sets') : T('no sets yet'))}</small></div>
+                <div class="pcBox"><span>${E(T('All time'))}</span><b>${t ? t.w + '–' + t.l : '—'}</b>
+                    <small>${E(t && t.rate != null ? Math.round(t.rate * 100) + '% · ' + T.plural(t.n, '{n} set', '{n} sets') : T('play a set first'))}</small></div>
+                <div class="pcBox"><span>${E(T('Best streak'))}</span><b>${d.st && d.st.bestW ? d.st.bestW + 'W' : '—'}</b><small>${E(T('longest run of wins'))}</small></div>
+                <div class="pcBox main"><span>${E(T('Main game'))}</span><b title="${E(d.main ? d.main.name : '')}">${E(d.main ? d.main.name : '—')}</b>
+                    <small>${d.main ? E(T.plural(d.main.n, '{n} set', '{n} sets')) : ''}</small></div>
             </div>
             ${(() => { const g = mod('goals'); return g && g.summaryHtml ? g.summaryHtml() : ''; })()}
-            ${d.friends.length ? `<div class="pcFriends"><span>Friends online</span><div>${d.friends.slice(0, 6).map(n =>
+            ${d.friends.length ? `<div class="pcFriends"><span>${E(T('Friends online'))}</span><div>${d.friends.slice(0, 6).map(n =>
                 `<img src="${E(avatar(n))}" title="${E(n)}" alt="" onerror="this.style.visibility='hidden'">`).join('')}${d.friends.length > 6 ? `<em>+${d.friends.length - 6}</em>` : ''}</div></div>` : ''}
             <div class="pcSep"></div>
-            <div class="pcRow ${d.status !== 'away' ? 'on' : ''}" data-pc="online"><i class="dot on"></i>Online</div>
-            <div class="pcRow ${d.status === 'away' ? 'on' : ''}" data-pc="away"><i class="dot away"></i>Away</div>
+            <div class="pcRow ${d.status !== 'away' ? 'on' : ''}" data-pc="online"><i class="dot on"></i>${E(T('Online'))}</div>
+            <div class="pcRow ${d.status === 'away' ? 'on' : ''}" data-pc="away"><i class="dot away"></i>${E(T('Away'))}</div>
             <div class="pcSep"></div>
             <div class="pcBtns">
                 ${fc.ui.btn('Stats', { kind: 'sec', size: 'sm', icon: 'chart', attrs: 'data-pc="stats"' })}${fc.ui.btn('Friends', { kind: 'sec', size: 'sm', icon: 'users', attrs: 'data-pc="friends"' })}${fc.ui.btn('Settings', { kind: 'sec', size: 'sm', icon: 'gear', attrs: 'data-pc="settings"' })}
             </div>
-            <div class="pcRow danger" data-pc="logout">↩ Log out</div>
+            <div class="pcRow danger" data-pc="logout">↩ ${E(T('Log out'))}</div>
         </div>`;
 }
 

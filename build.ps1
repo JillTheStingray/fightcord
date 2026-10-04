@@ -30,7 +30,7 @@ $build = Join-Path $here 'build'
 $stage = Join-Path $build 'stage'
 $dist  = Join-Path $here 'dist'
 
-$plugins = @('fightcord-core.js', 'analytics.js', 'goals.js', 'progress.js', 'feed.js', 'welcome.js', 'events.js', 'backgrounds.js', 'branding.js', 'challenge-card.js', 'context-menu.js', 'inbox.js', 'music.js', 'profile-card.js', 'splash-art.js', 'challenge-filters.js', 'channel-banner.js', 'hover-cards.js', 'notes.js', 'chat-extras.js', 'discord-theme.js', 'discover.js', 'emoji.js', 'fightcord.js', 'friends.js',
+$plugins = @('fightcord-core.js', 'analytics.js', 'goals.js', 'progress.js', 'feed.js', 'welcome.js', 'events.js', 'i18n-pt.js', 'i18n-es.js', 'backgrounds.js', 'branding.js', 'challenge-card.js', 'context-menu.js', 'inbox.js', 'music.js', 'profile-card.js', 'splash-art.js', 'challenge-filters.js', 'channel-banner.js', 'hover-cards.js', 'notes.js', 'chat-extras.js', 'discord-theme.js', 'discover.js', 'emoji.js', 'fightcord.js', 'friends.js',
              'fontstyle.js', 'match-screens.js', 'member-list.js', 'scout.js', 'snapshot.js', 'stats.js', 'translate.js')
 
 # discord-rpc's optional native helper (register-scheme) is never used: discord-rpc loads it in a
@@ -107,6 +107,10 @@ function New-Zip([string]$dir, [string]$zipPath) {
 Write-Host 'Zipping payload'
 $zip = Join-Path $build 'payload.zip'
 New-Zip $stage $zip
+
+Write-Host 'Installer translations'
+& node (Join-Path $here 'installer\make_i18n.js') | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'installer translations incomplete - see installer\i18n.json' }
 
 Write-Host 'Compiling installer'
 $fw  = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'

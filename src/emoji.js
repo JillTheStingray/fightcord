@@ -21,6 +21,10 @@
 'use strict';
 
 let fc = null;
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
+// category names, translated where shown: N_('Smileys') N_('People') N_('Hearts & symbols') N_('Nature & food') N_('Objects & activities') N_('Flags')
 let store = null, config = null;          // emoji-config.json
 const DEFAULTS = {
     enabled: true,          // convert :shortcodes: in outgoing messages
@@ -242,7 +246,7 @@ function handleEmojiCommand(arg) {
         const name = (parts.shift() || '').toLowerCase().replace(/^:|:$/g, '');
         const emo = parts.join(' ');
         if (!/^[a-z0-9_+\-]{1,32}$/.test(name) || !emo) {
-            toast('Usage: /emoji add <name> <emoji or text>\ne.g. /emoji add salt 🧂'); return;
+            toast(T('Usage: /emoji add <name> <emoji or text>') + '\n' + T('e.g. /emoji add salt 🧂')); return;
         }
         config.custom[name] = emo;
         saveConfig();
@@ -251,29 +255,29 @@ function handleEmojiCommand(arg) {
     }
     if (sub === 'del' || sub === 'remove' || sub === 'rm') {
         const name = (parts.shift() || '').toLowerCase().replace(/^:|:$/g, '');
-        if (!config.custom[name]) { toast('No custom shortcode :' + name + ':'); return; }
+        if (!config.custom[name]) { toast(T('No custom shortcode :{name}:', { name })); return; }
         delete config.custom[name];
         saveConfig();
-        toast(':' + name + ': removed');
+        toast(T(':{name}: removed', { name }));
         return;
     }
     if (sub === 'find' || sub === 'search') {
         const hits = search(parts.join('_') || '', 20);
-        toast(hits.length ? hits.map(h => h.emoji + '  :' + h.name + ':').join('\n') : 'No matches');
+        toast(hits.length ? hits.map(h => h.emoji + '  :' + h.name + ':').join('\n') : T('No matches'));
         return;
     }
     if (sub === 'on' || sub === 'off') {
         config.enabled = sub === 'on';
         saveConfig();
         fc.settings.refresh('emoji');
-        toast('Emoji shortcodes ' + sub);
+        toast(T(sub === 'on' ? 'Emoji shortcodes on' : 'Emoji shortcodes off'));
         return;
     }
     const custom = Object.entries(config.custom).map(([k, v]) => v + '  :' + k + ':').join('\n');
-    toast('Emoji shortcodes: ' + (config.enabled ? 'on' : 'off') + '\n' +
+    toast(T(config.enabled ? 'Emoji shortcodes on' : 'Emoji shortcodes off') + '\n' +
         '/emoji add <name> <emoji>   /emoji del <name>\n' +
         '/emoji find <word>   /emoji on|off\n\n' +
-        'Your shortcodes:\n' + (custom || 'none yet'));
+        T('Your shortcodes:') + '\n' + (custom || T('none yet')));
 }
 
 /* --------------------------------------------------------- suggestion popup */
@@ -299,7 +303,7 @@ function renderPopup() {
     const { el, items, sel, query } = popup;
     const q = query.toLowerCase();
     el.innerHTML = `<div style="padding:4px 8px 6px;font-size:10px;letter-spacing:.06em;opacity:.5;
-            text-transform:uppercase;">emoji matching <b>:${escapeHtml(query)}</b></div>` +
+            text-transform:uppercase;">${escapeHtml(T('emoji matching'))} <b>:${escapeHtml(query)}</b></div>` +
         items.map((h, i) => {
             const at = h.name.indexOf(q);
             const nm = at < 0 ? escapeHtml(h.name) : escapeHtml(h.name.slice(0, at)) +
@@ -310,10 +314,10 @@ function renderPopup() {
                 <span style="flex:none;width:26px;font-size:18px;line-height:1.2;">${escapeHtml(h.emoji)}</span>
                 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
                     color:rgba(255,255,255,.8);">:${nm}:</span>
-                ${h.custom ? '<span style="flex:none;margin-left:6px;font-size:10px;opacity:.45;">custom</span>' : ''}
+                ${h.custom ? '<span style="flex:none;margin-left:6px;font-size:10px;opacity:.45;">' + escapeHtml(T('custom')) + '</span>' : ''}
             </div>`;
         }).join('') +
-        `<div style="padding:5px 8px 2px;font-size:10px;opacity:.4;">↑↓ select · Tab / Enter pick · Esc close</div>`;
+        `<div style="padding:5px 8px 2px;font-size:10px;opacity:.4;">${escapeHtml(T('↑↓ select · Tab / Enter pick · Esc close'))}</div>`;
 }
 
 function updatePopup(input) {
@@ -428,17 +432,17 @@ function pickerCell(name, emo) {
 
 function pickerBody(q) {
     const head = (t) => `<div style="padding:8px 4px 2px;font-size:10px;letter-spacing:.06em;opacity:.5;
-        text-transform:uppercase;">${escapeHtml(t)}</div>`;
+        text-transform:uppercase;">${escapeHtml(T(t))}</div>`;
     if (q) {
         const hits = search(q.replace(/\s+/g, '_'), 64);
         return hits.length ? hits.map(h => pickerCell(h.name, h.emoji)).join('')
-            : '<div style="padding:12px 4px;opacity:.5;">No matches</div>';
+            : '<div style="padding:12px 4px;opacity:.5;">' + escapeHtml(T('No matches')) + '</div>';
     }
     let html = '';
     const recent = config.recent.filter(lookup).slice(0, 16);
-    if (recent.length) html += head('Recent') + recent.map(n => pickerCell(n, lookup(n))).join('');
+    if (recent.length) html += head(N_('Recent')) + recent.map(n => pickerCell(n, lookup(n))).join('');
     const custom = Object.entries(config.custom);
-    if (custom.length) html += head('Custom') + custom.map(([n, e]) => pickerCell(n, e)).join('');
+    if (custom.length) html += head(N_('Custom')) + custom.map(([n, e]) => pickerCell(n, e)).join('');
     for (const [cat, items] of Object.entries(BY_CATEGORY)) {
         html += head(cat) + items.map(([n, e]) => pickerCell(n, e)).join('');
     }
@@ -459,12 +463,12 @@ function openPicker(anchor) {
         'border-radius:6px;padding:6px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);' +
         'left:' + Math.max(8, rect.right - W) + 'px;bottom:' + (window.innerHeight - rect.top + 8) + 'px;';
     box.innerHTML = `
-        <input class="emjSearch" type="text" placeholder="Search emoji…" style="display:block;box-sizing:border-box;
+        <input class="emjSearch" type="text" placeholder="${escapeHtml(T('Search emoji…'))}" style="display:block;box-sizing:border-box;
             width:100%;padding:6px 8px;border-radius:4px;outline:none;font-size:13px;color:#fff;
             background:rgba(0,0,0,.35);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));">
         <div class="emjGrid" style="height:260px;overflow-y:auto;margin-top:6px;"></div>
         <div class="emjFoot" style="height:18px;padding-top:6px;font-size:12px;opacity:.6;white-space:nowrap;
-            overflow:hidden;text-overflow:ellipsis;">Click to insert · shift-click keeps it open</div>`;
+            overflow:hidden;text-overflow:ellipsis;">${escapeHtml(T('Click to insert · shift-click keeps it open'))}</div>`;
 
     const grid = box.querySelector('.emjGrid');
     const foot = box.querySelector('.emjFoot');
@@ -508,7 +512,7 @@ function ensureChatButton() {
             btn = document.createElement('div');
             btn.className = 'emojiBtn';
             btn.textContent = '🙂';
-            btn.title = 'Emoji (or type :name: in chat)';
+            btn.title = T('Emoji (or type :name: in chat)');
             btn.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);z-index:50;' +
                 'cursor:pointer;font-size:14px;line-height:1;padding:3px 4px;border-radius:4px;' +
                 'background:rgba(0,0,0,.35);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +

@@ -15,6 +15,8 @@ let fc = null;
 let store = null, cfg = null;
 const DAY = 86400000, MIN = 60000;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 
 /* ------------------------------------------------------------------- pure */
 
@@ -129,7 +131,8 @@ function openLink(url) {
 
 function fire(ev, stage) {
     const mins = Math.max(1, Math.round((ev.date - Date.now()) / MIN));
-    const title = stage === 'start' ? ev.name + ' is starting' : ev.name + ' starts in ' + (mins >= 60 ? Math.round(mins / 60) + ' h' : mins + ' min');
+    const title = stage === 'start' ? T('{name} is starting', { name: ev.name })
+        : T('{name} starts in {time}', { name: ev.name, time: mins >= 60 ? T('{n} h', { n: Math.round(mins / 60) }) : T('{n} min', { n: mins }) });
     const actions = [];
     if (ev.channel) actions.push({ label: 'Open channel', fn: () => openChannel(ev.channel) });
     if (ev.link) actions.push({ label: 'Info', kind: 'sec', fn: () => openLink(ev.link) });
@@ -137,7 +140,7 @@ function fire(ev, stage) {
     fc.sound.play('ping');
     fc.emit('event:reminder', { event: ev, stage });
 }
-const clockOf = (t) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const clockOf = (t) => new Date(t).toLocaleTimeString(fc.t.locale(), { hour: 'numeric', minute: '2-digit' });
 
 /* ------------------------------------------------------------- the bells */
 
@@ -155,11 +158,11 @@ function toggle(ev) {
     decorate();
     fc.settings.refresh('events');
     document.querySelectorAll('.evPop .evList').forEach(l => { l.innerHTML = listHtml(12); });
-    fc.ui.toast(on ? 'Reminder off' : 'Reminder set', { sub: ev.name, icon: 'bell', ms: 2500 });
+    fc.ui.toast(T(on ? 'Reminder off' : 'Reminder set'), { sub: ev.name, icon: 'bell', ms: 2500 });
 }
 
 function bellHtml(on) {
-    return `<span class="evBell${on ? ' on' : ''}" title="${on ? 'Reminder set — click to remove' : 'Remind me'}">${fc.ui.icon('bell')}</span>`;
+    return `<span class="evBell${on ? ' on' : ''}" title="${E(T(on ? 'Reminder set — click to remove' : 'Remind me'))}">${fc.ui.icon('bell')}</span>`;
 }
 
 // a bell on every event card (Discover) and event tile (channels)
@@ -177,7 +180,7 @@ function decorate() {
             b.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault(); const k = b.dataset.key; const cur = known.get(k) || cfg.picked[k]; if (cur) toggle(cur); });
         } else if (b.classList.contains('on') !== on) {
             b.classList.toggle('on', on);
-            b.title = on ? 'Reminder set — click to remove' : 'Remind me';
+            b.title = T(on ? 'Reminder set — click to remove' : 'Remind me');
         }
         b.dataset.key = ev.key;
     };
@@ -203,8 +206,8 @@ function listHtml(max) {
     const list = upcoming().filter(e => e.why).slice(0, max || 20);
     if (!list.length) return fc.ui.empty({ icon: 'bell', title: 'No reminders yet', sub: 'Events for your games show up here; ring the bell on any other event to add it.' });
     return list.map(ev => `<div class="evRow" data-key="${E(ev.key)}">${fc.ui.icon('bell')}<div class="tx"><b>${E(ev.name)}</b>` +
-        `<span>${E(new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}${ev.region ? ' · ' + E(ev.region) : ''}` +
-        `${ev.why === 'auto' ? ' · your game' : ''}</span></div>` +
+        `<span>${E(new Date(ev.date).toLocaleString(fc.t.locale(), { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}${ev.region ? ' · ' + E(ev.region) : ''}` +
+        `${ev.why === 'auto' ? ' · ' + E(T('your game')) : ''}</span></div>` +
         `${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', title: 'Remove this reminder', attrs: 'data-ev="off"' })}</div>`).join('');
 }
 

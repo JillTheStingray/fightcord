@@ -21,6 +21,8 @@ let store = null, cfg = null;           // friends-config.json
 
 const DEFAULTS = { friends: [], notify: true, sound: true };
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const key = (n) => String(n || '').toLowerCase();
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 
@@ -117,8 +119,8 @@ function scan() {
         if (st.online) online++;
         // friends already here when Fightcade starts don't count as "came online"
         if (booted) {
-            if (quark && quark !== was.quark) alert(k, st.name + ' started a match', (st.opp ? 'vs ' + st.opp : '') + (st.game ? (st.opp ? ' · ' : '') + st.game : ''), st.name, 'match');
-            else if (st.online && !was.online) alert(k, st.name + ' is online', st.game ? 'in ' + st.game : '', st.name, 'online');
+            if (quark && quark !== was.quark) alert(k, T('{name} started a match', { name: st.name }), (st.opp ? 'vs ' + st.opp : '') + (st.game ? (st.opp ? ' · ' : '') + st.game : ''), st.name, 'match');
+            else if (st.online && !was.online) alert(k, T('{name} is online', { name: st.name }), st.game ? T('in {game}', { game: st.game }) : '', st.name, 'online');
         }
         prev.set(k, { online: st.online, quark });
     });
@@ -191,17 +193,17 @@ let openedOn = '';
 function rowHtml(st) {
     const cc = st.u && st.u.country && st.u.country.iso_code;
     let sub, status;
-    if (st.playing) { sub = `<b class="live">● In a match</b>${st.opp ? ' vs ' + E(st.opp) : ''}${st.game ? ' · ' + E(st.game) : ''}`; status = 'playing'; }
-    else if (st.online) { sub = (st.away ? 'Away' : 'Online') + (st.game ? ' · ' + E(st.game) : ''); status = st.away ? 'away' : 'on'; }
+    if (st.playing) { sub = `<b class="live">● ${E(T('In a match'))}</b>${st.opp ? ' vs ' + E(st.opp) : ''}${st.game ? ' · ' + E(st.game) : ''}`; status = 'playing'; }
+    else if (st.online) { sub = E(T(st.away ? 'Away' : 'Online')) + (st.game ? ' · ' + E(st.game) : ''); status = st.away ? 'away' : 'on'; }
     else {
         status = 'off';
         const l = last.get(key(st.name));
-        sub = !l ? 'Not in your channels'
-            : l.state === 'loading' ? 'Looking up their latest match…'
-            : l.state === 'err' ? 'Not in your channels · couldn’t look up (' + E(l.err) + ')'
-            : l.live ? `<b class="live">● LIVE</b> in ${E(l.game || 'a match')} (a channel you haven't joined)`
-            : l.when ? 'Last played ' + fc.fmt.ago(l.when) + (l.game ? ' · ' + E(l.game) : '')
-            : 'No recent matches';
+        sub = !l ? E(T('Not in your channels'))
+            : l.state === 'loading' ? E(T('Looking up their latest match…'))
+            : l.state === 'err' ? E(T('Not in your channels · couldn’t look up ({error})', { error: l.err }))
+            : l.live ? `<b class="live">● ${E(T('LIVE'))}</b> ${E(T('in {game} (a channel you haven\'t joined)', { game: l.game || T('a match') }))}`
+            : l.when ? E(T('Last played {when}', { when: fc.fmt.ago(l.when) })) + (l.game ? ' · ' + E(l.game) : '')
+            : E(T('No recent matches'));
     }
     const w = watchUrl(st);
     return `<div class="frRow" data-name="${E(st.name)}">
@@ -218,12 +220,12 @@ function render() {
     const all = cfg.friends.map(f => statusOf(f.name));
     const on = all.filter(s => s.online).sort((a, b) => (b.playing ? 1 : 0) - (a.playing ? 1 : 0) || a.name.localeCompare(b.name));
     const off = all.filter(s => !s.online).sort((a, b) => a.name.localeCompare(b.name));
-    const body = `<div class="frAddRow"><input class="fc-input frInput" type="text" placeholder="Add a friend by Fightcade name" spellcheck="false">` +
+    const body = `<div class="frAddRow"><input class="fc-input frInput" type="text" placeholder="${E(T('Add a friend by Fightcade name'))}" spellcheck="false">` +
         fc.ui.btn('Add', { kind: 'success', act: 'add' }) + `<span class="frNote"></span></div>` +
         (!all.length
             ? fc.ui.empty({ icon: 'users', title: 'No friends yet', sub: 'Add someone with the box above, or hit ☆ Add friend on anyone’s scout card.' })
-            : `<h4>Online — ${on.length}</h4>${on.length ? on.map(rowHtml).join('') : '<div class="fc-muted frMuted">Nobody in your channels right now.</div>'}` +
-              (off.length ? `<h4>Not in your channels — ${off.length}</h4>${off.map(rowHtml).join('')}` : ''));
+            : `<h4>${E(T('Online'))} — ${on.length}</h4>${on.length ? on.map(rowHtml).join('') : '<div class="fc-muted frMuted">' + E(T('Nobody in your channels right now.')) + '</div>'}` +
+              (off.length ? `<h4>${E(T('Not in your channels'))} — ${off.length}</h4>${off.map(rowHtml).join('')}` : ''));
     const box = page.body;
     // keep what's being typed in the add box
     const inp = box.querySelector('.frInput');
@@ -259,9 +261,9 @@ function submitAdd() {
     const name = inp.value.trim();
     if (!name) return;
     const say = (t) => { const n = page && page.body.querySelector('.frNote'); if (n) n.textContent = t; };
-    if (isFriend(name)) { say(name + ' is already a friend.'); return; }
-    if (add(name)) { inp.value = ''; say('Added ' + name + '.'); lookupOffline(); }
-    else say('That name can’t be added.');
+    if (isFriend(name)) { say(T('{name} is already a friend.', { name })); return; }
+    if (add(name)) { inp.value = ''; say(T('Added {name}.', { name })); lookupOffline(); }
+    else say(T('That name can’t be added.'));
 }
 
 function open() {

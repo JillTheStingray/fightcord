@@ -317,7 +317,13 @@
   const coreCode = await fetch('../fightcord-core.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
   if (coreCode) {
     new Function('module', 'exports', 'require', '__dirname', coreCode)(coreMod, coreMod.exports, req, '.');
-    coreMod.exports.boot(FCADE, { version: 'harness', safe: q.get('safe') === '1' });
+    coreMod.exports.boot(FCADE, { version: 'harness', safe: q.get('safe') === '1', lang: q.get('lang') || 'en' });
+    // ?lang=pt / es: the dictionary (Fightcade loads it with require; here it comes over fetch)
+    const lang = q.get('lang');
+    if (lang && lang !== 'en') {
+      const code = await fetch('../i18n-' + lang + '.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
+      if (code) { const m = { exports: {} }; new Function('module', 'exports', code)(m, m.exports); window.fightcord.t.add(lang, m.exports.strings || m.exports); }
+    }
     (window.__fcPlugins = window.__fcPlugins || {})['fightcord-core.js'] = coreMod.exports;
   }
   // simulations for testing (window.__sim): challenges, matches, joins, ...

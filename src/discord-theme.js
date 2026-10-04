@@ -39,11 +39,15 @@ const DEFAULTS = {
     bgDim: 0.6
 };
 
-const PRESETS = { dark: 'Dark', amoled: 'AMOLED black', classic: 'Classic grey', neon: 'FightCord Neon', custom: 'Custom (theme editor)' };
+const N_ = (s) => s;          // translated where shown
+const PRESETS = { dark: N_('Dark'), amoled: N_('AMOLED black'), classic: N_('Classic grey'), neon: N_('FightCord Neon'), custom: N_('Custom (theme editor)') };
 const FONTS = { '': 'Discord (gg sans)', "'Segoe UI', sans-serif": 'Segoe UI', "'Noto Sans', sans-serif": 'Noto Sans',
     'Arial, sans-serif': 'Arial', 'Verdana, sans-serif': 'Verdana', "'Trebuchet MS', sans-serif": 'Trebuchet MS' };
+// swatch names: N_('Blurple') N_('Green') N_('Red') N_('Pink') N_('Orange') N_('Teal')
 const SWATCHES = { Blurple: '#5865f2', Green: '#23a55a', Red: '#f23f43', Pink: '#eb459e', Orange: '#f0923a', Teal: '#1abc9c' };
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 
 // a..b by t, as #rrggbb
 function mixHex(a, b, t) {
@@ -642,11 +646,11 @@ function exportCode() {
 
 function importCode(code) {
     const m = String(code || '').trim().match(/^FCTHEME:([A-Za-z0-9+/=]+)$/);
-    if (!m) return 'That isn’t a Fightcord theme code (it starts with FCTHEME:).';
+    if (!m) return T('That isn’t a Fightcord theme code (it starts with FCTHEME:).');
     let t;
-    try { t = JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch (e) { return 'That theme code is damaged.'; }
-    if (!t || !PRESETS[t.preset] || !hexRgb(t.accent)) return 'That theme code is damaged.';
-    if (t.custom && !['bg', 'panel', 'dark', 'text'].every(k => hexRgb(t.custom[k]))) return 'That theme code has bad colours.';
+    try { t = JSON.parse(decodeURIComponent(escape(atob(m[1])))); } catch (e) { return T('That theme code is damaged.'); }
+    if (!t || !PRESETS[t.preset] || !hexRgb(t.accent)) return T('That theme code is damaged.');
+    if (t.custom && !['bg', 'panel', 'dark', 'text'].every(k => hexRgb(t.custom[k]))) return T('That theme code has bad colours.');
     config.preset = t.preset;
     config.accent = t.accent.toLowerCase();
     config.font = FONTS[t.font] !== undefined ? t.font : '';
@@ -787,56 +791,56 @@ function onKeyDown(e) {
     if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
         e.stopPropagation();
-        setOption('enabled', !config.enabled, 'Discord theme ' + (!config.enabled ? 'on' : 'off'));
+        setOption('enabled', !config.enabled, T(!config.enabled ? 'Discord theme on' : 'Discord theme off'));
     }
 }
 
 function onThemeCmd(arg) {
     const m = String(arg || '').match(/^(\w*)\s*(\S*)$/);
     const a = (m ? m[1] : '').toLowerCase(), v = m ? m[2] : '';
-    if (a === 'on' || a === 'off') setOption('enabled', a === 'on', 'Discord theme ' + a);
-    else if (a === 'art') setOption('chatArt', !config.chatArt, 'Game artwork behind chat ' + (!config.chatArt ? 'on' : 'off'));
-    else if (a === 'icons') setOption('gameIcons', !config.gameIcons, 'Game artwork icons ' + (!config.gameIcons ? 'on' : 'off'));
-    else if (a === 'names') setOption('cleanNames', !config.cleanNames, 'Cleaner name line ' + (!config.cleanNames ? 'on' : 'off'));
-    else if (a === 'size' && /^\d+$/.test(v)) { const px = Math.min(24, Math.max(12, +v)); setOption('chatSize', px, 'Chat text size ' + px + 'px'); }
-    else if (a === 'preset' && PRESETS[v.toLowerCase()]) setOption('preset', v.toLowerCase(), 'Theme: ' + PRESETS[v.toLowerCase()]);
+    if (a === 'on' || a === 'off') setOption('enabled', a === 'on', T(a === 'on' ? 'Discord theme on' : 'Discord theme off'));
+    else if (a === 'art') setOption('chatArt', !config.chatArt, T(!config.chatArt ? 'Game artwork behind chat on' : 'Game artwork behind chat off'));
+    else if (a === 'icons') setOption('gameIcons', !config.gameIcons, T(!config.gameIcons ? 'Game artwork icons on' : 'Game artwork icons off'));
+    else if (a === 'names') setOption('cleanNames', !config.cleanNames, T(!config.cleanNames ? 'Cleaner name line on' : 'Cleaner name line off'));
+    else if (a === 'size' && /^\d+$/.test(v)) { const px = Math.min(24, Math.max(12, +v)); setOption('chatSize', px, T('Chat text size {n}px', { n: px })); }
+    else if (a === 'preset' && PRESETS[v.toLowerCase()]) setOption('preset', v.toLowerCase(), T('Theme: {name}', { name: T(PRESETS[v.toLowerCase()]) }));
     else if (a === 'accent' && (hexRgb(v) || SWATCHES[v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()])) {
         const hex = hexRgb(v) ? '#' + v.replace(/^#/, '').toLowerCase() : SWATCHES[v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()];
-        setOption('accent', hex, 'Accent colour ' + hex);
-    } else fc.ui.toast('Discord theme: ' + (config.enabled ? 'on' : 'off') + (document.documentElement.classList.contains('dc-layout') ? '' : ' (safe mode: colours only)'), {
+        setOption('accent', hex, T('Accent colour {hex}', { hex }));
+    } else fc.ui.toast(T(config.enabled ? 'Discord theme on' : 'Discord theme off') + (document.documentElement.classList.contains('dc-layout') ? '' : ' ' + T('(safe mode: colours only)')), {
         icon: 'palette', ms: 9000, sub: '/theme on|off · art · icons · names · size 18 · preset amoled · accent pink · Ctrl+Shift+T' });
 }
 
 /* ------------------------------------------------------------- settings */
 
 function blockHtml() {
-    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span>` +
+    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${E(T(label))}</b>${hint ? `<small>${E(T(hint))}</small>` : ''}</span>` +
         `<input type="checkbox" class="fc-switch-in" data-opt="${key}"${config[key] ? ' checked' : ''}><i class="fc-switch"></i></label>`;
-    const sel = (key, label, opts, hint) => `<div class="fc-field"><span class="fc-field-text"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span>` +
-        `<select class="fc-select" data-opt="${key}">${opts.map(([v, l]) => `<option value="${E(v)}"${String(v) === String(config[key]) ? ' selected' : ''}>${E(l)}</option>`).join('')}</select></div>`;
+    const sel = (key, label, opts, hint) => `<div class="fc-field"><span class="fc-field-text"><b>${E(T(label))}</b>${hint ? `<small>${E(T(hint))}</small>` : ''}</span>` +
+        `<select class="fc-select" data-opt="${key}">${opts.map(([v, l]) => `<option value="${E(v)}"${String(v) === String(config[key]) ? ' selected' : ''}>${E(T(l))}</option>`).join('')}</select></div>`;
     const c = config.custom || {};
-    return `<div class="fc-set-title">Discord theme <small>— only you see it · Ctrl+Shift+T</small></div>
+    return `<div class="fc-set-title">${E(T('Discord theme'))} <small>— ${E(T('only you see it'))} · Ctrl+Shift+T</small></div>
         ${sw('enabled', 'Discord theme')}
         <div class="dcRest"${config.enabled ? '' : ' hidden'}>
         ${sel('preset', 'Theme', Object.keys(PRESETS).map(k => [k, PRESETS[k]]))}
-        <div class="fc-field"><span class="fc-field-text"><b>Accent colour</b></span><span class="dcSwatches">
-            ${Object.keys(SWATCHES).map(n => `<span class="dcSwatch${SWATCHES[n] === config.accent ? ' on' : ''}" data-hex="${SWATCHES[n]}" title="${n}" style="background:${SWATCHES[n]}"></span>`).join('')}
-            <input type="color" class="fc-input fc-color" data-opt="accent" value="${E(config.accent)}" title="Pick any colour"></span></div>
-        ${sel('chatSize', 'Chat text size', [14, 15, 16, 17, 18, 20, 22].map(n => [n, n + 'px']), 'Discord’s default is 16')}
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Accent colour'))}</b></span><span class="dcSwatches">
+            ${Object.keys(SWATCHES).map(n => `<span class="dcSwatch${SWATCHES[n] === config.accent ? ' on' : ''}" data-hex="${SWATCHES[n]}" title="${E(T(n))}" style="background:${SWATCHES[n]}"></span>`).join('')}
+            <input type="color" class="fc-input fc-color" data-opt="accent" value="${E(config.accent)}" title="${E(T('Pick any colour'))}"></span></div>
+        ${sel('chatSize', 'Chat text size', [14, 15, 16, 17, 18, 20, 22].map(n => [n, n + 'px']), N_('Discord’s default is 16'))}
         ${sw('gameIcons', 'Game artwork icons', 'In the left rail')}
         ${sw('chatArt', 'Artwork behind chat', 'Fightcade’s game picture, faded')}
         ${sw('cleanNames', 'Cleaner name line', 'Hide thumbs-up / dot / ping next to names')}
-        <div class="fc-set-title" style="margin-top:16px">Theme editor <small>— pick colours to make your own (switches to Custom)</small></div>
-        <div class="fc-field"><span class="fc-field-text"><b>Colours</b></span><span class="dcColors">${[['bg', 'Background'], ['panel', 'Panels'], ['dark', 'Darkest'], ['text', 'Text']].map(([k, l]) =>
-            `<label><input type="color" class="fc-input fc-color" data-c="${k}" value="${E(c[k] || '#000000')}"><span>${l}</span></label>`).join('')}</span></div>
+        <div class="fc-set-title" style="margin-top:16px">${E(T('Theme editor'))} <small>— ${E(T('pick colours to make your own (switches to Custom)'))}</small></div>
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Colours'))}</b></span><span class="dcColors">${[['bg', N_('Background')], ['panel', N_('Panels')], ['dark', N_('Darkest')], ['text', N_('Text')]].map(([k, l]) =>
+            `<label><input type="color" class="fc-input fc-color" data-c="${k}" value="${E(c[k] || '#000000')}"><span>${E(T(l))}</span></label>`).join('')}</span></div>
         ${sel('font', 'Font', Object.keys(FONTS).map(k => [k, FONTS[k]]))}
-        <div class="fc-field"><span class="fc-field-text"><b>Chat background</b><small>${config.bgFile ? 'A picture is set' : 'Any picture up to 3 MB'}</small></span>
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Chat background'))}</b><small>${E(T(config.bgFile ? 'A picture is set' : 'Any picture up to 3 MB'))}</small></span>
             ${fc.ui.btn('Choose picture…', { kind: 'sec', size: 'sm', act: 'pick' })}${config.bgFile ? fc.ui.btn('Remove', { kind: 'ghost', size: 'sm', act: 'nopic' }) : ''}
             <input type="file" class="dcFile" accept="image/*" style="display:none"></div>
-        <div class="fc-field"${config.bgFile ? '' : ' hidden'}><span class="fc-field-text"><b>Darken picture</b></span>
+        <div class="fc-field"${config.bgFile ? '' : ' hidden'}><span class="fc-field-text"><b>${E(T('Darken picture'))}</b></span>
             <input type="range" class="fc-slider" data-dim="1" min="0" max="90" value="${Math.round((+config.bgDim || 0) * 100)}"><span class="fc-slider-v">${Math.round((+config.bgDim || 0) * 100)}%</span></div>
-        <div class="fc-field"><span class="fc-field-text"><b>Share</b><small>A theme code for friends (without the picture)</small></span>
-            <input type="text" class="fc-input dcCode" placeholder="Paste a FCTHEME: code">${fc.ui.btn('Import', { kind: 'sec', size: 'sm', act: 'import' })}${fc.ui.btn('Copy mine', { size: 'sm', icon: 'copy', act: 'export' })}</div>
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Share'))}</b><small>${E(T('A theme code for friends (without the picture)'))}</small></span>
+            <input type="text" class="fc-input dcCode" placeholder="${E(T('Paste a FCTHEME: code'))}">${fc.ui.btn('Import', { kind: 'sec', size: 'sm', act: 'import' })}${fc.ui.btn('Copy mine', { size: 'sm', icon: 'copy', act: 'export' })}</div>
         <div class="dcEdMsg"></div>
         </div>`;
 }
@@ -857,13 +861,13 @@ function wire(el) {
         else if (t.classList.contains('dcFile')) {
             const f = t.files && t.files[0];
             if (!f) return;
-            if (f.size > 3 * 1024 * 1024) { msg('That picture is over 3 MB — pick a smaller one.', true); return; }
+            if (f.size > 3 * 1024 * 1024) { msg(T('That picture is over 3 MB — pick a smaller one.'), true); return; }
             const rd = new FileReader();
             rd.onload = () => {
-                try { if (!saveBackground(String(rd.result))) throw new Error('not a picture'); loadBackground(); store.save(); refresh(); msg('Background set.'); }
-                catch (err) { msg('Couldn’t use that picture (' + err.message + ').', true); }
+                try { if (!saveBackground(String(rd.result))) throw new Error('not a picture'); loadBackground(); store.save(); refresh(); msg(T('Background set.')); }
+                catch (err) { msg(T('Couldn’t use that picture ({error}).', { error: err.message }), true); }
             };
-            rd.onerror = () => msg('Couldn’t read that picture.', true);
+            rd.onerror = () => msg(T('Couldn’t read that picture.'), true);
             rd.readAsDataURL(f);
         }
     });
@@ -893,14 +897,14 @@ function wire(el) {
             bgUrl = '';
             store.save();
             refresh();
-            msg('Background removed.');
+            msg(T('Background removed.'));
         } else if (act === 'export') {
             const code = exportCode();
             el.querySelector('.dcCode').value = code;
-            msg(fc.ui.copy(code) ? 'Theme code copied — send it to a friend.' : 'Copy the code from the box.');
+            msg(T(fc.ui.copy(code) ? 'Theme code copied — send it to a friend.' : 'Copy the code from the box.'));
         } else if (act === 'import') {
             const err = importCode(el.querySelector('.dcCode').value);
-            msg(err || 'Theme imported.', !!err);
+            msg(err || T('Theme imported.'), !!err);
         }
     });
 }

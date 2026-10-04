@@ -22,6 +22,8 @@ let store = null, cfg = null;          // feed-config.json
 const FILE = path.join(__dirname, 'feed-history.json');
 const MAX = 200;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const mod = (id) => fc.modules.get(id);
 const short = (n) => String(n || '').replace(/\s*\([^)]*\)\s*$/, '');
 
@@ -55,7 +57,7 @@ function push(it) {
     if (items.length > MAX) items.splice(0, items.length - MAX);
     save();
     fc.emit('feed:item', it);
-    if (it.big && cfg.toastBig && it.kind !== 'friend') fc.ui.toast(it.plain || 'Something happened', { icon: ICON[it.kind] || 'bell', ms: 7000, onClick: () => open(it.ch) });
+    if (it.big && cfg.toastBig && it.kind !== 'friend') fc.ui.toast(it.plain || T('Something happened'), { icon: ICON[it.kind] || 'bell', ms: 7000, onClick: () => open(it.ch) });
     render();
     refreshPills();
 }
@@ -128,11 +130,11 @@ function flushJoins() {
             map.delete(ch);
             const names = p.names;
             const friends = names.filter(isFriend);
-            push({ kind, ch, text: groupLine(names, kind, nameHtml), names, low: kind === 'leave', friend: friends.length > 0, plain: groupLine(names, kind) });
+            push({ kind, ch, text: groupLine(names, kind, nameHtml, T), names, low: kind === 'leave', friend: friends.length > 0, plain: groupLine(names, kind, null, T) });
             // a top-100 player arriving is worth its own line
             if (kind === 'join') names.forEach(n => {
                 const pos = topPos(n, ch);
-                if (pos && pos <= 100) push({ kind: 'top', ch, big: true, names: [n], text: nameHtml(n) + ' just arrived — <span class="fdTag">#' + pos + '</span> on the leaderboard', plain: n + ' (#' + pos + ') just arrived' });
+                if (pos && pos <= 100) push({ kind: 'top', ch, big: true, names: [n], text: T('{name} just arrived — {pos} on the leaderboard', { name: nameHtml(n), pos: '<span class="fdTag">#' + pos + '</span>' }), plain: T('{name} (#{pos}) just arrived', { name: n, pos }) });
             });
         });
     });
@@ -158,7 +160,7 @@ function scanMatches(users, mine) {
         const [a, b] = m.players;
         const friend = m.players.some(isFriend);
         push({ kind: 'match', ch: m.ch, quark, watch, names: m.players, friend,
-            text: nameHtml(a) + (b ? ' vs ' + nameHtml(b) : '') + ' started a match' + rankPair(ranks), plain: a + (b ? ' vs ' + b : '') + ' started' });
+            text: T('{players} started a match', { players: nameHtml(a) + (b ? ' vs ' + nameHtml(b) : '') }) + rankPair(ranks), plain: T('{players} started', { players: a + (b ? ' vs ' + b : '') }) });
     });
     // ended: no one is playing it any more
     knownQuarks.forEach((k, quark) => {
@@ -175,13 +177,19 @@ function rankPair(ranks) {
 
 const interesting = (k) => worthLookup(k.players, k.ranks, isFriend, (n) => topPos(n, k.ch));
 
-// pure: "A joined" / "A and B joined" / "A, B and 3 others joined" (wrap formats each name)
-function groupLine(names, kind, wrap) {
+// pure: "A joined" / "A and B joined" / "A, B and 3 others joined" (wrap formats each name,
+// tr translates: N_('{a} joined') N_('{a} left') N_('{a} and {b} joined') N_('{a} and {b} left')
+// N_('{a}, {b} and 1 other joined') N_('{a}, {b} and 1 other left') N_('{a}, {b} and {n} others joined') N_('{a}, {b} and {n} others left'))
+function groupLine(names, kind, wrap, tr) {
     const w = wrap || String;
-    const verb = kind === 'join' ? ' joined' : ' left';
-    if (names.length <= 2) return names.map(w).join(' and ') + verb;
-    const more = names.length - 2;
-    return names.slice(0, 2).map(w).join(', ') + ' and ' + more + ' other' + (more === 1 ? '' : 's') + verb;
+    const f = tr || ((s, v) => s.replace(/\{(\w+)\}/g, (m, k) => v[k]));
+    const j = kind === 'join';
+    const [a, b] = names.slice(0, 2).map(w);
+    if (names.length === 1) return f(j ? '{a} joined' : '{a} left', { a });
+    if (names.length === 2) return f(j ? '{a} and {b} joined' : '{a} and {b} left', { a, b });
+    const n = names.length - 2;
+    return n === 1 ? f(j ? '{a}, {b} and 1 other joined' : '{a}, {b} and 1 other left', { a, b })
+        : f(j ? '{a}, {b} and {n} others joined' : '{a}, {b} and {n} others left', { a, b, n });
 }
 
 // pure: is a finished match worth looking up? a friend in it, a rank gap of 2+, or a top-100 player
@@ -231,16 +239,16 @@ function result(k, winner, loser, ws, ls) {
     const friend = isFriend(winner) || isFriend(loser);
     const score = ' <span class="fdTag">' + ws + '–' + ls + '</span>';
     if (upset) push({ kind: 'upset', ch: k.ch, big: true, friend, names: [winner, loser],
-        text: '<span class="fdHot">Upset!</span> ' + (rw ? L(rw) + '-ranked ' : '') + nameHtml(winner) + ' beat ' + (rl ? L(rl) + '-ranked ' : '') + nameHtml(loser) + score,
-        plain: 'Upset! ' + winner + ' beat ' + loser + ' ' + ws + '–' + ls });
-    else push({ kind: 'result', ch: k.ch, friend, names: [winner, loser], text: nameHtml(winner) + ' beat ' + nameHtml(loser) + score, plain: winner + ' beat ' + loser });
+        text: '<span class="fdHot">' + E(T('Upset!')) + '</span> ' + T('{winner} beat {loser}', { winner: (rw ? T('{rank}-ranked', { rank: L(rw) }) + ' ' : '') + nameHtml(winner), loser: (rl ? T('{rank}-ranked', { rank: L(rl) }) + ' ' : '') + nameHtml(loser) }) + score,
+        plain: T('Upset!') + ' ' + T('{winner} beat {loser}', { winner, loser }) + ' ' + ws + '–' + ls });
+    else push({ kind: 'result', ch: k.ch, friend, names: [winner, loser], text: T('{winner} beat {loser}', { winner: nameHtml(winner), loser: nameHtml(loser) }) + score, plain: T('{winner} beat {loser}', { winner, loser }) });
     // streaks from the results we've seen
     const kw = winner.toLowerCase();
     wins.set(kw, (wins.get(kw) || 0) + 1);
     wins.set(loser.toLowerCase(), 0);
     const n = wins.get(kw);
     if (n >= 3) push({ kind: 'streak', ch: k.ch, big: true, friend: isFriend(winner), names: [winner],
-        text: nameHtml(winner) + ' has won <b>' + n + ' in a row</b>', plain: winner + ' has won ' + n + ' in a row' });
+        text: T('{name} has won {n} in a row', { name: nameHtml(winner), n: '<b>' + n + '</b>' }), plain: T('{name} has won {n} in a row', { name: winner, n }) });
 }
 
 /* --------------------------------------------------------------------- panel */
@@ -277,7 +285,7 @@ function render() {
     if (head) head.textContent = short(ch);
     panel.querySelectorAll('.fdFilters [data-f]').forEach(c => c.classList.toggle('on', c.dataset.f === cfg.filter));
     const html = list.length ? list.map(itemHtml).join('')
-        : fc.ui.empty({ icon: 'bell', title: 'Quiet for now', sub: cfg.filter === 'all' ? 'Joins, matches, upsets and streaks in this channel show up here.' : 'Nothing that matches this filter yet.' });
+        : fc.ui.empty({ icon: 'bell', title: 'Quiet for now', sub: T(cfg.filter === 'all' ? 'Joins, matches, upsets and streaks in this channel show up here.' : 'Nothing that matches this filter yet.') });
     const body = panel.querySelector('.fdBody');
     if (body.__html !== html) { body.__html = html; body.innerHTML = html; }
     lastOpened[ch] = Date.now();
@@ -290,9 +298,9 @@ function open(ch) {
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'fdPanel';
-        panel.innerHTML = `<div class="fdHead">${fc.ui.icon('bell')}<div class="tt"><b>What’s happening</b><span class="ch"></span></div>` +
+        panel.innerHTML = `<div class="fdHead">${fc.ui.icon('bell')}<div class="tt"><b>${E(T('What’s happening'))}</b><span class="ch"></span></div>` +
             `${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close (Esc)' })}</div>` +
-            `<div class="fdFilters">${[['all', 'Everything'], ['friends', 'Friends'], ['big', 'Big moments']].map(([k, l]) => `<span class="fc-chip" data-f="${k}" data-act="f">${l}</span>`).join('')}</div>` +
+            `<div class="fdFilters">${[['all', T('Everything')], ['friends', T('Friends')], ['big', T('Big moments')]].map(([k, l]) => `<span class="fc-chip" data-f="${k}" data-act="f">${E(l)}</span>`).join('')}</div>` +
             `<div class="fdBody"></div>`;
         panel.addEventListener('mousedown', (e) => e.stopPropagation());
         panel.addEventListener('click', (e) => {
@@ -327,14 +335,14 @@ function refreshPills() {
         if (!pill) {
             pill = document.createElement('div');
             pill.className = 'fdPill';
-            pill.title = 'What’s happening in this channel';
+            pill.title = T('What’s happening in this channel');
             pill.addEventListener('mousedown', (e) => e.stopPropagation());
             pill.addEventListener('click', (e) => { e.stopPropagation(); if (panel && panelCh === pill.dataset.ch) close(); else open(pill.dataset.ch); });
             actions.insertBefore(pill, actions.firstChild);
         }
         pill.dataset.ch = ch;
         const n = panel && panelCh === ch ? 0 : unread(ch);
-        const html = fc.ui.icon('bell') + '<span>Feed</span>' + (n ? fc.ui.badge(n) : '');
+        const html = fc.ui.icon('bell') + '<span>' + E(T('Feed')) + '</span>' + (n ? fc.ui.badge(n) : '');
         if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; }
     });
 }

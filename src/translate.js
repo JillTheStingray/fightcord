@@ -21,23 +21,29 @@
 'use strict';
 
 let fc = null;
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 let store = null, config = null;          // translate-config.json
 
 /* --------------------------------------------------------------- languages */
 
 // Chromium 80 has no Intl.DisplayNames (it landed in 81), so names are listed.
+// language names are translated where shown
+const N_ = (s) => s;
 const LANGS = {
-    en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian',
-    nl: 'Dutch', ru: 'Russian', uk: 'Ukrainian', pl: 'Polish', tr: 'Turkish', ar: 'Arabic',
-    ja: 'Japanese', ko: 'Korean', 'zh-CN': 'Chinese', 'zh-TW': 'Chinese (Traditional)', zh: 'Chinese',
-    ms: 'Malay', id: 'Indonesian', tl: 'Filipino', fil: 'Filipino', vi: 'Vietnamese', th: 'Thai',
-    hi: 'Hindi', bn: 'Bengali', ur: 'Urdu', fa: 'Persian', he: 'Hebrew', iw: 'Hebrew', el: 'Greek',
-    sv: 'Swedish', no: 'Norwegian', da: 'Danish', fi: 'Finnish', cs: 'Czech', sk: 'Slovak',
-    hu: 'Hungarian', ro: 'Romanian', bg: 'Bulgarian', sr: 'Serbian', hr: 'Croatian', ca: 'Catalan',
-    gl: 'Galician', eu: 'Basque', sw: 'Swahili', af: 'Afrikaans', lt: 'Lithuanian', lv: 'Latvian',
-    et: 'Estonian', sl: 'Slovenian', is: 'Icelandic', ga: 'Irish', cy: 'Welsh', la: 'Latin'
+    en: N_('English'), es: N_('Spanish'), pt: N_('Portuguese'), fr: N_('French'), de: N_('German'), it: N_('Italian'),
+    nl: N_('Dutch'), ru: N_('Russian'), uk: N_('Ukrainian'), pl: N_('Polish'), tr: N_('Turkish'), ar: N_('Arabic'),
+    ja: N_('Japanese'), ko: N_('Korean'), 'zh-CN': N_('Chinese'), 'zh-TW': N_('Chinese (Traditional)'), zh: N_('Chinese'),
+    ms: N_('Malay'), id: N_('Indonesian'), tl: N_('Filipino'), fil: N_('Filipino'), vi: N_('Vietnamese'), th: N_('Thai'),
+    hi: N_('Hindi'), bn: N_('Bengali'), ur: N_('Urdu'), fa: N_('Persian'), he: N_('Hebrew'), iw: N_('Hebrew'), el: N_('Greek'),
+    sv: N_('Swedish'), no: N_('Norwegian'), da: N_('Danish'), fi: N_('Finnish'), cs: N_('Czech'), sk: N_('Slovak'),
+    hu: N_('Hungarian'), ro: N_('Romanian'), bg: N_('Bulgarian'), sr: N_('Serbian'), hr: N_('Croatian'), ca: N_('Catalan'),
+    gl: N_('Galician'), eu: N_('Basque'), sw: N_('Swahili'), af: N_('Afrikaans'), lt: N_('Lithuanian'), lv: N_('Latvian'),
+    et: N_('Estonian'), sl: N_('Slovenian'), is: N_('Icelandic'), ga: N_('Irish'), cy: N_('Welsh'), la: N_('Latin')
 };
-const langName = (c) => LANGS[c] || LANGS[String(c).split('-')[0]] || String(c).toUpperCase();
+const langName = (c) => { const n = LANGS[c] || LANGS[String(c).split('-')[0]]; return n ? (fc ? fc.t(n) : n) : String(c).toUpperCase(); };
+// '' (the default) = the language Fightcord itself is in
+const target = () => config.target || (fc ? fc.t.lang() : 'en');
 
 // Offered in the settings dropdown (any code works via /tr <code>).
 const TARGETS = ['en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'ru', 'pl', 'tr', 'ar', 'ja', 'ko',
@@ -86,7 +92,7 @@ function worthTranslating(text) {
     const words = t.toLowerCase().match(/[\p{L}']+/gu) || [];
     if (!words.length) return false;
     if (words.every(w => PLAIN.has(w) || /^(ha)+h?$|^(he)+$|^(ja)+$|^(ka)+$|^(k)+$|^x+d+$/.test(w))) return false;
-    if (config.target.split('-')[0] === 'en' && mostlyEnglish(words)) return false;
+    if (target().split('-')[0] === 'en' && mostlyEnglish(words)) return false;
     return true;
 }
 
@@ -140,7 +146,7 @@ let backoff = 30000;
 const QUEUE_MAX = 20;
 
 function translate(text) {
-    const key = config.target + '\n' + text;
+    const key = target() + '\n' + text;
     if (cache.has(key)) return Promise.resolve(cache.get(key));
     const queued = queue.find(j => j.key === key);           // same text already waiting
     if (queued) return new Promise((resolve) => { queued.also = (queued.also || []).concat(resolve); });
@@ -164,11 +170,11 @@ async function pump() {
     const job = queue.shift();
     try {
         if (cache.has(job.key)) { settle(job, cache.get(job.key)); return; }
-        const d = await request(job.text, config.target);
+        const d = await request(job.text, target());
         const out = (d.sentences || []).map(x => x.trans || '').join('').trim();
         const src = d.src || (d.ld_result && d.ld_result.srclangs && d.ld_result.srclangs[0]) || '';
         const conf = typeof d.confidence === 'number' ? d.confidence : 1;
-        const same = !out || !src || src.split('-')[0] === config.target.split('-')[0] || norm(out) === norm(job.text);
+        const same = !out || !src || src.split('-')[0] === target().split('-')[0] || norm(out) === norm(job.text);
         const val = (same || conf < 0.5) ? null : { text: out, src };
         remember(job.key, val);
         backoff = 30000;
@@ -216,8 +222,8 @@ function render(line, tr) {
     { const old = bc.querySelector(':scope > .fcTr'); if (old) old.remove(); }
     const div = document.createElement('div');
     div.className = 'fcTr';
-    div.innerHTML = ICON + '<span class="fcTrText"></span><div class="fcTrMeta">(translated from ' +
-        langName(tr.src) + ' – <span class="fcTrDismiss">Dismiss</span>)</div>';
+    div.innerHTML = ICON + '<span class="fcTrText"></span><div class="fcTrMeta">(' + fc.fmt.esc(T('translated from {language}', { language: langName(tr.src) })) +
+        ' – <span class="fcTrDismiss">' + fc.fmt.esc(T('Dismiss')) + '</span>)</div>';
     div.querySelector('.fcTrText').textContent = tr.text;
     div.querySelector('.fcTrDismiss').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -293,14 +299,14 @@ function setTarget(code) {
 }
 
 function onCmd(arg) {
-    if (/^(on|off)$/i.test(arg)) { setEnabled(arg.toLowerCase() === 'on'); say('Chat translator ' + arg.toLowerCase()); return; }
+    if (/^(on|off)$/i.test(arg)) { setEnabled(arg.toLowerCase() === 'on'); say(T(arg.toLowerCase() === 'on' ? 'Chat translator on' : 'Chat translator off')); return; }
     if (/^[a-z]{2,3}(-[A-Za-z]{2})?$/i.test(arg)) {
         const code = arg.length > 3 ? arg.slice(0, 2).toLowerCase() + '-' + arg.slice(3).toUpperCase() : arg.toLowerCase();
         setTarget(code);
-        say('Translating chat into ' + langName(code));
+        say(T('Translating chat into {language}', { language: langName(code) }));
         return;
     }
-    say('Chat translator: ' + (config.enabled ? 'on' : 'off') + ' → ' + langName(config.target), '/tr on|off · /tr <language code>, e.g. /tr es, /tr pt, /tr ja');
+    say(T(config.enabled ? 'Chat translator on' : 'Chat translator off') + ' → ' + langName(target()), T('/tr on|off · /tr <language code>, e.g. /tr es, /tr pt, /tr ja'));
 }
 
 // On demand (chat-extras' hover toolbar): skip the auto-filter, translate this line now.
@@ -313,7 +319,7 @@ function translateLine(line) {
             line.dataset.trSrc = text;
             delete line.dataset.trDismissed;
             render(line, tr);
-        } else say('Already in ' + langName(config.target) + ' (or nothing to translate)');
+        } else say(T('Already in {language} (or nothing to translate)', { language: langName(target()) }));
         return tr;
     });
 }
@@ -322,7 +328,7 @@ function translateLine(line) {
 
 function start(f) {
     fc = f;
-    store = fc.config('translate', { enabled: true, target: 'en' });
+    store = fc.config('translate', { enabled: true, target: '' });        // '' = the language Fightcord is in
     config = store.data;
     window.__fcTranslateLoaded = true;
     fc.ui.style('fcTrStyle', CSS);
@@ -332,7 +338,8 @@ function start(f) {
     fc.tick(sweep, 2000);
     fc.cmd('tr', 'Chat translator: on / off / language', onCmd, { args: 'on|off|<code>' });
     fc.cmd('translate', 'Chat translator: on / off / language', onCmd, { args: 'on|off|<code>' });
-    const langs = () => TARGETS.concat(TARGETS.includes(config.target) ? [] : [config.target]).map(c => [c, langName(c)]);
+    const langs = () => [['', T('Same as Fightcord ({language})', { language: langName(fc.t.lang()) })]]
+        .concat(TARGETS.concat(!config.target || TARGETS.includes(config.target) ? [] : [config.target]).map(c => [c, langName(c)]));
     fc.settings.block({
         id: 'translate', section: 'chat', title: 'Chat translator', hint: '— other players’ messages, via Google Translate', store, order: 20,
         fields: [
@@ -342,7 +349,7 @@ function start(f) {
         ]
     });
     sweep();
-    fc.log('ready -', config.enabled ? 'on' : 'off', '→', config.target);
+    fc.log('ready -', config.enabled ? 'on' : 'off', '→', target());
     return api;
 }
 

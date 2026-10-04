@@ -56,7 +56,8 @@ function loadPlugins(FCADE, manifest, safe) {
     const off = new Set(Array.isArray(manifest.off) ? manifest.off : []);
     let files = [];
     try {
-        files = fs.readdirSync(DIR).filter(f => f.endsWith('.js') && f !== CORE_FILE).sort();
+        // i18n-*.js are the core's translations, not modules
+        files = fs.readdirSync(DIR).filter(f => f.endsWith('.js') && f !== CORE_FILE && !/^i18n-/.test(f)).sort();
     } catch (e) {
         LOG('no plugin folder at', DIR);
         return;

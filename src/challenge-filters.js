@@ -20,7 +20,8 @@
 let fc = null;
 let store = null, cfg = null;          // challenge-filters-config.json
 
-const MODES = [['off', 'Off'], ['warn', 'Warn'], ['decline', 'Decline']];
+const N_ = (s) => s;          // translated where it's shown
+const MODES = [['off', N_('Off')], ['warn', N_('Warn')], ['decline', N_('Decline')]];
 const RANK_LETTERS = ['E', 'D', 'C', 'B', 'A', 'S'];          // rank number 1..6
 const DEFAULT_RULES = {
     ping:    { mode: 'off', max: 150 },
@@ -34,6 +35,8 @@ const DEFAULT_RULES = {
 };
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const nameList = (txt) => String(txt || '').split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
 
 /* -------------------------------------------------------------------- rules */
@@ -56,7 +59,7 @@ function check(name, channel, ranked) {
     const add = (rule, text) => { if (R[rule].mode !== 'off') out.push({ rule, mode: R[rule].mode, text }); };
     const lower = name.toLowerCase();
 
-    if (nameList(R.block.names).includes(lower)) add('block', 'on your block list');
+    if (nameList(R.block.names).includes(lower)) add('block', T('on your block list'));
     if (typeof u.ping === 'number' && u.ping > 0 && u.ping > +R.ping.max) add('ping', u.ping + ' ms');
     if (u.proxy) add('vpn', 'VPN');
     else if (u.wlan) add('wifi', 'Wi-Fi');
@@ -77,13 +80,13 @@ function check(name, channel, ranked) {
     }
 
     const ft = +ranked || 0;
-    if (R.ft.mode !== 'off' && !R.ft.allow.map(Number).includes(ft)) add('ft', ft ? 'FT' + ft : 'casual');
+    if (R.ft.mode !== 'off' && !R.ft.allow.map(Number).includes(ft)) add('ft', ft ? 'FT' + ft : T('casual'));
 
     const rank = +((u.channelRank || {})[channel] || 0);
     const min = RANK_LETTERS.indexOf(R.rank.min) + 1;
-    if (rank && min && rank < min) add('rank', 'rank ' + RANK_LETTERS[rank - 1]);
+    if (rank && min && rank < min) add('rank', T('rank {rank}', { rank: RANK_LETTERS[rank - 1] }));
 
-    if (R.stranger.mode !== 'off' && recent && !recent.has(lower)) add('stranger', "haven't played");
+    if (R.stranger.mode !== 'off' && recent && !recent.has(lower)) add('stranger', T("haven't played"));
     return out;
 }
 
@@ -115,7 +118,7 @@ function onDeclined(ctx) {
 function note(name, channel, ranked, reasons, declined) {
     filtered.unshift({ at: Date.now(), name, channel, ft: +ranked || 0, why: reasons.map(r => r.text).join(' · '), declined });
     if (filtered.length > 100) filtered.pop();
-    if (declined) fc.ui.toast('Declined ' + name + ' — ' + reasons.map(r => r.text).join(' · '), {
+    if (declined) fc.ui.toast(T('Declined {name}', { name }) + ' — ' + reasons.map(r => r.text).join(' · '), {
         kind: 'danger', icon: 'shield', ms: 7000, sub: 'They can challenge again. Filters: Settings → Scout & challenges, or /filters' });
     fc.settings.refresh('challenge-filters');
 }
@@ -129,43 +132,43 @@ function tagRow(name, reasons) {
     const pill = document.createElement('span');
     pill.className = 'fcfWarn';
     pill.textContent = '⚠ ' + reasons.map(r => r.text).join(' · ');
-    pill.title = 'Challenge filters (warn only)';
+    pill.title = T('Challenge filters (warn only)');
     row.appendChild(pill);
 }
 
 /* ----------------------------------------------------------------- settings */
 
 const RULE_LABELS = [
-    ['ping', 'Ping over'], ['wifi', 'Wi-Fi'], ['vpn', 'VPN'], ['country', 'Country not allowed'],
-    ['ft', 'FT length not allowed'], ['rank', 'Rank below'], ['stranger', "Players you haven't played"], ['block', 'Block list']
+    ['ping', N_('Ping over')], ['wifi', 'Wi-Fi'], ['vpn', 'VPN'], ['country', N_('Country not allowed')],
+    ['ft', N_('FT length not allowed')], ['rank', N_('Rank below')], ['stranger', N_("Players you haven't played")], ['block', N_('Block list')]
 ];
 const FTS = [[0, 'casual'], [2, 'FT2'], [3, 'FT3'], [5, 'FT5'], [10, 'FT10']];
 
 function ruleExtra(k) {
     const R = cfg.rules;
     if (k === 'ping') return `<input type="number" class="fc-input" data-k="ping.max" min="30" max="500" step="10" value="${E(R.ping.max)}" style="width:76px"><span class="fcfUnit">ms</span>`;
-    if (k === 'country') return `<input type="text" class="fc-input" data-k="country.allow" placeholder="your continent" value="${E(R.country.allow)}" title="ISO codes, e.g. nl be de fr - empty = players from your continent" style="width:140px">`;
+    if (k === 'country') return `<input type="text" class="fc-input" data-k="country.allow" placeholder="${E(T('your continent'))}" value="${E(R.country.allow)}" title="${E(T('ISO codes, e.g. nl be de fr - empty = players from your continent'))}" style="width:140px">`;
     if (k === 'rank') return `<select class="fc-select" data-k="rank.min">${RANK_LETTERS.map(l => `<option${l === R.rank.min ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
-    if (k === 'block') return `<input type="text" class="fc-input" data-k="block.names" placeholder="names, comma-separated" value="${E(R.block.names)}" style="width:200px">`;
+    if (k === 'block') return `<input type="text" class="fc-input" data-k="block.names" placeholder="${E(T('names, comma-separated'))}" value="${E(R.block.names)}" style="width:200px">`;
     return '';
 }
 
 function logHtml() {
     return filtered.length
-        ? '<b>Filtered this session</b>' + filtered.slice(0, 20).map(f =>
-            `<div>${new Date(f.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${f.declined ? 'declined' : 'warned'} ${E(f.name)} — ${E(f.why)}</div>`).join('')
-        : 'Nothing filtered this session.';
+        ? '<b>' + E(T('Filtered this session')) + '</b>' + filtered.slice(0, 20).map(f =>
+            `<div>${new Date(f.at).toLocaleTimeString(fc.t.locale(), { hour: '2-digit', minute: '2-digit' })} · ${E(T(f.declined ? 'declined {name}' : 'warned {name}', { name: f.name }))} — ${E(f.why)}</div>`).join('')
+        : E(T('Nothing filtered this session.'));
 }
 
 function renderBlock(el) {
     const R = cfg.rules;
-    const mode = (k) => `<select class="fc-select" data-mode="${k}">${MODES.map(([m, l]) => `<option value="${m}"${R[k].mode === m ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
-    el.innerHTML = `<div class="fc-set-title">Challenge filters <small>— Warn tags the challenge, Decline turns it down quietly · /filters</small></div>
-        <label class="fc-field"><span class="fc-field-text"><b>Filter challenges</b></span><input type="checkbox" class="fc-switch-in" data-on="1"${cfg.enabled ? ' checked' : ''}><i class="fc-switch"></i></label>
+    const mode = (k) => `<select class="fc-select" data-mode="${k}">${MODES.map(([m, l]) => `<option value="${m}"${R[k].mode === m ? ' selected' : ''}>${E(T(l))}</option>`).join('')}</select>`;
+    el.innerHTML = `<div class="fc-set-title">${E(T('Challenge filters'))} <small>— ${E(T('Warn tags the challenge, Decline turns it down quietly'))} · /filters</small></div>
+        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Filter challenges'))}</b></span><input type="checkbox" class="fc-switch-in" data-on="1"${cfg.enabled ? ' checked' : ''}><i class="fc-switch"></i></label>
         <div class="fcfRules"${cfg.enabled ? '' : ' hidden'}>
-        ${RULE_LABELS.map(([k, label]) => `<div class="fc-field fcfRule"><span class="fc-field-text"><b>${label}</b></span>${ruleExtra(k)}${mode(k)}</div>` +
+        ${RULE_LABELS.map(([k, label]) => `<div class="fc-field fcfRule"><span class="fc-field-text"><b>${E(T(label))}</b></span>${ruleExtra(k)}${mode(k)}</div>` +
             (k === 'ft' && R.ft.mode !== 'off' ? `<div class="fcfFt">${FTS.map(([v, l]) =>
-                fc.ui.chip(l, { on: R.ft.allow.map(Number).includes(v), act: 'ft' + v, title: R.ft.allow.map(Number).includes(v) ? 'Allowed' : 'Not allowed' })).join('')}</div>` : '')).join('')}
+                fc.ui.chip(l, { on: R.ft.allow.map(Number).includes(v), act: 'ft' + v, title: R.ft.allow.map(Number).includes(v) ? N_('Allowed') : N_('Not allowed') })).join('')}</div>` : '')).join('')}
         </div>
         <div class="fc-note fcfLog">${logHtml()}</div>`;
 }
@@ -223,8 +226,8 @@ function start(f) {
 
     fc.cmd('filters', 'Challenge filters: the rules and what they filtered', () => {
         const on = Object.keys(cfg.rules).filter(k => cfg.rules[k].mode !== 'off').map(k => k + ': ' + cfg.rules[k].mode);
-        fc.ui.toast('Challenge filters ' + (cfg.enabled ? 'on' : 'off'), { icon: 'filter', ms: 8000,
-            sub: (on.length ? on.join(' · ') : 'no rules set') + (filtered.length ? ' — filtered ' + filtered.length + ' this session' : '') });
+        fc.ui.toast(T(cfg.enabled ? 'Challenge filters on' : 'Challenge filters off'), { icon: 'filter', ms: 8000,
+            sub: (on.length ? on.join(' · ') : T('no rules set')) + (filtered.length ? ' — ' + T('filtered {n} this session', { n: filtered.length }) : '') });
     });
     fc.cmd('filter', 'Challenge filters', () => fc.cmd.run('filters'));
 

@@ -35,6 +35,13 @@ const LOG = (...a) => fc.log(...a);
 const root = () => fc.app.root();
 const glob = () => fc.app.global();
 const esc = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const ET = (s, v) => fc.fmt.esc(fc.t(s, v));
+const N_ = (s) => s;
+// genres (Fightcade's own names), translated where shown: N_('Fighter') N_("Beat 'em Up") N_('Shooter') N_('Platform') N_('Puzzle')
+// N_('Sports') N_('Driving') N_('Maze') N_('Quiz') N_('Rhythm') N_('Casino') N_('Tabletop') N_('Ball & Paddle') N_('Climbing')
+// N_('Multiplay') N_('Misc.') N_('Electromechanical') N_('Whac-A-Mole')
 
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 
@@ -166,16 +173,16 @@ const isFavName = (name) => (localUser().favoritesChannels || []).includes(name)
 // FC's own rules (channelIsAvaibleForUser / canFavoriteChannel); '' = allowed
 function joinBlock(ch) {
     const lu = localUser();
-    if (ch && ch.available_for != null && lu.role != null && lu.role < ch.available_for) return 'Patrons only';
-    if (lu.maxNumChannelsReached) return 'Channel limit reached';
+    if (ch && ch.available_for != null && lu.role != null && lu.role < ch.available_for) return T('Patrons only');
+    if (lu.maxNumChannelsReached) return T('Channel limit reached');
     return '';
 }
 function favBlock(ch) {
     if (isFavName(ch.name)) return '';
     const lu = localUser();
     const max = lu.perks && lu.perks.maxNumFavorites;
-    if (max != null && (lu.favoritesChannels || []).length >= max) return 'Favourites full';
-    if (ch.owner) return 'Lobbies can’t be favourited';
+    if (max != null && (lu.favoritesChannels || []).length >= max) return T('Favourites full');
+    if (ch.owner) return T('Lobbies can’t be favourited');
     return '';
 }
 
@@ -1137,7 +1144,7 @@ let navKey = '';
 let moreOpen = false;
 
 function navItem(key, icon, label, extraCls) {
-    return `<div class="fcdNavItem${extraCls ? ' ' + extraCls : ''}" data-key="${esc(key)}" title="${esc(label)}">${icon}<span class="fcdLbl">${esc(label)}</span></div>`;
+    return `<div class="fcdNavItem${extraCls ? ' ' + extraCls : ''}" data-key="${esc(key)}" title="${ET(label)}">${icon}<span class="fcdLbl">${ET(label)}</span></div>`;
 }
 
 function buildNav() {
@@ -1153,18 +1160,18 @@ function buildNav() {
     const genre = (g) => navItem('g:' + g, ico(GENRE_ICON[g] || 'pad'), g);
     const system = (s) => navItem('s:' + s,
         `<span class="fcdTag" style="background:${tagColor(s)}">${esc(SYSTEM_TAG[s] || initials(s))}</span>`, s);
-    const html = `<div class="fcdNavHead">Discover<span class="fcdGear" data-key="settings" title="Fightcord settings (Ctrl+,)">${svgIcon('gear')}</span></div><div class="fcdNavList">
-        ${navItem('home', ico('home'), 'Home')}
-        ${navItem('yours', ico('pad'), 'Your games')}
-        ${navItem('fav', ico('star'), 'Favourites')}
-        ${navItem('stats', ico('chart'), 'Your stats')}
-        ${fc.modules.has('friends') ? navItem('friends', ico('users'), 'Friends', 'fcdFriends') : ''}
-        ${L.genres.length ? '<div class="fcdNavSec">Genres</div>' : ''}
+    const html = `<div class="fcdNavHead">${ET('Discover')}<span class="fcdGear" data-key="settings" title="${ET('Fightcord settings (Ctrl+,)')}">${svgIcon('gear')}</span></div><div class="fcdNavList">
+        ${navItem('home', ico('home'), N_('Home'))}
+        ${navItem('yours', ico('pad'), N_('Your games'))}
+        ${navItem('fav', ico('star'), N_('Favourites'))}
+        ${navItem('stats', ico('chart'), N_('Your stats'))}
+        ${fc.modules.has('friends') ? navItem('friends', ico('users'), N_('Friends'), 'fcdFriends') : ''}
+        ${L.genres.length ? '<div class="fcdNavSec">' + ET('Genres') + '</div>' : ''}
         ${common.map(genre).join('')}
         ${rest.length ? `<div class="fcdMore${moreOpen ? ' open' : ''}">${rest.map(genre).join('')}</div>
             <div class="fcdNavItem fcdMoreBtn${moreOpen ? ' open' : ''}" data-key="more"><span class="fcdIco"></span>
-            <span class="fcdLbl">More genres<span class="fcdChev">▾</span></span></div>` : ''}
-        ${L.systems.length ? '<div class="fcdNavSec">Systems</div>' : ''}
+            <span class="fcdLbl">${ET('More genres')}<span class="fcdChev">▾</span></span></div>` : ''}
+        ${L.systems.length ? '<div class="fcdNavSec">' + ET('Systems') + '</div>' : ''}
         ${L.systems.map(system).join('')}
     </div>`;
     if (!nav) {
@@ -1367,18 +1374,18 @@ function spotButtons(ch) {
     const fav = isFavName(ch.name);
     const fb = favBlock(ch);
     return (joined
-        ? '<span class="fcdBtn go" data-act="open">▶ Open</span>'
-        : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ Join</span>`) +
-        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ Favourited' : '☆ Favourite'}</span>` +
-        '<span class="fcdBtn" data-act="details">ⓘ Details</span>';
+        ? '<span class="fcdBtn go" data-act="open">▶ ' + ET('Open') + '</span>'
+        : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ ${ET('Join')}</span>`) +
+        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ ' + ET('Favourited') : '☆ ' + ET('Favourite')}</span>` +
+        '<span class="fcdBtn" data-act="details">ⓘ ' + ET('Details') + '</span>';
 }
 
 function spotMeta(ch) {
     const parts = [];
-    if (ch.clients != null) parts.push(`<span><span class="fcdDot"></span>${Number(ch.clients).toLocaleString('en-US')} playing</span>`);
+    if (ch.clients != null) parts.push(`<span><span class="fcdDot"></span>${ET('{n} playing', { n: Number(ch.clients).toLocaleString(fc.t.locale()) })}</span>`);
     const live = isJoinedName(ch.name) ? liveCount(ch.name) : 0;
-    if (live) parts.push(`<span>⚔ ${live} match${live === 1 ? '' : 'es'} live</span>`);
-    if (ch.ranked) parts.push('<span>🏆 Ranked</span>');
+    if (live) parts.push(`<span>⚔ ${esc(T.plural(live, '{n} match live', '{n} matches live'))}</span>`);
+    if (ch.ranked) parts.push('<span>🏆 ' + ET('Ranked') + '</span>');
     if (ch.system) parts.push(`<span>${esc(ch.system)}</span>`);
     return parts.join('');
 }
@@ -1570,7 +1577,7 @@ function decorateRows(content) {
             const box = document.createElement('div');
             box.className = 'fcdArrows';
             const seeAll = t === 'games';
-            box.innerHTML = (seeAll ? '<span class="fcdSeeAll">See all</span>' : '') + arrowsHtml();
+            box.innerHTML = (seeAll ? '<span class="fcdSeeAll">' + ET('See all') + '</span>' : '') + arrowsHtml();
             title.appendChild(box);
         }
         const grid = row.querySelector('.welcomeListGrid, .welcomeListGridBig');
@@ -1633,17 +1640,20 @@ function clock(t) {
 
 // Counts down under a day ("Starts in 2h 14m", seconds in the last hour), then
 // "Tomorrow 7 PM" / "In 3 days" / "Oct 18"; "● LIVE" for 4 h after the start.
+// N_('LIVE') N_('Starts in {time}') N_('Tomorrow {time}') N_('In {n} days')
 function whenLabel(t, now) {
     now = now || Date.now();
-    if (t <= now) return now - t < 4 * 3600000 ? { text: '● LIVE', live: true } : null;
+    // (the unit test calls this without a running Fightcord: plain English then)
+    const tt = (s, v) => (fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => v[k]));
+    if (t <= now) return now - t < 4 * 3600000 ? { text: '● ' + tt('LIVE'), live: true } : null;
     const s = Math.floor((t - now) / 1000);
-    if (s < 3600) return { text: 'Starts in ' + Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's' };
-    if (s < 86400) return { text: 'Starts in ' + Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm' };
+    if (s < 3600) return { text: tt('Starts in {time}', { time: Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's' }) };
+    if (s < 86400) return { text: tt('Starts in {time}', { time: Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm' }) };
     const day = (x) => { const d = new Date(x); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
     const days = Math.round((day(t) - day(now)) / 86400000);
-    if (days === 1) return { text: 'Tomorrow ' + clock(t) };
-    if (days < 7) return { text: 'In ' + days + ' days' };
-    return { text: new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) };
+    if (days === 1) return { text: tt('Tomorrow {time}', { time: clock(t) }) };
+    if (days < 7) return { text: tt('In {n} days', { n: days }) };
+    return { text: new Date(t).toLocaleDateString(fc ? fc.t.locale() : 'en-US', { month: 'short', day: 'numeric' }) };
 }
 
 // clicking a game card (not its buttons) opens its game page
@@ -1660,11 +1670,11 @@ function onCardClick(e) {
 
 function ago(t) {
     const s = Math.max(0, (Date.now() - t) / 1000);
-    if (s < 60) return 'just now';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    if (s < 7 * 86400) return Math.floor(s / 86400) + 'd ago';
-    return new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (s < 60) return T('just now');
+    if (s < 3600) return T('{n}m ago', { n: Math.floor(s / 60) });
+    if (s < 86400) return T('{n}h ago', { n: Math.floor(s / 3600) });
+    if (s < 7 * 86400) return T('{n}d ago', { n: Math.floor(s / 86400) });
+    return new Date(t).toLocaleDateString(fc.t.locale(), { month: 'short', day: 'numeric' });
 }
 
 function onlineIn(name) {
@@ -1705,13 +1715,13 @@ function yourGames() {
 function tileSub(it) {
     if (it.played) {
         const rec = (it.w || it.l || it.d) ? ' · ' + it.w + '–' + it.l + (it.d ? '–' + it.d : '') : '';
-        return esc('Played ' + ago(it.lastAt) + rec);
+        return esc(T('Played {when}', { when: ago(it.lastAt) }) + rec);
     }
     if (it.chan) {
         const n = onlineIn(it.full);
-        return n ? '<span class="fcdOn"></span>' + n + ' online' : 'Joined';
+        return n ? '<span class="fcdOn"></span>' + ET('{n} online', { n }) : ET('Joined');
     }
-    return '★ Favourite';
+    return '★ ' + ET('Favourite');
 }
 
 const artState = {};   // url -> 'loading' | 'ok' | 'fail'
@@ -1739,7 +1749,7 @@ function renderYours(content) {
         row?.remove();
         row = document.createElement('div');
         row.id = 'fcdYours';
-        row.innerHTML = `<div class="fcdRowHead"><h3>Your games<span class="fcdCount fcdYoursCount"></span></h3><span class="fcdShowAll"></span></div>
+        row.innerHTML = `<div class="fcdRowHead"><h3>${ET('Your games')}<span class="fcdCount fcdYoursCount"></span></h3><span class="fcdShowAll"></span></div>
             <div class="fcdYoursGrid"></div>`;
         row.addEventListener('click', onYoursClick);
         content.appendChild(row);          // at the end; CSS order puts it under the hero
@@ -1791,7 +1801,7 @@ function yoursLimit(row, force) {
     tiles.forEach((t, i) => t.classList.toggle('fcdHid', i >= limit));
     row.classList.toggle('all', yoursAll);
     const btn = row.querySelector('.fcdShowAll');
-    if (btn) btn.textContent = tiles.length > limit ? (yoursAll ? 'Show less' : 'Show all (' + tiles.length + ')') : '';
+    if (btn) btn.textContent = tiles.length > limit ? (yoursAll ? T('Show less') : T('Show all ({n})', { n: tiles.length })) : '';
 }
 
 function onYoursClick(e) {
@@ -1819,13 +1829,13 @@ function decorateSearch(wrap) {
     if (sc) {
         const parts = [];
         const g = +sc.genreFilter || 0, s = +sc.systemFilter || 0, y = +sc.yearFilter || 0;
-        if (sc.favorites) parts.push('⭐ Favourites');
-        if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + L.allGenres[g]);
+        if (sc.favorites) parts.push('⭐ ' + T('Favourites'));
+        if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + T(L.allGenres[g]));
         if (s > 0) parts.push(L.allSystems[s]);
         const years = glob()?.filtersOptions?.years;
         if (y > 0 && years) parts.push(String(years[y]));
-        if (sc.textFilter) parts.push('Results for “' + sc.textFilter + '”');
-        title = parts.length ? parts.join(' · ') : 'All games';
+        if (sc.textFilter) parts.push(T('Results for “{q}”', { q: sc.textFilter }));
+        title = parts.length ? parts.join(' · ') : T('All games');
     }
     const list = sc?.$refs?.paginatedList;
     const fetching = list ? !!list.fetchingData : false;
@@ -1907,14 +1917,14 @@ function liveCardHtml(m) {
     const art = m.chan && m.chan.gameid ? artUrl(m.chan.gameid) : (m.gameId ? artUrl(m.gameId) : '');
     const me = myName();
     const side = (p, note) => `<div class="fcdLiveP"><img class="fcdAva" src="${esc(avatarUrl(p.name))}" alt="">
-        <div class="fcdLiveN">${flagImg(p.cc)}<b>${esc(p.name === me ? 'You' : p.name)}</b>${rankPill(p.rank)}</div>${note ? `<div class="fcdLiveNote">${note}</div>` : ''}</div>`;
+        <div class="fcdLiveN">${flagImg(p.cc)}<b>${esc(p.name === me ? T('You') : p.name)}</b>${rankPill(p.rank)}</div>${note ? `<div class="fcdLiveNote">${note}</div>` : ''}</div>`;
     // the opponent is only known when they're in a channel you've joined
     const vs = b ? `<div class="fcdLiveVs">${side(a)}<div class="fcdLiveVsTxt">VS</div>${side(b)}</div>`
-        : `<div class="fcdLiveVs solo">${side(a, 'in a match')}</div>`;
+        : `<div class="fcdLiveVs solo">${side(a, ET('in a match'))}</div>`;
     const c = liveChan(m);
-    const act = m.players.includes(me) ? "You're playing"
-        : canWatch(m) ? '<span class="fcdWatch" data-watch="1">👁 Watch</span>'
-        : `<span class="fcdLiveDet" data-det="1" title="${c && c.spectators === false ? 'Spectating is off in this channel' : 'Open the game page'}">Details</span>`;
+    const act = m.players.includes(me) ? ET("You're playing")
+        : canWatch(m) ? '<span class="fcdWatch" data-watch="1">👁 ' + ET('Watch') + '</span>'
+        : `<span class="fcdLiveDet" data-det="1" title="${ET(c && c.spectators === false ? 'Spectating is off in this channel' : 'Open the game page')}">${ET('Details')}</span>`;
     return `<div class="fcdLiveCard" data-q="${esc(m.quark)}" data-art="${esc(art)}">
         <div class="fcdLiveBg" style="background-image:url(&quot;${esc(art)}&quot;) !important"></div>
         <div class="fcdLiveIn">
@@ -1932,7 +1942,7 @@ function renderLive(content) {
         row?.remove();
         row = document.createElement('div');
         row.id = 'fcdLive';
-        row.innerHTML = `<div class="fcdRowHead"><h3>Live now<span class="fcdCount fcdLiveCount"></span></h3><div class="fcdArrows">${arrowsHtml()}</div></div>
+        row.innerHTML = `<div class="fcdRowHead"><h3>${ET('Live now')}<span class="fcdCount fcdLiveCount"></span></h3><div class="fcdArrows">${arrowsHtml()}</div></div>
             <div class="fcdYoursGrid"></div>`;
         row.addEventListener('click', onLiveClick);
         content.appendChild(row);          // after #fcdYours; CSS order keeps both under the hero
@@ -1983,7 +1993,7 @@ function ensureGamePanel() {
     dim.addEventListener('click', (e) => { if (e.isTrusted || window.__fcdTest) closeGame(); });
     panel = document.createElement('aside');
     panel.id = 'fcdGame';
-    panel.innerHTML = `<div class="fcdGHead"><div class="fcdGBg"></div><div class="fcdGArt"></div><div class="fcdGClose" title="Close (Esc)">✕</div></div>
+    panel.innerHTML = `<div class="fcdGHead"><div class="fcdGBg"></div><div class="fcdGArt"></div><div class="fcdGClose" title="${ET('Close (Esc)')}">✕</div></div>
         <div class="fcdGScroll"><div class="fcdGTop"></div><div class="fcdGDyn"></div></div>`;
     panel.addEventListener('click', onGameClick);
     panel.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -2045,7 +2055,7 @@ function parseQuark(r, ch) {
 
 function loadGameApi(token) {
     const ch = game.ch;
-    if (!ch.gameid) { game.err.top = game.err.recent = 'unknown game id'; return; }
+    if (!ch.gameid) { game.err.top = game.err.recent = T('unknown game id'); return; }
     fcApi({ req: 'searchrankings', gameid: ch.gameid, limit: 10, offset: 0, byElo: true, recent: true })
         .then(j => { const rows = pickRows(j); noteShape('rankings', j, rows[0]); if (token === game.token) game.top = rows.slice(0, 10).map((r, i) => parseRank(r, i, ch.gameid)); })
         .catch(e => { if (token === game.token) game.err.top = e.message; });
@@ -2059,7 +2069,7 @@ const skel = (n) => Array.from({ length: n }, () => '<div class="fcdSkel"></div>
 function youSection(ch) {
     const short = shortName(ch.name);
     const sets = historySets().filter(s => s.channel === ch.name || (!s.channel && s.game === short));
-    if (!sets.length) return '<div class="fcdMuted">You haven’t played a set here yet (since the session tracker was installed).</div>';
+    if (!sets.length) return '<div class="fcdMuted">' + ET('You haven’t played a set here yet (since the session tracker was installed).') + '</div>';
     let w = 0, l = 0, d = 0;
     const opp = {};
     sets.forEach(s => {
@@ -2068,27 +2078,27 @@ function youSection(ch) {
     });
     const top = Object.keys(opp).sort((a, b) => opp[b] - opp[a])[0];
     const last = sets[sets.length - 1].at;
-    return `<div class="fcdYou"><div><b>${w}–${l}${d ? '–' + d : ''}</b><span>your record · ${sets.length} set${sets.length === 1 ? '' : 's'}</span></div>
-        <div><b>${esc(ago(last))}</b><span>last played</span></div>
-        ${top ? `<div><b>${esc(top)}</b><span>played most · ${opp[top]}×</span></div>` : ''}</div>`;
+    return `<div class="fcdYou"><div><b>${w}–${l}${d ? '–' + d : ''}</b><span>${ET('your record')} · ${esc(T.plural(sets.length, '{n} set', '{n} sets'))}</span></div>
+        <div><b>${esc(ago(last))}</b><span>${ET('last played')}</span></div>
+        ${top ? `<div><b>${esc(top)}</b><span>${ET('played most')} · ${opp[top]}×</span></div>` : ''}</div>`;
 }
 
 function liveSection(ch) {
     if (isJoinedName(ch.name)) {
         const list = liveMatches().filter(m => m.channel === ch.name);
-        if (!list.length) return '<div class="fcdMuted">No matches right now.</div>';
+        if (!list.length) return '<div class="fcdMuted">' + ET('No matches right now.') + '</div>';
         const me = myName();
         return list.map(m => {
             const [a, b] = m.players.map(n => playerBits(n, m.channel));
             const who = (p, r) => p ? `<div class="fcdGSide${r ? ' r' : ''}">${r ? '' : flagImg(p.cc)}<b>${esc(p.name)}</b>${rankPill(p.rank)}${r ? '&nbsp;' + flagImg(p.cc) : ''}</div>` : '<div class="fcdGSide"></div>';
-            const act = m.players.includes(me) ? '<span class="fcdGRight">you</span>'
-                : canWatch(m) ? `<span class="fcdWatch" data-watch="${esc(m.quark)}">👁 Watch</span>` : '';
+            const act = m.players.includes(me) ? '<span class="fcdGRight">' + ET('you') + '</span>'
+                : canWatch(m) ? `<span class="fcdWatch" data-watch="${esc(m.quark)}">👁 ${ET('Watch')}</span>` : '';
             return `<div class="fcdGRow"><div class="fcdGMatch"><span class="fcdLiveTag">● ${durText(m.since)}</span>${who(a)}<span class="fcdGVs">VS</span>${who(b, true)}</div>${act}</div>`;
         }).join('');
     }
     const live = (game.recent || []).filter(q => q.live);
     if (!game.recent && !game.err.recent) return skel(2);
-    if (!live.length) return '<div class="fcdMuted">Join the channel to see and watch its live matches.</div>';
+    if (!live.length) return '<div class="fcdMuted">' + ET('Join the channel to see and watch its live matches.') + '</div>';
     return live.map(q => matchRow(q)).join('');
 }
 
@@ -2098,7 +2108,7 @@ function matchRow(q) {
     const known = a.score != null && b.score != null;
     const aw = known && a.score > b.score, bw = known && b.score > a.score;
     const tail = q.live ? '<span class="fcdLiveTag">● LIVE</span>'
-        : (q.date ? esc(ago(q.date)) : '') + (q.replay ? `<span class="fcdLink" data-replay="${esc(q.replay)}">Replay</span>` : '');
+        : (q.date ? esc(ago(q.date)) : '') + (q.replay ? `<span class="fcdLink" data-replay="${esc(q.replay)}">${ET('Replay')}</span>` : '');
     return `<div class="fcdGRow"><div class="fcdGMatch">
         <div class="fcdGSide">${flagImg(a.cc)}<b class="${aw ? 'win' : ''}">${esc(a.name)}</b></div>
         <span class="fcdGScore">${known ? a.score + ' – ' + b.score : 'vs'}</span>
@@ -2109,7 +2119,7 @@ function matchRow(q) {
 function topSection() {
     if (game.err.top) return `<div class="fcdMuted">Couldn’t load the leaderboard (${esc(game.err.top)}).</div>`;
     if (!game.top) return skel(4);
-    if (!game.top.length) return '<div class="fcdMuted">No ranked players yet.</div>';
+    if (!game.top.length) return '<div class="fcdMuted">' + ET('No ranked players yet.') + '</div>';
     return game.top.map(p => `<div class="fcdGRow"><span class="fcdGPos">${p.pos}</span>
         <div class="fcdGWho">${flagImg(p.cc)}<b>${esc(p.name)}</b>${rankPill(p.rank)}</div>
         <span class="fcdGRight">${[p.matches != null ? Number(p.matches).toLocaleString('en-US') + ' games' : '',
@@ -2120,7 +2130,7 @@ function recentSection() {
     if (game.err.recent) return `<div class="fcdMuted">Couldn’t load recent matches (${esc(game.err.recent)}).</div>`;
     if (!game.recent) return skel(4);
     const done = game.recent.filter(q => !q.live && q.games !== 0).slice(0, 8);
-    if (!done.length) return '<div class="fcdMuted">No recent matches.</div>';
+    if (!done.length) return '<div class="fcdMuted">' + ET('No recent matches.') + '</div>';
     return done.map(matchRow).join('');
 }
 
@@ -2132,27 +2142,27 @@ function renderGame() {
     const joined = isJoinedName(ch.name);
     const fav = isFavName(ch.name);
     const tags = (c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : '') +
-        (c.ranked ? '<span class="fcdSys">🏆 Ranked</span>' : '') +
-        (c.genre ? `<span class="fcdSys">${esc(c.genre)}</span>` : '') +
+        (c.ranked ? '<span class="fcdSys">🏆 ' + ET('Ranked') + '</span>' : '') +
+        (c.genre ? `<span class="fcdSys">${ET(c.genre)}</span>` : '') +
         (c.year ? `<span class="fcdSys">${esc(String(c.year))}</span>` : '') +
-        (joined ? '<span class="fcdJoined">✓ Joined</span>' : '') + (fav ? '<span class="fcdSys">★ Favourite</span>' : '');
+        (joined ? '<span class="fcdJoined">✓ ' + ET('Joined') + '</span>' : '') + (fav ? '<span class="fcdSys">★ ' + ET('Favourite') + '</span>' : '');
     const live = joined ? liveMatches().filter(m => m.channel === ch.name).length : 0;
-    const stats = (c.clients != null ? `<span><span class="fcdDot"></span>${Number(c.clients).toLocaleString('en-US')} playing</span>` : '') +
-        (live ? `<span>⚔ ${live} live</span>` : '');
+    const stats = (c.clients != null ? `<span><span class="fcdDot"></span>${ET('{n} playing', { n: Number(c.clients).toLocaleString(fc.t.locale()) })}</span>` : '') +
+        (live ? `<span>⚔ ${ET('{n} live', { n: live })}</span>` : '');
     const jb = joined ? '' : joinBlock(c), fb = favBlock(c);
-    const btns = (joined ? '<span class="fcdBtn go" data-act="open">▶ Open channel</span>'
-        : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ Join</span>`) +
-        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ Favourited' : '☆ Favourite'}</span>` +
-        '<span class="fcdBtn" data-act="results">Show in results</span>';
+    const btns = (joined ? '<span class="fcdBtn go" data-act="open">▶ ' + ET('Open channel') + '</span>'
+        : `<span class="fcdBtn go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">▶ ${ET('Join')}</span>`) +
+        `<span class="fcdBtn${fav ? ' on' : ''}${fb ? ' dis' : ''}" data-act="${fb ? '' : 'fav'}" title="${esc(fb)}">${fav ? '★ ' + ET('Favourited') : '☆ ' + ET('Favourite')}</span>` +
+        '<span class="fcdBtn" data-act="results">' + ET('Show in results') + '</span>';
     const top = panel.querySelector('.fcdGTop');
     [['.fcdGTags', tags], ['.fcdGStats', stats], ['.fcdGBtns', btns]].forEach(([sel, html]) => {
         const el = top.querySelector(sel);
         if (el && el.__html !== html) { el.innerHTML = html; el.__html = html; }
     });
-    const dyn = `<section><h4>🔴 Live now</h4>${liveSection(c)}</section>
-        <section><h4>📊 You</h4>${youSection(c)}</section>
-        <section><h4>🏆 Top players</h4>${topSection()}</section>
-        <section><h4>🕘 Recent matches</h4>${recentSection()}</section>`;
+    const dyn = `<section><h4>🔴 ${ET('Live now')}</h4>${liveSection(c)}</section>
+        <section><h4>📊 ${ET('You')}</h4>${youSection(c)}</section>
+        <section><h4>🏆 ${ET('Top players')}</h4>${topSection()}</section>
+        <section><h4>🕘 ${ET('Recent matches')}</h4>${recentSection()}</section>`;
     if (dyn !== game.dyn) { game.dyn = dyn; panel.querySelector('.fcdGDyn').innerHTML = dyn; }
 }
 
@@ -2282,8 +2292,8 @@ function quickRowHtml(en, i, query) {
     const bits = [];
     if (c.system) bits.push(`<span>${esc(c.system)}</span>`);
     if (c.clients != null) bits.push(`<span><span class="fcdDot"></span>${Number(c.clients).toLocaleString('en-US')}</span>`);
-    if (c.ranked) bits.push('<span>🏆 Ranked</span>');
-    if (isJoinedName(en.name)) bits.push('<span style="color:#2dc770">✓ Joined</span>');
+    if (c.ranked) bits.push('<span>🏆 ' + ET('Ranked') + '</span>');
+    if (isJoinedName(en.name)) bits.push('<span style="color:#2dc770">✓ ' + ET('Joined') + '</span>');
     return `<div class="fcdQRow" data-i="${i}">
         <div class="fcdQThumb" style="background-image:url(&quot;${esc(en.gameid ? artUrl(en.gameid) : '')}&quot;) !important"></div>
         <div class="fcdQText"><div class="fcdQName">${query ? highlight(en.name, query) : esc(en.name)}</div>
@@ -2296,11 +2306,11 @@ function renderQuick() {
     if (!quick.open || !input || !visible(input)) { box.classList.remove('open'); return; }
     let html;
     if (quick.recents) {
-        html = quick.items.length ? '<div class="fcdQHead">Your games</div>' + quick.items.map((en, i) => quickRowHtml(en, i, '')).join('') : '';
+        html = quick.items.length ? '<div class="fcdQHead">' + ET('Your games') + '</div>' + quick.items.map((en, i) => quickRowHtml(en, i, '')).join('') : '';
     } else {
         html = (quick.items.length ? quick.items.map((en, i) => quickRowHtml(en, i, quick.q)).join('')
-            : '<div class="fcdQHead">No game names match</div>') +
-            `<div class="fcdQRow fcdQAll" data-i="all">See all results for “${esc(quick.q)}” →<span class="fcdQKey">Enter</span></div>`;
+            : '<div class="fcdQHead">' + ET('No game names match') + '</div>') +
+            `<div class="fcdQRow fcdQAll" data-i="all">${ET('See all results for “{q}”', { q: quick.q })} →<span class="fcdQKey">Enter</span></div>`;
     }
     if (!html) { box.classList.remove('open'); return; }
     box.innerHTML = html;
@@ -2453,9 +2463,9 @@ function cardHtml(c, i) {
         <div class="fcdCardArt" style="background-image:url(&quot;${esc(art)}&quot;) !important"></div>
         <div class="fcdCardPill"><span class="fcdDot"></span>${Number(c.clients || 0).toLocaleString('en-US')}${c.ranked ? '<span class="fcdRk">R</span>' : ''}${fav ? '<span class="fcdFv">★</span>' : ''}</div>
         <div class="fcdCardActs"><span data-act="${fb ? '' : 'fav'}" class="${fb ? 'dis' : ''}" title="${esc(fb)}">${fav ? '★ Unfav' : '☆ Fav'}</span>${joined
-            ? '<span class="go" data-act="open">Open</span>'
-            : `<span class="go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">Join</span>`}</div>
-        <div class="fcdCardInfo"><div class="fcdCardName">${esc(c.name)}</div>${c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : ''}${joined ? '<span class="fcdJoined">✓ Joined</span>' : ''}</div>
+            ? '<span class="go" data-act="open">' + ET('Open') + '</span>'
+            : `<span class="go${jb ? ' dis' : ''}" data-act="${jb ? '' : 'join'}" title="${esc(jb)}">${ET('Join')}</span>`}</div>
+        <div class="fcdCardInfo"><div class="fcdCardName">${esc(c.name)}</div>${c.system ? `<span class="fcdSys">${esc(c.system)}</span>` : ''}${joined ? '<span class="fcdJoined">✓ ' + ET('Joined') + '</span>' : ''}</div>
     </div>`;
 }
 
@@ -2463,13 +2473,13 @@ function resultsTitle(sc) {
     const L = filterLists();
     const parts = [];
     const g = +sc.genreFilter || 0, s = +sc.systemFilter || 0, y = +sc.yearFilter || 0;
-    if (sc.favorites) parts.push('⭐ Favourites');
-    if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + L.allGenres[g]);
+    if (sc.favorites) parts.push('⭐ ' + T('Favourites'));
+    if (g > 0) parts.push((GENRE_ICON[L.allGenres[g]] ? GENRE_ICON[L.allGenres[g]] + ' ' : '') + T(L.allGenres[g]));
     if (s > 0) parts.push(L.allSystems[s]);
     const years = glob()?.filtersOptions?.years;
     if (y > 0 && years) parts.push(String(years[y]));
-    if (sc.textFilter) parts.push('Results for “' + sc.textFilter + '”');
-    return parts.length ? parts.join(' · ') : 'All games';
+    if (sc.textFilter) parts.push(T('Results for “{q}”', { q: sc.textFilter }));
+    return parts.length ? parts.join(' · ') : T('All games');
 }
 
 function ensureResultsBox(content) {
@@ -2479,8 +2489,8 @@ function ensureResultsBox(content) {
     box = document.createElement('div');
     box.id = 'fcdResults';
     box.innerHTML = `<div class="fcdResBar"><div class="fcdResTitle"><span class="t"></span><span class="c"></span></div>
-        <div class="fcdSeg"><span data-sort="players">Most players</span><span data-sort="az">A–Z</span></div>
-        <span class="fcdChip" data-chip="has">● Has players</span><span class="fcdChip" data-chip="ranked">🏆 Ranked only</span></div>
+        <div class="fcdSeg"><span data-sort="players">${ET('Most players')}</span><span data-sort="az">A–Z</span></div>
+        <span class="fcdChip" data-chip="has">● ${ET('Has players')}</span><span class="fcdChip" data-chip="ranked">🏆 ${ET('Ranked only')}</span></div>
         <div class="fcdResStatus"></div><div class="fcdResGrid"></div><div id="fcdResSentinel"></div>`;
     box.addEventListener('click', onResultsClick);
     content.appendChild(box);            // after FC's header and results; FC's results are hidden by CSS
@@ -2511,8 +2521,8 @@ function renderResults(wrap, sc) {
     const nearEnd = sentinel.getBoundingClientRect().top < window.innerHeight + 700;
     if ((needAll || nearEnd) && moreToLoad() && !(R.has && R.sort === 'players' && last && !(last.clients > 0))) requestMore(sc);
 
-    const status = needAll && R.total ? `Loading ${R.items.length.toLocaleString('en-US')} / ${R.total.toLocaleString('en-US')}…`
-        : (fetching && R.items.length ? 'Loading more…' : '');
+    const status = needAll && R.total ? T('Loading {n} / {total}…', { n: R.items.length.toLocaleString(fc.t.locale()), total: R.total.toLocaleString(fc.t.locale()) })
+        : (fetching && R.items.length ? T('Loading more…') : '');
     setText('.fcdResStatus', status);
 
     const grid = box.querySelector('.fcdResGrid');
@@ -2524,7 +2534,7 @@ function renderResults(wrap, sc) {
     if (!shown.length) {
         if (R.key !== 'empty') {
             R.key = 'empty';
-            grid.innerHTML = '<div class="fcdResEmpty" style="grid-column:1/-1"><div class="emoji">(╯°□°)╯︵ ┻━┻</div>No game channels found.</div>';
+            grid.innerHTML = '<div class="fcdResEmpty" style="grid-column:1/-1"><div class="emoji">(╯°□°)╯︵ ┻━┻</div>' + ET('No game channels found.') + '</div>';
         }
         return;
     }

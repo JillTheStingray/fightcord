@@ -35,8 +35,8 @@ function augment(d) {
     const fr = mod('friends'), nt = mod('notes'), st = mod('stats'), sc = mod('scout');
     const mine = fc.app.isMe(name);
     const add = [];
-    if (fr && fr.isFriend && !mine) add.push({ id: 'fc:friend', text: fr.isFriend(name) ? 'Remove friend' : 'Add friend' });
-    if (nt && nt.edit && !mine) add.push({ id: 'fc:notes', text: 'Notes & tags' });
+    if (fr && fr.isFriend && !mine) add.push({ id: 'fc:friend', text: fc.t(fr.isFriend(name) ? 'Remove friend' : 'Add friend') });
+    if (nt && nt.edit && !mine) add.push({ id: 'fc:notes', text: fc.t('Notes & tags') });
     if (st && st.open && !mine) add.push({ id: 'fc:h2h', text: 'Head-to-head' });
     if (sc && sc.openCard) add.push({ id: 'fc:scout', text: 'Scout' });
     add.push({ id: 'fc:copy', text: 'Copy name' });

@@ -19,6 +19,9 @@
 'use strict';
 
 let fc = null;
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+// style groups, translated where shown: N_('Serif') N_('Decorative') N_('Boxed') N_('Effects') N_('Text tricks')
 let store = null, config = null;          // fontstyle-config.json
 const DEFAULTS = {
     style: 'off',                 // global style applied to outgoing messages
@@ -388,11 +391,11 @@ function styleList() {
 function handleFontCommand(arg) {
     const key = (arg || '').trim().toLowerCase();
     if (!key) {
-        toast('Chat font: ' + config.style + '   (/font <name>, /font off)\n' + styleList());
+        toast(T('Chat font: {style}', { style: config.style }) + '   (/font <name>, /font off)\n' + styleList());
         return;
     }
     const target = (key === 'off' || key === 'none' || key === 'normal') ? 'off' : key;
-    if (!STYLES[target]) { toast('Unknown style "' + key + '"\n' + styleList()); return; }
+    if (!STYLES[target]) { toast(T('Unknown style "{name}"', { name: key }) + '\n' + styleList()); return; }
     setStyle(target);
 }
 
@@ -401,23 +404,23 @@ function setStyle(key, why) {
     if (config.style !== 'off') config.lastStyle = config.style;
     config.style = key;
     saveConfig();
-    toast((why || 'Chat font') + ' → ' + STYLES[key].label + '\n' + applyStyle('Preview 123', key));
+    toast(T(why || 'Chat font') + ' → ' + T(STYLES[key].label) + '\n' + applyStyle(T('Preview 123'), key));
 }
 
 function cycleFavorite() {
     const favs = (config.favorites || []).filter(k => STYLES[k]);
-    if (!favs.length) { toast('No favourites set — star some styles in the picker'); return; }
+    if (!favs.length) { toast(T('No favourites set — star some styles in the picker')); return; }
     const next = favs[(favs.indexOf(config.style) + 1) % favs.length];
-    setStyle(next, 'Favourite');
+    setStyle(next, fc.t('Favourite'));
 }
 
 function toggleStyle() {
-    if (config.style === 'off') setStyle(config.lastStyle || 'bold', 'Chat font');
+    if (config.style === 'off') setStyle(config.lastStyle || 'bold', fc.t('Chat font'));
     else {
         config.lastStyle = config.style;
         config.style = 'off';
         saveConfig();
-        toast('Chat font → off');
+        toast(T('Chat font') + ' → ' + T('Off'));
     }
 }
 
@@ -428,11 +431,11 @@ function handleMacCommand(arg) {
 
     if (!slot) {
         const list = Object.entries(config.macros).map(([k, v]) => k + ' = ' + v).join('\n');
-        toast('Macros (F1-F8, Ctrl+Fn sends):\n' + (list || 'none set') + '\nUse /mac F1 gg wp');
+        toast(T('Macros (F1-F8, Ctrl+Fn sends):') + '\n' + (list || T('none set')) + '\n' + T('Use /mac F1 gg wp'));
         return;
     }
-    if (!/^F[1-8]$/.test(slot)) { toast('Macro slots are F1..F8'); return; }
-    if (!text) { delete config.macros[slot]; saveConfig(); toast(slot + ' cleared'); return; }
+    if (!/^F[1-8]$/.test(slot)) { toast(T('Macro slots are F1..F8')); return; }
+    if (!text) { delete config.macros[slot]; saveConfig(); toast(T('{slot} cleared', { slot })); return; }
     config.macros[slot] = text;
     saveConfig();
     toast(slot + ' = ' + text);
@@ -485,7 +488,7 @@ function openPicker(anchor) {
     if (document.getElementById('fontStylePicker')) { closePicker(); return; }
 
     const input = anchor.closest('.chatInput')?.querySelector('input.input');
-    const sample = (input && input.value.trim()) || 'Good game 123';
+    const sample = (input && input.value.trim()) || T('Good game 123');
 
     const box = document.createElement('div');
     box.id = 'fontStylePicker';
@@ -500,10 +503,10 @@ function openPicker(anchor) {
         const cur = k === config.style;
         return `<div class="fsRow" data-key="${k}" style="display:flex;align-items:center;padding:5px 6px;
                 border-radius:4px;cursor:pointer;${cur ? 'background:var(--accentColor,rgba(100,149,237,.35));' : ''}">
-                <span class="fsStar" data-key="${k}" title="favourite (Ctrl+Shift+F cycles)"
+                <span class="fsStar" data-key="${k}" title="${fc.fmt.esc(T('favourite (Ctrl+Shift+F cycles)'))}"
                     style="flex:none;width:16px;margin-right:6px;text-align:center;opacity:${fav ? 1 : .3};">★</span>
                 <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                    >${k === 'off' ? 'Normal (off)' : applyStyle(sample, k)}</span>
+                    >${k === 'off' ? fc.fmt.esc(T('Normal (off)')) : applyStyle(sample, k)}</span>
                 <span style="flex:none;margin-left:6px;font-size:10px;opacity:.45;">${k}</span>
             </div>`;
     }).join('');
@@ -543,7 +546,7 @@ function ensureChatButton() {
         const btn = document.createElement('div');
         btn.className = 'fontStyleBtn';
         btn.textContent = 'Aa';
-        btn.title = 'Chat font style (Ctrl+Shift+F cycles, Ctrl+Shift+X toggles)';
+        btn.title = T('Chat font style (Ctrl+Shift+F cycles, Ctrl+Shift+X toggles)');
         btn.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:50;' +
             'cursor:pointer;font-size:12px;font-weight:bold;line-height:1;padding:4px 6px;border-radius:4px;' +
             'background:rgba(0,0,0,.35);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
@@ -588,25 +591,25 @@ function buildOptions() {
         if (k === 'off') continue;
         (groups[v.group] = groups[v.group] || []).push([k, v]);
     }
-    const opt = ([k, v]) => `<option value="${k}"${k === config.style ? ' selected' : ''}>${v.label}</option>`;
+    const opt = ([k, v]) => `<option value="${k}"${k === config.style ? ' selected' : ''}>${fc.fmt.esc(T(v.label))}</option>`;
     return opt(['off', STYLES.off]) +
-        Object.entries(groups).map(([g, items]) => `<optgroup label="${g}">${items.map(opt).join('')}</optgroup>`).join('');
+        Object.entries(groups).map(([g, items]) => `<optgroup label="${fc.fmt.esc(T(g))}">${items.map(opt).join('')}</optgroup>`).join('');
 }
 
 function renderBlock(el) {
     const E = fc.fmt.esc;
-    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${label}</b><small>${E(hint)}</small></span>` +
+    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${E(T(label))}</b><small>${E(T(hint))}</small></span>` +
         `<input type="checkbox" class="fc-switch-in" data-opt="${key}"${config[key] ? ' checked' : ''}><i class="fc-switch"></i></label>`;
-    el.innerHTML = `<div class="fc-set-title">Chat font style <small>— everyone sees it</small></div>
-        <div class="fc-field"><span class="fc-field-text"><b>Style</b><small class="fsPreview"></small></span><select class="fc-select fsSelect">${buildOptions()}</select></div>
-        <div class="fc-field"><span class="fc-field-text"><b>Decoration</b></span><select class="fc-select fsDeco">${Object.entries(DECORATIONS).map(([k, v]) =>
-            `<option value="${k}"${k === config.decoration ? ' selected' : ''}>${E(v.label)}</option>`).join('')}</select></div>
+    el.innerHTML = `<div class="fc-set-title">${E(T('Chat font style'))} <small>— ${E(T('everyone sees it'))}</small></div>
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Style'))}</b><small class="fsPreview"></small></span><select class="fc-select fsSelect">${buildOptions()}</select></div>
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Decoration'))}</b></span><select class="fc-select fsDeco">${Object.entries(DECORATIONS).map(([k, v]) =>
+            `<option value="${k}"${k === config.decoration ? ' selected' : ''}>${E(T(v.label))}</option>`).join('')}</select></div>
         ${sw('inlineMarkup', 'Inline markup', '*bold* _italic_ ~strike~ `mono` __underline__')}
         ${sw('plainMentions', 'Plain @mentions', 'Never style player names, so pings still reach them')}
         ${sw('readableChat', 'Readable chat', 'Un-style other people’s text (hover shows the original)')}
-        <div class="fc-note">Aa button by the chat box · Ctrl+Shift+F cycles favourites · Ctrl+Shift+X toggles · /font and /mac in chat</div>`;
+        <div class="fc-note">${E(T('Aa button by the chat box · Ctrl+Shift+F cycles favourites · Ctrl+Shift+X toggles · /font and /mac in chat'))}</div>`;
     const pv = el.querySelector('.fsPreview');
-    if (pv) pv.textContent = decorate(applyStyle('Good game! gg 123', config.style));
+    if (pv) pv.textContent = decorate(applyStyle(T('Good game! gg 123'), config.style));
 }
 
 function wireBlock(el) {

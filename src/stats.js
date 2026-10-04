@@ -17,6 +17,9 @@ const path = require('path');
 
 let fc = null;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const ET = (s, v) => E(fc.t(s, v));
 const pct = (x) => Math.round(x * 100) + '%';
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
@@ -24,7 +27,7 @@ const mod = (id) => fc.modules.get(id);
 /* --------------------------------------------------------------------- data */
 
 const allSets = () => fc.history.all();
-const gameOf = (s) => shortName(s.channel || s.game || '') || 'Unknown game';
+const gameOf = (s) => shortName(s.channel || s.game || '') || T('Unknown game');
 
 function tally(sets) {
     const r = { w: 0, l: 0, d: 0, u: 0, n: sets.length, gw: 0, gl: 0, dur: 0 };
@@ -95,10 +98,10 @@ function setRow(s) {
         : s.result === 'draw' ? '<b class="d">D</b>' : '<b class="u">?</b>';
     const score = s.mine != null && s.theirs != null ? s.mine + '–' + s.theirs : '—';
     const url = replayUrl(s);
-    return `<div class="fcsSet">${mark}<span class="o" ${s.opp ? `data-opp="${E(s.opp)}"` : ''} title="${E(s.opp ? 'Head-to-head with ' + s.opp : '')}">${E(s.opp || '?')}</span><span class="sc">${score}</span>
+    return `<div class="fcsSet">${mark}<span class="o" ${s.opp ? `data-opp="${E(s.opp)}"` : ''} title="${s.opp ? ET('Head-to-head with {name}', { name: s.opp }) : ''}">${E(s.opp || '?')}</span><span class="sc">${score}</span>
         <span class="g" title="${E(s.channel || s.game || '')}">${E(gameOf(s))}</span><span class="t">${when(s.at)}</span>
         ${url ? fc.ui.btn('Replay', { size: 'sm', icon: 'play', cls: 'fcsRp', title: 'Watch the replay in Fightcade', attrs: `data-replay="${E(url)}"` }) : '<span class="fcsRp none"></span>'}
-        ${s.quark ? `<span class="fcsStar${s.star ? ' on' : ''}" data-star="${E(s.quark)}" title="${s.star ? 'Remove from highlights' : 'Keep in highlights'}">${s.star ? '★' : '☆'}</span>` : '<span class="fcsStar none"></span>'}
+        ${s.quark ? `<span class="fcsStar${s.star ? ' on' : ''}" data-star="${E(s.quark)}" title="${ET(s.star ? 'Remove from highlights' : 'Keep in highlights')}">${s.star ? '★' : '☆'}</span>` : '<span class="fcsStar none"></span>'}
     </div>`;
 }
 
@@ -107,7 +110,7 @@ function setRow(s) {
 const view = { period: 'all', game: '', busy: false, note: '', opp: '', tab: 'overview' };
 
 // other modules add tabs (analytics, progress): { id, label, order, html(ctx), after(el, ctx) }
-const tabs = [{ id: 'overview', label: 'Overview', order: 0 }];
+const tabs = [{ id: 'overview', label: 'Overview', order: 0 }];          // labels go through fc.ui.tabs (translated)
 function addTab(t) {
     const i = tabs.findIndex(x => x.id === t.id);
     if (i >= 0) tabs.splice(i, 1);
@@ -134,7 +137,7 @@ const tile = (v, label, cls) => `<div class="fc-tile fcsBig"><div class="v${cls 
 function lineChart(sets) {
     const days = view.period === '7' ? 7 : view.period === '30' ? 30 : 0;
     const b = buckets(sets, days);
-    if (b.list.length < 2) return '<div class="fc-muted">Play a few more sessions to see a trend.</div>';
+    if (b.list.length < 2) return '<div class="fc-muted">' + ET('Play a few more sessions to see a trend.') + '</div>';
     const W = 600, H = 160, P = 8;
     const x = (i) => P + i * (W - 2 * P) / (b.list.length - 1);
     const y = (r) => P + (1 - r) * (H - 2 * P);
@@ -165,11 +168,11 @@ function h2hHtml() {
     const isFr = !!(fr && fr.isFriend && fr.isFriend(name));
     const cst = ms && ms.challengeState ? ms.challengeState(name) : null;
     const status = fc.app.status(name);
-    const statusText = { off: 'Not in your channels', playing: '● In a match', away: 'Away', on: '● Online' }[status];
+    const statusText = { off: ET('Not in your channels'), playing: '● ' + ET('In a match'), away: ET('Away'), on: '● ' + ET('Online') }[status];
     const byTime = sets.slice().sort((a, b) => a.at - b.at);
     const first = byTime[0], last = byTime[byTime.length - 1];
     const cur = st.cur.n ? (st.cur.kind === 'won' ? '🔥 ' + st.cur.n + 'W' : st.cur.n + 'L') : '—';
-    const md = (s) => s ? new Date(s.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+    const md = (s) => s ? new Date(s.at).toLocaleDateString(fc.t.locale(), { month: 'short', day: 'numeric' }) : '—';
     return `<div class="fcsHH">
         ${fc.ui.btn('All stats', { kind: 'ghost', size: 'sm', icon: 'arrowLeft', act: 'back', cls: 'fcsBack' })}
         <div class="fcsHHead">
@@ -178,24 +181,24 @@ function h2hHtml() {
                 <div class="st ${status}">${statusText}</div>
                 ${nt && nt.chips ? nt.chips(name) : ''}</div>
             <div class="acts">
-                ${cst ? fc.ui.btn('Challenge', { kind: 'success', size: 'sm', icon: 'sword', act: 'challenge', disabled: !cst.ok, title: cst.ok ? 'Challenge ' + name : cst.why }) : ''}
-                ${fr ? fc.ui.btn(isFr ? 'Friend' : 'Add friend', { kind: 'sec', size: 'sm', icon: 'star', act: 'friend' }) : ''}
+                ${cst ? fc.ui.btn('Challenge', { kind: 'success', size: 'sm', icon: 'sword', act: 'challenge', disabled: !cst.ok, title: cst.ok ? T('Challenge {name}', { name }) : cst.why }) : ''}
+                ${fr ? fc.ui.btn(T(isFr ? 'Friend' : 'Add friend'), { kind: 'sec', size: 'sm', icon: 'star', act: 'friend' }) : ''}
                 ${nt ? fc.ui.btn('Notes', { kind: 'sec', size: 'sm', icon: 'note', act: 'notes' }) : ''}
                 ${fc.ui.btn('Scout', { kind: 'sec', size: 'sm', icon: 'search', act: 'scout' })}
             </div>
         </div>
         ${sets.length ? `<div class="fcsTop">
-            ${tile(rec(t), 'record vs ' + E(name), t.rate == null ? '' : t.rate >= .5 ? 'good' : 'bad')}
-            ${tile(t.rate == null ? '—' : pct(t.rate), 'win rate' + bar(t.rate))}
-            ${tile(t.gw + '–' + t.gl, 'games won–lost')}
-            ${tile(st.bestW + 'W', 'longest win streak vs them')}
-            ${tile(cur, 'current streak')}
-            ${tile(md(first), 'first set · last ' + md(last))}
+            ${tile(rec(t), ET('record vs {name}', { name }), t.rate == null ? '' : t.rate >= .5 ? 'good' : 'bad')}
+            ${tile(t.rate == null ? '—' : pct(t.rate), ET('win rate') + bar(t.rate))}
+            ${tile(t.gw + '–' + t.gl, ET('games won–lost'))}
+            ${tile(st.bestW + 'W', ET('longest win streak vs them'))}
+            ${tile(cur, ET('current streak'))}
+            ${tile(md(first), ET('first set · last {when}', { when: md(last) }))}
         </div>
         <div class="fcsGrid">
-            ${card('Win rate vs ' + E(name) + ' over time', lineChart(sets), true)}
-            ${card('Every set <small>— ' + sets.length + '</small>', byTime.slice().reverse().map(setRow).join(''), true)}
-        </div>` : fc.ui.empty({ icon: 'users', title: 'No sets against ' + name + ' yet', sub: view.game || view.period !== 'all' ? 'Try other filters.' : '' })}
+            ${card(ET('Win rate vs {name} over time', { name }), lineChart(sets), true)}
+            ${card(ET('Every set') + ' <small>— ' + sets.length + '</small>', byTime.slice().reverse().map(setRow).join(''), true)}
+        </div>` : fc.ui.empty({ icon: 'users', title: T('No sets against {name} yet', { name }), sub: view.game || view.period !== 'all' ? T('Try other filters.') : '' })}
     </div>`;
 }
 
@@ -204,7 +207,7 @@ function onH2HAction(act, el) {
     if (act === 'challenge') {
         const ms = mod('match-screens');
         const st = ms && ms.challenge ? ms.challenge(name) : null;
-        view.note = st ? (st.ok ? 'Challenge sent to ' + name + ' — Fightcade asks for the FT.' : st.why) : '';
+        view.note = st ? (st.ok ? T('Challenge sent to {name} — Fightcade asks for the FT.', { name }) : st.why) : '';
         render();
     } else if (act === 'friend') {
         const fr = mod('friends');
@@ -245,37 +248,37 @@ function overviewHtml() {
     const recent = sets.slice().sort((a, b) => b.at - a.at).slice(0, 25);
     const highlights = all.filter(x => x.star).sort((a, b) => b.at - a.at);
 
-    const oppRow = (x) => `<div class="fcsRow"><span class="n" data-opp="${E(x.o)}" title="Head-to-head with ${E(x.o)}">${E(x.o)}</span><span class="r">${rec(x.t)}</span>
+    const oppRow = (x) => `<div class="fcsRow"><span class="n" data-opp="${E(x.o)}" title="${ET('Head-to-head with {name}', { name: x.o })}">${E(x.o)}</span><span class="r">${rec(x.t)}</span>
         <span class="p ${x.t.rate == null ? '' : x.t.rate >= .5 ? 'good' : 'bad'}">${x.t.rate == null ? '—' : pct(x.t.rate)}</span></div>`;
-    const none = '<div class="fc-muted">—</div>', few = '<div class="fc-muted">Not enough sets against anyone yet.</div>';
+    const none = '<div class="fc-muted">—</div>', few = '<div class="fc-muted">' + ET('Not enough sets against anyone yet.') + '</div>';
     return `<div class="fcsTop">
-            ${tile(rec(t), 'record' + (t.u ? ' · ' + t.u + ' unknown' : ''))}
-            ${tile(t.rate == null ? '—' : pct(t.rate), 'win rate' + bar(t.rate))}
-            ${tile(fc.fmt.num(t.n), 'sets played')}
-            ${tile(t.gw + '–' + t.gl, 'games won–lost')}
-            ${tile(st.cur.n ? (st.cur.kind === 'won' ? '🔥 ' : '') + st.cur.n + (st.cur.kind === 'won' ? 'W' : 'L') : '—', 'current streak')}
-            ${tile(st.bestW + 'W', 'longest win streak')}
+            ${tile(rec(t), ET('record') + (t.u ? ' · ' + ET('{n} unknown', { n: t.u }) : ''))}
+            ${tile(t.rate == null ? '—' : pct(t.rate), ET('win rate') + bar(t.rate))}
+            ${tile(fc.fmt.num(t.n), ET('sets played'))}
+            ${tile(t.gw + '–' + t.gl, ET('games won–lost'))}
+            ${tile(st.cur.n ? (st.cur.kind === 'won' ? '🔥 ' : '') + st.cur.n + (st.cur.kind === 'won' ? 'W' : 'L') : '—', ET('current streak'))}
+            ${tile(st.bestW + 'W', ET('longest win streak'))}
         </div>
         <div class="fcsGrid">
-            ${card('Win rate over time', lineChart(sets), true)}
-            ${card('Per game', gameRows.length ? gameRows.map(([g, x]) => `<div class="fcsRow"><span class="n" title="${E(g)}">${E(g)}</span>
+            ${card(ET('Win rate over time'), lineChart(sets), true)}
+            ${card(ET('Per game'), gameRows.length ? gameRows.map(([g, x]) => `<div class="fcsRow"><span class="n" title="${E(g)}">${E(g)}</span>
                 <span class="r">${rec(x)}</span><span class="p">${x.rate == null ? '—' : pct(x.rate)}</span></div>${bar(x.rate)}`).join('') : none)}
-            ${card('Rivals', rivals.length ? rivals.map(oppRow).join('') : none)}
-            ${card('Best matchups <small>(3+ sets)</small>', best.length ? best.map(oppRow).join('') : few)}
-            ${card('Toughest matchups <small>(3+ sets)</small>', worst.length ? worst.map(oppRow).join('') : few)}
-            ${card('Last sessions <small>— click a day to share it</small>', sessions.length ? `<div class="fcsSessions">${sessions.map(([k, x]) => `
-                <div class="s" data-share="${E(k)}" title="${E(k)}: ${rec(x)} — click to share"><div class="bars">
+            ${card(ET('Rivals'), rivals.length ? rivals.map(oppRow).join('') : none)}
+            ${card(ET('Best matchups') + ' <small>' + ET('(3+ sets)') + '</small>', best.length ? best.map(oppRow).join('') : few)}
+            ${card(ET('Toughest matchups') + ' <small>' + ET('(3+ sets)') + '</small>', worst.length ? worst.map(oppRow).join('') : few)}
+            ${card(ET('Last sessions') + ' <small>— ' + ET('click a day to share it') + '</small>', sessions.length ? `<div class="fcsSessions">${sessions.map(([k, x]) => `
+                <div class="s" data-share="${E(k)}" title="${E(k)}: ${rec(x)} — ${ET('click to share')}"><div class="bars">
                     <i class="l" style="height:${Math.round(x.l / maxS * 100)}%"></i><i class="w" style="height:${Math.round(x.w / maxS * 100)}%"></i></div>
-                    <span>${new Date(k + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}</span></div>`).join('')}</div>` : none, true)}
-            ${highlights.length ? card('Highlights <small>— your starred sets</small>', highlights.map(setRow).join(''), true) : ''}
-            ${card('Recent sets <small>— ☆ keeps one in Highlights</small>', recent.length ? recent.map(setRow).join('') : none, true)}
+                    <span>${new Date(k + 'T12:00:00').toLocaleDateString(fc.t.locale(), { month: 'numeric', day: 'numeric' })}</span></div>`).join('')}</div>` : none, true)}
+            ${highlights.length ? card(ET('Highlights') + ' <small>— ' + ET('your starred sets') + '</small>', highlights.map(setRow).join(''), true) : ''}
+            ${card(ET('Recent sets') + ' <small>— ' + ET('☆ keeps one in Highlights') + '</small>', recent.length ? recent.map(setRow).join('') : none, true)}
         </div>`;
 }
 
 function render() {
     if (!page) return;
     page.el.classList.toggle('h2h', !!view.opp);
-    page.setTitle(view.opp ? 'You vs ' + view.opp : 'Your stats');
+    page.setTitle(view.opp ? T('You vs {name}', { name: view.opp }) : T('Your stats'));
     syncHead();
     if (view.opp) { page.body.innerHTML = `<div class="fcsNote">${E(view.note)}</div>` + h2hHtml(); return; }
     const t = tabs.find(x => x.id === view.tab) || tabs[0];
@@ -294,12 +297,12 @@ function syncHead() {
     if (view.game && !games.includes(view.game)) games = games.concat(view.game);
     const head = page.el.querySelector('.fc-page-h');
     const gsel = head.querySelector('.fcsGame');
-    const opts = '<option value="">All games</option>' + games.map(g => `<option${g === view.game ? ' selected' : ''}>${E(g)}</option>`).join('');
+    const opts = '<option value="">' + ET('All games') + '</option>' + games.map(g => `<option${g === view.game ? ' selected' : ''}>${E(g)}</option>`).join('');
     if (gsel.__opts !== opts) { gsel.innerHTML = opts; gsel.__opts = opts; }
     gsel.value = view.game;
     head.querySelectorAll('.fcsSeg [data-p]').forEach(s => s.classList.toggle('on', s.dataset.p === view.period));
     const imp = head.querySelector('[data-act="import"]');
-    imp.lastChild.textContent = view.busy ? 'Importing…' : 'Import history';
+    imp.lastChild.textContent = T(view.busy ? 'Importing…' : 'Import history');
     imp.disabled = view.busy;
 }
 
@@ -307,7 +310,7 @@ function syncHead() {
 
 async function importHistory() {
     const me = fc.app.me();
-    if (!me) { view.note = 'Log in first.'; render(); return; }
+    if (!me) { view.note = T('Log in first.'); render(); return; }
     view.busy = true; view.note = ''; render();
     const lme = me.toLowerCase();
     const byRom = fc.app.global().channelByGameId || {};
@@ -350,9 +353,9 @@ async function importHistory() {
         stopped = e.message;            // keep what came in before the failure
     }
     const added = fc.history.merge(found);
-    if (stopped && !found.length) view.note = 'Import failed: ' + stopped + '.';
-    else view.note = (added ? 'Imported ' + added + ' sets from Fightcade' : 'Up to date — nothing new to import (' + found.length + ' checked)') +
-        (stopped ? '; stopped early: ' + stopped + '. Try again later for the rest.' : '.');
+    if (stopped && !found.length) view.note = T('Import failed: {error}.', { error: stopped });
+    else view.note = (added ? T('Imported {n} sets from Fightcade', { n: added }) : T('Up to date — nothing new to import ({n} checked)', { n: found.length })) +
+        (stopped ? '; ' + T('stopped early: {error}. Try again later for the rest.', { error: stopped }) : '.');
     view.busy = false;
     render();
 }
@@ -455,11 +458,11 @@ async function drawShare(k, withArt) {
     if (logo) x.drawImage(logo, 60, 50, 230, 230 * logo.height / logo.width);
     else { x.font = '800 40px ' + FONT; x.fillStyle = '#4f63f0'; x.fillText('FightCord', 60, 88); }
 
-    const date = new Date(k + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const date = new Date(k + 'T12:00:00').toLocaleDateString(fc.t.locale(), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     x.textBaseline = 'alphabetic';
     x.font = '700 20px ' + FONT;
     x.fillStyle = '#22e3f2';
-    x.fillText('SESSION  ·  ' + date.toUpperCase(), 60, 148);
+    x.fillText(T('SESSION') + '  ·  ' + date.toUpperCase(), 60, 148);
     x.font = '800 58px ' + FONT;
     x.fillStyle = '#ffffff';
     x.fillText(fit(x, fc.app.me() || 'Me', 770), 60, 212);
@@ -469,10 +472,10 @@ async function drawShare(k, withArt) {
 
     // stat tiles
     const tiles = [
-        [t.w + '–' + t.l + (t.d ? '–' + t.d : ''), 'RECORD', t.w >= t.l ? '#2dd48f' : '#f24b5a'],
-        [t.rate == null ? '—' : Math.round(t.rate * 100) + '%', 'WIN RATE', '#ffffff'],
-        [st.bestW ? st.bestW + 'W' : '—', 'BEST STREAK', '#f5b83d'],
-        [String(t.n), 'SETS PLAYED', '#ffffff']
+        [t.w + '–' + t.l + (t.d ? '–' + t.d : ''), T('RECORD'), t.w >= t.l ? '#2dd48f' : '#f24b5a'],
+        [t.rate == null ? '—' : Math.round(t.rate * 100) + '%', T('WIN RATE'), '#ffffff'],
+        [st.bestW ? st.bestW + 'W' : '—', T('BEST STREAK'), '#f5b83d'],
+        [String(t.n), T('SETS PLAYED'), '#ffffff']
     ];
     tiles.forEach(([v, label, col], i) => {
         const px = 60 + i * 276, py = 292;
@@ -514,7 +517,7 @@ async function drawShare(k, withArt) {
         x.font = '600 16px ' + FONT;
         x.fillStyle = '#8a90b8';
         x.textAlign = 'right';
-        x.fillText('+' + (sets.length - 6) + ' more sets', W - 48, 612);
+        x.fillText(T('+{n} more sets', { n: sets.length - 6 }), W - 48, 612);
         x.textAlign = 'left';
     }
     return c;
@@ -530,7 +533,7 @@ async function share(k) {
     const say = (html) => { const m = modal.body.querySelector('.msg'); if (m) m.innerHTML = html; };
     const modal = fc.ui.modal({
         title: 'Share your session', width: 880, cls: 'fcsShare',
-        body: '<div class="fcsPv"><div class="ld"><span class="fc-spin"></span> Drawing…</div></div><div class="msg"></div>',
+        body: '<div class="fcsPv"><div class="ld"><span class="fc-spin"></span> ' + ET('Drawing…') + '</div></div><div class="msg"></div>',
         actions: [
             { label: 'Save PNG', kind: 'sec', keep: true, fn: () => {
                 if (!url) return;
@@ -539,21 +542,21 @@ async function share(k) {
                     fs.mkdirSync(dir, { recursive: true });
                     savedFile = path.join(dir, 'session-' + k + '.png');
                     fs.writeFileSync(savedFile, Buffer.from(url.split(',')[1], 'base64'));
-                    say('Saved to ' + E(savedFile) + ' · <span class="lnk" data-show="1">Show in folder</span>');
-                } catch (err) { say('Couldn’t save (' + E(err.message) + ').'); }
+                    say(ET('Saved to {file}', { file: savedFile }) + ' · <span class="lnk" data-show="1">' + ET('Show in folder') + '</span>');
+                } catch (err) { say(ET('Couldn’t save ({error}).', { error: err.message })); }
             } },
             { label: 'Copy image', keep: true, fn: async () => {
                 if (!url) return;
                 try {
                     const { clipboard, nativeImage } = require('electron');
                     clipboard.writeImage(nativeImage.createFromDataURL(url));
-                    say('Copied — paste it into Discord with Ctrl+V.');
+                    say(ET('Copied — paste it into Discord with Ctrl+V.'));
                 } catch (err) {
                     try {
                         const blob = await (await fetch(url)).blob();
                         await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
-                        say('Copied — paste it into Discord with Ctrl+V.');
-                    } catch (err2) { say('Couldn’t copy (' + E(err2.message) + ') — use Save PNG.'); }
+                        say(ET('Copied — paste it into Discord with Ctrl+V.'));
+                    } catch (err2) { say(ET('Couldn’t copy ({error}) — use Save PNG.', { error: err2.message })); }
                 }
             } }
         ]
@@ -610,7 +613,7 @@ function open(opts) {
     if (!page) {
         page = fc.ui.page('stats', {
             title: 'Your stats', icon: 'chart', cls: 'fcsPage',
-            tools: `<span class="fcsSeg"><span data-p="7">7 days</span><span data-p="30">30 days</span><span data-p="all">All time</span></span>` +
+            tools: `<span class="fcsSeg"><span data-p="7">${ET('7 days')}</span><span data-p="30">${ET('30 days')}</span><span data-p="all">${ET('All time')}</span></span>` +
                 `<select class="fc-select fcsGame"></select>` + fc.ui.btn('Import history', { kind: 'sec', size: 'sm', icon: 'download', act: 'import', title: 'Add your older sets from Fightcade’s match list' }),
             onEsc: () => { if (view.opp) { view.opp = ''; render(); return false; } return true; },
             onClose: () => { page = null; }

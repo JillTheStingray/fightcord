@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0
+
+- **Português (Brasil) e Español.** All of Fightcord (every screen, setting, toast and the welcome tour)
+  plus the installer window now come in Brazilian Portuguese and Spanish. **Automatic** follows
+  your Windows language; change it in Settings → My Fightcord → Language (applies after a restart).
+- **The chat translator follows your language.** New installs translate other players' messages
+  into the language Fightcord is in. If you already picked a target language, it's kept.
+- Translations are new: if something reads wrong, please open an issue or a pull request
+  (`src/i18n-pt.js`, `src/i18n-es.js`).
+
 ## 2.1.0
 
 - **Unfinished sets.** The scout card counts how often a player left ranked sets before anyone

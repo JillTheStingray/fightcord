@@ -22,6 +22,9 @@ const EXT = /\.(mp3|ogg|wav|m4a|flac|webm)$/i;
 const MIME = { mp3: 'audio/mpeg', ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', flac: 'audio/flac', webm: 'audio/webm' };
 const FADE_MS = 1200;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
 const pretty = (f) => String(f || '').replace(EXT, '').replace(/[_]+/g, ' ').trim();
 
 /* -------------------------------------------------------------------- files */
@@ -50,7 +53,7 @@ function addTrack(file) {
         if (file.path) { try { fs.copyFileSync(file.path, dst); tracks(true); res(name); } catch (e) { rej(e); } return; }
         const rd = new FileReader();
         rd.onload = () => { try { fs.writeFileSync(dst, Buffer.from(rd.result)); tracks(true); res(name); } catch (e) { rej(e); } };
-        rd.onerror = () => rej(new Error('could not read the file'));
+        rd.onerror = () => rej(new Error(T('could not read the file')));
         rd.readAsArrayBuffer(file);
     });
 }
@@ -97,14 +100,14 @@ function load(name) {
         audio.addEventListener('error', () => {
             const err = audio && audio.error;
             fc.log.warn('audio error', { code: err && err.code, message: err && err.message, track: name });
-            state.reason = 'Couldn’t play ' + name + (err ? ' (error ' + err.code + (err.message ? ': ' + err.message : '') + ')' : '');
+            state.reason = T('Couldn’t play {name}', { name }) + (err ? ' (' + T('error {code}', { code: err.code }) + (err.message ? ': ' + err.message : '') + ')' : '');
             fc.settings.refresh('music');
         });
         audio.addEventListener('playing', () => fc.log('playing', name, 'at volume', audio && audio.volume.toFixed(2)));
         fc.log('loaded', { track: name, bytes: buf.length });
         return audio;
     } catch (e) {
-        state.reason = 'Couldn’t read ' + name + ' (' + e.message + ')';
+        state.reason = T('Couldn’t read {name}', { name }) + ' (' + e.message + ')';
         fc.log.warn('read failed', e.message);
         return null;
     }
@@ -135,7 +138,7 @@ function tick() {
     const want = config.enabled && name && !(config.pauseInMatch && inMatch);
     const why = JSON.stringify({ want: !!want, enabled: config.enabled, track: name, inMatch });
     if (why !== lastWhy) { lastWhy = why; fc.log('decision', why); }
-    const reason = !config.enabled ? 'Off' : !name ? 'No track — add one below' : (config.pauseInMatch && inMatch) ? 'Paused — you’re in a match' : '';
+    const reason = !config.enabled ? T('Off') : !name ? T('No track — add one below') : (config.pauseInMatch && inMatch) ? T('Paused — you’re in a match') : '';
     if (reason !== state.reason && !waitingForGesture) { state.reason = reason; fc.settings.refresh('music'); }
     if (!want) {
         if (audio && !audio.paused && target !== 0) fadeTo(0, () => { if (audio) audio.pause(); state.playing = false; fc.settings.refresh('music'); });
@@ -152,7 +155,7 @@ function tick() {
                 if (a !== audio) return;
                 fc.log.warn('play() refused', { name: err && err.name, message: err && err.message });
                 waitingForGesture = true;
-                state.reason = 'Starts on your first click (' + ((err && err.name) || 'blocked') + ')';
+                state.reason = T('Starts on your first click') + ' (' + ((err && err.name) || 'blocked') + ')';
                 fc.settings.refresh('music');
             });
     } else if (Math.abs(target - vol) > 0.001 || (!fadeTimer && Math.abs(a.volume - vol) > 0.01)) fadeTo(vol);
@@ -174,7 +177,7 @@ function testSound() {
 
 function nowText() {
     const cur = currentTrack();
-    return state.playing && audio && !audio.paused ? '♪ Now playing: ' + pretty(cur) : (state.reason || (cur ? 'Ready: ' + pretty(cur) : ''));
+    return state.playing && audio && !audio.paused ? '♪ ' + T('Now playing: {track}', { track: pretty(cur) }) : (state.reason || (cur ? T('Ready: {track}', { track: pretty(cur) }) : ''));
 }
 
 function listHtml() {
@@ -182,23 +185,22 @@ function listHtml() {
     return list.length ? list.map(f => `<div class="muTrack${f === cur ? ' on' : ''}" data-track="${E(f)}">
             ${fc.ui.icon(f === cur ? 'music' : 'play', 'muIc')}<span class="muName" title="${E(f)}">${E(pretty(f))}</span>
             ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'trash', title: 'Remove this track', cls: 'muX', attrs: `data-del="${E(f)}"` })}</div>`).join('')
-        : '<div class="muEmpty">No tracks yet. Add an mp3 / ogg / wav file of your own.</div>';
+        : `<div class="muEmpty">${E(T('No tracks yet. Add an mp3 / ogg / wav file of your own.'))}</div>`;
 }
 
 function render(el) {
-    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span>` +
+    const sw = (key, label, hint) => `<label class="fc-field"><span class="fc-field-text"><b>${E(T(label))}</b>${hint ? `<small>${E(T(hint))}</small>` : ''}</span>` +
         `<input type="checkbox" class="fc-switch-in" data-opt="${key}"${config[key] ? ' checked' : ''}><i class="fc-switch"></i></label>`;
-    el.innerHTML = `<div class="fc-set-title">Background music <small>— loops in the lobby · /music in chat</small></div>
-        ${sw('enabled', 'Play background music')}
-        ${sw('pauseInMatch', 'Pause during matches', 'Fades back in after')}
-        <div class="fc-field"><span class="fc-field-text"><b>Volume</b></span>
+    el.innerHTML = `<div class="fc-set-title">${E(T('Background music'))} <small>— ${E(T('loops in the lobby · /music in chat'))}</small></div>
+        ${sw('enabled', N_('Play background music'))}
+        ${sw('pauseInMatch', N_('Pause during matches'), N_('Fades back in after'))}
+        <div class="fc-field"><span class="fc-field-text"><b>${E(T('Volume'))}</b></span>
             <input type="range" class="fc-slider" data-vol="1" min="0" max="100" value="${Math.round(config.volume * 100)}"><span class="fc-slider-v">${Math.round(config.volume * 100)}%</span></div>
         <div class="muList">${listHtml()}</div>
         <div class="muBar">${fc.ui.btn('Add a track…', { kind: 'sec', size: 'sm', icon: 'plus', act: 'add' })}
             ${fc.ui.btn('Test sound', { kind: 'ghost', size: 'sm', icon: 'music', act: 'test', title: 'Plays a short chime' })}
             <input type="file" class="mu_file" accept="audio/*,.mp3,.ogg,.wav,.m4a,.flac" style="display:none"><span class="muNow">${E(nowText())}</span></div>
-        <div class="fc-note">Playing but can’t hear it? Open the Windows volume mixer (right-click the speaker icon) and check that
-            Fightcade isn’t muted or turned down, and that it uses the right speakers / headset.</div>`;
+        <div class="fc-note">${E(T('Playing but can’t hear it? Open the Windows volume mixer (right-click the speaker icon) and check that Fightcade isn’t muted or turned down, and that it uses the right speakers / headset.'))}</div>`;
 }
 
 // patch, don't rebuild (the volume slider may be in your hand)
@@ -227,7 +229,7 @@ function wire(el) {
                 unload();
                 tick();
                 fc.settings.refresh('music');
-            }).catch(err => { state.reason = 'Couldn’t add it: ' + err.message; fc.settings.refresh('music'); });
+            }).catch(err => { state.reason = T('Couldn’t add it: {error}', { error: err.message }); fc.settings.refresh('music'); });
         }
     });
     el.addEventListener('input', (e) => {
@@ -298,7 +300,7 @@ function start(f) {
         store.save();
         tick();
         fc.settings.refresh('music');
-        fc.ui.toast('Background music ' + (config.enabled ? 'on' : 'off'), { icon: 'music', ms: 2000 });
+        fc.ui.toast(T(config.enabled ? 'Background music on' : 'Background music off'), { icon: 'music', ms: 2000 });
     });
     fc.settings.block({ id: 'music', section: 'music', order: 10, render: wire, refresh });
     fc.log('ready,', tracks().length, 'track(s)');

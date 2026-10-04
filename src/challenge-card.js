@@ -18,6 +18,8 @@ let fc = null;
 let store = null, cfg = null;          // challenge-card-config.json
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
 
@@ -50,14 +52,14 @@ function show(d) {
     const vs = fc.history.recordVs(d.name);
     const nt = mod('notes'), fr = mod('friends');
     const ft = +d.ranked || 0;
-    const me = fc.app.me() || 'You';
+    const me = fc.app.me() || T('You');
     const el = document.createElement('div');
     el.className = 'ccCard';
     el.innerHTML = `
         <div class="ccGlow"></div>
-        <div class="ccHead">${fc.ui.icon('sword', 'ccIco')}<span class="ccTitle">Incoming challenge</span>
+        <div class="ccHead">${fc.ui.icon('sword', 'ccIco')}<span class="ccTitle">${E(T('Incoming challenge'))}</span>
             <span class="ccGame" title="${E(d.channel)}">${E(shortName(d.channel))}</span>
-            <span class="ccFt ${ft ? 'ranked' : ''}">${ft ? 'FT' + ft + ' ranked' : 'Casual'}</span>
+            <span class="ccFt ${ft ? 'ranked' : ''}">${E(ft ? T('FT{ft} ranked', { ft }) : T('Casual'))}</span>
             ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'hide', title: 'Hide this card (the challenge stays in chat)', cls: 'ccX' })}</div>
         <div class="ccVs">
             <div class="ccP me">${fc.ui.avatar(me, { size: 44 })}<b>${E(me)}</b></div>
@@ -68,15 +70,15 @@ function show(d) {
         </div>
         <div class="ccStats">
             <div class="ccStat"><span>ELO</span><b class="ccElo">…</b></div>
-            <div class="ccStat odds"><span>Your odds</span><b class="ccOdds">…</b><div class="ccBar"><i></i></div></div>
-            <div class="ccStat"><span>You vs them</span><b>${vs.w || vs.l ? vs.w + '–' + vs.l : 'first time'}</b></div>
+            <div class="ccStat odds"><span>${E(T('Your odds'))}</span><b class="ccOdds">…</b><div class="ccBar"><i></i></div></div>
+            <div class="ccStat"><span>${E(T('You vs them'))}</span><b>${vs.w || vs.l ? vs.w + '–' + vs.l : E(T('first time'))}</b></div>
         </div>
         ${nt && nt.chips ? `<div class="ccNotes">${nt.chips(d.name)}</div>` : ''}
-        ${(d.warn || []).length ? `<div class="ccWarn">⚠ ${d.warn.map(E).join(' · ')}</div>` : ''}
+        ${(d.warn || []).length ? `<div class="ccWarn">⚠ ${d.warn.map(w => E(T(w))).join(' · ')}</div>` : ''}
         <div class="ccBtns">
-            <span class="ccBtn accept" data-cc="accept">Accept${ft ? ' FT' + ft : ''}</span>
-            <span class="ccBtn decline" data-cc="decline">Decline</span>
-            <span class="ccBtn ghost" data-cc="scout">Scout</span>
+            <span class="ccBtn accept" data-cc="accept">${E(ft ? T('Accept FT{ft}', { ft }) : T('Accept'))}</span>
+            <span class="ccBtn decline" data-cc="decline">${E(T('Decline'))}</span>
+            <span class="ccBtn ghost" data-cc="scout">${E(T('Scout'))}</span>
         </div>`;
     el.addEventListener('mousedown', (e) => e.stopPropagation());
     el.addEventListener('click', (e) => { e.stopPropagation(); onClick(k, e); });
@@ -102,7 +104,7 @@ function fillOdds(el, name) {
             setTxt('.ccOdds', p + '%');
             const odds = el.querySelector('.ccStat.odds');
             odds.classList.add(p >= 50 ? 'good' : 'bad');
-            odds.title = '~' + Math.round(data.odds.game * 100) + '% per game, ' + p + '% to win the FT' + data.odds.ft;
+            odds.title = T('~{game}% per game, {set}% to win the FT{ft}', { game: Math.round(data.odds.game * 100), set: p, ft: data.odds.ft });
             el.querySelector('.ccBar i').style.width = p + '%';
         } else setTxt('.ccOdds', '—');
         // they often leave ranked sets unfinished (1 in 5 or more): say so before you accept
@@ -110,8 +112,8 @@ function fillOdds(el, name) {
         if (q && scout.quitsNote && scout.quitsNote(q) && q.unfinished / q.ranked >= 0.2) {
             const w = document.createElement('div');
             w.className = 'ccWarn ccQuits';
-            w.title = scout.quitsNote(q) + '. Could also be disconnects.';
-            w.textContent = '⚠ Leaves sets unfinished: ' + q.unfinished + ' of ' + q.ranked + ' ranked';
+            w.title = scout.quitsNote(q) + '. ' + T('Could also be disconnects.');
+            w.textContent = '⚠ ' + T('Leaves sets unfinished: {n} of {total} ranked', { n: q.unfinished, total: q.ranked });
             const btns = el.querySelector('.ccBtns');
             if (btns && !el.querySelector('.ccQuits')) btns.parentNode.insertBefore(w, btns);
         }
@@ -164,7 +166,7 @@ function ring() {
 // a dry run from the settings block
 function preview() {
     const me = fc.app.me();
-    const name = Object.keys(fc.app.users()).find(n => n !== me) || 'Challenger';
+    const name = Object.keys(fc.app.users()).find(n => n !== me) || T('Challenger');
     show({ demo: true, name, channel: fc.app.activeChannelId() || 'Street Fighter III 3rd Strike', id: 'demo' + Date.now(), ranked: 3, warn: [] });
 }
 

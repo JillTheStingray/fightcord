@@ -37,6 +37,9 @@ const DEFAULTS = {
 };
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
 const mod = (id) => fc.modules.get(id);
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -263,7 +266,7 @@ function trackNew(chat) {
 
 /* ------------------------------------------------------------ hover actions */
 
-const ACTS = { reply: ['Reply', 'chat'], copy: ['Copy Text', 'copy'], translate: ['Translate', 'globe'], profile: ['Profile', 'user'] };
+const ACTS = { reply: [N_('Reply'), 'chat'], copy: [N_('Copy Text'), 'copy'], translate: [N_('Translate'), 'globe'], profile: [N_('Profile'), 'user'] };
 let bar = null, barLine = null, hideTimer = null;
 
 function ensureBar() {
@@ -291,7 +294,7 @@ function showBar(line) {
     if (!own && mod('translate')) acts.push('translate');
     if (mod('scout')) acts.push('profile');
     const b = ensureBar();
-    b.innerHTML = acts.map(a => `<span class="fcxBtn" data-act="${a}" title="${ACTS[a][0]}">${fc.ui.icon(ACTS[a][1])}</span>`).join('');
+    b.innerHTML = acts.map(a => `<span class="fcxBtn" data-act="${a}" title="${E(T(ACTS[a][0]))}">${fc.ui.icon(ACTS[a][1])}</span>`).join('');
     b.style.display = 'flex';
     const r = line.getBoundingClientRect();
     const chat = line.closest('.chatContent').getBoundingClientRect();
@@ -318,7 +321,7 @@ function act(what, line) {
     const wrap = line.closest('.messageWrapper');
     const name = authorOf(wrap);
     if (what === 'reply' && name) fc.app.mention(name);
-    else if (what === 'copy') fc.ui.toast(fc.ui.copy(lineText(line)) ? 'Copied' : 'Copy failed', { icon: 'copy', ms: 1500 });
+    else if (what === 'copy') fc.ui.toast(fc.ui.copy(lineText(line)) ? N_('Copied') : N_('Copy failed'), { icon: 'copy', ms: 1500 });
     else if (what === 'translate') { const tr = mod('translate'); if (tr) tr.translateLine(line); }
     else if (what === 'profile' && name) {
         const avatar = wrap.querySelector('header .avatarWrapper img') || wrap.querySelector('header .author') || line;
@@ -407,8 +410,8 @@ async function buildPreview(raw) {
     if (host === 'replay.fightcade.com') {
         const parts = u.pathname.split('/');
         const emu = parts[1], rom = parts[2];
-        return { kind: 'card', color: '#5865f2', site: 'Fightcade replay', title: 'Watch replay' + (rom ? ' · ' + rom : ''),
-                 desc: 'Opens in Fightcade' + (emu ? ' (' + emu + ')' : ''), url: raw };
+        return { kind: 'card', color: '#5865f2', site: T('Fightcade replay'), title: T('Watch replay') + (rom ? ' · ' + rom : ''),
+                 desc: T('Opens in Fightcade') + (emu ? ' (' + emu + ')' : ''), url: raw };
     }
     if (/(^|\.)youtube\.com$|youtu\.be$/.test(host)) {
         const id = youtubeId(u);
@@ -434,7 +437,7 @@ async function buildPreview(raw) {
         // channel pages are a JS app with generic tags; the live preview image is public
         const login = u.pathname.split('/')[1];
         if (!login || host.indexOf('clips.') === 0) return null;
-        return { kind: 'video', color: '#9146ff', site: 'Twitch', title: login + ' on Twitch', url: raw,
+        return { kind: 'video', color: '#9146ff', site: 'Twitch', title: T('{name} on Twitch', { name: login }), url: raw,
                  image: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_' + encodeURIComponent(login.toLowerCase()) + '-440x248.jpg' };
     }
     // app shells whose tags only ever say their own name aren't worth a card
@@ -525,7 +528,7 @@ function ensureJump() {
     if (jump) return jump;
     jump = document.createElement('div');
     jump.id = 'fcxJump';
-    jump.innerHTML = `<span>You're viewing older messages</span><span class="fcxJumpBtn">Jump to present</span>`;
+    jump.innerHTML = `<span>${E(T("You're viewing older messages"))}</span><span class="fcxJumpBtn">${E(T('Jump to present'))}</span>`;
     jump.addEventListener('click', (e) => {
         e.stopPropagation();
         if (jumpChat) jumpChat.scrollTop = jumpChat.scrollHeight;
@@ -665,7 +668,7 @@ function start(f) {
     store = fc.config('chat-extras', DEFAULTS);
     cfg = store.data;
     window.__fcChatExtrasLoaded = true;
-    fc.ui.style('fcxStyle', CSS);
+    fc.ui.style('fcxStyle', CSS.replace("content: 'NEW'", 'content: ' + JSON.stringify(T('NEW'))));
 
     const listen = (target, ev, fn, cap) => { target.addEventListener(ev, fn, cap); fc.own(() => target.removeEventListener(ev, fn, cap)); };
     listen(document, 'mouseover', onMouseOver, true);

@@ -22,6 +22,7 @@ const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 ? (args[i + 1] || true) : def; };
 const ONLY = opt('only', '');
 const WAIT = +opt('wait', 5000);
+const LANG = opt('lang', '');          // --lang pt / es: the harness in that language
 
 const BROWSERS = [
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -134,6 +135,7 @@ async function check(br, base, page) {
     if (lobby) pages.push('dev-harness/snapshot.html?s=' + encodeURIComponent(lobby) + '&view=home', 'dev-harness/snapshot.html?s=' + encodeURIComponent(lobby) + '&view=search');
     pages.push('dev-harness/styleguide.html');
     if (ONLY) pages = pages.filter(p => p.includes(ONLY));
+    if (LANG) pages = pages.map(p => p.includes('snapshot.html') ? p + '&lang=' + LANG : p);
 
     const srv = await serve();
     const base = 'http://127.0.0.1:' + srv.address().port + '/';

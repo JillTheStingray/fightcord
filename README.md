@@ -1,5 +1,7 @@
 # Fightcord
 
+**English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
+
 **Fightcade, but it looks and works like Discord**, plus a stack of tools for competitive players.
 One installer, no other downloads, everything runs inside the Fightcade app on your PC.
 
@@ -75,6 +77,9 @@ walks you through the rest.
 
 <sub>Screenshots use made-up players and chat.</sub>
 
+Fightcord (and its installer) speaks **English, Português (Brasil) and Español**. It follows your
+Windows language, or pick one in Settings → My Fightcord → Language.
+
 Everything can be switched on or off: **Ctrl+,** opens the settings (or type `/fightcord`, and
 `/help` lists every chat command). The **Lite / Full / Competitive** profiles switch whole groups at once.
 
@@ -131,7 +136,8 @@ and writes `dist\FightcordSetup.exe`. `-Release` also writes the update zip and 
 | `src/dev-harness/` | a fake Fightcade for working on the UI in a browser; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 | `rpc/` | the Discord status plugin |
 | `loader/` | the `inject.js` Fightcade runs at startup |
-| `installer/` | `FightcordSetup.cs` (WinForms, C# 5) and its icon / logo |
+| `installer/` | `FightcordSetup.cs` (WinForms, C# 5), its icon / logo, and its translations (`i18n.json`) |
+| `src/i18n-pt.js`, `src/i18n-es.js` | the translations; `node src/tools/i18n-check.js` shows anything missing |
 | `docs/` | how it hooks into Fightcade, the installer, every module |
 
 ## License

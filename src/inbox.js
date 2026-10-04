@@ -12,6 +12,9 @@
 
 let fc = null;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;          // marks text that's translated where it's shown
 const mod = (id) => fc.modules.get(id);
 
 let tab = 'all';
@@ -38,9 +41,9 @@ function ensureHeader(wrap) {
     if (!h) {
         h = document.createElement('div');
         h.id = 'fcInbox';
-        h.innerHTML = `<div class="ttl">${fc.ui.icon('bell', 'ic')}Inbox${fc.ui.btn('Clear all', { kind: 'ghost', size: 'sm', cls: 'clr', title: 'Remove everything from the list', attrs: 'data-ib="clear"' })}</div>
-            <div class="tabs">${[['all', 'All'], ['mentions', 'Mentions'], ['challenges', 'Challenges'], ['friends', 'Friends']]
-                .map(([k, l]) => `<span class="tab" data-tab="${k}">${l}<b></b></span>`).join('')}</div>
+        h.innerHTML = `<div class="ttl">${fc.ui.icon('bell', 'ic')}${E(T('Inbox'))}${fc.ui.btn('Clear all', { kind: 'ghost', size: 'sm', cls: 'clr', title: 'Remove everything from the list', attrs: 'data-ib="clear"' })}</div>
+            <div class="tabs">${[['all', N_('All')], ['mentions', N_('Mentions')], ['challenges', N_('Challenges')], ['friends', N_('Friends')]]
+                .map(([k, l]) => `<span class="tab" data-tab="${k}">${E(T(l))}<b></b></span>`).join('')}</div>
             <div class="msg"></div>`;
         h.addEventListener('click', onHeaderClick);
         h.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -70,7 +73,7 @@ function onHeaderClick(e) {
             const fr = mod('friends');
             if (fr && fr._alerts) fr._alerts.splice(0);
             if (msg) msg.textContent = '';
-        } else if (msg) msg.textContent = 'Couldn’t clear Fightcade’s list here.';
+        } else if (msg) msg.textContent = T('Couldn’t clear Fightcade’s list here.');
         setTimeout(render, 30);
     }
 }
@@ -129,7 +132,7 @@ function render() {
     // an empty Mentions / Challenges tab says so
     const shown = tab === 'mentions' ? mentions : tab === 'challenges' ? challenges : -1;
     const em = wrap.querySelector('#fcInboxEmpty');
-    const etxt = shown === 0 ? (tab === 'mentions' ? 'No mentions — nobody @’d you yet.' : 'No challenges right now.') : '';
+    const etxt = shown === 0 ? T(tab === 'mentions' ? 'No mentions — nobody @’d you yet.' : 'No challenges right now.') : '';
     if (em.textContent !== etxt) em.textContent = etxt;
     em.classList.toggle('on', !!etxt);
 }

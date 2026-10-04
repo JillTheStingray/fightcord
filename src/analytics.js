@@ -17,7 +17,11 @@ let store = null, cfg = null;          // analytics-config.json
 
 const RANKS = ['S', 'A', 'B', 'C', 'D', 'E'];
 const RANK_OF = (n) => ['', 'E', 'D', 'C', 'B', 'A', 'S'][+n || 0] || '';
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// translated text (plain English in the unit tests, which run without Fightcade)
+const T = (s, v) => fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : m));
+T.plural = (n, one, many, v) => T(n === 1 ? one : many, Object.assign({ n }, v));
+const N_ = (s) => s;
+const DAYS = [N_('Mon'), N_('Tue'), N_('Wed'), N_('Thu'), N_('Fri'), N_('Sat'), N_('Sun')];
 const PING = [['<60', 0, 60], ['60–100', 60, 100], ['100–150', 100, 150], ['150+', 150, 1e9]];
 const MIN_N = 5;                       // a bucket needs this many results before it's trusted
 
@@ -67,7 +71,7 @@ function analyze(input) {
         add(out.byHour[d.getHours()], s);
         add(out.heat[(d.getDay() + 6) % 7][d.getHours()], s);
         if (typeof s.ft === 'number') { const k = s.ft ? 'FT' + s.ft : 'casual'; add(out.byFt[k] || (out.byFt[k] = rec()), s); }
-        const game = String(s.channel || s.game || '').replace(/\s*\([^)]*\)\s*$/, '') || 'Unknown game';
+        const game = String(s.channel || s.game || '').replace(/\s*\([^)]*\)\s*$/, '') || N_('Unknown game');
         add(out.byGame[game] || (out.byGame[game] = rec()), s);
         // where in the session
         const sk = sessionKey(s.at || 0);
@@ -93,15 +97,15 @@ function insights(a, sets) {
     // tilt
     const t = a.tilt.after2;
     if (t.n >= MIN_N && t.rate < overall - 0.08)
-        out.push({ kind: 'tilt', score: overall - t.rate, text: 'After two losses in a row you win ' + pct(t.rate) + ' (usually ' + pct(overall) + ') — a short break may help.' });
+        out.push({ kind: 'tilt', score: overall - t.rate, text: T('After two losses in a row you win {rate} (usually {usual}) — a short break may help.', { rate: pct(t.rate), usual: pct(overall) }) });
     else if (t.n >= MIN_N && t.rate >= overall)
-        out.push({ kind: 'tilt', score: 0.05, text: 'You bounce back well: ' + pct(t.rate) + ' after two losses in a row.' });
+        out.push({ kind: 'tilt', score: 0.05, text: T('You bounce back well: {rate} after two losses in a row.', { rate: pct(t.rate) }) });
     // warm-up
     const f = a.byPos.first, later = rec();
     [a.byPos.early, a.byPos.late].forEach(r => { later.w += r.w; later.l += r.l; later.n += r.n; });
     later.rate = later.n ? later.w / later.n : null;
     if (f.n >= MIN_N && later.n >= MIN_N && later.rate - f.rate >= 0.1)
-        out.push({ kind: 'warmup', score: later.rate - f.rate, text: 'Your first set of a session: ' + pct(f.rate) + ', later ones: ' + pct(later.rate) + ' — warm up in training mode first?' });
+        out.push({ kind: 'warmup', score: later.rate - f.rate, text: T('Your first set of a session: {first}, later ones: {later} — warm up in training mode first?', { first: pct(f.rate), later: pct(later.rate) }) });
     // time of day (3-hour blocks)
     const blocks = [];
     for (let b = 0; b < 8; b++) {
@@ -115,7 +119,7 @@ function insights(a, sets) {
         const best = blocks[0], worst = blocks[blocks.length - 1];
         const label = (h) => String(h).padStart(2, '0') + ':00–' + String((h + 3) % 24).padStart(2, '0') + ':00';
         if (best.r.rate - worst.r.rate >= 0.1) {
-            out.push({ kind: 'time', score: best.r.rate - worst.r.rate, text: 'You play best ' + label(best.from) + ' (' + pct(best.r.rate) + ') and worst ' + label(worst.from) + ' (' + pct(worst.r.rate) + ').' });
+            out.push({ kind: 'time', score: best.r.rate - worst.r.rate, text: T('You play best {best} ({bestRate}) and worst {worst} ({worstRate}).', { best: label(best.from), bestRate: pct(best.r.rate), worst: label(worst.from), worstRate: pct(worst.r.rate) }) });
         }
     }
     // the matchup you're best at: opponent rank x ping
@@ -126,20 +130,20 @@ function insights(a, sets) {
         if (r.n >= MIN_N + 3 && (!bestCombo || r.rate > bestCombo.r.rate)) bestCombo = { rk, pb, r };          // a narrow slice: wants more sets
     }));
     if (bestCombo && bestCombo.r.rate > overall + 0.05)
-        out.push({ kind: 'combo', score: bestCombo.r.rate - overall, text: 'You play best vs ' + bestCombo.rk + '-ranks at ' + bestCombo.pb + ' ms: ' + pct(bestCombo.r.rate) + ' over ' + bestCombo.r.n + ' sets.' });
+        out.push({ kind: 'combo', score: bestCombo.r.rate - overall, text: T('You play best vs {rank}-ranks at {ping} ms: {rate} over {n} sets.', { rank: bestCombo.rk, ping: bestCombo.pb, rate: pct(bestCombo.r.rate), n: bestCombo.r.n }) });
     // ping
     const lowP = a.byPing['<60'], highP = a.byPing['150+'];
     if (lowP.n >= MIN_N && highP.n >= MIN_N && lowP.rate - highP.rate >= 0.12)
-        out.push({ kind: 'ping', score: lowP.rate - highP.rate, text: 'Lag costs you: ' + pct(lowP.rate) + ' under 60 ms, ' + pct(highP.rate) + ' over 150 ms — the ping filter can warn you.' });
+        out.push({ kind: 'ping', score: lowP.rate - highP.rate, text: T('Lag costs you: {low} under 60 ms, {high} over 150 ms — the ping filter can warn you.', { low: pct(lowP.rate), high: pct(highP.rate) }) });
     // stepping up
     const up = rec();
     [1, 2, 3].forEach(g => { const r = a.byGap[g]; up.w += r.w; up.l += r.l; up.n += r.n; });
     up.rate = up.n ? up.w / up.n : null;
-    if (up.n >= MIN_N) out.push({ kind: 'gap', score: 0.04, text: 'Against higher ranks you win ' + pct(up.rate) + ' (' + up.w + '–' + up.l + ').' });
+    if (up.n >= MIN_N) out.push({ kind: 'gap', score: 0.04, text: T('Against higher ranks you win {rate} ({w}–{l}).', { rate: pct(up.rate), w: up.w, l: up.l }) });
     // first-to length
     const fts = Object.keys(a.byFt).filter(k => a.byFt[k].n >= MIN_N).sort((x, y) => a.byFt[y].rate - a.byFt[x].rate);
     if (fts.length >= 2 && a.byFt[fts[0]].rate - a.byFt[fts[fts.length - 1]].rate >= 0.1)
-        out.push({ kind: 'ft', score: 0.03, text: 'Your best set length is ' + fts[0] + ' (' + pct(a.byFt[fts[0]].rate) + '); ' + fts[fts.length - 1] + ' is your weakest (' + pct(a.byFt[fts[fts.length - 1]].rate) + ').' });
+        out.push({ kind: 'ft', score: 0.03, text: T('Your best set length is {best} ({bestRate}); {worst} is your weakest ({worstRate}).', { best: T(fts[0]), bestRate: pct(a.byFt[fts[0]].rate), worst: T(fts[fts.length - 1]), worstRate: pct(a.byFt[fts[fts.length - 1]].rate) }) });
     return out.sort((x, y) => y.score - x.score);
 }
 
@@ -151,11 +155,11 @@ const rateColor = (r) => r == null ? 'var(--fc-s4)' : r >= 0.6 ? '#23a55a' : r >
 function bars(entries, opts) {
     const o = opts || {};
     const list = entries.filter(([, r]) => r.n > 0);
-    if (!list.length) return '<div class="fc-muted">No sets with this information yet.</div>';
+    if (!list.length) return '<div class="fc-muted">' + E(T('No sets with this information yet.')) + '</div>';
     return fc.ui.chart.bars(list.map(([label, r]) => ({
-        label, value: Math.round(r.rate * 100), text: Math.round(r.rate * 100) + '%',
+        label: T(label), value: Math.round(r.rate * 100), text: Math.round(r.rate * 100) + '%',
         color: o.color ? o.color(label, r) : (r.n < MIN_N ? 'var(--fc-faint)' : rateColor(r.rate)),
-        title: label + ': ' + r.w + '–' + r.l + ' (' + r.n + ' sets)' + (r.n < MIN_N ? ' — too few to trust yet' : '')
+        title: T(label) + ': ' + r.w + '–' + r.l + ' (' + T.plural(r.n, '{n} set', '{n} sets') + ')' + (r.n < MIN_N ? ' — ' + T('too few to trust yet') : '')
     })), { w: o.w || 440, h: 160, max: 100 });
 }
 
@@ -163,35 +167,35 @@ function heatHtml(a) {
     let max = 1;
     a.heat.forEach(row => row.forEach(r => { max = Math.max(max, r.n); }));
     const cell = (r, d, h) => `<i style="background:${r.n ? rateColor(r.rate) : 'transparent'};opacity:${r.n ? (0.35 + 0.65 * r.n / max).toFixed(2) : 1}" ` +
-        `title="${DAYS[d]} ${String(h).padStart(2, '0')}:00 — ${r.n ? r.w + '–' + r.l + ' (' + pct(r.rate) + ')' : 'no sets'}"></i>`;
-    return `<div class="anHeat">${a.heat.map((row, d) => `<div class="row"><b>${DAYS[d]}</b>${row.map((r, h) => cell(r, d, h)).join('')}</div>`).join('')}` +
+        `title="${E(T(DAYS[d]))} ${String(h).padStart(2, '0')}:00 — ${r.n ? r.w + '–' + r.l + ' (' + pct(r.rate) + ')' : E(T('no sets'))}"></i>`;
+    return `<div class="anHeat">${a.heat.map((row, d) => `<div class="row"><b>${E(T(DAYS[d]))}</b>${row.map((r, h) => cell(r, d, h)).join('')}</div>`).join('')}` +
         `<div class="row hours"><b></b>${[0, 3, 6, 9, 12, 15, 18, 21].map(h => `<span>${String(h).padStart(2, '0')}</span>`).join('')}</div></div>`;
 }
 
 function tabHtml(ctx) {
     const a = analyze(ctx.sets);
     if (a.total.n < MIN_N) return fc.ui.empty({ icon: 'trend', title: 'Not enough sets yet',
-        sub: 'Analytics needs at least ' + MIN_N + ' sets with a known result' + (ctx.game || ctx.period !== 'all' ? ' in these filters' : '') + '. Keep playing — or import your history.' });
+        sub: T(ctx.game || ctx.period !== 'all' ? 'Analytics needs at least {n} sets with a known result in these filters. Keep playing — or import your history.' : 'Analytics needs at least {n} sets with a known result. Keep playing — or import your history.', { n: MIN_N }) });
     const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
     const t = a.tilt.after2;
     const bestHour = a.byHour.map((r, h) => ({ h, r })).filter(x => x.r.n >= MIN_N).sort((x, y) => y.r.rate - x.r.rate)[0];
     const missing = a.total.n - a.withRanks;
     return `<div class="fcsTop">
-            ${fc.ui.tile(String(a.total.n), 'sets analysed', { sub: missing ? missing + ' without ranks (older / imported)' : '' })}
+            ${fc.ui.tile(String(a.total.n), 'sets analysed', { sub: missing ? T('{n} without ranks (older / imported)', { n: missing }) : '' })}
             ${fc.ui.tile(pct(a.total.rate), 'win rate')}
             ${fc.ui.tile(t.n ? pct(t.rate) : '—', 'after 2 losses in a row', { trend: t.n >= MIN_N ? (t.rate < a.total.rate - 0.08 ? 'down' : 'up') : '' })}
-            ${fc.ui.tile(bestHour ? String(bestHour.h).padStart(2, '0') + ':00' : '—', 'your best hour', { sub: bestHour ? pct(bestHour.r.rate) + ' over ' + bestHour.r.n + ' sets' : 'needs more sets' })}
+            ${fc.ui.tile(bestHour ? String(bestHour.h).padStart(2, '0') + ':00' : '—', 'your best hour', { sub: bestHour ? T('{rate} over {n} sets', { rate: pct(bestHour.r.rate), n: bestHour.r.n }) : T('needs more sets') })}
         </div>
         <div class="fcsGrid">
-            ${card('What stands out', a.insights.length ? a.insights.map(i => `<div class="anIns ${i.kind}">${fc.ui.icon({ tilt: 'flame', warmup: 'clock', time: 'clock', combo: 'target', ping: 'bolt', gap: 'trend', ft: 'sword' }[i.kind] || 'info')}<span>${E(i.text)}</span></div>`).join('')
-                : '<div class="fc-muted">Nothing stands out yet — your results look even across the board.</div>', true)}
-            ${card('By opponent rank', bars(RANKS.concat('?').map(r => [r, a.byOppRank[r]]), { color: (l, r) => r.n < MIN_N ? 'var(--fc-faint)' : (l === '?' ? '#80848e' : fc.data.rankColor(l)) }))}
-            ${card('By rank gap <small>— them minus you</small>', bars([-3, -2, -1, 0, 1, 2, 3].map(g => [(g > 0 ? '+' : '') + g, a.byGap[g]])))}
-            ${card('By ping', bars(PING.map(p => [p[0], a.byPing[p[0]]])))}
-            ${card('By set length', bars(Object.keys(a.byFt).sort().map(k => [k, a.byFt[k]])))}
-            ${card('Where in the session', bars([['1st set', a.byPos.first], ['2nd–5th', a.byPos.early], ['6th+', a.byPos.late]]))}
-            ${card('By game', bars(Object.keys(a.byGame).sort((x, y) => a.byGame[y].n - a.byGame[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, a.byGame[k]])))}
-            ${card('When you win <small>— weekday × hour, greener = better, brighter = more sets</small>', heatHtml(a), true)}
+            ${card(E(T('What stands out')), a.insights.length ? a.insights.map(i => `<div class="anIns ${i.kind}">${fc.ui.icon({ tilt: 'flame', warmup: 'clock', time: 'clock', combo: 'target', ping: 'bolt', gap: 'trend', ft: 'sword' }[i.kind] || 'info')}<span>${E(i.text)}</span></div>`).join('')
+                : '<div class="fc-muted">' + E(T('Nothing stands out yet — your results look even across the board.')) + '</div>', true)}
+            ${card(E(T('By opponent rank')), bars(RANKS.concat('?').map(r => [r, a.byOppRank[r]]), { color: (l, r) => r.n < MIN_N ? 'var(--fc-faint)' : (l === '?' ? '#80848e' : fc.data.rankColor(l)) }))}
+            ${card(E(T('By rank gap')) + ' <small>— ' + E(T('them minus you')) + '</small>', bars([-3, -2, -1, 0, 1, 2, 3].map(g => [(g > 0 ? '+' : '') + g, a.byGap[g]])))}
+            ${card(E(T('By ping')), bars(PING.map(p => [p[0], a.byPing[p[0]]])))}
+            ${card(E(T('By set length')), bars(Object.keys(a.byFt).sort().map(k => [k, a.byFt[k]])))}
+            ${card(E(T('Where in the session')), bars([[N_('1st set'), a.byPos.first], [N_('2nd–5th'), a.byPos.early], [N_('6th+'), a.byPos.late]]))}
+            ${card(E(T('By game')), bars(Object.keys(a.byGame).sort((x, y) => a.byGame[y].n - a.byGame[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, a.byGame[k]])))}
+            ${card(E(T('When you win')) + ' <small>— ' + E(T('weekday × hour, greener = better, brighter = more sets')) + '</small>', heatHtml(a), true)}
         </div>`;
 }
 

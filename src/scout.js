@@ -28,6 +28,8 @@ const DEFAULTS = {
 
 const ttl = () => Math.max(1, +cfg.cacheTtlMin || 5) * 60000;
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const mod = (id) => fc.modules.get(id);
 
 /* --------------------------------------------------------------------- data */
@@ -189,49 +191,51 @@ function section(title, html) {
 }
 
 function stateOf(info) {
-    return info && info.playing ? { k: 'playing', t: 'In a match' }
-        : info && info.away ? { k: 'away', t: 'Not available' }
-        : info ? { k: 'on', t: 'Looking to play' } : { k: 'off', t: 'Not in your channels' };
+    return info && info.playing ? { k: 'playing', t: T('In a match') }
+        : info && info.away ? { k: 'away', t: T('Not available') }
+        : info ? { k: 'on', t: T('Looking to play') } : { k: 'off', t: T('Not in your channels') };
 }
 
 // "Left 3 of 12 ranked sets unfinished (2 while behind)" -- only once there's enough to go on
 function quitsNote(q) {
     if (!q || (cfg && cfg.showQuits === false) || q.ranked < 4 || q.unfinished < 2) return '';
-    return 'Left ' + q.unfinished + ' of ' + q.ranked + ' ranked sets unfinished' + (q.behind ? ' (' + q.behind + ' while behind)' : '');
+    const vars = { n: q.unfinished, total: q.ranked, behind: q.behind };
+    return fc ? (q.behind ? T('Left {n} of {total} ranked sets unfinished ({behind} while behind)', vars) : T('Left {n} of {total} ranked sets unfinished', vars))
+        : 'Left ' + q.unfinished + ' of ' + q.ranked + ' ranked sets unfinished' + (q.behind ? ' (' + q.behind + ' while behind)' : '');
 }
 
 function sectionsHtml(name, data) {
-    if (!data) return `<div class="fcsc-sec fc-muted"><span class="fc-spin"></span> Loading…</div>`;
-    if (data.error) return `<div class="fcsc-sec fc-muted">Match history unavailable — ${E(data.error)}</div>`;
+    if (!data) return `<div class="fcsc-sec fc-muted"><span class="fc-spin"></span> ${E(T('Loading…'))}</div>`;
+    if (data.error) return `<div class="fcsc-sec fc-muted">${E(T('Match history unavailable — {error}', { error: data.error }))}</div>`;
     const gameid = gameId();
     const g = data.game, f = data.form, h = data.h2h, o = data.odds;
     const rank = g && g.rank
-        ? fc.ui.tag(g.rank) + (data.elo ? ` <b>${E(fc.data.fmtElo(data.elo))}</b><span class="fc-muted"> ELO${data.elo.est ? ' est.' : ''}</span>` : '') +
-          (g.matches ? `<span class="fc-muted"> · ${E(fc.fmt.num(g.matches))} matches</span>` : '') +
-          (data.lb ? `<div class="fcsc-note">#${data.lb.pos} on the leaderboard${data.lb.hours ? ' · ' + fc.fmt.num(data.lb.hours) + 'h played' : ''}</div>` : '')
-        : '<span class="fc-muted">Unranked</span>';
+        ? fc.ui.tag(g.rank) + (data.elo ? ` <b>${E(fc.data.fmtElo(data.elo))}</b><span class="fc-muted"> ELO${data.elo.est ? ' ' + E(T('est.')) : ''}</span>` : '') +
+          (g.matches ? `<span class="fc-muted"> · ${E(T('{n} matches', { n: fc.fmt.num(g.matches) }))}</span>` : '') +
+          (data.lb ? `<div class="fcsc-note">${E(T('#{n} on the leaderboard', { n: data.lb.pos }))}${data.lb.hours ? ' · ' + E(T('{n}h played', { n: fc.fmt.num(data.lb.hours) })) : ''}</div>` : '')
+        : `<span class="fc-muted">${E(T('Unranked'))}</span>`;
     const odds = o
-        ? `<b>${fc.fmt.pct(o.game)}</b><span class="fc-muted"> per game · </span><b class="${o.set >= .5 ? 'up' : 'down'}">${fc.fmt.pct(o.set)}</b>` +
-          `<span class="fc-muted"> to win an FT${o.ft}</span>${winBar(Math.round(o.set * 100), 100 - Math.round(o.set * 100))}` +
-          `<div class="fcsc-note">You ${E(fc.data.fmtElo(data.myElo))} vs ${E(fc.data.fmtElo(data.elo))}${(data.elo.est || data.myElo.est) ? ' · estimated from rank and leaderboard spot' : ''}</div>`
+        ? `<b>${fc.fmt.pct(o.game)}</b><span class="fc-muted"> ${E(T('per game'))} · </span><b class="${o.set >= .5 ? 'up' : 'down'}">${fc.fmt.pct(o.set)}</b>` +
+          `<span class="fc-muted"> ${E(T('to win an FT{ft}', { ft: o.ft }))}</span>${winBar(Math.round(o.set * 100), 100 - Math.round(o.set * 100))}` +
+          `<div class="fcsc-note">${E(T('You {mine} vs {theirs}', { mine: fc.data.fmtElo(data.myElo), theirs: fc.data.fmtElo(data.elo) }))}${(data.elo.est || data.myElo.est) ? ' · ' + E(T('estimated from rank and leaderboard spot')) : ''}</div>`
         : '';
     const q = quitsNote(data.quits);
     const form = (data.scored
-        ? `<b>${f.w}W – ${f.l}L</b><span class="fc-muted"> in the last ${data.scored} sets</span>${winBar(f.w, f.l)}`
-        : '<span class="fc-muted">No recent sets</span>') +
-        (q ? `<div class="fcsc-quits" title="Ranked sets that ended before anyone reached the FT. Could also be disconnects.">${fc.ui.icon('warn')}${E(q)}</div>` : '');
+        ? `<b>${E(T('{w}W – {l}L', { w: f.w, l: f.l }))}</b><span class="fc-muted"> ${E(T('in the last {n} sets', { n: data.scored }))}</span>${winBar(f.w, f.l)}`
+        : `<span class="fc-muted">${E(T('No recent sets'))}</span>`) +
+        (q ? `<div class="fcsc-quits" title="${E(T('Ranked sets that ended before anyone reached the FT. Could also be disconnects.'))}">${fc.ui.icon('warn')}${E(q)}</div>` : '');
     const vs = (h.w || h.l)
-        ? `<b class="${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h.w} – ${h.l}</b><span class="fc-muted">${h.last ? ' · last ' + E(fc.fmt.day(h.last)) : ''}</span>${winBar(h.w, h.l)}`
-        : '<span class="fc-muted">Never played</span>';
+        ? `<b class="${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h.w} – ${h.l}</b><span class="fc-muted">${h.last ? ' · ' + E(T('last {when}', { when: fc.fmt.day(h.last) })) : ''}</span>${winBar(h.w, h.l)}`
+        : `<span class="fc-muted">${E(T('Never played'))}</span>`;
     const rows = data.recent.slice(0, 5).map(r => {
         const known = r.mine != null && r.theirs != null;
         const mark = known && r.mine > r.theirs ? '<b class="up">W</b>' : known && r.mine < r.theirs ? '<b class="down">L</b>' : '<span class="fc-muted">·</span>';
         return `<tr><td class="m">${mark}</td><td class="o">${E(r.opp)}</td><td class="s">${known ? r.mine + '–' + r.theirs : ''}</td>` +
             `<td class="d">${E(fc.fmt.day(r.date))}</td></tr>`;
     }).join('');
-    return section('Rank' + (gameid ? ` <span class="fcsc-game">· ${E(gameid)}</span>` : ''), rank) +
-        (odds ? section('Your odds', odds) : '') + section('Form', form) + section('Vs you', vs) +
-        section('Recent sets', rows ? `<table class="fcsc-sets">${rows}</table>` : '<span class="fc-muted">Nothing recent</span>');
+    return section(E(T('Rank')) + (gameid ? ` <span class="fcsc-game">· ${E(gameid)}</span>` : ''), rank) +
+        (odds ? section(E(T('Your odds')), odds) : '') + section(E(T('Form')), form) + section(E(T('Vs you')), vs) +
+        section(E(T('Recent sets')), rows ? `<table class="fcsc-sets">${rows}</table>` : `<span class="fc-muted">${E(T('Nothing recent'))}</span>`);
 }
 
 function renderCard(card, name, data) {
@@ -252,17 +256,17 @@ function renderCard(card, name, data) {
             <div class="fcsc-name" title="${E(name)}">${E(name)}</div>
             ${info && info.country ? `<div class="fcsc-from">${fc.ui.flag(info.country)} ${E(info.countryName || info.country.toUpperCase())}</div>` : ''}
             <div class="fcsc-state"><i class="dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}` +
-                `${info && info.rank ? ' · channel rank ' + E(fc.data.rankLetter(info.rank)) : ''}</div>
+                `${info && info.rank ? ' · ' + E(T('channel rank {rank}', { rank: fc.data.rankLetter(info.rank) })) : ''}</div>
             ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
             <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
             ${!me ? `<div class="fcsc-acts">
-                ${chal ? fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', disabled: !chal.ok, title: chal.ok ? 'Challenge ' + name + ' (Fightcade asks for the FT)' : chal.why }) : ''}
+                ${chal ? fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', disabled: !chal.ok, title: chal.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(chal.why) }) : ''}
                 ${nt ? fc.ui.btn('Notes', { kind: 'sec', size: 'sm', icon: 'note', act: 'notes', title: 'Private notes & tags' }) : ''}
                 ${mod('stats') ? fc.ui.btn('H2H', { kind: 'sec', size: 'sm', icon: 'chart', act: 'h2h', title: 'Head-to-head stats' }) : ''}
             </div>` : ''}
             <div class="fcsc-main">
-                ${fc.ui.btn('Mention', { act: 'mention', icon: 'chat', cls: 'fc-grow', title: 'Put @' + name + ' in the chat box' })}
-                ${fr && fr.isFriend && !me ? fc.ui.btn(isFriend ? 'Friend' : 'Add friend', { kind: 'sec', icon: 'star', act: 'friend', cls: isFriend ? 'fcsc-fr on' : 'fcsc-fr', title: isFriend ? 'Remove friend' : 'Add friend' }) : ''}
+                ${fc.ui.btn('Mention', { act: 'mention', icon: 'chat', cls: 'fc-grow', title: T('Put @{name} in the chat box', { name }) })}
+                ${fr && fr.isFriend && !me ? fc.ui.btn(isFriend ? T('Friend') : T('Add friend'), { kind: 'sec', icon: 'star', act: 'friend', cls: isFriend ? 'fcsc-fr on' : 'fcsc-fr', title: isFriend ? T('Remove friend') : T('Add friend') }) : ''}
             </div>
         </div>`;
     card.onclick = (e) => onCardClick(e, card, name);
@@ -281,13 +285,13 @@ function onCardClick(e, card, name) {
         if (!fr) return;
         const on = fr.toggle(name) ? true : fr.isFriend(name);
         b.classList.toggle('on', on);
-        b.lastChild.textContent = on ? 'Friend' : 'Add friend';
-        b.title = on ? 'Remove friend' : 'Add friend';
+        b.lastChild.textContent = on ? T('Friend') : T('Add friend');
+        b.title = on ? T('Remove friend') : T('Add friend');
     } else if (act === 'challenge') {
         const ms = mod('match-screens');
         const st = ms && ms.challenge ? ms.challenge(name) : null;
-        if (st && st.ok) { b.lastChild.textContent = 'Sent'; setTimeout(closeCard, 700); }
-        else if (st) { b.lastChild.textContent = st.why; b.disabled = true; }
+        if (st && st.ok) { b.lastChild.textContent = T('Sent'); setTimeout(closeCard, 700); }
+        else if (st) { b.lastChild.textContent = T(st.why); b.disabled = true; }
     } else if (act === 'notes') {
         const nt = mod('notes');
         const r = card.getBoundingClientRect();
@@ -355,7 +359,7 @@ const cleanName = (text) => String(text || '').trim().replace(/[:\s]+$/, '');
 
 function addBadges() {
     if (!cfg.enabled || !cfg.showBadges) return;
-    const badge = (name) => `<span class="fcScoutBadge" data-scout="${E(name)}" title="Scout ${E(name)}">🔍</span>`;
+    const badge = (name) => `<span class="fcScoutBadge" data-scout="${E(name)}" title="${E(T('Scout {name}', { name }))}">🔍</span>`;
     document.querySelectorAll('.chatContent span.author:not([data-scout-done]), .usersListWrapper .userItem .playerName:not([data-scout-done])').forEach(el => {
         el.dataset.scoutDone = '1';
         const name = cleanName(el.classList.contains('author') ? el.firstChild && el.firstChild.textContent : el.textContent);
@@ -404,8 +408,8 @@ function oddsPill(name) {
         const pill = document.createElement('span');
         pill.className = 'fcScoutOdds ' + (o.set >= .5 ? 'up' : 'down');
         pill.textContent = fc.fmt.pct(o.set) + ' · FT' + o.ft;
-        pill.title = 'Your odds: ~' + fc.fmt.pct(o.game) + ' per game, ' + fc.fmt.pct(o.set) + ' to win the FT' + o.ft +
-            '\nYou ' + fc.data.fmtElo(d.myElo) + ' vs ' + fc.data.fmtElo(d.elo) + ((d.elo.est || d.myElo.est) ? ' (estimated)' : '');
+        pill.title = T('Your odds: ~{game} per game, {set} to win the FT{ft}', { game: fc.fmt.pct(o.game), set: fc.fmt.pct(o.set), ft: o.ft }) +
+            '\n' + T('You {mine} vs {theirs}', { mine: fc.data.fmtElo(d.myElo), theirs: fc.data.fmtElo(d.elo) }) + ((d.elo.est || d.myElo.est) ? ' ' + T('(estimated)') : '');
         row.appendChild(pill);
     }).catch(() => {});
 }

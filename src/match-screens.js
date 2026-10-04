@@ -39,6 +39,8 @@ const DEFAULTS = {
 };
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 
 /* ------------------------------------------------------------ player cards */
 
@@ -142,7 +144,7 @@ function openOverlay(cls, html, ms) {
     const o = document.createElement('div');
     o.id = 'fcmsOverlay';
     o.className = cls;
-    o.innerHTML = '<div class="shake">' + html + '</div><div class="flash"></div><div class="hint">click or Esc to skip</div>';
+    o.innerHTML = '<div class="shake">' + html + '</div><div class="flash"></div><div class="hint">' + E(T('click or Esc to skip')) + '</div>';
     // our own element: a click here only closes it
     o.addEventListener('mousedown', (e) => { e.stopPropagation(); });
     o.addEventListener('click', (e) => { e.stopPropagation(); closeOverlay(); });
@@ -187,8 +189,8 @@ function showVs(meName, oppName) {
 function rematchHtml(rm) {
     if (!rm || !rm.opp || !cfg.rematch) return '';
     const st = challengeState(rm.opp, rm.channel);
-    const label = '⚔ Rematch' + (typeof rm.ft === 'number' ? (rm.ft ? ' FT' + rm.ft : ' (casual)') : '');
-    return `<span class="rematch${st.ok ? '' : ' off'}" title="${E(st.ok ? 'Challenge ' + rm.opp + ' again' : st.why)}">${label}</span>`;
+    const label = '⚔ ' + T('Rematch') + (typeof rm.ft === 'number' ? (rm.ft ? ' FT' + rm.ft : ' ' + T('(casual)')) : '');
+    return `<span class="rematch${st.ok ? '' : ' off'}" title="${E(st.ok ? T('Challenge {name} again', { name: rm.opp }) : st.why)}">${E(label)}</span>`;
 }
 
 function wireRematch(rm) {
@@ -198,7 +200,7 @@ function wireRematch(rm) {
         e.stopPropagation();
         if (b.classList.contains('off')) return;
         const st = challenge(rm.opp, typeof rm.ft === 'number' ? rm.ft : undefined, rm.channel);
-        if (st.ok) { b.textContent = '✔ Challenge sent'; b.classList.add('sent'); setTimeout(closeOverlay, 900); }
+        if (st.ok) { b.textContent = '✔ ' + T('Challenge sent'); b.classList.add('sent'); setTimeout(closeOverlay, 900); }
         else { b.textContent = st.why; b.classList.add('off'); }
     });
 }
@@ -206,7 +208,7 @@ function wireRematch(rm) {
 // extras: { streak: "🔥 3 WIN STREAK" | "Streak of 3 ended", lines: ["You're 4–2 vs X", "Tonight 7–3"], rematch }
 function showResult(kind, mine, theirs, oppName, game, extras) {
     if (!cfg.enabled || !cfg.result) return;
-    const title = { won: 'YOU WON!', lost: 'YOU LOST!', draw: 'DRAW' }[kind];
+    const title = E(T({ won: 'YOU WON!', lost: 'YOU LOST!', draw: 'DRAW' }[kind]));
     const ex = extras || {};
     const score = (mine != null && theirs != null) ? mine + ' – ' + theirs + ' ' : '';
     let bits = '';
@@ -254,12 +256,12 @@ function extrasFor(kind, opp, before, elo) {
         ex.lines.push('ELO ' + elo.end.toLocaleString('en-US') + (d ? ' (' + (d > 0 ? '+' : '−') + Math.abs(d) + ')' : ''));
     }
     const st = streakOf(H().all());
-    if (kind === 'won' && st.kind === 'won' && st.n >= 2) ex.streak = '🔥 ' + st.n + ' WIN STREAK';
-    else if (kind === 'lost' && before.kind === 'won' && before.n >= 2) ex.streak = 'Streak of ' + before.n + ' ended';
+    if (kind === 'won' && st.kind === 'won' && st.n >= 2) ex.streak = '🔥 ' + T('{n} WIN STREAK', { n: st.n });
+    else if (kind === 'lost' && before.kind === 'won' && before.n >= 2) ex.streak = T('Streak of {n} ended', { n: before.n });
     const vs = recordVs(opp);
-    if (opp && (vs.w || vs.l || vs.d)) ex.lines.push("You're " + fc.fmt.wl(vs) + ' vs ' + opp);
+    if (opp && (vs.w || vs.l || vs.d)) ex.lines.push(T("You're {record} vs {name}", { record: fc.fmt.wl(vs), name: opp }));
     const t = recordOf(sessionSets());
-    if (t.w || t.l || t.d) ex.lines.push('Tonight ' + fc.fmt.wl(t));
+    if (t.w || t.l || t.d) ex.lines.push(T('Tonight {record}', { record: fc.fmt.wl(t) }));
     return ex;
 }
 
@@ -273,19 +275,19 @@ const lastFt = new Map();        // lowercased name -> FT of the last challenge 
 function challengeState(name, channel) {
     const r = fc.app.root();
     const me = fc.app.me();
-    if (!name) return { ok: false, why: 'No opponent' };
+    if (!name) return { ok: false, why: T('No opponent') };
     const [real, u] = fc.app.user(name);
-    if (me && real.toLowerCase() === me.toLowerCase()) return { ok: false, why: "That's you" };
-    if (!u) return { ok: false, why: name + ' isn’t in your channels right now' };
-    if (u.playing && u.playing.quarkId) return { ok: false, why: real + ' is in a match' };
-    if (u.away) return { ok: false, why: real + ' is away' };
-    if (fc.app.inMatch(me)) return { ok: false, why: "You're in a match" };
+    if (me && real.toLowerCase() === me.toLowerCase()) return { ok: false, why: T("That's you") };
+    if (!u) return { ok: false, why: T('{name} isn’t in your channels right now', { name }) };
+    if (u.playing && u.playing.quarkId) return { ok: false, why: T('{name} is in a match', { name: real }) };
+    if (u.away) return { ok: false, why: T('{name} is away', { name: real }) };
+    if (fc.app.inMatch(me)) return { ok: false, why: T("You're in a match") };
     const chans = Array.isArray(u.channels) ? u.channels : [];
     let ch = channel && chans.includes(channel) ? channel : '';
     if (!ch && r && chans.includes(r.activeChannelId)) ch = r.activeChannelId;
     if (!ch) ch = chans.find(c => fc.app.isGameChannel(c)) || '';
     const comp = ch && r && typeof r.getChannelComponentById === 'function' ? r.getChannelComponentById(ch) : null;
-    if (!comp || typeof comp.challengeUser !== 'function') return { ok: false, why: 'Join ' + real + '’s game channel first' };
+    if (!comp || typeof comp.challengeUser !== 'function') return { ok: false, why: T('Join {name}’s game channel first', { name: real }) };
     return { ok: true, user: u, name: real, comp, channel: ch };
 }
 
@@ -324,7 +326,7 @@ function refreshSessionPill() {
         if (!pill) {
             pill = document.createElement('div');
             pill.className = 'fcmsPill';
-            pill.title = "Tonight's sets";
+            pill.title = T("Tonight's sets");
             pill.addEventListener('mousedown', (e) => e.stopPropagation());
             pill.addEventListener('click', (e) => { e.stopPropagation(); toggleSessionCard(pill); });
             actions.insertBefore(pill, actions.firstChild);
@@ -351,13 +353,13 @@ function toggleSessionCard(anchor) {
         return `<tr><td>${mark}</td><td class="o">${E(s.opp || '?')}</td><td class="s">${score}</td><td class="t">${fmtClock(s.at)}</td></tr>`;
     }).join('');
     box.innerHTML = `
-        <div class="h">Tonight <span>— ${r.w}W · ${r.l}L${r.d ? ' · ' + r.d + 'D' : ''}${r.unknown ? ' · ' + r.unknown + ' unknown' : ''}</span></div>
-        ${st.n >= 2 ? `<div class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${st.kind === 'won' ? '🔥 ' + st.n + ' win streak' : st.n + ' losses in a row'}</div>` : ''}
+        <div class="h">${E(T('Tonight'))} <span>— ${r.w}W · ${r.l}L${r.d ? ' · ' + r.d + 'D' : ''}${r.unknown ? ' · ' + E(T('{n} unknown', { n: r.unknown })) : ''}</span></div>
+        ${st.n >= 2 ? `<div class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${E(st.kind === 'won' ? '🔥 ' + T('{n} win streak', { n: st.n }) : T('{n} losses in a row', { n: st.n }))}</div>` : ''}
         <table>${rows}</table>
         <div class="f">${fc.ui.btn('Clear', { kind: 'ghost', size: 'sm', act: 'clear', title: 'Start a fresh session (the history is kept)' })}` +
             `${sets.length ? fc.ui.btn('Share', { kind: 'ghost', size: 'sm', icon: 'share', act: 'share' }) : ''}` +
             `${fc.ui.btn('All stats', { kind: 'sec', size: 'sm', icon: 'chart', act: 'all' })}</div>
-        <div class="n">History kept · ${fc.fmt.num(H().all().length)} sets</div>`;
+        <div class="n">${E(T('History kept · {n} sets', { n: fc.fmt.num(H().all().length) }))}</div>`;
     box.addEventListener('click', (e) => {
         const a = e.target.closest('[data-act]');
         if (!a) return;
@@ -708,7 +710,7 @@ const CSS = `
 
 function standIn() {
     const me = fc.app.me();
-    return Object.keys(fc.app.users()).find(x => x !== me) || 'Opponent';
+    return Object.keys(fc.app.users()).find(x => x !== me) || T('Opponent');
 }
 
 function start(f) {
@@ -730,12 +732,12 @@ function start(f) {
     fc.cmd('vs', 'Match screens: previews and help', (arg) => {
         const a = String(arg || '').toLowerCase();
         const opp = standIn(), game = gameName();
-        if (a === 'test') showVs(fc.app.me() || 'You', opp);
-        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: '🔥 3 WIN STREAK', lines: ["You're 4–2 vs " + opp, 'Tonight 7–3'] });
-        else if (a === 'lose') showResult('lost', 1, 3, opp, game, { streak: 'Streak of 3 ended', lines: ["You're 4–3 vs " + opp, 'Tonight 7–4'] });
+        if (a === 'test') showVs(fc.app.me() || T('You'), opp);
+        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: '🔥 ' + T('{n} WIN STREAK', { n: 3 }), lines: [T("You're {record} vs {name}", { record: '4–2', name: opp }), T('Tonight {record}', { record: '7–3' })] });
+        else if (a === 'lose') showResult('lost', 1, 3, opp, game, { streak: T('Streak of {n} ended', { n: 3 }), lines: [T("You're {record} vs {name}", { record: '4–3', name: opp }), T('Tonight {record}', { record: '7–4' })] });
         else if (a === 'draw') showResult('draw', 2, 2, opp, game);
-        else fc.ui.toast('Match screens: ' + (cfg.enabled ? 'on' : 'off'), { icon: 'sword', ms: 9000,
-            sub: '/vs test · /vs win · /vs lose · /vs draw (previews). Sounds: vs / win / lose / draw .wav in ' + SOUND_DIR });
+        else fc.ui.toast(T(cfg.enabled ? 'Match screens: on' : 'Match screens: off'), { icon: 'sword', ms: 9000,
+            sub: T('/vs test · /vs win · /vs lose · /vs draw (previews). Sounds: vs / win / lose / draw .wav in {dir}', { dir: SOUND_DIR }) });
     }, { args: 'test|win|lose|draw' });
 
     fc.settings.block({
@@ -748,7 +750,7 @@ function start(f) {
             { key: 'rematch', type: 'switch', label: 'Rematch button', hint: 'On the result screen, same FT when known', show: (d) => d.enabled && d.result },
             { key: 'session', type: 'switch', label: 'Session tracker', hint: '🏆 tonight’s record in the channel header', show: (d) => d.enabled, onChange: refreshSessionPill },
             { key: 'volume', type: 'slider', label: 'Volume', scale: 100, unit: '%', onChange: () => play('vs') },
-            { type: 'note', label: 'Sounds: vs / win / lose / draw (.wav .mp3 .ogg) in ' + SOUND_DIR }
+            { type: 'note', label: T('Sounds: vs / win / lose / draw (.wav .mp3 .ogg) in {dir}', { dir: SOUND_DIR }) }
         ]
     });
     refreshSessionPill();

@@ -23,6 +23,8 @@ const DEFAULT_TAGS = [
 ];
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const key = (n) => String(n || '').toLowerCase();
 
 /* ---------------------------------------------------------------------- data */
@@ -92,10 +94,10 @@ function edit(name, rect) {
     const draw = () => {
         const p = get(name);
         const on = new Set(p.tags.map(t => t.id));
-        box.innerHTML = `<div class="h">Notes on <b>${E(name)}</b></div>
+        box.innerHTML = `<div class="h">${E(T('Notes on'))} <b>${E(name)}</b></div>
             <div class="tags">${cfg.tags.map(t => tagChip(t, ' pick' + (on.has(t.id) ? ' on' : ''))).join('')}</div>
-            <textarea class="fc-input" maxlength="500" placeholder="Anything to remember about ${E(name)}…">${E(p.note)}</textarea>
-            <div class="f"><span class="fc-muted">Only you can see this</span>${fc.ui.btn('Save', { size: 'sm', act: 'save' })}</div>`;
+            <textarea class="fc-input" maxlength="500" placeholder="${E(T('Anything to remember about {name}…', { name }))}">${E(p.note)}</textarea>
+            <div class="f"><span class="fc-muted">${E(T('Only you can see this'))}</span>${fc.ui.btn('Save', { size: 'sm', act: 'save' })}</div>`;
     };
     draw();
     const save = () => { set(name, { note: box.querySelector('textarea').value.trim() }); closeEditor(); };
@@ -125,7 +127,7 @@ function edit(name, rect) {
 // the tag list: colour + name per tag, + Add
 function renderTags(el) {
     const n = Object.keys(cfg.people).length;
-    el.innerHTML = `<div class="fc-set-title">Player notes & tags <small>— ${fc.fmt.plural(n, 'player')} noted · only on your PC · /note name</small></div>
+    el.innerHTML = `<div class="fc-set-title">${E(T('Player notes & tags'))} <small>— ${E(T.plural(n, '{n} player noted', '{n} players noted'))} · ${E(T('only on your PC'))} · /note name</small></div>
         <div class="ntTagList">${cfg.tags.map((t, i) => `<div class="fc-field ntTagRow" data-i="${i}">
             <input type="color" class="fc-input fc-color" value="${E(t.color)}" data-f="color">
             <input type="text" class="fc-input" value="${E(t.label)}" data-f="label" maxlength="24">

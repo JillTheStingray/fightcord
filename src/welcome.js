@@ -17,24 +17,32 @@ const path = require('path');
 let fc = null;
 let store = null, cfg = null;          // welcome-config.json
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const ET = (s, v) => E(fc.t(s, v));
 const mod = (id) => fc.modules.get(id);
 
 /* ---------------------------------------------------------------- versions */
 
+const N_ = (s) => s;          // translated where shown
 // the news for each version that has some ('1.9' = the 2.0 betas, so they show it too)
 const NEWS = [
     { v: '1.9', title: 'Fightcord 2.0', items: [
-        ['bolt', 'Faster and lighter', 'One shared core instead of 24 separate plugins: one timer, one page watcher, one Fightcade API client.'],
-        ['gear', 'New settings', 'Search every setting, one-click profiles, backup & restore, and a Diagnostics page. Ctrl+, opens it.'],
-        ['trend', 'Rank & ELO history', 'Stats → Progress charts your rank over time — with a celebration when you rank up.'],
-        ['target', 'Training goals', 'Win 5 sets, beat 3 A-ranks, play an hour… tracked live by the ring next to your session record.'],
-        ['chart', 'Match analytics', 'Win rate by opponent rank, ping and hour of day, plus a tilt check. Stats → Analytics.'],
-        ['bell', 'Lobby feed', 'The Feed button in every channel: joins, matches you can watch, upsets and streaks.']
+        ['bolt', N_('Faster and lighter'), N_('One shared core instead of 24 separate plugins: one timer, one page watcher, one Fightcade API client.')],
+        ['gear', N_('New settings'), N_('Search every setting, one-click profiles, backup & restore, and a Diagnostics page. Ctrl+, opens it.')],
+        ['trend', N_('Rank & ELO history'), N_('Stats → Progress charts your rank over time — with a celebration when you rank up.')],
+        ['target', N_('Training goals'), N_('Win 5 sets, beat 3 A-ranks, play an hour… tracked live by the ring next to your session record.')],
+        ['chart', N_('Match analytics'), N_('Win rate by opponent rank, ping and hour of day, plus a tilt check. Stats → Analytics.')],
+        ['bell', N_('Lobby feed'), N_('The Feed button in every channel: joins, matches you can watch, upsets and streaks.')]
     ] },
     { v: '2.1', title: 'Fightcord 2.1', items: [
-        ['warn', 'Unfinished sets', 'The scout and challenge cards warn when someone often leaves ranked sets before the FT is reached.'],
-        ['bell', 'Event reminders', 'A heads-up before tournaments for your games start, with a button to open the channel. Ring the bell on any event card to add it.'],
-        ['trend', 'Exact ELO', 'Fightcade supporters now see their real ELO on the scout card, the Progress chart and after every set.']
+        ['warn', N_('Unfinished sets'), N_('The scout and challenge cards warn when someone often leaves ranked sets before the FT is reached.')],
+        ['bell', N_('Event reminders'), N_('A heads-up before tournaments for your games start, with a button to open the channel. Ring the bell on any event card to add it.')],
+        ['trend', N_('Exact ELO'), N_('Fightcade supporters now see their real ELO on the scout card, the Progress chart and after every set.')]
+    ] },
+    { v: '2.2', title: 'Fightcord 2.2', items: [
+        ['globe', N_('Português e Español'), N_('Fightcord now speaks Brazilian Portuguese and Spanish, installer included. Settings → My Fightcord → Language (Automatic follows Windows).')],
+        ['chat', N_('Chat translation in your language'), N_('The chat translator now translates other players into the language Fightcord is in, out of the box.')]
     ] }
 ];
 
@@ -63,7 +71,7 @@ function veteran() {
 /* ------------------------------------------------------------- the welcome */
 
 const STEPS = ['look', 'features', 'music', 'friends', 'tour'];
-const STEP_LABEL = { look: 'Look', features: 'Features', music: 'Music', friends: 'Friends', tour: 'Tour' };
+const STEP_LABEL = { look: N_('Look'), features: N_('Features'), music: N_('Music'), friends: N_('Friends'), tour: N_('Tour') };
 const PREVIEW = {
     dark: ['#1e1f22', '#2b2d31', '#313338'], amoled: ['#000000', '#0a0a0a', '#151515'],
     classic: ['#202225', '#2f3136', '#36393f'], neon: ['#0d0f1f', '#151833', '#1c2045']
@@ -73,50 +81,49 @@ let screen = null, step = 0, unlayer = null;
 
 function lookHtml() {
     const th = mod('discord-theme');
-    if (!th || !th.theme) return `<h2>Make it yours</h2><p class="lead">The Discord theme is switched off right now — you can turn it on later in Settings → Appearance.</p>`;
+    if (!th || !th.theme) return `<h2>${ET('Make it yours')}</h2><p class="lead">${ET('The Discord theme is switched off right now — you can turn it on later in Settings → Appearance.')}</p>`;
     const t = th.theme(), presets = th.presets(), sw = th.swatches();
-    return `<h2>Make it yours</h2><p class="lead">Pick a look — it changes right away, behind this window too.</p>
+    return `<h2>${ET('Make it yours')}</h2><p class="lead">${ET('Pick a look — it changes right away, behind this window too.')}</p>
         <div class="wlcGrid">${Object.keys(PREVIEW).filter(k => presets[k]).map(k => `<div class="wlcPick${t.enabled && t.preset === k ? ' on' : ''}" data-preset="${k}">
-            <div class="wlcPrev">${PREVIEW[k].map(c => `<i style="background:${c}"></i>`).join('')}<b style="background:${E(t.accent)}"></b></div><span>${E(presets[k])}</span></div>`).join('')}</div>
-        <h3>Accent colour</h3><div class="wlcSwatches">${Object.keys(sw).map(n => `<span class="wlcSw${sw[n] === t.accent ? ' on' : ''}" data-accent="${sw[n]}" title="${E(n)}" style="background:${sw[n]}"></span>`).join('')}</div>`;
+            <div class="wlcPrev">${PREVIEW[k].map(c => `<i style="background:${c}"></i>`).join('')}<b style="background:${E(t.accent)}"></b></div><span>${ET(presets[k])}</span></div>`).join('')}</div>
+        <h3>${ET('Accent colour')}</h3><div class="wlcSwatches">${Object.keys(sw).map(n => `<span class="wlcSw${sw[n] === t.accent ? ' on' : ''}" data-accent="${sw[n]}" title="${ET(n)}" style="background:${sw[n]}"></span>`).join('')}</div>`;
 }
 
 function featuresHtml() {
     const s = mod('fightcord');
-    if (!s || !s.profiles) return '<h2>Features</h2><p class="lead">Choose which modules run in Settings → My Fightcord.</p>';
+    if (!s || !s.profiles) return `<h2>${ET('Features')}</h2><p class="lead">${ET('Choose which modules run in Settings → My Fightcord.')}</p>`;
     const P = s.profiles(), cur = s.profile();
-    return `<h2>How much Fightcord?</h2><p class="lead">You can change this any time in Settings → My Fightcord, or switch single modules on and off.</p>
-        <div class="wlcGrid three">${Object.keys(P).map(k => `<div class="wlcPick big${cur === k ? ' on' : ''}" data-profile="${k}">${fc.ui.icon(P[k].icon)}<b>${E(P[k].label)}</b><span>${E(P[k].desc)}</span></div>`).join('')}</div>
-        <div class="wlcNote" data-note="profile">${cur ? '' : 'Right now you’re on your own mix of modules.'}</div>`;
+    return `<h2>${ET('How much Fightcord?')}</h2><p class="lead">${ET('You can change this any time in Settings → My Fightcord, or switch single modules on and off.')}</p>
+        <div class="wlcGrid three">${Object.keys(P).map(k => `<div class="wlcPick big${cur === k ? ' on' : ''}" data-profile="${k}">${fc.ui.icon(P[k].icon)}<b>${ET(P[k].label)}</b><span>${ET(P[k].desc)}</span></div>`).join('')}</div>
+        <div class="wlcNote" data-note="profile">${cur ? '' : ET('Right now you’re on your own mix of modules.')}</div>`;
 }
 
 function musicHtml() {
     const m = mod('music');
-    if (!m || !m.tracks) return `<h2>Lobby music</h2><p class="lead">Music is switched off in this profile. Turn the module on in Settings → My Fightcord if you want it.</p>`;
+    if (!m || !m.tracks) return `<h2>${ET('Lobby music')}</h2><p class="lead">${ET('Music is switched off in this profile. Turn the module on in Settings → My Fightcord if you want it.')}</p>`;
     const list = m.tracks(), cur = m.current();
     const s = mod('fightcord'), P = s && s.profiles ? s.profiles() : {}, prof = s && s.profile ? s.profile() : '';
     const offNext = prof && P[prof] && P[prof].off.includes('music.js');
-    return `<h2>Lobby music</h2>${offNext ? `<div class="wlcNote">The ${E(P[prof].label)} profile you picked switches music off from the next start.</div>` : ''}<p class="lead">Fightcord can play a track on a loop while you’re in the lobby, and pause it during matches.
-        It doesn’t come with any music — add your own mp3 or ogg.</p>
+    return `<h2>${ET('Lobby music')}</h2>${offNext ? `<div class="wlcNote">${ET('The {profile} profile you picked switches music off from the next start.', { profile: T(P[prof].label) })}</div>` : ''}<p class="lead">${ET('Fightcord can play a track on a loop while you’re in the lobby, and pause it during matches. It doesn’t come with any music — add your own mp3 or ogg.')}</p>
         <div class="wlcList">${list.map(f => `<div class="wlcRow${f === cur ? ' on' : ''}" data-track="${E(f)}">${fc.ui.icon('music')}<span>${E(f.replace(/\.[^.]+$/, ''))}</span></div>`).join('')}
-            <div class="wlcRow${cur ? '' : ' on'}" data-track="">${fc.ui.icon('close')}<span>No music</span></div></div>
+            <div class="wlcRow${cur ? '' : ' on'}" data-track="">${fc.ui.icon('close')}<span>${ET('No music')}</span></div></div>
         <div class="wlcBtns">${fc.ui.btn('Add a track…', { kind: 'sec', icon: 'plus', act: 'add-track' })}</div>
         <input type="file" class="wlcFile" accept="audio/*,.mp3,.ogg,.wav,.m4a" style="display:none">`;
 }
 
 function friendsHtml() {
-    const tip = (icon, b, s) => `<div class="wlcTip">${fc.ui.icon(icon)}<div><b>${b}</b><span>${s}</span></div></div>`;
-    return `<h2>Friends & notes</h2><p class="lead">Fightcade has no friends list — Fightcord adds one, kept on your PC.</p>
-        ${tip('star', 'Right-click anyone → Add friend', 'You’ll hear when friends come online or start a match, with a button to watch.')}
-        ${tip('users', '/friends opens your list', 'Who’s online, what they’re playing, and your record against each of them.')}
-        ${tip('note', 'Notes & tags', 'Right-click → Note (or /note name) to remember a player: “turtles”, “good games”. It shows on their challenge.')}
-        ${tip('bell', 'The Feed', 'Every channel has a Feed button: who joined, matches to watch, upsets and streaks.')}`;
+    const tip = (icon, b, s) => `<div class="wlcTip">${fc.ui.icon(icon)}<div><b>${ET(b)}</b><span>${ET(s)}</span></div></div>`;
+    return `<h2>${ET('Friends & notes')}</h2><p class="lead">${ET('Fightcade has no friends list — Fightcord adds one, kept on your PC.')}</p>
+        ${tip('star', N_('Right-click anyone → Add friend'), N_('You’ll hear when friends come online or start a match, with a button to watch.'))}
+        ${tip('users', N_('/friends opens your list'), N_('Who’s online, what they’re playing, and your record against each of them.'))}
+        ${tip('note', N_('Notes & tags'), N_('Right-click → Note (or /note name) to remember a player: “turtles”, “good games”. It shows on their challenge.'))}
+        ${tip('bell', N_('The Feed'), N_('Every channel has a Feed button: who joined, matches to watch, upsets and streaks.'))}`;
 }
 
 function tourHtml() {
-    return `<h2>You’re all set</h2><p class="lead">A 30-second tour shows where everything is. You can replay it from Settings → About.</p>
+    return `<h2>${ET('You’re all set')}</h2><p class="lead">${ET('A 30-second tour shows where everything is. You can replay it from Settings → About.')}</p>
         <div class="wlcBtns center">${fc.ui.btn('Take the tour', { kind: 'brand', size: 'lg', icon: 'play', act: 'tour' })}</div>
-        <div class="wlcKeys"><span><kbd>Ctrl</kbd>+<kbd>,</kbd> settings</span><span><kbd>/help</kbd> every command</span><span><kbd>/stats</kbd> your stats</span></div>`;
+        <div class="wlcKeys"><span><kbd>Ctrl</kbd>+<kbd>,</kbd> ${ET('settings')}</span><span><kbd>/help</kbd> ${ET('every command')}</span><span><kbd>/stats</kbd> ${ET('your stats')}</span></div>`;
 }
 
 const BODY = { look: lookHtml, features: featuresHtml, music: musicHtml, friends: friendsHtml, tour: tourHtml };
@@ -124,11 +131,11 @@ const BODY = { look: lookHtml, features: featuresHtml, music: musicHtml, friends
 function render() {
     if (!screen) return;
     const id = STEPS[step];
-    screen.querySelector('.wlcDots').innerHTML = STEPS.map((s, i) => `<span class="${i === step ? 'on' : i < step ? 'done' : ''}" data-step="${i}">${E(STEP_LABEL[s])}</span>`).join('');
+    screen.querySelector('.wlcDots').innerHTML = STEPS.map((s, i) => `<span class="${i === step ? 'on' : i < step ? 'done' : ''}" data-step="${i}">${ET(STEP_LABEL[s])}</span>`).join('');
     const body = screen.querySelector('.wlcBody');
     body.innerHTML = `<div class="wlcStep">${BODY[id]()}</div>`;
     screen.querySelector('[data-act="back"]').style.visibility = step ? '' : 'hidden';
-    screen.querySelector('[data-act="next"]').innerHTML = step === STEPS.length - 1 ? 'Finish' : 'Next';
+    screen.querySelector('[data-act="next"]').innerHTML = ET(step === STEPS.length - 1 ? 'Finish' : 'Next');
     const file = body.querySelector('.wlcFile');
     if (file) file.addEventListener('change', () => addTrack(file));
 }
@@ -138,7 +145,7 @@ async function addTrack(input) {
     const m = mod('music');
     if (!f || !m) return;
     try { const name = await m.addTrack(f); m.pick(name); }
-    catch (e) { fc.ui.toast('Couldn’t add that file', { sub: e.message, kind: 'danger', icon: 'warn' }); }
+    catch (e) { fc.ui.toast(T('Couldn’t add that file'), { sub: e.message, kind: 'danger', icon: 'warn' }); }
     render();
 }
 
@@ -149,7 +156,7 @@ function openWelcome(at) {
         screen = document.createElement('div');
         screen.id = 'wlcScreen';
         screen.innerHTML = `<div class="wlcCard"><div class="wlcHead"><div class="wlcLogo">${fc.ui.icon('bolt')}</div>` +
-            `<div class="wlcTitle"><b>Welcome to Fightcord</b><span>Discord-style Fightcade — let’s set it up</span></div>` +
+            `<div class="wlcTitle"><b>${ET('Welcome to Fightcord')}</b><span>${ET('Discord-style Fightcade — let’s set it up')}</span></div>` +
             `${fc.ui.btn('Skip', { kind: 'ghost', size: 'sm', act: 'skip', title: 'Skip — you can replay this from Settings → About' })}</div>` +
             `<div class="wlcDots"></div><div class="wlcBody"></div>` +
             `<div class="wlcFoot">${fc.ui.btn('Back', { kind: 'ghost', act: 'back' })}<span class="sp"></span>${fc.ui.btn('Next', { kind: 'brand', act: 'next' })}</div></div>`;
@@ -178,7 +185,7 @@ function onClick(e) {
             render();
             if (was !== pf.dataset.profile) {
                 const note = screen.querySelector('[data-note="profile"]');
-                note.textContent = 'Saved — it takes effect the next time Fightcade starts.';
+                note.textContent = T('Saved — it takes effect the next time Fightcade starts.');
                 note.classList.add('ok');
             }
         }
@@ -210,9 +217,9 @@ let newsModal = null;
 function openNews(n) {
     const news = n || NEWS[NEWS.length - 1];
     if (!news || newsModal) return;
-    const body = `<div class="wlcNews">${news.items.map(([icon, b, s]) => `<div class="wlcTip">${fc.ui.icon(icon)}<div><b>${E(b)}</b><span>${E(s)}</span></div></div>`).join('')}</div>`;
+    const body = `<div class="wlcNews">${news.items.map(([icon, b, s]) => `<div class="wlcTip">${fc.ui.icon(icon)}<div><b>${ET(b)}</b><span>${ET(s)}</span></div></div>`).join('')}</div>`;
     newsModal = fc.ui.modal({
-        title: 'What’s new in ' + news.title, body, width: 520,
+        title: T('What’s new in {version}', { version: news.title }), body, width: 520,
         actions: [{ label: 'Take the tour', kind: 'ghost', fn: () => { setTimeout(startTour, 250); } }, { label: 'Got it' }],
         onClose: () => {
             newsModal = null;
@@ -276,9 +283,9 @@ function place() {
     if (!tour) return;
     const s = tour.stops[tour.i], n = tour.stops.length;
     const el = s.find();
-    tour.bubble.innerHTML = `<div class="n">${tour.i + 1} / ${n}</div><b>${E(s.title)}</b><p>${E(s.text)}</p>` +
+    tour.bubble.innerHTML = `<div class="n">${tour.i + 1} / ${n}</div><b>${ET(s.title)}</b><p>${ET(s.text)}</p>` +
         `<div class="wlcFoot">${tour.i ? fc.ui.btn('Back', { kind: 'ghost', size: 'sm', act: 'back' }) : fc.ui.btn('Close', { kind: 'ghost', size: 'sm', act: 'close' })}` +
-        `<span class="sp"></span>${fc.ui.btn(tour.i === n - 1 ? 'Done' : 'Next', { kind: 'brand', size: 'sm', act: 'next' })}</div>`;
+        `<span class="sp"></span>${fc.ui.btn(T(tour.i === n - 1 ? 'Done' : 'Next'), { kind: 'brand', size: 'sm', act: 'next' })}</div>`;
     const r = el && el.getBoundingClientRect();
     if (r && r.width) {
         const pad = 6;

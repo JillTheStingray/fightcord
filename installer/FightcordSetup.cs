@@ -13,6 +13,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -26,8 +27,8 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Fightcord Setup")]
 [assembly: AssemblyProduct("Fightcord")]
-[assembly: AssemblyVersion("2.1.0.0")]
-[assembly: AssemblyFileVersion("2.1.0.0")]
+[assembly: AssemblyVersion("2.2.0.0")]
+[assembly: AssemblyFileVersion("2.2.0.0")]
 
 namespace Fightcord
 {
@@ -47,6 +48,7 @@ namespace Fightcord
                 else if (a == "--uninstall") mode = "uninstall";
                 else if (a == "--restore") restore = true;
                 else if (a.StartsWith("--log=")) logFile = a.Substring(6).Trim('"');
+                else if (a.StartsWith("--lang=")) L.Lang = L.Pick(a.Substring(7));
             }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
@@ -54,6 +56,25 @@ namespace Fightcord
             if (mode == null) { Application.Run(form); return 0; }
             return form.Headless(mode, restore, logFile);
         }
+    }
+
+    // The window and log in the Windows language: Portuguese or Spanish (anything else stays English).
+    // The tables are generated from installer\i18n.json by installer\make_i18n.js (this file stays ASCII).
+    static partial class L
+    {
+        public static string Lang = Pick(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+        public static string Pick(string two)
+        {
+            two = (two ?? "").Trim().ToLowerInvariant();
+            return two.StartsWith("pt") ? "pt" : two.StartsWith("es") ? "es" : "en";
+        }
+        public static string T(string s)
+        {
+            Dictionary<string, string> d = Lang == "pt" ? Pt : Lang == "es" ? Es : null;
+            string r;
+            return d != null && d.TryGetValue(s, out r) ? r : s;
+        }
+        public static string F(string s, params object[] args) { return string.Format(T(s), args); }
     }
 
     // Colours from the FightCord logo: deep navy, Discord blurple, neon cyan, a touch of violet
@@ -489,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "2.1.0";
+        const string Version = "2.2.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 
@@ -526,7 +547,7 @@ namespace Fightcord
         public SetupForm(string rootArg, bool headless)
         {
             SuspendLayout();
-            Text = "Fightcord Setup";
+            Text = L.T("Fightcord Setup");
             AutoScaleDimensions = new SizeF(96f, 96f);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(900, 640);
@@ -542,8 +563,8 @@ namespace Fightcord
             Hero hero = new Hero
             {
                 Location = new Point(0, 0), Size = new Size(340, 640), Font = new Font("Segoe UI", 10f),
-                Tagline = "The Discord-style suite for Fightcade", Version = "v" + Version,
-                LinkText = "Newest version on GitHub  \u2197", LinkUrl = ReleasesUrl
+                Tagline = L.T("The Discord-style suite for Fightcade"), Version = "v" + Version,
+                LinkText = L.T("Newest version on GitHub") + "  \u2197", LinkUrl = ReleasesUrl
             };
             Controls.Add(hero);
 
@@ -554,42 +575,42 @@ namespace Fightcord
             Controls.Add(min); Controls.Add(close);
 
             const int X = 372, W = 500;
-            Label title = new Label { Text = "Set up Fightcord", Font = new Font("Segoe UI Semibold", 21f), ForeColor = Theme.Head, AutoSize = true, Location = new Point(X - 3, 34) };
-            Label sub = new Label { Text = "Discord-style chat, a new search tab, stats and more \u2014 in one click.", ForeColor = Theme.Muted, AutoSize = true, Location = new Point(X, 80) };
+            Label title = new Label { Text = L.T("Set up Fightcord"), Font = new Font("Segoe UI Semibold", 21f), ForeColor = Theme.Head, AutoSize = true, Location = new Point(X - 3, 34) };
+            Label sub = new Label { Text = L.T("Discord-style chat, a new search tab, stats and more \u2014 in one click."), ForeColor = Theme.Muted, AutoSize = true, Location = new Point(X, 80) };
             title.MouseDown += delegate (object s, MouseEventArgs e) { if (e.Button == MouseButtons.Left) Win.Drag(this); };
             Controls.Add(title); Controls.Add(sub);
 
-            Controls.Add(Caption("FIGHTCADE FOLDER", X, 122));
+            Controls.Add(Caption(L.T("FIGHTCADE FOLDER"), X, 122));
             pathBox = new PathView { Location = new Point(X, 142), Size = new Size(W - 114, 46) };
-            browseBtn = new GButton("Browse\u2026", ButtonKind.Ghost) { Location = new Point(X + W - 104, 142), Size = new Size(104, 46) };
+            browseBtn = new GButton(L.T("Browse\u2026"), ButtonKind.Ghost) { Location = new Point(X + W - 104, 142), Size = new Size(104, 46) };
             browseBtn.Click += delegate { Browse(); };
             Controls.Add(pathBox); Controls.Add(browseBtn);
 
-            Controls.Add(Caption("STATUS", X, 204));
+            Controls.Add(Caption(L.T("STATUS"), X, 204));
             status = new StatusView { Location = new Point(X, 224), Size = new Size(W, 104) };
             Controls.Add(status);
 
-            Controls.Add(Caption("WHAT YOU GET", X, 344));
+            Controls.Add(Caption(L.T("WHAT YOU GET"), X, 344));
             Features feats = new Features
             {
                 Location = new Point(X, 362), Size = new Size(W, 104),
                 Items = new[] {
-                    "Discord theme, chat & member list", "Discover tab with live matches",
-                    "Translate, mentions & :emoji:", "Scout card with ELO & win odds",
-                    "Challenge card, filters & rematch", "VS screens, stats & replays",
-                    "Friends, notes & hover cards", "Themes, music, Rich Presence & updates" }
+                    L.T("Discord theme, chat & member list"), L.T("Discover tab with live matches"),
+                    L.T("Translate, mentions & :emoji:"), L.T("Scout card with ELO & win odds"),
+                    L.T("Challenge card, filters & rematch"), L.T("VS screens, stats & replays"),
+                    L.T("Friends, notes & hover cards"), L.T("Themes, music, Rich Presence & updates") }
             };
             Controls.Add(feats);
             Label note = new Label
             {
-                Text = "Cerberus is backed up and removed. Your settings and match history come along.",
+                Text = L.T("Cerberus is backed up and removed. Your settings and match history come along."),
                 ForeColor = Theme.Muted, Location = new Point(X, 470), Size = new Size(W, 20)
             };
             Controls.Add(note);
 
-            installBtn = new GButton("Install", ButtonKind.Primary) { Location = new Point(X, 500), Size = new Size(200, 48) };
-            launchBtn = new GButton("Open Fightcade", ButtonKind.Ghost) { Location = new Point(X + 212, 500), Size = new Size(158, 48) };
-            uninstallBtn = new GButton("Uninstall", ButtonKind.Danger) { Location = new Point(X + 382, 500), Size = new Size(118, 48) };
+            installBtn = new GButton(L.T("Install"), ButtonKind.Primary) { Location = new Point(X, 500), Size = new Size(200, 48) };
+            launchBtn = new GButton(L.T("Open Fightcade"), ButtonKind.Ghost) { Location = new Point(X + 212, 500), Size = new Size(158, 48) };
+            uninstallBtn = new GButton(L.T("Uninstall"), ButtonKind.Danger) { Location = new Point(X + 382, 500), Size = new Size(118, 48) };
             installBtn.Click += delegate { if (installBtn.Enabled) Run(DoInstall); };
             uninstallBtn.Click += delegate { if (uninstallBtn.Enabled) Run(DoUninstall); };
             launchBtn.Click += delegate { if (launchBtn.Enabled) Launch(); };
@@ -608,7 +629,7 @@ namespace Fightcord
             this.headless = headless;
             root = rootArg != null ? RootFrom(rootArg) : FindFightcade();
             Refresh2();
-            if (!headless) Log("Ready.");
+            if (!headless) Log(L.T("Ready."));
         }
 
         // fade in
@@ -627,8 +648,8 @@ namespace Fightcord
             int code = 0;
             try
             {
-                if (root == null) throw new Exception("Fightcade folder not found");
-                if (FightcadeRunning()) throw new Exception("Fightcade is running - close it first");
+                if (root == null) throw new Exception(L.T("Fightcade folder not found"));
+                if (FightcadeRunning()) throw new Exception(L.T("Fightcade is running - close it first"));
                 if (mode == "install") DoInstall(); else DoUninstall();
             }
             catch (Exception ex) { Log("ERROR " + ex.Message); code = 1; }
@@ -696,10 +717,10 @@ namespace Fightcord
         {
             using (FolderBrowserDialog d = new FolderBrowserDialog())
             {
-                d.Description = "Pick your Fightcade folder (the one with Fightcade2.exe in it).";
+                d.Description = L.T("Pick your Fightcade folder (the one with Fightcade2.exe in it).");
                 if (d.ShowDialog(this) != DialogResult.OK) return;
                 string r = RootFrom(d.SelectedPath);
-                if (r == null) { MessageBox.Show(this, "That doesn't look like a Fightcade folder.\n\nPick the folder that contains Fightcade2.exe and fc2-electron.", "Fightcord", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+                if (r == null) { MessageBox.Show(this, L.T("That doesn't look like a Fightcade folder.\n\nPick the folder that contains Fightcade2.exe and fc2-electron."), "Fightcord", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
                 root = r;
                 Refresh2();
             }
@@ -766,25 +787,25 @@ namespace Fightcord
         {
             List<KeyValuePair<char, string>> lines = new List<KeyValuePair<char, string>>();
             pathBox.Missing = root == null;
-            pathBox.Text = root ?? "Not found \u2014 click Browse";
+            pathBox.Text = root ?? L.T("Not found \u2014 click Browse");
             if (root == null)
             {
-                lines.Add(new KeyValuePair<char, string>('!', "Fightcade wasn't found automatically."));
-                lines.Add(new KeyValuePair<char, string>('i', "Click Browse and pick the folder with Fightcade2.exe in it."));
+                lines.Add(new KeyValuePair<char, string>('!', L.T("Fightcade wasn't found automatically.")));
+                lines.Add(new KeyValuePair<char, string>('i', L.T("Click Browse and pick the folder with Fightcade2.exe in it.")));
                 status.SetLines(lines);
                 installBtn.Enabled = uninstallBtn.Enabled = launchBtn.Enabled = false;
                 return;
             }
             string v = InstalledVersion();
             bool ours = OurLoader() && v != null;
-            lines.Add(new KeyValuePair<char, string>('y', "Fightcade found."));
-            if (ours) lines.Add(new KeyValuePair<char, string>('y', "Fightcord " + v + " is installed" + (v == Version ? " \u2014 up to date." : " \u2014 this setup has " + Version + ".")));
-            else lines.Add(new KeyValuePair<char, string>('i', "Fightcord is not installed yet."));
-            if (HasCerberus()) lines.Add(new KeyValuePair<char, string>('i', "Cerberus found \u2014 it will be backed up and removed."));
-            else if (HasOldSetup()) lines.Add(new KeyValuePair<char, string>('i', "An older plugin setup was found \u2014 it will be backed up and replaced."));
-            if (FightcadeRunning()) lines.Add(new KeyValuePair<char, string>('!', "Fightcade is open \u2014 it has to be closed to install."));
+            lines.Add(new KeyValuePair<char, string>('y', L.T("Fightcade found.")));
+            if (ours) lines.Add(new KeyValuePair<char, string>('y', v == Version ? L.F("Fightcord {0} is installed \u2014 up to date.", v) : L.F("Fightcord {0} is installed \u2014 this setup has {1}.", v, Version)));
+            else lines.Add(new KeyValuePair<char, string>('i', L.T("Fightcord is not installed yet.")));
+            if (HasCerberus()) lines.Add(new KeyValuePair<char, string>('i', L.T("Cerberus found \u2014 it will be backed up and removed.")));
+            else if (HasOldSetup()) lines.Add(new KeyValuePair<char, string>('i', L.T("An older plugin setup was found \u2014 it will be backed up and replaced.")));
+            if (FightcadeRunning()) lines.Add(new KeyValuePair<char, string>('!', L.T("Fightcade is open \u2014 it has to be closed to install.")));
             status.SetLines(lines);
-            installBtn.Text = ours ? (v == Version ? "Repair" : "Update to " + Version) : "Install";
+            installBtn.Text = ours ? (v == Version ? L.T("Repair") : L.F("Update to {0}", Version)) : L.T("Install");
             installBtn.Enabled = true;
             uninstallBtn.Enabled = ours;
             launchBtn.Enabled = FindExe() != null;
@@ -816,10 +837,10 @@ namespace Fightcord
             if (!FightcadeRunning()) return true;
             if (EmulatorRunning())
             {
-                MessageBox.Show(this, "A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again.", "Fightcord", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, L.T("A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again."), "Fightcord", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
-            DialogResult r = MessageBox.Show(this, "Fightcade is open and has to be closed first.\n\nClose it now?", "Fightcord", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            DialogResult r = MessageBox.Show(this, L.T("Fightcade is open and has to be closed first.\n\nClose it now?"), "Fightcord", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (r != DialogResult.Yes) return false;
             foreach (Process p in FightcadeProcs()) { try { p.Kill(); } catch { } }
             for (int i = 0; i < 40 && FightcadeRunning(); i++) Thread.Sleep(150);
@@ -838,7 +859,7 @@ namespace Fightcord
             Thread t = new Thread(delegate ()
             {
                 try { work(); }
-                catch (Exception ex) { failed = true; Log("\u2716 " + ex.Message); Log("Nothing is lost: see " + BackupRoot); }
+                catch (Exception ex) { failed = true; Log("\u2716 " + ex.Message); Log(L.F("Nothing is lost: see {0}", BackupRoot)); }
                 BeginInvoke(new Action(delegate { progress.Finish(!failed); Refresh2(); }));
             });
             t.IsBackground = true;
@@ -872,7 +893,7 @@ namespace Fightcord
                 bool cerb = HasCerberus();
                 string bk = Path.Combine(BackupRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss"));
                 Directory.CreateDirectory(bk);
-                Log("Backing up the current setup to " + bk);
+                Log(L.F("Backing up the current setup to {0}", bk));
                 string oldLoader = Path.Combine(Inject, "inject.js");
                 if (File.Exists(oldLoader) && !OurLoader()) File.Copy(oldLoader, Path.Combine(bk, "inject.js"), true);
                 string oldCfg = Path.Combine(Inject, "config.json");
@@ -881,26 +902,26 @@ namespace Fightcord
                 if (Directory.Exists(OldPlugins)) Directory.Move(OldPlugins, was);
 
                 Directory.CreateDirectory(FcordDir);
-                Log("Bringing your settings and match history along");
+                Log(L.T("Bringing your settings and match history along"));
                 foreach (string f in DataFiles)
                 {
                     string src = Path.Combine(was, f), dst = Path.Combine(FcordDir, f);
                     if (File.Exists(src) && !File.Exists(dst)) { File.Copy(src, dst); Log("  " + f); }
                 }
                 string sounds = Path.Combine(was, "match-screens"), soundsTo = Path.Combine(FcordDir, "match-screens");
-                if (Directory.Exists(sounds) && !Directory.Exists(soundsTo)) { CopyDir(sounds, soundsTo, null); Log("  match-screens\\ (your sounds)"); }
+                if (Directory.Exists(sounds) && !Directory.Exists(soundsTo)) { CopyDir(sounds, soundsTo, null); Log("  match-screens\\ (" + L.T("your sounds") + ")"); }
                 string snaps = Path.Combine(was, "fc-snapshots"), snapsTo = Path.Combine(FcordDir, "fc-snapshots");
                 if (Directory.Exists(snaps) && !Directory.Exists(snapsTo)) { Directory.Move(snaps, snapsTo); Log("  fc-snapshots\\"); }
 
-                Log(cerb ? "Cerberus and the old loader are out (kept in the backup)" : "The old loader is out (kept in the backup)");
+                Log(L.T(cerb ? "Cerberus and the old loader are out (kept in the backup)" : "The old loader is out (kept in the backup)"));
             }
 
-            Log("Installing Fightcord " + Version);
+            Log(L.F("Installing Fightcord {0}", Version));
             Directory.CreateDirectory(FcordDir);
             int n = 0;
             using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("Fightcord.payload.zip"))
             {
-                if (s == null) throw new Exception("The installer is missing its files (payload.zip). Rebuild it with build.ps1.");
+                if (s == null) throw new Exception(L.T("The installer is missing its files (payload.zip). Rebuild it with build.ps1."));
                 using (ZipArchive zip = new ZipArchive(s, ZipArchiveMode.Read))
                 {
                     foreach (ZipArchiveEntry e in zip.Entries)
@@ -916,10 +937,10 @@ namespace Fightcord
                     }
                 }
             }
-            Log("  " + n + " files");
+            Log("  " + L.F("{0} files", n));
             WriteManifest();
             Log("");
-            Log("\u2714 Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks.");
+            Log("\u2714 " + L.T("Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks."));
         }
 
         void WriteManifest()
@@ -950,16 +971,16 @@ namespace Fightcord
             if (headless) restore = headlessRestore && prev != null;
             else Invoke(new Action(delegate
             {
-                DialogResult r = MessageBox.Show(this, "Remove Fightcord from Fightcade?" +
-                    (prev != null ? "\n\nYour previous setup (Cerberus / old plugins) from " + Path.GetFileName(prev) + " can be put back. Restore it?\n\nYes = remove and restore   No = just remove" : ""),
+                DialogResult r = MessageBox.Show(this, L.T("Remove Fightcord from Fightcade?") +
+                    (prev != null ? "\n\n" + L.F("Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", Path.GetFileName(prev)) + "\n\n" + L.T("Yes = remove and restore   No = just remove") : ""),
                     "Fightcord", prev != null ? MessageBoxButtons.YesNoCancel : MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
                 if (r == DialogResult.Cancel) { prev = "cancel"; return; }
                 restore = r == DialogResult.Yes;
             }));
-            if (prev == "cancel") { Log("Cancelled."); return; }
+            if (prev == "cancel") { Log(L.T("Cancelled.")); return; }
 
             string keep = Path.Combine(BackupRoot, "uninstall-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
-            Log("Keeping your settings and match history in " + keep);
+            Log(L.F("Keeping your settings and match history in {0}", keep));
             Directory.CreateDirectory(keep);
             foreach (string f in DataFiles.Concat(new[] { "fightcord.json" }))
             {
@@ -971,14 +992,14 @@ namespace Fightcord
             string music = Path.Combine(FcordDir, "music");
             if (Directory.Exists(music)) CopyDir(music, Path.Combine(keep, "music"), null);
 
-            Log("Removing Fightcord");
+            Log(L.T("Removing Fightcord"));
             if (Directory.Exists(FcordDir)) Directory.Delete(FcordDir, true);
             string loader = Path.Combine(Inject, "inject.js");
             if (OurLoader()) File.Delete(loader);
 
             if (restore && prev != null)
             {
-                Log("Restoring " + prev);
+                Log(L.F("Restoring {0}", prev));
                 if (File.Exists(Path.Combine(prev, "inject.js"))) File.Copy(Path.Combine(prev, "inject.js"), loader, true);
                 if (File.Exists(Path.Combine(prev, "config.json"))) File.Copy(Path.Combine(prev, "config.json"), Path.Combine(Inject, "config.json"), true);
                 string prevPlugins = Path.Combine(prev, "plugins");
@@ -989,7 +1010,7 @@ namespace Fightcord
                 }
             }
             Log("");
-            Log("\u2714 Fightcord removed." + (restore ? " Your previous setup is back." : " Fightcade runs plain."));
+            Log("\u2714 " + L.T("Fightcord removed.") + " " + L.T(restore ? "Your previous setup is back." : "Fightcade runs plain."));
         }
 
         // ------------------------------------------------------------------ helpers
@@ -1005,4 +1026,136 @@ namespace Fightcord
             }
         }
     }
+
+    // ---- i18n tables (generated by installer/make_i18n.js from i18n.json; do not edit) ----
+    static partial class L
+    {
+        static readonly Dictionary<string, string> Pt = new Dictionary<string, string>
+        {
+            { "Fightcord Setup", "Instala\u00e7\u00e3o do Fightcord" },
+            { "The Discord-style suite for Fightcade", "O pacote estilo Discord para o Fightcade" },
+            { "Newest version on GitHub", "Vers\u00e3o mais nova no GitHub" },
+            { "Set up Fightcord", "Instalar o Fightcord" },
+            { "Discord-style chat, a new search tab, stats and more \u2014 in one click.", "Chat estilo Discord, uma nova aba de busca, estat\u00edsticas e mais \u2014 em um clique." },
+            { "FIGHTCADE FOLDER", "PASTA DO FIGHTCADE" },
+            { "Browse\u2026", "Procurar\u2026" },
+            { "STATUS", "STATUS" },
+            { "WHAT YOU GET", "O QUE VOC\u00ca GANHA" },
+            { "Discord theme, chat & member list", "Tema Discord, chat e membros" },
+            { "Discover tab with live matches", "Descobrir, com partidas ao vivo" },
+            { "Translate, mentions & :emoji:", "Tradu\u00e7\u00e3o, men\u00e7\u00f5es e :emoji:" },
+            { "Scout card with ELO & win odds", "Ficha com ELO e chances" },
+            { "Challenge card, filters & rematch", "Desafios, filtros e revanche" },
+            { "VS screens, stats & replays", "Telas VS, estat\u00edsticas e replays" },
+            { "Friends, notes & hover cards", "Amigos, notas e perfis" },
+            { "Themes, music, Rich Presence & updates", "Temas, m\u00fasica e Rich Presence" },
+            { "Cerberus is backed up and removed. Your settings and match history come along.", "O Cerberus vai para um backup; configura\u00e7\u00f5es e hist\u00f3rico v\u00eam junto." },
+            { "Install", "Instalar" },
+            { "Open Fightcade", "Abrir Fightcade" },
+            { "Uninstall", "Desinstalar" },
+            { "Repair", "Reparar" },
+            { "Update to {0}", "Atualizar p/ {0}" },
+            { "Ready.", "Pronto." },
+            { "Fightcade folder not found", "Pasta do Fightcade n\u00e3o encontrada" },
+            { "Fightcade is running - close it first", "O Fightcade est\u00e1 aberto - feche-o primeiro" },
+            { "Pick your Fightcade folder (the one with Fightcade2.exe in it).", "Escolha a pasta do Fightcade (a que tem o Fightcade2.exe)." },
+            { "That doesn't look like a Fightcade folder.\n\nPick the folder that contains Fightcade2.exe and fc2-electron.", "Essa n\u00e3o parece ser uma pasta do Fightcade.\n\nEscolha a pasta que tem o Fightcade2.exe e o fc2-electron." },
+            { "Not found \u2014 click Browse", "N\u00e3o encontrada \u2014 clique em Procurar" },
+            { "Fightcade wasn't found automatically.", "O Fightcade n\u00e3o foi encontrado automaticamente." },
+            { "Click Browse and pick the folder with Fightcade2.exe in it.", "Clique em Procurar e escolha a pasta com o Fightcade2.exe." },
+            { "Fightcade found.", "Fightcade encontrado." },
+            { "Fightcord {0} is installed \u2014 up to date.", "Fightcord {0} instalado \u2014 atualizado." },
+            { "Fightcord {0} is installed \u2014 this setup has {1}.", "Fightcord {0} instalado \u2014 este instalador tem a {1}." },
+            { "Fightcord is not installed yet.", "O Fightcord ainda n\u00e3o est\u00e1 instalado." },
+            { "Cerberus found \u2014 it will be backed up and removed.", "Cerberus encontrado \u2014 ele ser\u00e1 salvo num backup e removido." },
+            { "An older plugin setup was found \u2014 it will be backed up and replaced.", "Uma configura\u00e7\u00e3o de plugins antiga foi encontrada \u2014 ela ser\u00e1 salva num backup e substitu\u00edda." },
+            { "Fightcade is open \u2014 it has to be closed to install.", "O Fightcade est\u00e1 aberto \u2014 ele precisa ser fechado para instalar." },
+            { "A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again.", "Uma partida ou emulador ainda est\u00e1 rodando.\n\nTermine, feche o Fightcade (bot\u00e3o direito no \u00edcone da bandeja \u2192 Sair) e tente de novo." },
+            { "Fightcade is open and has to be closed first.\n\nClose it now?", "O Fightcade est\u00e1 aberto e precisa ser fechado antes.\n\nFechar agora?" },
+            { "Nothing is lost: see {0}", "Nada foi perdido: veja {0}" },
+            { "Backing up the current setup to {0}", "Fazendo backup da configura\u00e7\u00e3o atual em {0}" },
+            { "Bringing your settings and match history along", "Trazendo suas configura\u00e7\u00f5es e seu hist\u00f3rico de partidas" },
+            { "your sounds", "seus sons" },
+            { "Cerberus and the old loader are out (kept in the backup)", "O Cerberus e o loader antigo foram removidos (guardados no backup)" },
+            { "The old loader is out (kept in the backup)", "O loader antigo foi removido (guardado no backup)" },
+            { "Installing Fightcord {0}", "Instalando o Fightcord {0}" },
+            { "The installer is missing its files (payload.zip). Rebuild it with build.ps1.", "O instalador est\u00e1 sem os arquivos (payload.zip). Gere-o de novo com o build.ps1." },
+            { "{0} files", "{0} arquivos" },
+            { "Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks.", "Pronto. Abra o Fightcade - est\u00e1 tudo em Configura\u00e7\u00f5es \u2192 Fightcord e nos outros blocos." },
+            { "Remove Fightcord from Fightcade?", "Remover o Fightcord do Fightcade?" },
+            { "Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", "Sua configura\u00e7\u00e3o anterior (Cerberus / plugins antigos) de {0} pode ser restaurada. Restaurar?" },
+            { "Yes = remove and restore   No = just remove", "Sim = remover e restaurar   N\u00e3o = s\u00f3 remover" },
+            { "Cancelled.", "Cancelado." },
+            { "Keeping your settings and match history in {0}", "Guardando suas configura\u00e7\u00f5es e seu hist\u00f3rico de partidas em {0}" },
+            { "Removing Fightcord", "Removendo o Fightcord" },
+            { "Restoring {0}", "Restaurando {0}" },
+            { "Fightcord removed.", "Fightcord removido." },
+            { "Your previous setup is back.", "Sua configura\u00e7\u00e3o anterior voltou." },
+            { "Fightcade runs plain.", "O Fightcade roda normal." }
+        };
+        static readonly Dictionary<string, string> Es = new Dictionary<string, string>
+        {
+            { "Fightcord Setup", "Instalaci\u00f3n de Fightcord" },
+            { "The Discord-style suite for Fightcade", "El paquete estilo Discord para Fightcade" },
+            { "Newest version on GitHub", "Versi\u00f3n m\u00e1s nueva en GitHub" },
+            { "Set up Fightcord", "Instalar Fightcord" },
+            { "Discord-style chat, a new search tab, stats and more \u2014 in one click.", "Chat estilo Discord, una nueva pesta\u00f1a de b\u00fasqueda, estad\u00edsticas y m\u00e1s \u2014 en un clic." },
+            { "FIGHTCADE FOLDER", "CARPETA DE FIGHTCADE" },
+            { "Browse\u2026", "Buscar\u2026" },
+            { "STATUS", "ESTADO" },
+            { "WHAT YOU GET", "QU\u00c9 OBTIENES" },
+            { "Discord theme, chat & member list", "Tema Discord, chat y miembros" },
+            { "Discover tab with live matches", "Descubrir, con partidas en vivo" },
+            { "Translate, mentions & :emoji:", "Traducci\u00f3n, menciones y :emoji:" },
+            { "Scout card with ELO & win odds", "Ficha del rival con ELO" },
+            { "Challenge card, filters & rematch", "Desaf\u00edos, filtros y revancha" },
+            { "VS screens, stats & replays", "Pantallas VS y estad\u00edsticas" },
+            { "Friends, notes & hover cards", "Amigos, notas y perfiles" },
+            { "Themes, music, Rich Presence & updates", "Temas, m\u00fasica y Rich Presence" },
+            { "Cerberus is backed up and removed. Your settings and match history come along.", "Cerberus pasa a un respaldo; tu configuraci\u00f3n e historial se mantienen." },
+            { "Install", "Instalar" },
+            { "Open Fightcade", "Abrir Fightcade" },
+            { "Uninstall", "Desinstalar" },
+            { "Repair", "Reparar" },
+            { "Update to {0}", "Actualizar a {0}" },
+            { "Ready.", "Listo." },
+            { "Fightcade folder not found", "No se encontr\u00f3 la carpeta de Fightcade" },
+            { "Fightcade is running - close it first", "Fightcade est\u00e1 abierto - ci\u00e9rralo primero" },
+            { "Pick your Fightcade folder (the one with Fightcade2.exe in it).", "Elige tu carpeta de Fightcade (la que tiene Fightcade2.exe)." },
+            { "That doesn't look like a Fightcade folder.\n\nPick the folder that contains Fightcade2.exe and fc2-electron.", "Esa no parece una carpeta de Fightcade.\n\nElige la carpeta que contiene Fightcade2.exe y fc2-electron." },
+            { "Not found \u2014 click Browse", "No encontrada \u2014 haz clic en Buscar" },
+            { "Fightcade wasn't found automatically.", "No se encontr\u00f3 Fightcade autom\u00e1ticamente." },
+            { "Click Browse and pick the folder with Fightcade2.exe in it.", "Haz clic en Buscar y elige la carpeta con Fightcade2.exe." },
+            { "Fightcade found.", "Fightcade encontrado." },
+            { "Fightcord {0} is installed \u2014 up to date.", "Fightcord {0} instalado \u2014 al d\u00eda." },
+            { "Fightcord {0} is installed \u2014 this setup has {1}.", "Fightcord {0} instalado \u2014 este instalador trae la {1}." },
+            { "Fightcord is not installed yet.", "Fightcord todav\u00eda no est\u00e1 instalado." },
+            { "Cerberus found \u2014 it will be backed up and removed.", "Se encontr\u00f3 Cerberus \u2014 se respaldar\u00e1 y se quitar\u00e1." },
+            { "An older plugin setup was found \u2014 it will be backed up and replaced.", "Se encontr\u00f3 una configuraci\u00f3n de plugins antigua \u2014 se respaldar\u00e1 y se reemplazar\u00e1." },
+            { "Fightcade is open \u2014 it has to be closed to install.", "Fightcade est\u00e1 abierto \u2014 hay que cerrarlo para instalar." },
+            { "A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again.", "Todav\u00eda hay una partida o emulador abierto.\n\nTerm\u00ednala, cierra Fightcade (clic derecho en su \u00edcono de la bandeja \u2192 Salir) y vuelve a intentar." },
+            { "Fightcade is open and has to be closed first.\n\nClose it now?", "Fightcade est\u00e1 abierto y hay que cerrarlo primero.\n\n\u00bfCerrarlo ahora?" },
+            { "Nothing is lost: see {0}", "No se perdi\u00f3 nada: mira {0}" },
+            { "Backing up the current setup to {0}", "Respaldando la configuraci\u00f3n actual en {0}" },
+            { "Bringing your settings and match history along", "Trayendo tu configuraci\u00f3n y tu historial de partidas" },
+            { "your sounds", "tus sonidos" },
+            { "Cerberus and the old loader are out (kept in the backup)", "Cerberus y el loader antiguo se quitaron (guardados en el respaldo)" },
+            { "The old loader is out (kept in the backup)", "El loader antiguo se quit\u00f3 (guardado en el respaldo)" },
+            { "Installing Fightcord {0}", "Instalando Fightcord {0}" },
+            { "The installer is missing its files (payload.zip). Rebuild it with build.ps1.", "Al instalador le faltan sus archivos (payload.zip). Vuelve a generarlo con build.ps1." },
+            { "{0} files", "{0} archivos" },
+            { "Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks.", "Listo. Abre Fightcade - todo est\u00e1 en Configuraci\u00f3n \u2192 Fightcord y en los otros bloques." },
+            { "Remove Fightcord from Fightcade?", "\u00bfQuitar Fightcord de Fightcade?" },
+            { "Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", "Tu configuraci\u00f3n anterior (Cerberus / plugins antiguos) de {0} se puede restaurar. \u00bfRestaurarla?" },
+            { "Yes = remove and restore   No = just remove", "S\u00ed = quitar y restaurar   No = solo quitar" },
+            { "Cancelled.", "Cancelado." },
+            { "Keeping your settings and match history in {0}", "Guardando tu configuraci\u00f3n y tu historial de partidas en {0}" },
+            { "Removing Fightcord", "Quitando Fightcord" },
+            { "Restoring {0}", "Restaurando {0}" },
+            { "Fightcord removed.", "Fightcord quitado." },
+            { "Your previous setup is back.", "Tu configuraci\u00f3n anterior volvi\u00f3." },
+            { "Fightcade runs plain.", "Fightcade funciona normal." }
+        };
+    }
+    // ---- end i18n tables ----
 }

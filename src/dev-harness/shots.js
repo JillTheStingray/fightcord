@@ -20,6 +20,7 @@ const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 ? (args[i + 1] || true) : def; };
 const OUT = path.resolve(opt('out', path.join(ROOT, '..', 'fightcord', 'repo', 'docs', 'screenshots')));
 const ONLY = opt('only', '');
+const LANG = opt('lang', '');          // --lang pt / es
 const W = 1440, H = 900;
 
 const CHANNEL = '2026-09-27T19-44-38-street-fighter-iii-3rd-strike-fight-for-';
@@ -133,7 +134,7 @@ function cdp(wsUrl) {
             const c = await cdp(t.webSocketDebuggerUrl);
             await c.send('Page.enable');
             await c.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
-            await c.send('Page.navigate', { url: base + '?s=' + encodeURIComponent(sc.snap) + '&demo=1' + (sc.view ? '&view=' + sc.view : '') });
+            await c.send('Page.navigate', { url: base + '?s=' + encodeURIComponent(sc.snap) + '&demo=1' + (sc.view ? '&view=' + sc.view : '') + (LANG ? '&lang=' + LANG : '') });
             await sleep(sc.wait || 6000);
             const code = `(async () => { const sleep = (ms) => new Promise(r => setTimeout(r, ms));
                 ${PRELUDE}

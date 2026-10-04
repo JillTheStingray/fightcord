@@ -19,15 +19,19 @@ let fc = null;
 let store = null, cfg = null;          // goals-config.json
 
 const DAY = 86400000;
+// translated text (plain English in the unit tests, which run without Fightcade)
+const T = (s, v) => fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : m));
+T.plural = (n, one, many, v) => T(n === 1 ? one : many, Object.assign({ n }, v));
+const N_ = (s) => s;
 const TYPES = {
-    wins:     { label: 'Win sets', unit: 'sets', text: (g) => 'Win ' + g.target + ' set' + (g.target === 1 ? '' : 's') },
-    sets:     { label: 'Play sets', unit: 'sets', text: (g) => 'Play ' + g.target + ' set' + (g.target === 1 ? '' : 's') },
-    beatRank: { label: 'Beat ranked players', unit: 'players', text: (g) => 'Beat ' + g.target + ' player' + (g.target === 1 ? '' : 's') + ' ranked ' + (g.rank || 'B') + ' or higher' },
-    minutes:  { label: 'Play minutes', unit: 'min', text: (g) => 'Play ' + g.target + ' minutes' },
-    winrate:  { label: 'Keep a win rate', unit: 'sets', text: (g) => 'Win ' + (g.rate || 60) + '%+ over ' + g.target + ' sets' },
-    streak:   { label: 'Win in a row', unit: 'wins', text: (g) => 'Win ' + g.target + ' in a row' }
+    wins:     { label: 'Win sets', unit: N_('sets'), text: (g) => T(g.target === 1 ? 'Win {n} set' : 'Win {n} sets', { n: g.target }) },
+    sets:     { label: 'Play sets', unit: N_('sets'), text: (g) => T(g.target === 1 ? 'Play {n} set' : 'Play {n} sets', { n: g.target }) },
+    beatRank: { label: 'Beat ranked players', unit: N_('players'), text: (g) => T(g.target === 1 ? 'Beat {n} player ranked {rank} or higher' : 'Beat {n} players ranked {rank} or higher', { n: g.target, rank: g.rank || 'B' }) },
+    minutes:  { label: 'Play minutes', unit: N_('min'), text: (g) => T('Play {n} minutes', { n: g.target }) },
+    winrate:  { label: 'Keep a win rate', unit: N_('sets'), text: (g) => T('Win {rate}%+ over {n} sets', { rate: g.rate || 60, n: g.target }) },
+    streak:   { label: 'Win in a row', unit: N_('wins'), text: (g) => T('Win {n} in a row', { n: g.target }) }
 };
-const SCOPES = { day: 'today', session: 'this session', week: 'this week' };
+const SCOPES = { day: N_('today'), session: N_('this session'), week: N_('this week') };
 const SUGGEST = [
     { type: 'wins', target: 5, scope: 'day' }, { type: 'minutes', target: 60, scope: 'day' },
     { type: 'beatRank', target: 2, scope: 'week', rank: 'A' }, { type: 'winrate', target: 10, scope: 'week', rate: 55 },
@@ -79,12 +83,12 @@ function evaluate(goal, allSets, at, clearedAt) {
         value = k.length;
         done = k.length >= target && rate >= need;
         frac = Math.min(1, k.length / target) * (rate >= need ? 1 : Math.max(0, rate / need));
-        detail = (k.length ? Math.round(rate * 100) + '%' : '—') + ' over ' + k.length + '/' + target + ' sets';
+        detail = T('{rate} over {n}/{target} sets', { rate: k.length ? Math.round(rate * 100) + '%' : '—', n: k.length, target });
         return { value, target, frac: done ? 1 : Math.min(0.99, frac), done, text: TYPES.winrate.text(goal), detail };
     }
     done = value >= target;
     frac = Math.min(1, value / target);
-    detail = Math.min(value, target) + ' / ' + target + ' ' + TYPES[type].unit;
+    detail = Math.min(value, target) + ' / ' + target + ' ' + T(TYPES[type].unit);
     return { value, target, frac, done, text: TYPES[type].text(goal), detail };
 }
 
@@ -105,7 +109,7 @@ function check() {
             changed = true;
             fc.emit('goal:done', { goal: g, period: key });
             if (cfg.notify) {
-                fc.ui.toast('Goal done: ' + r.text + ' ' + SCOPES[g.scope], { icon: 'trophy', kind: 'success', ms: 8000, sub: r.detail });
+                fc.ui.toast(T('Goal done: {goal}', { goal: r.text + ' ' + T(SCOPES[g.scope]) }), { icon: 'trophy', kind: 'success', ms: 8000, sub: r.detail });
                 fc.sound.play('success');
             }
         }
@@ -135,10 +139,10 @@ function lastSessionSummary() {
     const goalsDone = cfg.goals.filter(g => g.scope !== 'week' && cfg.done[g.id] === g.scope + ':' + lastKey).length;
     const day = new Date(lastKey);
     const key = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
-    fc.ui.toast('Last session: ' + fc.fmt.wl(r) + ' over ' + sets.length + ' sets', {
+    fc.ui.toast(T('Last session: {record} over {n} sets', { record: fc.fmt.wl(r), n: sets.length }), {
         icon: 'chart', ms: 15000,
-        sub: day.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) +
-            (cfg.goals.length ? ' · ' + goalsDone + ' goal' + (goalsDone === 1 ? '' : 's') + ' reached' : ''),
+        sub: day.toLocaleDateString(fc.t.locale(), { weekday: 'long', month: 'short', day: 'numeric' }) +
+            (cfg.goals.length ? ' · ' + T(goalsDone === 1 ? '{n} goal reached' : '{n} goals reached', { n: goalsDone }) : ''),
         actions: [{ label: 'Share card', fn: () => { const st = fc.modules.get('stats'); if (st && st.share) st.share(key); } },
             { label: 'Stats', fn: () => { const st = fc.modules.get('stats'); if (st && st.open) st.open(); } }]
     });
@@ -166,7 +170,7 @@ function refreshPill() {
             if (after) after.insertAdjacentElement('afterend', pill); else actions.insertBefore(pill, actions.firstChild);
         }
         const html = fc.ui.ring(o.frac, { size: 22, stroke: 3, color: o.done === o.total ? 'var(--fc-success)' : 'var(--fc-accent)' }) + `<span>${o.done}/${o.total}</span>`;
-        if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; pill.title = o.done + ' of ' + o.total + ' goals done'; }
+        if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; pill.title = T('{n} of {total} goals done', { n: o.done, total: o.total }); }
     });
 }
 
@@ -174,14 +178,14 @@ function listHtml(small) {
     const rs = results();
     if (!rs.length) return '';
     return rs.map(({ g, r }) => `<div class="fcglRow${r.done ? ' done' : ''}">${fc.ui.ring(r.frac, { size: small ? 30 : 36, stroke: 4, color: r.done ? 'var(--fc-success)' : 'var(--fc-accent)', label: r.done ? '✓' : Math.round(r.frac * 100) + '%' })}` +
-        `<div class="tx"><b>${E(r.text)}</b><span>${E(SCOPES[g.scope])} · ${E(r.detail)}</span></div></div>`).join('');
+        `<div class="tx"><b>${E(r.text)}</b><span>${E(T(SCOPES[g.scope]))} · ${E(r.detail)}</span></div></div>`).join('');
 }
 
 // for the profile popout
 function summaryHtml() {
     const o = overall();
     if (!o) return '';
-    return `<div class="fcglSum"><span>Goals</span>${listHtml(true)}</div>`;
+    return `<div class="fcglSum"><span>${E(T('Goals'))}</span>${listHtml(true)}</div>`;
 }
 
 let pop = null;
@@ -189,7 +193,7 @@ function togglePop(anchor) {
     if (pop) { pop.close(); return; }
     const box = document.createElement('div');
     box.className = 'fcglPop';
-    box.innerHTML = `<div class="h">Your goals</div>${listHtml()}<div class="f">${fc.ui.btn('Edit goals', { kind: 'sec', size: 'sm', icon: 'edit', act: 'edit' })}</div>`;
+    box.innerHTML = `<div class="h">${E(T('Your goals'))}</div>${listHtml()}<div class="f">${fc.ui.btn('Edit goals', { kind: 'sec', size: 'sm', icon: 'edit', act: 'edit' })}</div>`;
     box.addEventListener('click', (e) => {
         if (!e.target.closest('[data-act="edit"]')) return;
         if (pop) pop.close();
@@ -203,22 +207,22 @@ function togglePop(anchor) {
 
 function blockHtml() {
     const rs = results();
-    const types = Object.keys(TYPES).map(k => `<option value="${k}">${TYPES[k].label}</option>`).join('');
-    const scopes = Object.keys(SCOPES).map(k => `<option value="${k}">${SCOPES[k]}</option>`).join('');
-    return `<div class="fc-set-title">Training goals <small>— days and sessions run 5 AM to 5 AM</small></div>
+    const types = Object.keys(TYPES).map(k => `<option value="${k}">${E(T(TYPES[k].label))}</option>`).join('');
+    const scopes = Object.keys(SCOPES).map(k => `<option value="${k}">${E(T(SCOPES[k]))}</option>`).join('');
+    return `<div class="fc-set-title">${E(T('Training goals'))} <small>— ${E(T('days and sessions run 5 AM to 5 AM'))}</small></div>
         ${rs.length ? `<div class="fcglList">${rs.map(({ g, r }) => `<div class="fcglRow${r.done ? ' done' : ''}">${fc.ui.ring(r.frac, { size: 36, stroke: 4, color: r.done ? 'var(--fc-success)' : 'var(--fc-accent)', label: r.done ? '✓' : Math.round(r.frac * 100) + '%' })}` +
-            `<div class="tx"><b>${E(r.text)}</b><span>${E(SCOPES[g.scope])} · ${E(r.detail)}</span></div>${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'trash', title: 'Remove this goal', attrs: `data-del="${E(g.id)}"` })}</div>`).join('')}</div>`
-            : '<div class="fc-note">No goals yet. Pick one below or make your own.</div>'}
+            `<div class="tx"><b>${E(r.text)}</b><span>${E(T(SCOPES[g.scope]))} · ${E(r.detail)}</span></div>${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'trash', title: 'Remove this goal', attrs: `data-del="${E(g.id)}"` })}</div>`).join('')}</div>`
+            : `<div class="fc-note">${E(T('No goals yet. Pick one below or make your own.'))}</div>`}
         <div class="fcglSuggest">${SUGGEST.filter(s => !cfg.goals.some(g => g.type === s.type && g.scope === s.scope)).map((s, i) =>
-            fc.ui.chip('+ ' + TYPES[s.type].text(s) + ' ' + SCOPES[s.scope], { act: 'sug' + SUGGEST.indexOf(s) })).join('')}</div>
+            fc.ui.chip('+ ' + TYPES[s.type].text(s) + ' ' + T(SCOPES[s.scope]), { act: 'sug' + SUGGEST.indexOf(s) })).join('')}</div>
         <div class="fc-field fcglAdd"><select class="fc-select" data-f="type">${types}</select>
-            <input class="fc-input" type="number" min="1" max="999" value="5" data-f="target" title="How many">
-            <select class="fc-select" data-f="rank" title="Rank or higher" hidden>${['S', 'A', 'B', 'C', 'D'].map(r => `<option${r === 'B' ? ' selected' : ''}>${r}</option>`).join('')}</select>
-            <input class="fc-input" type="number" min="10" max="100" value="60" data-f="rate" title="Win rate %" hidden>
+            <input class="fc-input" type="number" min="1" max="999" value="5" data-f="target" title="${E(T('How many'))}">
+            <select class="fc-select" data-f="rank" title="${E(T('Rank or higher'))}" hidden>${['S', 'A', 'B', 'C', 'D'].map(r => `<option${r === 'B' ? ' selected' : ''}>${r}</option>`).join('')}</select>
+            <input class="fc-input" type="number" min="10" max="100" value="60" data-f="rate" title="${E(T('Win rate %'))}" hidden>
             <select class="fc-select" data-f="scope">${scopes}</select>${fc.ui.btn('Add', { kind: 'success', size: 'sm', icon: 'plus', act: 'add' })}</div>
-        <label class="fc-field"><span class="fc-field-text"><b>Pop-up when a goal is done</b><small>With a chime</small></span><input type="checkbox" class="fc-switch-in" data-opt="notify"${cfg.notify ? ' checked' : ''}><i class="fc-switch"></i></label>
-        <label class="fc-field"><span class="fc-field-text"><b>Ring by the 🏆 session pill</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
-        <label class="fc-field"><span class="fc-field-text"><b>Last-session summary</b><small>The first time you play after a session, with its share card</small></span><input type="checkbox" class="fc-switch-in" data-opt="summary"${cfg.summary ? ' checked' : ''}><i class="fc-switch"></i></label>`;
+        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Pop-up when a goal is done'))}</b><small>${E(T('With a chime'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="notify"${cfg.notify ? ' checked' : ''}><i class="fc-switch"></i></label>
+        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Ring by the 🏆 session pill'))}</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
+        <label class="fc-field"><span class="fc-field-text"><b>${E(T('Last-session summary'))}</b><small>${E(T('The first time you play after a session, with its share card'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="summary"${cfg.summary ? ' checked' : ''}><i class="fc-switch"></i></label>`;
 }
 
 function addGoal(g) {

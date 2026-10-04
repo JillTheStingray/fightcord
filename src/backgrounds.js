@@ -13,7 +13,8 @@
 let fc = null;
 let store = null, cfg = null;          // backgrounds-config.json
 
-const STYLES = { off: 'Off', particles: 'Neon particles', waves: 'Gradient waves', art: 'Game-art drift' };
+const N_ = (s) => s;          // translated where it's shown
+const STYLES = { off: N_('Off'), particles: N_('Neon particles'), waves: N_('Gradient waves'), art: N_('Game-art drift') };
 let frames = 0;                  // for the harness: particle frames drawn
 
 const active = () => cfg.style !== 'off' && !document.documentElement.classList.contains('dc-has-bg');

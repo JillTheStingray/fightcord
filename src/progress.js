@@ -141,7 +141,7 @@ function rankChanged(rom, from, to) {
     fc.log('rank changed in', rom, F, '->', T);
     if (!cfg.celebrate) return;
     if (!up) {
-        fc.ui.toast('Rank ' + F + ' → ' + T + ' in ' + gameName(rom), { icon: 'trend', ms: 8000, sub: 'It happens. Your progress tab shows the long run.', onClick: () => openTab() });
+        fc.ui.toast(fc.t('Rank {from} → {to} in {game}', { from: F, to: T, game: gameName(rom) }), { icon: 'trend', ms: 8000, sub: 'It happens. Your progress tab shows the long run.', onClick: () => openTab() });
         return;
     }
     celebrate(F, T, gameName(rom));
@@ -160,9 +160,9 @@ function celebrate(F, T, game) {
             `--r:${Math.round(Math.random() * 720)}deg;animation-delay:${(0.2 + Math.random() * 0.2).toFixed(2)}s"></span>`;
     }
     o.innerHTML = `<div class="glow" style="--c:${fc.data.rankColor(T)}"></div>${bits}
-        <div class="big">RANK UP!</div>
+        <div class="big">${fc.fmt.esc(fc.t('RANK UP!'))}</div>
         <div class="ranks"><span class="r from" style="--c:${fc.data.rankColor(F)}">${F}</span><span class="arrow">→</span><span class="r to" style="--c:${fc.data.rankColor(T)}">${T}</span></div>
-        <div class="game">${fc.fmt.esc(game)}</div><div class="hint">click to close</div>`;
+        <div class="game">${fc.fmt.esc(game)}</div><div class="hint">${fc.fmt.esc(fc.t('click to close'))}</div>`;
     o.addEventListener('mousedown', (e) => e.stopPropagation());
     o.addEventListener('click', (e) => { e.stopPropagation(); o.classList.add('out'); setTimeout(() => o.remove(), 400); });
     document.body.appendChild(o);
@@ -185,7 +185,7 @@ function tabHtml(ctx) {
     const romsWith = [...new Set(points.map(p => p.rom))];
     if (!romsWith.length) return fc.ui.empty({ icon: 'trend', title: 'Your rank history starts now',
         sub: 'Fightcord checks your rank and ELO once a day and after each set, for every game you play ranked. Come back after a few sessions.',
-        action: cfg.track ? 'Check my rank now' : '', act: 'prg-now' });
+        action: cfg.track ? fc.t('Check my rank now') : '', act: 'prg-now' });
     if (!romsWith.includes(tabRom)) {
         const latest = points.slice().sort((a, b) => b.at - a.at)[0];
         tabRom = latest.rom;
@@ -194,7 +194,7 @@ function tabHtml(ctx) {
     const L = (r) => fc.data.rankLetter(r);
     const elo = s.ps.filter(p => p.elo != null);
     const chart = (pts, opts) => `<div class="prgChart">${fc.ui.chart.line([{ points: pts, area: true }], Object.assign({ w: 680, h: 180, dots: pts.length < 40 }, opts))}</div>`;
-    const day = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const day = (t) => new Date(t).toLocaleDateString(fc.t.locale(), { month: 'short', day: 'numeric' });
     const xl = (ps) => ps.length > 1 ? [[ps[0].at, day(ps[0].at)], [ps[ps.length - 1].at, day(ps[ps.length - 1].at)]] : [];
     const posPts = s.ps.filter(p => p.pos);
     // rank timeline: one coloured segment per stretch at a rank
@@ -208,21 +208,22 @@ function tabHtml(ctx) {
     });
     const span = Math.max(1, Date.now() - t0);
     const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
+    const T = (s, v) => E(fc.t(s, v));
     return `<div class="prgGames">${romsWith.map(r => fc.ui.chip(gameName(r), { on: r === tabRom, act: 'prg-rom:' + r })).join('')}
             ${cfg.track ? fc.ui.btn('Check now', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'prg-now', title: 'Ask Fightcade for your rank in this game now' }) : ''}</div>
         <div class="fcsTop">
-            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.last.rank)} ${s.last.elo != null ? (s.last.est ? '~' : '') + fc.fmt.num(s.last.elo) : ''}</div><div class="k">now${s.last.elo != null ? ' · ELO' + (s.last.est ? ' (estimated)' : '') : ''}</div></div>
-            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank)}</div><div class="k">best ever · ${day(s.best.at)}</div></div>
-            <div class="fc-tile fcsBig${s.eloChange > 0 ? ' up' : s.eloChange < 0 ? ' down' : ''}"><div class="v">${s.eloChange == null ? '—' : (s.eloChange > 0 ? '+' : '') + s.eloChange}</div><div class="k">ELO since ${day(s.first.at)}</div></div>
-            <div class="fc-tile fcsBig"><div class="v">${s.last.pos ? '#' + s.last.pos : '—'}</div><div class="k">leaderboard${s.bestPos ? ' · best #' + s.bestPos.pos : ''}</div></div>
-            <div class="fc-tile fcsBig"><div class="v">${fc.fmt.num(s.matchesSince)}</div><div class="k">matches since ${day(s.first.at)}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.last.rank)} ${s.last.elo != null ? (s.last.est ? '~' : '') + fc.fmt.num(s.last.elo) : ''}</div><div class="k">${T('now')}${s.last.elo != null ? ' · ELO' + (s.last.est ? ' ' + T('(estimated)') : '') : ''}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank)}</div><div class="k">${T('best ever · {when}', { when: day(s.best.at) })}</div></div>
+            <div class="fc-tile fcsBig${s.eloChange > 0 ? ' up' : s.eloChange < 0 ? ' down' : ''}"><div class="v">${s.eloChange == null ? '—' : (s.eloChange > 0 ? '+' : '') + s.eloChange}</div><div class="k">${T('ELO since {when}', { when: day(s.first.at) })}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${s.last.pos ? '#' + s.last.pos : '—'}</div><div class="k">${T('leaderboard')}${s.bestPos ? ' · ' + T('best #{n}', { n: s.bestPos.pos }) : ''}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.fmt.num(s.matchesSince)}</div><div class="k">${T('matches since {when}', { when: day(s.first.at) })}</div></div>
         </div>
         <div class="fcsGrid">
-            ${card('ELO over time' + (s.last.est ? ' <small>— estimated from rank and leaderboard spot</small>' : ''),
-                elo.length > 1 ? chart(elo.map(p => [p.at, p.elo]), { yLabel: (v) => Math.round(v), xLabels: xl(elo) }) : '<div class="fc-muted">One point so far — the line starts tomorrow.</div>', true)}
-            ${card('Rank', `<div class="prgRanks">${segs.map(g => `<i style="width:${((g.end - g.start) / span * 100).toFixed(2)}%;background:${fc.data.rankColor(g.rank)}" title="${L(g.rank)} · ${day(g.start)} – ${day(g.end)}">${(g.end - g.start) / span > 0.06 ? L(g.rank) : ''}</i>`).join('')}</div>` +
-                `<div class="prgAxis"><span>${day(t0)}</span><span>today</span></div>`, true)}
-            ${posPts.length > 1 ? card('Leaderboard spot <small>— higher is better</small>', chart(posPts.map(p => [p.at, -p.pos]), { yLabel: (v) => '#' + Math.round(-v), xLabels: xl(posPts) }), true) : ''}
+            ${card(T('ELO over time') + (s.last.est ? ' <small>— ' + T('estimated from rank and leaderboard spot') + '</small>' : ''),
+                elo.length > 1 ? chart(elo.map(p => [p.at, p.elo]), { yLabel: (v) => Math.round(v), xLabels: xl(elo) }) : '<div class="fc-muted">' + T('One point so far — the line starts tomorrow.') + '</div>', true)}
+            ${card(T('Rank'), `<div class="prgRanks">${segs.map(g => `<i style="width:${((g.end - g.start) / span * 100).toFixed(2)}%;background:${fc.data.rankColor(g.rank)}" title="${L(g.rank)} · ${day(g.start)} – ${day(g.end)}">${(g.end - g.start) / span > 0.06 ? L(g.rank) : ''}</i>`).join('')}</div>` +
+                `<div class="prgAxis"><span>${day(t0)}</span><span>${T('today')}</span></div>`, true)}
+            ${posPts.length > 1 ? card(T('Leaderboard spot') + ' <small>— ' + T('higher is better') + '</small>', chart(posPts.map(p => [p.at, -p.pos]), { yLabel: (v) => '#' + Math.round(-v), xLabels: xl(posPts) }), true) : ''}
         </div>`;
 }
 
@@ -237,7 +238,7 @@ function tabAfter(el) {
             a.disabled = true;
             const rom = tabRom || fc.app.activeGameId() || roms()[0];
             snapshot(rom, 'now').then(p => {
-                if (!p) fc.ui.toast('No rank to show yet', { icon: 'info', sub: 'Fightcade has no ranked matches for you in ' + gameName(rom) + '.' });
+                if (!p) fc.ui.toast('No rank to show yet', { icon: 'info', sub: fc.t('Fightcade has no ranked matches for you in {game}.', { game: gameName(rom) }) });
                 refreshTab();
             });
         }

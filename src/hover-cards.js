@@ -12,6 +12,8 @@ let fc = null;
 let store = null, cfg = null;          // hover-cards-config.json
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
 
@@ -41,8 +43,8 @@ function cardHtml(name, chanHint) {
         const opp = Object.keys(all).find(n => n !== name && all[n].playing && all[n].playing.quarkId === playing.quarkId) || '';
         const c = fc.app.channel(playing.channelId);
         const watch = c && c.spectators !== false && !isMe ? fc.data.watchUrl({ emu: c.emulator, rom: playing.gameId, quark: playing.quarkId, port: playing.port }) : '';
-        playLine = `<div class="hcPlay"><div class="t">In a match${opp ? ' vs <b>' + E(opp) + '</b>' : ''}</div>
-            <div class="g">${E(shortName(playing.channelId))}</div>${watch ? `<span class="hcWatch" data-watch="${E(watch)}">👁 Watch</span>` : ''}</div>`;
+        playLine = `<div class="hcPlay"><div class="t">${E(T('In a match'))}${opp ? ' vs <b>' + E(opp) + '</b>' : ''}</div>
+            <div class="g">${E(shortName(playing.channelId))}</div>${watch ? `<span class="hcWatch" data-watch="${E(watch)}">👁 ${E(T('Watch'))}</span>` : ''}</div>`;
     }
     const vs = !isMe ? fc.history.recordVs(name) : null;
     const isFr = !!(fr && fr.isFriend && fr.isFriend(name));
@@ -59,8 +61,8 @@ function cardHtml(name, chanHint) {
             ${vs && (vs.w || vs.l || vs.played) ? `<div class="hcVs"><span>You vs ${E(name)}</span><b>${vs.w}–${vs.l}</b>${vs.played ? `<small>${vs.played} sets</small>` : ''}</div>` : ''}
             ${notes ? `<div class="hcNotes">${notes}</div>` : ''}
             ${isMe ? '' : `<div class="hcBtns">
-                ${cst ? fc.ui.btn('Challenge', { size: 'sm', icon: 'sword', cls: 'hcGo', disabled: !cst.ok, title: cst.ok ? 'Challenge ' + name + ' (Fightcade asks for the FT)' : cst.why, attrs: 'data-hc="challenge"' }) : ''}
-                ${fr ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'star', cls: isFr ? 'hcFr on' : 'hcFr', title: isFr ? 'Remove friend' : 'Add friend', attrs: 'data-hc="friend"' }) : ''}
+                ${cst ? fc.ui.btn('Challenge', { size: 'sm', icon: 'sword', cls: 'hcGo', disabled: !cst.ok, title: cst.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(cst.why), attrs: 'data-hc="challenge"' }) : ''}
+                ${fr ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'star', cls: isFr ? 'hcFr on' : 'hcFr', title: isFr ? T('Remove friend') : T('Add friend'), attrs: 'data-hc="friend"' }) : ''}
                 ${nt ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'note', title: 'Notes & tags', attrs: 'data-hc="notes"' }) : ''}
                 ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'chart', title: 'Head-to-head', attrs: 'data-hc="h2h"' })}
                 ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', title: 'Scout', attrs: 'data-hc="scout"' })}
@@ -122,7 +124,7 @@ function onClick(e) {
     if (act === 'challenge') {
         const ms = mod('match-screens');
         const st = ms && ms.challenge ? ms.challenge(name) : null;
-        b.lastChild.textContent = st && st.ok ? 'Sent' : (st ? st.why : 'Unavailable');
+        b.lastChild.textContent = st && st.ok ? T('Sent') : T(st ? st.why : 'Unavailable');
         b.disabled = true;
         if (st && st.ok) setTimeout(hide, 700);
     } else if (act === 'friend') {

@@ -26,6 +26,11 @@ const RPC_CONFIG = path.join(DIR, 'discord-rpc-config.json');
 const REPO = 'JillTheStingray/fightcord';
 const LATEST_URL = 'https://github.com/' + REPO + '/releases/latest/download/latest.json';
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const ET = (s, v) => fc.fmt.esc(fc.t(s, v));
+const N_ = (s) => s;          // translated where shown
+// module states in Diagnostics: N_('running') N_('failed') N_('off') N_('loaded')
 const LOG = (...a) => fc.log(...a);
 
 function readJson(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return fallback; } }
@@ -42,23 +47,23 @@ const saveState = () => writeJson(STATE_PATH, state);
 
 // the built-in sections (modules can add more with fc.settings.section)
 const BUILTIN = [
-    ['home', 'My Fightcord', 'home', 0], ['appearance', 'Appearance', 'palette', 10], ['chat', 'Chat', 'chat', 20],
-    ['members', 'Member list & friends', 'users', 30], ['search', 'Search tab', 'search', 40],
-    ['challenges', 'Scout & challenges', 'sword', 50], ['match', 'Match screens', 'trophy', 60], ['music', 'Music', 'music', 70],
-    ['rpc', 'Discord status', 'link', 80],
-    ['updates', 'Updates', 'download', 900], ['backup', 'Backup & restore', 'copy', 910], ['diagnostics', 'Diagnostics', 'bug', 920], ['about', 'About', 'info', 930]
+    ['home', N_('My Fightcord'), 'home', 0], ['appearance', N_('Appearance'), 'palette', 10], ['chat', N_('Chat'), 'chat', 20],
+    ['members', N_('Member list & friends'), 'users', 30], ['search', N_('Search tab'), 'search', 40],
+    ['challenges', N_('Scout & challenges'), 'sword', 50], ['match', N_('Match screens'), 'trophy', 60], ['music', N_('Music'), 'music', 70],
+    ['rpc', N_('Discord status'), 'link', 80],
+    ['updates', N_('Updates'), 'download', 900], ['backup', N_('Backup & restore'), 'copy', 910], ['diagnostics', N_('Diagnostics'), 'bug', 920], ['about', N_('About'), 'info', 930]
 ];
 const APP_FROM = 900;
 
 const PLUGINS = [
-    ['discord-theme.js', 'Discord theme'], ['branding.js', 'FightCord logo'], ['discover.js', 'Search tab (Discover)'], ['chat-extras.js', 'Chat extras'],
-    ['translate.js', 'Translator'], ['emoji.js', ':emoji: shortcodes'], ['fontstyle.js', 'Chat font styles'],
-    ['member-list.js', 'Member list'], ['scout.js', 'Scout card, ELO & odds'], ['challenge-filters.js', 'Challenge filters'],
-    ['match-screens.js', 'Match screens & session tracker'], ['stats.js', 'Stats, head-to-head & share card'],
-    ['analytics.js', 'Match analytics'], ['progress.js', 'Rank & ELO history'], ['goals.js', 'Training goals'], ['feed.js', 'Lobby feed'], ['welcome.js', 'Welcome screen & tour'], ['events.js', 'Event reminders'], ['friends.js', 'Friends'], ['notes.js', 'Player notes & tags'],
-    ['challenge-card.js', 'Challenge card'], ['channel-banner.js', 'Channel banner'], ['hover-cards.js', 'Member hover cards'],
-    ['profile-card.js', 'Profile popout'], ['context-menu.js', 'Right-click menu'], ['inbox.js', 'Notification inbox'], ['backgrounds.js', 'Animated backgrounds'], ['music.js', 'Background music'], ['discord-rpc.js', 'Discord status'],
-    ['snapshot.js', 'Snapshot tool (dev)']
+    ['discord-theme.js', N_('Discord theme')], ['branding.js', N_('FightCord logo')], ['discover.js', N_('Search tab (Discover)')], ['chat-extras.js', N_('Chat extras')],
+    ['translate.js', N_('Translator')], ['emoji.js', N_(':emoji: shortcodes')], ['fontstyle.js', N_('Chat font styles')],
+    ['member-list.js', N_('Member list')], ['scout.js', N_('Scout card, ELO & odds')], ['challenge-filters.js', N_('Challenge filters')],
+    ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
+    ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
+    ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')],
+    ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 
 // one click sets which modules run (applies after a restart)
@@ -98,46 +103,45 @@ function paneHtml(id) {
         const off = new Set(m.off || []);
         const prof = currentProfile();
         const running = fc.modules.list().filter(x => x.state === 'running').length;
-        return `<h2>My Fightcord</h2>
-            ${hero('Discord-style Fightcade · ' + running + ' modules running' + (fc.safeMode ? ' · SAFE MODE' : ''))}
-            <div class="fc-set">${toggle('Fightcord on', 'Off = plain Fightcade after a restart', !m.disabled, 'data-man="disabled"')}
-            ${toggle('Startup splash screen', 'The FightCord logo while Fightcade logs in', m.splash !== false, 'data-man="splash"')}</div>
-            <h3>Profile <small>— which modules run; applies after a restart</small></h3>
+        return `<h2>${ET('My Fightcord')}</h2>
+            ${hero(ET('Discord-style Fightcade · {n} modules running', { n: running }) + (fc.safeMode ? ' · ' + ET('SAFE MODE') : ''))}
+            <div class="fc-set">${toggle(ET('Fightcord on'), ET('Off = plain Fightcade after a restart'), !m.disabled, 'data-man="disabled"')}
+            ${toggle(ET('Startup splash screen'), ET('The FightCord logo while Fightcade logs in'), m.splash !== false, 'data-man="splash"')}</div>
+            <h3>${ET('Profile')} <small>— ${ET('which modules run; applies after a restart')}</small></h3>
             <div class="fcordProfiles">${Object.keys(PROFILES).map(k => `<div class="fcordProfile${prof === k ? ' on' : ''}" data-profile="${k}">
-                ${fc.ui.icon(PROFILES[k].icon)}<b>${PROFILES[k].label}</b><span>${E(PROFILES[k].desc)}</span></div>`).join('')}</div>
-            <h3>Modules <small>— ${prof ? PROFILES[prof].label + ' profile' : 'your own mix'}</small></h3>
+                ${fc.ui.icon(PROFILES[k].icon)}<b>${ET(PROFILES[k].label)}</b><span>${ET(PROFILES[k].desc)}</span></div>`).join('')}</div>
+            <h3>${ET('Modules')} <small>— ${prof ? ET('{name} profile', { name: T(PROFILES[prof].label) }) : ET('your own mix')}</small></h3>
             <div class="fc-set">${PLUGINS.filter(([f]) => fs.existsSync(path.join(DIR, f))).map(([f, label]) => {
                 const mod = fc.modules.list().find(x => x.file === f);
-                const why = mod && mod.state === 'failed' ? ' — couldn’t start: ' + (mod.error || '').split('\n')[0] : '';
-                return toggle(E(label) + (why ? ' <em class="bad">' + E(why) + '</em>' : ''), f, !off.has(f), `data-plugin="${E(f)}"`);
+                const why = mod && mod.state === 'failed' ? ' — ' + T('couldn’t start: {error}', { error: (mod.error || '').split('\n')[0] }) : '';
+                return toggle(ET(label) + (why ? ' <em class="bad">' + E(why) + '</em>' : ''), f, !off.has(f), `data-plugin="${E(f)}"`);
             }).join('')}</div>
             <div class="fcordBtns">${fc.ui.btn('Restart Fightcade', { kind: 'sec', icon: 'refresh', act: 'restart' })}<span class="fcordNote" data-note="restart"></span></div>`;
     }
     if (id === 'rpc') {
         const c = Object.assign({ showScore: true, showRanks: true, showNames: true, showSession: true, debug: false }, readJson(RPC_CONFIG, {}));
-        return `<h2>Discord status</h2>
-            <p class="lead">What your Discord profile shows while you're on Fightcade. Changes apply after a restart.</p>
-            <div class="fc-set">${toggle('Show the score', 'The set score during a match', c.showScore, 'data-rpc="showScore"')}
-            ${toggle('Show ranks', 'Your rank and your opponent’s', c.showRanks, 'data-rpc="showRanks"')}
-            ${toggle('Show opponent names', '"vs KenjiRival"', c.showNames, 'data-rpc="showNames"')}
-            ${toggle('Tonight’s record', '"· 7–3 tonight" from the session tracker', c.showSession, 'data-rpc="showSession"')}
-            ${toggle('Debug log', 'Writes discord-rpc-debug.log — leave off unless something is wrong', c.debug, 'data-rpc="debug"')}</div>`;
+        return `<h2>${ET('Discord status')}</h2>
+            <p class="lead">${ET('What your Discord profile shows while you’re on Fightcade. Changes apply after a restart.')}</p>
+            <div class="fc-set">${toggle(ET('Show the score'), ET('The set score during a match'), c.showScore, 'data-rpc="showScore"')}
+            ${toggle(ET('Show ranks'), ET('Your rank and your opponent’s'), c.showRanks, 'data-rpc="showRanks"')}
+            ${toggle(ET('Show opponent names'), '"vs KenjiRival"', c.showNames, 'data-rpc="showNames"')}
+            ${toggle(ET('Tonight’s record'), ET('"· 7–3 tonight" from the session tracker'), c.showSession, 'data-rpc="showSession"')}
+            ${toggle(ET('Debug log'), ET('Writes discord-rpc-debug.log — leave off unless something is wrong'), c.debug, 'data-rpc="debug"')}</div>`;
     }
     if (id === 'updates') {
         const L = state.latest;
-        return `<h2>Updates</h2>
-            ${hero(E(state.ready ? 'Fightcord ' + state.ready + ' is installed — restart Fightcade to finish' : state.status || (state.lastCheck ? 'Checked ' + new Date(state.lastCheck).toLocaleString() : 'Not checked yet')))}
+        return `<h2>${ET('Updates')}</h2>
+            ${hero(E(state.ready ? T('Fightcord {version} is installed — restart Fightcade to finish', { version: state.ready }) : state.status || (state.lastCheck ? T('Checked {when}', { when: new Date(state.lastCheck).toLocaleString(fc.t.locale()) }) : T('Not checked yet'))))}
             <div class="fcordBtns">${fc.ui.btn('Check for updates', { icon: 'refresh', act: 'check' })}
-                ${L && newer(L.version, version()) && !state.ready ? fc.ui.btn('Install ' + L.version, { kind: 'success', icon: 'download', act: 'install' }) : ''}
+                ${L && newer(L.version, version()) && !state.ready ? fc.ui.btn(T('Install {version}', { version: L.version }), { kind: 'success', icon: 'download', act: 'install' }) : ''}
                 ${state.ready ? fc.ui.btn('Restart Fightcade', { kind: 'sec', icon: 'refresh', act: 'restart' }) : ''}</div>
-            <div class="fc-set">${toggle('Install updates automatically', 'Checks once a day; applies on the next start', state.autoInstall, 'data-state="autoInstall"')}</div>
-            ${L && L.notes ? `<h3>What's new in ${E(L.version)}</h3><div class="fcordNotes">${E(L.notes)}</div>` : ''}
-            <p class="lead small">From github.com/${REPO} (Releases). Plugin files only; a new installer is only needed if its dependencies change.</p>`;
+            <div class="fc-set">${toggle(ET('Install updates automatically'), ET('Checks once a day; applies on the next start'), state.autoInstall, 'data-state="autoInstall"')}</div>
+            ${L && L.notes ? `<h3>${ET('What’s new in {version}', { version: L.version })}</h3><div class="fcordNotes">${E(L.notes)}</div>` : ''}
+            <p class="lead small">${ET('From github.com/{repo} (Releases). Plugin files only; a new installer is only needed if its dependencies change.', { repo: REPO })}</p>`;
     }
     if (id === 'backup') {
-        return `<h2>Backup & restore</h2>
-            <p class="lead">Every Fightcord setting in one file: theme, friends, notes, filters, member list, music choice…
-            (Not the match history or your music files — those stay in the Fightcord folder.)</p>
+        return `<h2>${ET('Backup & restore')}</h2>
+            <p class="lead">${ET('Every Fightcord setting in one file: theme, friends, notes, filters, member list, music choice… (Not the match history or your music files — those stay in the Fightcord folder.)')}</p>
             <div class="fcordBtns">${fc.ui.btn('Back up my settings', { icon: 'download', act: 'backup' })}
                 ${fc.ui.btn('Restore from a file…', { kind: 'sec', icon: 'refresh', act: 'restore' })}
                 <input type="file" class="fcordRestoreFile" accept=".json,application/json" style="display:none"></div>
@@ -145,15 +149,13 @@ function paneHtml(id) {
     }
     if (id === 'diagnostics') return diagnosticsHtml();
     if (id === 'about') {
-        return `<h2>About</h2>
-            <p class="lead">Fightcord turns Fightcade into something that looks and works like Discord: the theme, chat, member list,
-            search tab, match screens, stats and your Discord status. Fightcord isn’t made by or affiliated with Fightcade or Discord.</p>
+        return `<h2>${ET('About')}</h2>
+            <p class="lead">${ET('Fightcord turns Fightcade into something that looks and works like Discord: the theme, chat, member list, search tab, match screens, stats and your Discord status. Fightcord isn’t made by or affiliated with Fightcade or Discord.')}</p>
             <div class="fcordBtns">${fc.ui.btn('GitHub page', { kind: 'sec', icon: 'link', act: 'repo' })}${fc.ui.btn('Open Fightcord folder', { kind: 'sec', icon: 'copy', act: 'folder' })}</div>
-            <p class="lead small">Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup
-            (Cerberus) in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.</p>`;
+            <p class="lead small">${ET('Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup (Cerberus) in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.')}</p>`;
     }
     const sec = fc.settings.sections().find(s => s.id === id);
-    return `<h2>${E(sec ? sec.label : id)}</h2>`;
+    return `<h2>${ET(sec ? sec.label : id)}</h2>`;
 }
 
 function diagnosticsHtml() {
@@ -162,21 +164,21 @@ function diagnosticsHtml() {
     const running = mods.filter(m => m.state === 'running').length, failed = mods.filter(m => m.state === 'failed');
     const missing = Object.keys(d.anchors).filter(k => !d.anchors[k]);
     const cfg = fc.config('fightcord-core').data;
-    return `<h2>Diagnostics</h2>
+    return `<h2>${ET('Diagnostics')}</h2>
         <div class="fcordTiles">${fc.ui.tile(running + '/' + mods.length, 'modules running', { trend: failed.length ? 'down' : '' })}
             ${fc.ui.tile(String(d.tick.jobs), 'timers (one base loop)')}${fc.ui.tile(String(d.watch.watchers), 'page watchers (one observer)')}
             ${fc.ui.tile(d.api.requests + ' / ' + d.api.cached, 'API requests / from cache', { sub: d.api.errors ? d.api.errors + ' errors' : '' })}</div>
-        ${d.safeMode ? '<div class="fc-note">Safe mode: only the settings are running. Restart Fightcade to start normally.</div>' : ''}
-        <h3>Modules</h3>
-        <div class="fcordMods">${mods.map(m => `<div class="fcordMod ${m.state}"><i></i><b>${E(m.name || m.id)}</b>` +
-            `<span>${E(m.state)}${m.legacy ? ' · old-style plugin' : ''}${m.error ? ' — ' + E(m.error.split('\n')[0]) : ''}</span></div>`).join('')}</div>
+        ${d.safeMode ? '<div class="fc-note">' + ET('Safe mode: only the settings are running. Restart Fightcade to start normally.') + '</div>' : ''}
+        <h3>${ET('Modules')}</h3>
+        <div class="fcordMods">${mods.map(m => `<div class="fcordMod ${m.state}"><i></i><b>${ET(m.name || m.id)}</b>` +
+            `<span>${ET(m.state)}${m.legacy ? ' · ' + ET('old-style plugin') : ''}${m.error ? ' — ' + E(m.error.split('\n')[0]) : ''}</span></div>`).join('')}</div>
         <h3>Fightcade</h3>
-        <div class="fc-note">${missing.length ? 'Not found (a Fightcade update may have changed these): ' + E(missing.join(', ')) : 'Everything Fightcord hooks into is where it should be.'}</div>
-        <h3>Recent problems</h3>
-        <pre class="fcordLog">${E(d.errors.length ? d.errors.map(e => new Date(e.at).toLocaleTimeString() + ' ' + e.level + ' [' + e.scope + '] ' + e.text.split('\n')[0]).join('\n') : 'None — all quiet.')}</pre>
+        <div class="fc-note">${missing.length ? ET('Not found (a Fightcade update may have changed these): {list}', { list: missing.join(', ') }) : ET('Everything Fightcord hooks into is where it should be.')}</div>
+        <h3>${ET('Recent problems')}</h3>
+        <pre class="fcordLog">${E(d.errors.length ? d.errors.map(e => new Date(e.at).toLocaleTimeString() + ' ' + e.level + ' [' + e.scope + '] ' + e.text.split('\n')[0]).join('\n') : T('None — all quiet.'))}</pre>
         <div class="fcordBtns">${fc.ui.btn('Copy debug info', { icon: 'copy', act: 'copydiag' })}${fc.ui.btn('Open Fightcord folder', { kind: 'sec', act: 'folder' })}<span class="fcordNote" data-note="diag"></span></div>
-        <div class="fc-set">${toggle('Debug log', 'Writes fightcord-debug.log next to the plugins — for bug reports', !!cfg.debugLog, 'data-core="debugLog"')}
-        ${toggle('Safe mode on the next start', 'Only the settings run (you can also hold Shift while Fightcade starts)', manifest().safeMode === true, 'data-man="safeMode"')}</div>`;
+        <div class="fc-set">${toggle(ET('Debug log'), ET('Writes fightcord-debug.log next to the plugins — for bug reports'), !!cfg.debugLog, 'data-core="debugLog"')}
+        ${toggle(ET('Safe mode on the next start'), ET('Only the settings run (you can also hold Shift while Fightcade starts)'), manifest().safeMode === true, 'data-man="safeMode"')}</div>`;
 }
 
 /* -------------------------------------------------------------------- modal */
@@ -189,11 +191,11 @@ function ensureModal() {
     m = document.createElement('div');
     m.id = 'fcordModal';
     m.innerHTML = `<div class="fcordSide"><nav>
-            <div class="fcordSearch">${fc.ui.icon('search')}<input type="text" placeholder="Search settings" spellcheck="false"></div>
+            <div class="fcordSearch">${fc.ui.icon('search')}<input type="text" placeholder="${ET('Search settings')}" spellcheck="false"></div>
             <div class="fcordNav"></div>
             <div class="sep"></div><div class="ver">Fightcord ${E(version())}</div></nav></div>
         <div class="fcordMain"><div class="fcordContent"><div class="fcordPane fcordResults" data-results="1"></div></div>
-            <div class="fcordClose" title="Close (Esc)">${fc.ui.icon('close')}<small>ESC</small></div></div>`;
+            <div class="fcordClose" title="${ET('Close (Esc)')}">${fc.ui.icon('close')}<small>ESC</small></div></div>`;
     m.addEventListener('click', onModalClick);
     m.addEventListener('change', onModalChange);
     m.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -212,8 +214,8 @@ function syncNav(m) {
     if (sig === navSig) return;
     navSig = sig;
     const group = (title, list) => list.length ? `<div class="sec">${title}</div>` + list.map(s =>
-        `<div class="item" data-sec="${E(s.id)}">${fc.ui.icon(s.icon)}<span>${E(s.label)}</span></div>`).join('') : '';
-    m.querySelector('.fcordNav').innerHTML = group('Fightcord settings', secs.filter(s => s.order < APP_FROM)) + '<div class="sep"></div>' + group('App', secs.filter(s => s.order >= APP_FROM));
+        `<div class="item" data-sec="${E(s.id)}">${fc.ui.icon(s.icon)}<span>${ET(s.label)}</span></div>`).join('') : '';
+    m.querySelector('.fcordNav').innerHTML = group(ET('Fightcord settings'), secs.filter(s => s.order < APP_FROM)) + '<div class="sep"></div>' + group(ET('App'), secs.filter(s => s.order >= APP_FROM));
     const content = m.querySelector('.fcordContent');
     secs.forEach(s => {
         if (content.querySelector(':scope > .fcordPane[data-sec="' + s.id + '"]')) return;
@@ -296,16 +298,16 @@ function runSearch(q) {
         if (head && !head.innerHTML) head.innerHTML = paneHtml(s.id);
         pane.querySelectorAll('.fc-field, .fc-set-title, h2, h3, .fcordProfile').forEach(el => {
             const text = el.textContent.replace(/\s+/g, ' ').trim();
-            const low = (text + ' ' + s.label).toLowerCase();
+            const low = (text + ' ' + T(s.label) + ' ' + s.label).toLowerCase();
             if (text && words.every(w => low.indexOf(w) >= 0)) hits.push({ s, el, text });
         });
     });
     m.querySelectorAll('.fcordPane').forEach(p => p.classList.toggle('on', p === res));
     m.querySelectorAll('.fcordNav .item').forEach(i => i.classList.remove('on'));
     res.__hits = hits;
-    res.innerHTML = `<h2>Search</h2>` + (hits.length ? hits.slice(0, 60).map((h, i) =>
-        `<div class="fcordHit" data-hit="${i}">${fc.ui.icon(h.s.icon)}<span class="where">${E(h.s.label)}</span><span class="what">${E(h.text.slice(0, 120))}</span></div>`).join('')
-        : fc.ui.empty({ icon: 'search', title: 'No settings match “' + q + '”' }));
+    res.innerHTML = `<h2>${ET('Search')}</h2>` + (hits.length ? hits.slice(0, 60).map((h, i) =>
+        `<div class="fcordHit" data-hit="${i}">${fc.ui.icon(h.s.icon)}<span class="where">${ET(h.s.label)}</span><span class="what">${E(h.text.slice(0, 120))}</span></div>`).join('')
+        : fc.ui.empty({ icon: 'search', title: T('No settings match “{q}”', { q }) }));
 }
 
 function goToHit(h) {
@@ -338,7 +340,7 @@ function onModalClick(e) {
     else if (act === 'folder') openExternal(DIR);
     else if (act === 'backup') backup();
     else if (act === 'restore') document.querySelector('#fcordModal .fcordRestoreFile').click();
-    else if (act === 'copydiag') note('diag', fc.ui.copy(fc.diagText()) ? 'Copied — paste it in a bug report.' : 'Couldn’t copy.');
+    else if (act === 'copydiag') note('diag', T(fc.ui.copy(fc.diagText()) ? 'Copied — paste it in a bug report.' : 'Couldn’t copy.'));
 }
 
 function onModalChange(e) {
@@ -353,7 +355,7 @@ function onModalChange(e) {
         if (t.checked) off.delete(t.dataset.plugin); else off.add(t.dataset.plugin);
         m.off = [...off];
         writeJson(MANIFEST, m);
-        note('restart', 'Restart Fightcade to apply.');
+        note('restart', T('Restart Fightcade to apply.'));
         refreshProfiles();
     } else if (t.dataset.rpc) {
         const c = readJson(RPC_CONFIG, {});
@@ -378,7 +380,7 @@ function setProfile(k) {
     const p = PROFILES[k];
     if (!p || !applyProfile(k)) return;
     show('home');
-    note('restart', p.label + ' profile set — restart Fightcade to apply.');
+    note('restart', T('{name} profile set — restart Fightcade to apply.', { name: T(p.label) }));
 }
 
 function refreshProfiles() {
@@ -393,9 +395,9 @@ function backup() {
         fs.mkdirSync(dir, { recursive: true });
         const file = path.join(dir, 'fightcord-settings-' + new Date().toISOString().slice(0, 10) + '.json');
         fs.writeFileSync(file, JSON.stringify(data, null, 2));
-        note('backup', 'Saved ' + Object.keys(data.files).length + ' settings files to ' + file);
+        note('backup', T('Saved {n} settings files to {file}', { n: Object.keys(data.files).length, file }));
         try { require('electron').shell.showItemInFolder(file); } catch (e) { /* harness */ }
-    } catch (e) { note('backup', 'Couldn’t back up: ' + e.message); }
+    } catch (e) { note('backup', T('Couldn’t back up: {error}', { error: e.message })); }
 }
 
 function restore(input) {
@@ -405,9 +407,9 @@ function restore(input) {
     rd.onload = () => {
         try {
             const n = fc.config.importAll(JSON.parse(String(rd.result)));
-            note('backup', 'Restored ' + n + ' settings files. Restart Fightcade so every module picks them up.');
+            note('backup', T('Restored {n} settings files. Restart Fightcade so every module picks them up.', { n }));
             fc.settings.refresh();
-        } catch (e) { note('backup', 'That isn’t a Fightcord backup (' + e.message + ').'); }
+        } catch (e) { note('backup', T('That isn’t a Fightcord backup ({error}).', { error: e.message })); }
         input.value = '';
     };
     rd.readAsText(f);
@@ -425,14 +427,14 @@ function restartFightcade() {
         const out = require('child_process').execSync('tasklist /fo csv /nh', { timeout: 8000 }).toString().toLowerCase();
         busyGame = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/.test(out);
     } catch (e) { /* can't tell: be careful */ busyGame = false; }
-    if (busyGame) { note('restart', 'A match is running — restart after it.'); return; }
+    if (busyGame) { note('restart', T('A match is running — restart after it.')); return; }
     fc.config.flush();
     try {
         const { remote } = require('electron');
         remote.app.relaunch();
         remote.app.exit(0);
     } catch (e) {
-        note('restart', 'Close Fightcade from its tray icon (Quit) and open it again.');
+        note('restart', T('Close Fightcade from its tray icon (Quit) and open it again.'));
     }
 }
 
@@ -445,7 +447,7 @@ function decorateFcSettings() {
         const div = document.createElement('div');
         div.className = 'option fcordOpenBlock';
         div.style.cssText = 'display:block;width:100%;';
-        div.innerHTML = `<div class="fcordOpenRow"><div><b>Fightcord settings</b><span>Theme, chat, member list, search tab, match screens, challenges, music, Discord status, updates</span></div>
+        div.innerHTML = `<div class="fcordOpenRow"><div><b>${ET('Fightcord settings')}</b><span>${ET('Theme, chat, member list, search tab, match screens, challenges, music, Discord status, updates')}</span></div>
             ${fc.ui.btn('Open', { act: 'open' })}</div>`;
         div.addEventListener('click', (e) => { e.stopPropagation(); open(); });
         host.appendChild(div);
@@ -524,22 +526,22 @@ let busy = false;
 async function checkUpdates(manual) {
     if (busy) return;
     busy = true;
-    state.status = 'Checking…'; refreshUpdatesPane();
+    state.status = T('Checking…'); refreshUpdatesPane();
     state.lastCheck = Date.now();          // one try a day, whatever the answer
     try {
         const latest = JSON.parse((await httpGet(LATEST_URL + '?t=' + Date.now())).toString('utf8'));
         state.latest = latest;
         if (newer(latest.version, version()) && !(state.ready && !newer(latest.version, state.ready))) {
-            state.status = 'Fightcord ' + latest.version + ' is available.';
+            state.status = T('Fightcord {version} is available.', { version: latest.version });
             busy = false;
             if (state.autoInstall || manual === 'install') await installUpdate(latest);
         } else {
-            state.status = state.ready ? state.status : 'Up to date.';
+            state.status = state.ready ? state.status : T('Up to date.');
         }
     } catch (e) {
         // 404 = no release on GitHub yet: nothing's wrong, there's just nothing to get
-        state.status = /HTTP 404/.test(e.message) ? 'No release published yet — you have the newest Fightcord.'
-            : 'Couldn’t check for updates (' + e.message + '). It tries again tomorrow.';
+        state.status = /HTTP 404/.test(e.message) ? T('No release published yet — you have the newest Fightcord.')
+            : T('Couldn’t check for updates ({error}). It tries again tomorrow.', { error: e.message });
     }
     busy = false;
     saveState();
@@ -549,7 +551,7 @@ async function checkUpdates(manual) {
 async function installUpdate(latest) {
     if (busy || !latest || !latest.zip) return;
     busy = true;
-    state.status = 'Downloading ' + latest.version + '…'; refreshUpdatesPane();
+    state.status = T('Downloading {version}…', { version: latest.version }); refreshUpdatesPane();
     try {
         const url = /^https:\/\//.test(latest.zip) ? latest.zip
             : 'https://github.com/' + REPO + '/releases/download/v' + latest.version + '/' + latest.zip;
@@ -574,11 +576,11 @@ async function installUpdate(latest) {
         m.version = latest.version;
         writeJson(MANIFEST, m);
         state.ready = latest.version;
-        state.status = 'Fightcord ' + latest.version + ' is installed — restart Fightcade to finish.';
-        fc.ui.toast('Fightcord ' + latest.version + ' is ready', { icon: 'download', kind: 'success', ms: 12000,
+        state.status = T('Fightcord {version} is installed — restart Fightcade to finish.', { version: latest.version });
+        fc.ui.toast(T('Fightcord {version} is ready', { version: latest.version }), { icon: 'download', kind: 'success', ms: 12000,
             sub: 'Restart Fightcade to finish updating.', onClick: () => open('updates') });
     } catch (e) {
-        state.status = 'Update failed: ' + e.message + '. Nothing was changed.';
+        state.status = T('Update failed: {error}. Nothing was changed.', { error: e.message });
     }
     busy = false;
     saveState();
@@ -690,6 +692,9 @@ function start(f) {
     fc.settings.block({
         id: 'core', section: 'home', title: 'General', store: core, order: 1, reset: false,
         fields: [
+            { key: 'lang', type: 'select', label: 'Language', hint: 'Applies after a restart',
+                options: [['auto', 'Automatic (Windows language)'], ['en', 'English'], ['pt', 'Português (Brasil)'], ['es', 'Español']],
+                onChange: () => fc.ui.toast('Restart Fightcade to switch the language', { icon: 'globe', ms: 6000 }) },
             { key: 'animations', type: 'switch', label: 'Animations', hint: 'Off = no motion anywhere in Fightcord (and calmer Fightcade)' },
             { key: 'sfxVolume', type: 'slider', label: 'Sound effects', hint: 'Pings, the challenge ring, chimes', scale: 100, unit: '%', onChange: () => fc.sound.play('ping') }
         ]

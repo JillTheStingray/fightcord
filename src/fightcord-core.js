@@ -41,6 +41,42 @@ let DIR = __dirname;
 const hasDom = () => typeof document !== 'undefined' && !!document.documentElement;
 const now = () => Date.now();
 
+/* ========================================================================== i18n */
+
+// fc.t('Win {n} sets', { n }) -> the text in the chosen language (English when there's none).
+// Keyed by the English text itself; {name} placeholders are filled from vars. The dictionaries
+// are i18n-pt.js / i18n-es.js next to the modules ({ strings: { 'English': '...' } }), and
+// tools/i18n-check.js keeps them complete. Text defined before a module starts is marked with
+// N_('...') (it stays English there) and translated with fc.t() where it's shown.
+const LANGS = { en: { name: 'English', locale: 'en-US' }, pt: { name: 'Português (Brasil)', locale: 'pt-BR' }, es: { name: 'Español', locale: 'es' } };
+const i18n = { lang: 'en', dicts: {} };
+function tr(text, vars) {
+    const src = String(text == null ? '' : text);
+    const d = i18n.dicts[i18n.lang];
+    let s = (d && d[src]) || src;
+    if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
+    return s;
+}
+tr.lang = () => i18n.lang;
+tr.locale = () => LANGS[i18n.lang].locale;
+tr.langs = LANGS;
+tr.add = (lang, strings) => { if (LANGS[lang] && strings) i18n.dicts[lang] = Object.assign(i18n.dicts[lang] || {}, strings); };
+// fc.t.plural(n, '{n} set', '{n} sets')
+tr.plural = (n, one, many, vars) => tr(n === 1 ? one : many, Object.assign({ n }, vars));
+const N_ = (s) => s;
+// 'auto' follows the Windows / browser language
+function pickLang(setting) {
+    if (setting && setting !== 'auto' && LANGS[setting]) return setting;
+    const nav = (typeof navigator !== 'undefined' && navigator.language) || '';
+    return /^pt/i.test(nav) ? 'pt' : /^es/i.test(nav) ? 'es' : 'en';
+}
+function setLang(lang) {
+    i18n.lang = LANGS[lang] ? lang : 'en';
+    if (i18n.lang === 'en' || i18n.dicts[i18n.lang]) return;
+    try { const m = require(path.join(DIR, 'i18n-' + i18n.lang + '.js')); tr.add(i18n.lang, m.strings || m); }
+    catch (e) { /* no dictionary here (the harness adds it with fc.t.add) */ }
+}
+
 /* =========================================================================== fmt */
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -59,12 +95,12 @@ const fmt = {
         const t = typeof ts === 'number' ? ts : ts instanceof Date ? ts.getTime() : Date.parse(ts);
         if (!t || isNaN(t)) return '';
         const s = Math.max(0, Math.round(((at || now()) - t) / 1000));
-        if (s < 45) return 'just now';
-        if (s < 3600) return Math.max(1, Math.round(s / 60)) + 'm ago';
-        if (s < 86400) return Math.round(s / 3600) + 'h ago';
+        if (s < 45) return tr('just now');
+        if (s < 3600) return tr('{n}m ago', { n: Math.max(1, Math.round(s / 60)) });
+        if (s < 86400) return tr('{n}h ago', { n: Math.round(s / 3600) });
         const d = Math.floor(s / 86400);
-        if (d === 1) return 'yesterday';
-        if (d < 30) return d + 'd ago';
+        if (d === 1) return tr('yesterday');
+        if (d < 30) return tr('{n}d ago', { n: d });
         return new Date(t).toISOString().slice(0, 10);
     },
 
@@ -89,9 +125,9 @@ const fmt = {
         const t = d instanceof Date ? d.getTime() : typeof d === 'number' ? d : Date.parse(d);
         if (!t || isNaN(t)) return '';
         const days = Math.floor((now() - t) / 86400000);
-        if (days <= 0) return 'today';
-        if (days === 1) return 'yesterday';
-        if (days < 30) return days + 'd ago';
+        if (days <= 0) return tr('today');
+        if (days === 1) return tr('yesterday');
+        if (days < 30) return tr('{n}d ago', { n: days });
         return new Date(t).toISOString().slice(0, 10);
     },
     // "42 ms · Wi-Fi" from fc.app.userInfo() (Fightcade's own numbers)
@@ -103,8 +139,8 @@ const fmt = {
         return bits.join(' · ');
     },
     pct: (x, digits) => (isFinite(x) ? (x * 100).toFixed(digits || 0) : '0') + '%',
-    num: (n) => (+n || 0).toLocaleString('en-US'),
-    plural: (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's')),
+    num: (n) => (+n || 0).toLocaleString(tr.locale()),
+    plural: (n, one, many) => n + ' ' + tr(n === 1 ? one : (many || one + 's')),
     wl: (r) => r.w + '–' + r.l + (r.d ? '–' + r.d : '')
 };
 
@@ -780,9 +816,9 @@ function stopModule(rec, why) {
 moduleCrash = (rec, e) => {
     if (rec.legacy) return;                 // old plugins can't be cleaned up: just log
     stopModule(rec, 'kept failing: ' + errText(e));
-    if (hasDom()) ui.toast('Fightcord had a problem with ' + rec.name, {
-        sub: 'It’s switched off until Fightcade restarts.', kind: 'danger', ms: 9000,
-        actions: [{ label: 'Copy details', fn: () => copyText(diagText()) }]
+    if (hasDom()) ui.toast(tr('Fightcord had a problem with {name}', { name: rec.name }), {
+        sub: tr('It’s switched off until Fightcade restarts.'), kind: 'danger', ms: 9000,
+        actions: [{ label: tr('Copy details'), fn: () => copyText(diagText()) }]
     });
 };
 
@@ -873,7 +909,7 @@ function mountSection(host, sectionId) {
         try {
             if (b.render) b.render(el, b);
             else { el.innerHTML = fieldsHtml(b); wireFields(el, b); }
-        } catch (e) { fault(b.owner, e, 'settings ' + b.id); el.innerHTML = '<div class="fc-muted">This block couldn’t load.</div>'; }
+        } catch (e) { fault(b.owner, e, 'settings ' + b.id); el.innerHTML = '<div class="fc-muted">' + fmt.esc(tr('This block couldn’t load.')) + '</div>'; }
         host.appendChild(el);
         b.els.push(el);
     });
@@ -893,14 +929,14 @@ function refreshBlocks(id) {
 function fieldHtml(f, d) {
     const E = fmt.esc;
     const v = f.key ? d[f.key] : undefined;
-    const text = `<span class="fc-field-text"><b>${E(f.label || '')}</b>${f.hint ? `<small>${E(f.hint)}</small>` : ''}</span>`;
+    const text = `<span class="fc-field-text"><b>${E(tr(f.label || ''))}</b>${f.hint ? `<small>${E(tr(f.hint))}</small>` : ''}</span>`;
     const k = f.key ? ` data-key="${E(f.key)}"` : '';
     switch (f.type) {
         case 'switch':
             return `<label class="fc-field"${k}>${text}<input type="checkbox" class="fc-switch-in"${v ? ' checked' : ''}><i class="fc-switch"></i></label>`;
         case 'select':
             return `<div class="fc-field"${k}>${text}<select class="fc-select">${(f.options || []).map(([ov, ol]) =>
-                `<option value="${E(ov)}"${String(ov) === String(v) ? ' selected' : ''}>${E(ol)}</option>`).join('')}</select></div>`;
+                `<option value="${E(ov)}"${String(ov) === String(v) ? ' selected' : ''}>${E(tr(ol))}</option>`).join('')}</select></div>`;
         case 'slider': {
             const scale = f.scale || 1;
             return `<div class="fc-field"${k}>${text}<input type="range" class="fc-slider" min="${f.min || 0}" max="${f.max == null ? 100 : f.max}" step="${f.step || 1}" value="${Math.round((+v || 0) * scale)}">` +
@@ -911,7 +947,7 @@ function fieldHtml(f, d) {
         case 'button':
             return `<div class="fc-field">${text}${ui.btn(f.button || f.label, { kind: f.kind || 'sec', size: 'sm', act: f.act })}</div>`;
         case 'note':
-            return `<div class="fc-note">${E(f.label || '')}</div>`;
+            return `<div class="fc-note">${E(tr(f.label || ''))}</div>`;
         case 'html':
             return `<div class="fc-field-html" data-html="${E(f.id || '')}">${typeof f.html === 'function' ? f.html(d) : (f.html || '')}</div>`;
         default:
@@ -922,7 +958,7 @@ function fieldHtml(f, d) {
 function fieldsHtml(b) {
     const d = (b.store && b.store.data) || {};
     return `<div class="fc-set-title">${b.store && b.reset !== false ? ui.btn('Reset', { kind: 'ghost', size: 'sm', act: 'fc-reset', cls: 'fc-set-reset', title: 'Put this block back to its defaults' }) : ''}` +
-        `${fmt.esc(b.title || '')}${b.hint ? ` <small>${fmt.esc(b.hint)}</small>` : ''}</div>` +
+        `${fmt.esc(tr(b.title || ''))}${b.hint ? ` <small>${fmt.esc(tr(b.hint))}</small>` : ''}</div>` +
         (b.fields || []).map((f, i) => `<div class="fc-set-row" data-i="${i}"${f.show && !f.show(d) ? ' hidden' : ''}>${fieldHtml(f, d)}</div>`).join('');
 }
 
@@ -958,7 +994,7 @@ function wireFields(root, b) {
     root.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-act]');
         if (btn && btn.getAttribute('data-act') === 'fc-reset' && b.store) {
-            ui.confirm('Reset “' + (b.title || b.id) + '”?', 'Its settings go back to the defaults.', { ok: 'Reset', danger: true }).then(ok => {
+            ui.confirm(tr('Reset “{name}”?', { name: tr(b.title || b.id) }), tr('Its settings go back to the defaults.'), { ok: tr('Reset'), danger: true }).then(ok => {
                 if (!ok) return;
                 b.store.reset();
                 if (b.onReset) guard(b.owner, b.onReset, 'settings reset')(b.store.data);
@@ -1026,7 +1062,7 @@ function cmdFor(owner) {
         if (!cmdHooked && hasDom()) { cmdHooked = true; window.addEventListener('keydown', onCmdKey, true); }
         return own(owner, () => { if (cmds.get(key) === rec) cmds.delete(key); });
     };
-    cmd.list = () => [...cmds.values()].filter(c => !c.owner.dead).map(c => ({ name: c.name, desc: c.desc, args: c.args, module: c.owner.id }))
+    cmd.list = () => [...cmds.values()].filter(c => !c.owner.dead).map(c => ({ name: c.name, desc: tr(c.desc), args: c.args, module: c.owner.id }))
         .sort((a, b) => a.name.localeCompare(b.name));
     cmd.run = (line) => {
         const m = /^\/?([a-z0-9_-]+)(?:\s+([\s\S]*))?$/i.exec(String(line || '').trim());
@@ -1668,12 +1704,12 @@ const ui = {
     btn(label, o) {
         const p = o || {};
         const cls = ['fc-btn', p.kind, p.size, label ? '' : 'icon', p.cls].filter(Boolean).join(' ');
-        return `<button type="button" class="${cls}"${p.act ? ` data-act="${fmt.esc(p.act)}"` : ''}${p.title ? ` title="${fmt.esc(p.title)}"` : ''}${p.disabled ? ' disabled' : ''}${p.attrs ? ' ' + p.attrs : ''}>` +
-            (p.icon ? ui.icon(p.icon) : '') + (label ? fmt.esc(label) : '') + '</button>';
+        return `<button type="button" class="${cls}"${p.act ? ` data-act="${fmt.esc(p.act)}"` : ''}${p.title ? ` title="${fmt.esc(tr(p.title))}"` : ''}${p.disabled ? ' disabled' : ''}${p.attrs ? ' ' + p.attrs : ''}>` +
+            (p.icon ? ui.icon(p.icon) : '') + (label ? fmt.esc(tr(label)) : '') + '</button>';
     },
     chip(label, o) {
         const p = o || {};
-        return `<span class="fc-chip${p.on ? ' on' : ''}"${p.act ? ` data-act="${fmt.esc(p.act)}"` : ''}${p.title ? ` title="${fmt.esc(p.title)}"` : ''}>${p.icon ? ui.icon(p.icon) : ''}${fmt.esc(label)}</span>`;
+        return `<span class="fc-chip${p.on ? ' on' : ''}"${p.act ? ` data-act="${fmt.esc(p.act)}"` : ''}${p.title ? ` title="${fmt.esc(tr(p.title))}"` : ''}>${p.icon ? ui.icon(p.icon) : ''}${fmt.esc(tr(label))}</span>`;
     },
     // rank badge: 'S' / 6
     tag(rank, title) {
@@ -1697,15 +1733,15 @@ const ui = {
     },
     tile(value, caption, o) {
         const p = o || {};
-        return `<div class="fc-tile${p.trend ? ' ' + p.trend : ''}"><div class="v">${fmt.esc(value)}</div><div class="k">${fmt.esc(caption)}</div>${p.sub ? `<div class="s">${fmt.esc(p.sub)}</div>` : ''}</div>`;
+        return `<div class="fc-tile${p.trend ? ' ' + p.trend : ''}"><div class="v">${fmt.esc(value)}</div><div class="k">${fmt.esc(tr(caption))}</div>${p.sub ? `<div class="s">${fmt.esc(tr(p.sub))}</div>` : ''}</div>`;
     },
     tabs(items, active) {
-        return `<div class="fc-tabs">${items.map(([id, label, n]) => `<span class="fc-tab${id === active ? ' on' : ''}" data-tab="${fmt.esc(id)}">${fmt.esc(label)}${n != null ? `<span class="n">${n}</span>` : ''}</span>`).join('')}</div>`;
+        return `<div class="fc-tabs">${items.map(([id, label, n]) => `<span class="fc-tab${id === active ? ' on' : ''}" data-tab="${fmt.esc(id)}">${fmt.esc(tr(label))}${n != null ? `<span class="n">${n}</span>` : ''}</span>`).join('')}</div>`;
     },
     empty(o) {
         const p = o || {};
-        return `<div class="fc-empty">${ui.icon(p.icon || 'info')}<div class="t">${fmt.esc(p.title || 'Nothing here yet')}</div>` +
-            (p.sub ? `<div class="s">${fmt.esc(p.sub)}</div>` : '') + (p.action ? ui.btn(p.action, { act: p.act || 'empty' }) : '') + '</div>';
+        return `<div class="fc-empty">${ui.icon(p.icon || 'info')}<div class="t">${fmt.esc(tr(p.title || 'Nothing here yet'))}</div>` +
+            (p.sub ? `<div class="s">${fmt.esc(tr(p.sub))}</div>` : '') + (p.action ? ui.btn(p.action, { act: p.act || 'empty' }) : '') + '</div>';
     },
     progress(frac, color) {
         const w = Math.max(0, Math.min(1, +frac || 0)) * 100;
@@ -1738,8 +1774,8 @@ const ui = {
         el.className = 'fc-toast' + (p.kind ? ' ' + p.kind : '');
         el.__fcKey = key;
         const icon = p.icon || ({ success: 'check', danger: 'warn', warning: 'warn' })[p.kind] || '';
-        el.innerHTML = `<div class="t">${icon ? ui.icon(icon) : ''}<span>${fmt.esc(title)}</span></div>` +
-            (p.sub ? `<div class="s">${fmt.esc(p.sub)}</div>` : '') +
+        el.innerHTML = `<div class="t">${icon ? ui.icon(icon) : ''}<span>${fmt.esc(tr(title))}</span></div>` +
+            (p.sub ? `<div class="s">${fmt.esc(tr(p.sub))}</div>` : '') +
             ((p.actions || []).length ? `<div class="a">${p.actions.map((a, i) => ui.btn(a.label, { size: 'sm', kind: a.kind || (i ? 'sec' : ''), attrs: `data-i="${i}"` })).join('')}</div>` : '');
         let timer = 0;
         const close = (fast) => {
@@ -1829,8 +1865,8 @@ const ui = {
         const p = o || {};
         const mask = document.createElement('div');
         mask.className = 'fc-mask';
-        mask.innerHTML = `<div class="fc-modal"${p.width ? ` style="--w:${p.width}px"` : ''}><div class="fc-modal-h"><span>${fmt.esc(p.title || '')}</span>` +
-            ui.btn('', { kind: 'ghost', icon: 'close', act: 'close', title: 'Close' }) + '</div><div class="fc-modal-b"></div>' +
+        mask.innerHTML = `<div class="fc-modal"${p.width ? ` style="--w:${p.width}px"` : ''}><div class="fc-modal-h"><span>${fmt.esc(tr(p.title || ''))}</span>` +
+            ui.btn('', { kind: 'ghost', icon: 'close', act: 'close', title: tr('Close') }) + '</div><div class="fc-modal-b"></div>' +
             ((p.actions || []).length ? `<div class="fc-modal-f">${p.actions.map((a, i) => ui.btn(a.label, { kind: a.kind || (i === p.actions.length - 1 ? '' : 'ghost'), attrs: `data-i="${i}"` })).join('')}</div>` : '') + '</div>';
         const body = mask.querySelector('.fc-modal-b');
         body.appendChild(toEl(p.body));
@@ -1863,7 +1899,7 @@ const ui = {
             let answered = false;
             ui.modal({
                 title, body: `<p style="margin:0">${fmt.esc(text || '')}</p>`, width: 420,
-                actions: [{ label: p.cancel || 'Cancel', kind: 'ghost', fn: () => { answered = true; res(false); } },
+                actions: [{ label: p.cancel || tr('Cancel'), kind: 'ghost', fn: () => { answered = true; res(false); } },
                     { label: p.ok || 'OK', kind: p.danger ? 'danger' : '', fn: () => { answered = true; res(true); } }],
                 onClose: () => { if (!answered) res(false); }
             });
@@ -1880,8 +1916,8 @@ const ui = {
         const el = document.createElement('div');
         el.id = 'fcPage-' + id;
         el.className = 'fc-page' + (p.cls ? ' ' + p.cls : '');
-        el.innerHTML = `<div class="fc-page-h"><span class="t">${p.icon ? ui.icon(p.icon) : ''}<span class="tt">${fmt.esc(p.title || '')}</span></span>` +
-            `<span class="tools">${p.tools || ''}${ui.btn('', { kind: 'ghost', icon: 'close', act: 'close', title: 'Close (Esc)' })}</span></div><div class="fc-page-b"></div>`;
+        el.innerHTML = `<div class="fc-page-h"><span class="t">${p.icon ? ui.icon(p.icon) : ''}<span class="tt">${fmt.esc(tr(p.title || ''))}</span></span>` +
+            `<span class="tools">${p.tools || ''}${ui.btn('', { kind: 'ghost', icon: 'close', act: 'close', title: tr('Close (Esc)') })}</span></div><div class="fc-page-b"></div>`;
         const body = el.querySelector('.fc-page-b');
         let closed = false;
         // onEsc() returning false keeps the page open (e.g. Esc steps back a level first)
@@ -2098,6 +2134,7 @@ function api_for(owner) {
         hooks: hooksFor(owner),
         history,
         elo,
+        t: tr,
         ui, sound, fmt, data,
         log: makeLog(owner.name),
         guard: (fn, where) => guard(owner, fn, where),
@@ -2166,7 +2203,9 @@ function boot(fcade, opts) {
     bootInfo.at = now();
     bootInfo.version = o.version || readJson(path.join(DIR, 'fightcord.json'), {}).version || '';
     safeMode = !!o.safe;
-    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full', myElo: {} });
+    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full', myElo: {}, lang: 'auto' });
+    // the language, before any module starts (the harness can force one: opts.lang)
+    setLang(o.lang || pickLang(coreStore.data.lang));
     coreStore.on(applyCoreSettings);
     applyCoreSettings();
     if (hasDom()) {
@@ -2177,8 +2216,8 @@ function boot(fcade, opts) {
         ensureStyle();
         window.fightcord = fc;
         window.addEventListener('beforeunload', flushStores);
-        if (safeMode) setTimeout(() => ui.toast('Fightcord is in safe mode', {
-            sub: 'Only the settings are on. Restart Fightcade to start normally.', kind: 'warning', icon: 'shield', ms: 12000
+        if (safeMode) setTimeout(() => ui.toast(tr('Fightcord is in safe mode'), {
+            sub: tr('Only the settings are on. Restart Fightcade to start normally.'), kind: 'warning', icon: 'shield', ms: 12000
         }), 1500);
     }
     LOG('core ready' + (safeMode ? ' (safe mode)' : ''));
@@ -2193,7 +2232,7 @@ module.exports.CORE_API = CORE_API;
 // for the tests (plain Node, no page)
 module.exports._test = {
     fmt, data, history, api, apiState, modules, makeOwner, fault, guard, emit, eventsFor, configFor, tickFor, runTasks, tasks,
-    exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui, elo, recordElo, boot,
+    exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui, elo, recordElo, boot, tr, setLang, pickLang, N_,
     setDir(d) { DIR = d; historyCache = null; stores.clear(); },
     setRoot(r) { FCADE = r; },
     reset() { mods.clear(); order.length = 0; chHandlers.length = 0; chActive = null; tasks.clear(); }

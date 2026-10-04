@@ -13,6 +13,9 @@ let fc = null;
 let store = null, cfg = null;          // channel-banner-config.json
 
 const E = (s) => fc.fmt.esc(s);
+const T = (s, v) => fc.t(s, v);
+T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
 
@@ -50,21 +53,21 @@ function statsFor(ch) {
 function build(wrapper, ch) {
     const b = document.createElement('div');
     b.className = 'cbnBanner';
-    const btn = (act, label, icon, title) => `<span class="cbnBtn" data-cb="${act}" title="${E(title)}">${fc.ui.icon(icon)}${label}</span>`;
+    const btn = (act, label, icon, title) => `<span class="cbnBtn" data-cb="${act}" title="${E(T(title))}">${fc.ui.icon(icon)}${E(T(label))}</span>`;
     b.innerHTML = `<div class="cbnBg"></div><div class="cbnShade"></div>
         <div class="cbnArt"></div>
-        <div class="cbnText"><div class="cbnName" title="${E(ch.name)}">${E(shortName(ch.name))}${ch.ranked ? '<span class="cbnRanked" title="Ranked channel">RANKED</span>' : ''}</div><div class="cbnLine"></div></div>
+        <div class="cbnText"><div class="cbnName" title="${E(ch.name)}">${E(shortName(ch.name))}${ch.ranked ? `<span class="cbnRanked" title="${E(T('Ranked channel'))}">${E(T('RANKED'))}</span>` : ''}</div><div class="cbnLine"></div></div>
         <div class="cbnRight">
             <div class="cbnFriends"></div>
             <div class="cbnBtns">
-                ${btn('stats', 'Stats', 'chart', 'Your stats in this game')}
-                ${ch.links.rankings ? btn('rankings', 'Rankings', 'trophy', 'Rankings (fightcade.com)') : ''}
-                ${ch.links.replays ? btn('replays', 'Replays', 'play', 'Replays (fightcade.com)') : ''}
-                ${ch.links.events ? btn('events', 'Events', 'clock', 'Events (fightcade.com)') : ''}
-                ${ch.links.profile ? btn('profile', 'Profile', 'user', 'Your profile (fightcade.com)') : ''}
+                ${btn('stats', N_('Stats'), 'chart', N_('Your stats in this game'))}
+                ${ch.links.rankings ? btn('rankings', N_('Rankings'), 'trophy', N_('Rankings (fightcade.com)')) : ''}
+                ${ch.links.replays ? btn('replays', N_('Replays'), 'play', N_('Replays (fightcade.com)')) : ''}
+                ${ch.links.events ? btn('events', N_('Events'), 'clock', N_('Events (fightcade.com)')) : ''}
+                ${ch.links.profile ? btn('profile', N_('Profile'), 'user', N_('Your profile (fightcade.com)')) : ''}
             </div>
         </div>
-        <span class="cbnFold" data-cb="fold" title="Shrink / expand the banner">${fc.ui.icon('chevronDown')}</span>`;
+        <span class="cbnFold" data-cb="fold" title="${E(T('Shrink / expand the banner'))}">${fc.ui.icon('chevronDown')}</span>`;
     b.addEventListener('mousedown', (e) => e.stopPropagation());
     b.addEventListener('click', (e) => {
         const f = e.target.closest('[data-fr]');
@@ -98,19 +101,19 @@ function build(wrapper, ch) {
 
 function update(b, ch) {
     const s = statsFor(ch);
-    const bits = [`<span class="on"><i></i>${s.online} online</span>`];
-    if (s.live) bits.push(`<span>⚔ ${s.live} live match${s.live === 1 ? '' : 'es'}</span>`);
-    if (s.rank) bits.push(`<span>your rank <b style="color:${fc.data.rankColor(s.rank)}">${s.rank}</b></span>`);
-    if (s.w + s.l) bits.push(`<span>you <b>${s.w}–${s.l}</b> (${Math.round(s.w / (s.w + s.l) * 100)}%)</span>`);
+    const bits = [`<span class="on"><i></i>${E(T('{n} online', { n: s.online }))}</span>`];
+    if (s.live) bits.push(`<span>⚔ ${E(T.plural(s.live, '{n} live match', '{n} live matches'))}</span>`);
+    if (s.rank) bits.push(`<span>${E(T('your rank'))} <b style="color:${fc.data.rankColor(s.rank)}">${s.rank}</b></span>`);
+    if (s.w + s.l) bits.push(`<span>${E(T('you'))} <b>${s.w}–${s.l}</b> (${Math.round(s.w / (s.w + s.l) * 100)}%)</span>`);
     const line = bits.join('<span class="dot">·</span>');
     const ln = b.querySelector('.cbnLine');
     if (ln.innerHTML !== line) ln.innerHTML = line;
-    const fr = s.friends.slice(0, 5).map(n => `<img data-fr="${E(n)}" src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(n)} (friend) is here" alt="" onerror="this.style.visibility='hidden'">`).join('') +
+    const fr = s.friends.slice(0, 5).map(n => `<img data-fr="${E(n)}" src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(T('{name} (friend) is here', { name: n }))}" alt="" onerror="this.style.visibility='hidden'">`).join('') +
         (s.friends.length > 5 ? `<span class="more">+${s.friends.length - 5}</span>` : '');
     const fb = b.querySelector('.cbnFriends');
     if (fb.__html !== fr) {
         fb.__html = fr;
-        fb.innerHTML = fr ? '<span class="lbl">Friends here</span>' + fr : '';
+        fb.innerHTML = fr ? '<span class="lbl">' + E(T('Friends here')) + '</span>' + fr : '';
     }
 }
 
