@@ -1,6 +1,6 @@
 # Fightcord
 
-[English](README.md) · [Português (Brasil)](README.pt-BR.md) · **Español**
+[Sitio web](https://jillthestingray.github.io/fightcord/es/) · [English](README.md) · [Português (Brasil)](README.pt-BR.md) · **Español**
 
 **Fightcade, pero se ve y funciona como Discord**, más un montón de herramientas para jugadores
 competitivos. Un instalador, ninguna otra descarga, todo funciona dentro de la app de Fightcade en
@@ -24,7 +24,9 @@ de bienvenida corta te guía con el resto.
   abierto); si no, haz clic en Buscar.
 - **¿"Windows protegió su PC"?** El instalador no tiene firma digital (los certificados cuestan
   dinero), así que SmartScreen avisa la primera vez: **Más información → Ejecutar de todas formas**.
-  Algunos antivirus también desconfían de los instaladores sin firma. Siempre puedes compilarlo tú
+  Algunos antivirus también desconfían de los instaladores nuevos sin firma: Malwarebytes, por
+  ejemplo, puede ponerlo en cuarentena como "MachineLearning/Anomalous", que es una suposición de
+  IA y no una amenaza conocida. Si confías en él, restáuralo de la cuarentena, o compílalo tú
   mismo desde este repositorio (ver abajo).
 - **Las actualizaciones** se instalan solas desde las versiones de este repositorio (se revisan una
   vez al día y se verifican con checksum) y se aplican la próxima vez que abres Fightcade.
@@ -85,6 +87,10 @@ de bienvenida corta te guía con el resto.
   avisos con nombres.
 - **Overlay de OBS:** un marcador (tú vs tu rival, rangos, el marcador y el récord de la noche)
   para agregar en OBS como fuente de Navegador.
+
+| | |
+|---|---|
+| ![Buscar partida: jugadores libres cerca de tu rango, con probabilidades y un botón Desafiar](docs/screenshots/findmatch.png) | ![Modo streamer: otros jugadores difuminados, desafíos en cola](docs/screenshots/streamer.png) |
 
 <img src="docs/screenshots/feed.png" alt="El feed del lobby: sorpresas, rachas y partidas para ver" width="720">
 

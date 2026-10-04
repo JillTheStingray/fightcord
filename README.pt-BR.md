@@ -1,6 +1,6 @@
 # Fightcord
 
-[English](README.md) · **Português (Brasil)** · [Español](README.es.md)
+[Site](https://jillthestingray.github.io/fightcord/pt/) · [English](README.md) · **Português (Brasil)** · [Español](README.es.md)
 
 **O Fightcade com a cara e o jeito do Discord**, mais um monte de ferramentas para quem joga
 competitivo. Um instalador, nenhum outro download, tudo rodando dentro do app do Fightcade no seu PC.
@@ -23,8 +23,10 @@ de boas-vindas curta te guia pelo resto.
   aberto); se não, clique em Procurar.
 - **"O Windows protegeu o computador"?** O instalador não tem assinatura digital (certificados
   custam caro), então o SmartScreen avisa na primeira vez: **Mais informações → Executar assim mesmo**.
-  Alguns antivírus também desconfiam de instaladores sem assinatura. Você sempre pode compilar
-  você mesmo a partir deste repositório (veja abaixo).
+  Alguns antivírus também desconfiam de instaladores novos sem assinatura: o Malwarebytes, por
+  exemplo, pode colocá-lo em quarentena como "MachineLearning/Anomalous", que é um palpite de IA e
+  não uma ameaça conhecida. Se confiar, restaure-o da quarentena, ou compile você mesmo a partir
+  deste repositório (veja abaixo).
 - **As atualizações** se instalam sozinhas a partir das versões deste repositório (verificadas uma vez
   por dia, conferidas por checksum) e valem na próxima vez que você abrir o Fightcade.
 - **Desinstalar:** rode o instalador de novo → Desinstalar. Suas configurações ficam guardadas numa
@@ -83,6 +85,10 @@ de boas-vindas curta te guia pelo resto.
   coloca os desafios numa fila (um por vez, nenhum durante a partida) e silencia avisos com nomes.
 - **Overlay do OBS:** um placar (você vs seu oponente, ranks, o placar e o saldo da noite) para
   adicionar no OBS como fonte de Navegador.
+
+| | |
+|---|---|
+| ![Achar partida: jogadores livres perto do seu rank, com chances e um botão Desafiar](docs/screenshots/findmatch.png) | ![Modo streamer: outros jogadores borrados, desafios numa fila](docs/screenshots/streamer.png) |
 
 <img src="docs/screenshots/feed.png" alt="O feed do lobby: zebras, sequências e partidas para assistir" width="720">
 

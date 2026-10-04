@@ -1,6 +1,6 @@
 # Fightcord
 
-**English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
+[Website](https://jillthestingray.github.io/fightcord/) · **English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
 
 **Fightcade, but it looks and works like Discord**, plus a stack of tools for competitive players.
 One installer, no other downloads, everything runs inside the Fightcade app on your PC.
@@ -23,7 +23,9 @@ walks you through the rest.
   Fightcade); otherwise press Browse.
 - **"Windows protected your PC"?** The installer isn't code-signed (certificates cost money), so
   SmartScreen warns about it the first time: **More info → Run anyway**. Some antivirus programs
-  are wary of unsigned installers too. You can always build it yourself from this repo (see below).
+  are wary of new unsigned installers too: Malwarebytes, for one, may quarantine it as
+  "MachineLearning/Anomalous", which is an AI guess rather than a known threat. Restore it from
+  quarantine if you trust it, or build it yourself from this repo (see below).
 - **Updates** install themselves from this repo's releases (checked once a day, verified by
   checksum), and apply the next time you start Fightcade.
 - **Uninstall:** run the installer again → Uninstall. Your settings are kept in a backup folder,
@@ -80,6 +82,10 @@ walks you through the rest.
   incoming challenges in a queue (one at a time, none mid-match) and quiets pop-ups that name people.
 - **OBS overlay:** a scoreboard (you vs your opponent, ranks, the score, tonight's record) to add
   in OBS as a Browser Source.
+
+| | |
+|---|---|
+| ![Find a match: free players near your rank, with odds and a Challenge button](docs/screenshots/findmatch.png) | ![Streamer mode: other players blurred, challenges in a queue](docs/screenshots/streamer.png) |
 
 <img src="docs/screenshots/feed.png" alt="The lobby feed: upsets, streaks and matches to watch" width="720">
 

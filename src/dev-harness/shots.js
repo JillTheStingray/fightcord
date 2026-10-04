@@ -52,6 +52,29 @@ const SCENES = [
         F.open(ch);
         await sleep(800);` },
     { name: 'goals', snap: CHANNEL, run: `document.querySelector('.fcglPill').click(); await sleep(800);` },
+    { name: 'findmatch', snap: CHANNEL, run: `
+        // a believable mix: pings, a Wi-Fi player, ranks around yours
+        const fm = fightcord.modules.get('find-match');
+        const ch = fightcord.app.activeChannel().name;
+        fm._list().forEach((c, i) => Object.assign(fightcord.app.users()[c.name], {
+            ping: [38, 52, 61, 74, 45, 88, 97, 66, 41, 58, 83, 70][i % 12], wlan: i === 5, proxy: false,
+            channelRank: { [ch]: [2, 3, 2, 1, 3, 2, 2, 1, 3, 2, 2, 3][i % 12] } }));
+        // a couple of close rivalries from your history
+        ['HadoKid', 'Low_Kid'].forEach((n, i) => { const u = fightcord.app.users()[n]; if (u) Object.assign(u, { ping: [48, 57][i], away: false, playing: undefined, channelRank: { [ch]: 2 } }); });
+        // real-looking ELOs instead of the same rank estimate for everyone
+        __sim.elo(null, 862, false);
+        fm._list().forEach((c, i) => __sim.elo(c.name, [905, 831, 874, 948, 812, 889, 790, 856, 921, 843, 877, 802, 866, 899][i % 14], false));
+        document.querySelector('.fcfmPill').click();
+        await sleep(1200);` },
+    { name: 'streamer', snap: CHANNEL, run: `
+        fightcord.modules.get('streamer').set(true);
+        document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
+        const free = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        __sim.challenge(free[40], { ranked: 3 });
+        await sleep(300);
+        __sim.challenge(free[41], { ranked: 3 });
+        __sim.challenge(free[42], { ranked: 2 });
+        await sleep(2500);` },
     { name: 'events', snap: '2026-09-28T22-53-10-browse-search', view: 'home', keepToasts: true, run: `
         // static captures have no Vue data: give the event cards their events (odd ones = your game)
         [...document.querySelectorAll('.eventPreviewWrapper')].forEach((c, i) => { c.__vue__ = { event: {
