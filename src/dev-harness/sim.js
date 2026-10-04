@@ -59,6 +59,14 @@
         leave(name) { delete users()[name]; },
         away(name, on) { if (users()[name]) users()[name].away = on !== false; },
 
+        // Fightcade's playing event with an exact ELO (what Patreon supporters get); start = match began
+        elo(name, value, start, rank) {
+            const ch = joined();
+            const gameId = (F().channels.find(c => c.name === ch) || {}).gameid || 'sfiii3nr1';
+            F().onUserPlayingStateChanges(name || me(), start !== false, ch, 'simq' + (seq++), gameId, 1, 7000, 1, value, rank, [0, 0]);
+            return gameId;
+        },
+
         // clones the last chat line of the open channel n times
         chat(name, text, n) {
             const cc = document.querySelector('.channelWrapper:not([style*="none"]) .chatContent') || document.querySelector('.chatContent');

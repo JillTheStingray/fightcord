@@ -260,6 +260,8 @@
     const pl = { channelId: joinedName, quarkId: 'Q' + k, gameId: (FCADE.channels.find(c => c.name === joinedName) || {}).gameid || 'sfiii3nr1', port: 7000 + k };
     users[names[2 * k]].playing = pl; users[names[2 * k + 1]].playing = Object.assign({}, pl);
   }
+  // Fightcade's playing-state method (the core hooks it for exact ELO; __sim.elo calls it)
+  FCADE.onUserPlayingStateChanges = function () {};
   FCADE.connectionCallbacks = { onChallengeRequest: function (user, channel, id, ranked) { window.__spy.challenges.push([user.name, channel, id, ranked]); } };
   FCADE.declineChallenge = (channel, user, id) => window.__spy.declines.push([channel, user && user.name, id]);
   window.__spy.accepts = []; window.__spy.challengeCalls = []; window.__spy.cleared = [];

@@ -83,7 +83,7 @@ async function snapshot(rom, why) {
     if (!gi || !gi.rank) return null;                                // not ranked in this game
     const board = fc.api.cachedBoard(rom);
     const spot = board && board.get(me.toLowerCase());
-    const est = fc.data.eloFor(me, gi.rank, board, gi.elo || gi.rating);
+    const est = fc.data.eloFor(me, gi.rank, board, gi.elo || gi.rating || fc.elo.value(me, rom));
     const p = { at: t, rom, rank: gi.rank, elo: est ? est.elo : null, est: est ? est.est : true, matches: gi.num_matches || 0, pos: spot ? spot.pos : null };
     const r = mergePoint(points, p);
     points = r.points;
@@ -91,6 +91,22 @@ async function snapshot(rom, why) {
     if (r.changed) rankChanged(rom, r.changed.from, r.changed.to);
     if (page()) page().rerender && refreshTab();
     return p;
+}
+
+// Fightcade sent your exact ELO at the end of a match (supporters): a real point right away
+function realPoint(e) {
+    if (!e || !e.mine || e.start || !e.rom || !cfg.track) return;
+    const prev = points.filter(p => p.rom === e.rom).pop();
+    const rank = e.rank || (prev && prev.rank) || 0;
+    if (!rank) return;                                                 // unranked here: nothing to chart
+    const board = fc.api.cachedBoard(e.rom);
+    const spot = board && board.get(fc.app.me().toLowerCase());
+    const p = { at: Date.now(), rom: e.rom, rank, elo: e.elo, est: false, matches: prev ? prev.matches : 0, pos: spot ? spot.pos : (prev ? prev.pos : null) };
+    const r = mergePoint(points, p);
+    points = r.points;
+    save();
+    if (r.changed) rankChanged(e.rom, r.changed.from, r.changed.to);
+    if (page()) page().rerender && refreshTab();
 }
 
 // the games worth tracking: the one on screen + what you played in the last 30 days
@@ -271,6 +287,7 @@ function start(f) {
     if (stats && stats.addTab) fc.own(stats.addTab({ id: 'progress', label: 'Progress', order: 20, html: tabHtml, after: tabAfter }));
     // after a set, Fightcade updates your rank within a minute or so
     fc.on('set:recorded', (s) => { if (s && s.rom) setTimeout(() => snapshot(s.rom, 'set'), 60000); });
+    fc.on('elo:real', realPoint);
     fc.tick(daily, 30 * 60000, { delay: 25000, whileHidden: true });
     fc.settings.block({
         id: 'progress', section: 'match', title: 'Rank & ELO history', hint: '— the Progress tab on your stats page', store, order: 20,

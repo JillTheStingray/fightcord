@@ -247,8 +247,12 @@ function recordSet(set) {
 }
 
 // the lines under the score, built AFTER the set was recorded
-function extrasFor(kind, opp, before) {
+function extrasFor(kind, opp, before, elo) {
     const ex = { lines: [] };
+    if (elo) {
+        const d = elo.end - elo.start;
+        ex.lines.push('ELO ' + elo.end.toLocaleString('en-US') + (d ? ' (' + (d > 0 ? '+' : '−') + Math.abs(d) + ')' : ''));
+    }
     const st = streakOf(H().all());
     if (kind === 'won' && st.kind === 'won' && st.n >= 2) ex.streak = '🔥 ' + st.n + ' WIN STREAK';
     else if (kind === 'lost' && before.kind === 'won' && before.n >= 2) ex.streak = 'Streak of ' + before.n + ' ended';
@@ -435,13 +439,17 @@ async function resolveResult(m) {
     const finish = (v, mine, theirs) => {
         const before = streakOf(H().all());
         const ft = knownFt(m.opp);
+        // your exact ELO before / after, when Fightcade sent it for this match (supporters)
+        const real = m.rom ? fc.elo.mine(m.rom) : null;
+        const elo = real && real.start && real.end && Date.now() - real.at < 3 * 60000 ? real : null;
         recordSet({ at: Date.now(), opp: m.opp || '', game: m.game || '', channel: m.channel || '', rom: m.rom || '', result: v || null,
             mine: mine == null ? null : mine, theirs: theirs == null ? null : theirs, quark: m.quark, ft: ft == null ? undefined : ft,
             startedAt: m.at, durSec: Math.round((Date.now() - m.at) / 1000),
-            oppRank: m.oppRank || undefined, myRank: m.myRank || undefined, ping: m.ping == null ? undefined : m.ping, oppElo: m.oppElo || undefined });
+            oppRank: m.oppRank || undefined, myRank: m.myRank || undefined, ping: m.ping == null ? undefined : m.ping, oppElo: m.oppElo || undefined,
+            eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined });
         fc.emit('match:end', { quark: m.quark, opp: m.opp, result: v || null, mine, theirs });
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
-            Object.assign(extrasFor(v, m.opp, before) || {}, { rematch: { opp: m.opp, channel: m.channel, ft } })), 60000);
+            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft } })), 60000);
     };
     // 1. Fightcade's own end-of-match message (up to ~8 s)
     for (let i = 0; i < 16; i++) {
@@ -758,7 +766,7 @@ const api = {
     mergeSets: (list) => H().merge(list),
     updateSet: (quark, patch) => H().update(quark, patch),
     _history: { recordSet: (s) => recordSet(s), sessionStart: (t) => sessionStart(t), sessionSets: (t) => sessionSets(t), recordOf, streakOf,
-        recordVs: (o) => recordVs(o), extrasFor: (k, o, b) => extrasFor(k, o, b), load: () => ({ sets: H().all() }) },
+        recordVs: (o) => recordVs(o), extrasFor: (k, o, b, e) => extrasFor(k, o, b, e), load: () => ({ sets: H().all() }) },
     _showVs: (a, b) => showVs(a, b),
     _showResult: (...a) => showResult(...a),
     _quarkResult: (...a) => quarkResult(...a),

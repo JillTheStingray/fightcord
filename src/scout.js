@@ -118,12 +118,13 @@ async function loadScout(name) {
         const lower = name.toLowerCase();
         const info = fc.app.userInfo(name);
         out.lb = board ? board.get(lower) || null : null;
-        out.elo = fc.data.eloFor(name, (gi && gi.rank) || (info && info.rank) || 0, board, gi && (gi.elo || gi.rating));
+        // a real number when Fightcade sent one (fc.elo: Patreon supporters), else estimated
+        out.elo = fc.data.eloFor(name, (gi && gi.rank) || (info && info.rank) || 0, board, (gi && (gi.elo || gi.rating)) || fc.elo.value(name, gameid));
         if (me && me.toLowerCase() !== lower) {
             const mu = fc.data.pickUser(meJson);
             const mgi = mu && mu.gameinfo && gameid ? mu.gameinfo[gameid] : null;
             const mine = fc.app.userInfo(me);
-            out.myElo = fc.data.eloFor(me, (mgi && mgi.rank) || (mine && mine.rank) || 0, board, mgi && (mgi.elo || mgi.rating));
+            out.myElo = fc.data.eloFor(me, (mgi && mgi.rank) || (mine && mine.rank) || 0, board, (mgi && (mgi.elo || mgi.rating)) || fc.elo.value(me, gameid));
             if (out.elo && out.myElo) out.odds = fc.data.winOdds(out.myElo.elo, out.elo.elo, ftFor(lower));
         }
         const rows = fc.data.pickRows(quarkJson);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1
+
+- **Exact ELO for Fightcade supporters.** Fightcade sends your real ELO to Patreon supporters
+  ("Ranked Warrior" and up) when a ranked match starts and ends. Fightcord now uses it: the scout
+  card shows the real number (no "~ est."), the Progress chart plots real points, and the result
+  screen shows "ELO 1,654 (+12)". Everyone else still gets the estimate from rank + leaderboard spot.
+- The harness has `__sim.elo()` and a demo mode for screenshots.
+
 ## 2.0.0
 
 A rebuild of the whole thing, plus the biggest batch of new features so far.

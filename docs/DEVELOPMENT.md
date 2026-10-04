@@ -559,6 +559,10 @@ The pure logic (`analyze`, `evaluate`, `periodStart`, `mergePoint`, `summarize`)
   - Replay from Settings → About.
   - Harness: `?welcome=1` shows the first run, `?welcome=news` shows "What's new".
 - Core: `fc.ui.layer(close)` puts your own overlay on the shared Esc stack.
+- Core: `fc.elo` captures exact ELO from Fightcade's playing events. It hooks `root.onUserPlayingStateChanges(user, isStart, channel, quark, gameid, playerid, port, ranked, elo, rank, scores)`; the elo is above 0 only for Fightcade Patreon supporters.
+  - `value(name, rom)` gives the number, or null to fall back to the estimate. `mine(rom)` gives `{elo, at, start, end}`, persisted as `myElo` in fightcord-core-config.json.
+  - The `elo:real` event feeds scout, Progress (real points) and match-screens (`eloStart`/`eloEnd` per set, the "ELO 1,654 (+12)" result line).
+  - Harness: `__sim.elo(name, elo, start)`.
 
 ## fightcord-core.js
 

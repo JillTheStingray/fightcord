@@ -43,8 +43,9 @@ walks you through the rest.
 | ![The Discover page: your games and live matches to watch](docs/screenshots/discover.png) | ![Settings: profiles and every module on one screen](docs/screenshots/settings.png) |
 
 **For competitive players**
-- **Scout card:** your opponent's rank, ELO (real or estimated), win odds and your head-to-head,
-  the moment they challenge you.
+- **Scout card:** your opponent's rank, ELO, win odds and your head-to-head, the moment they
+  challenge you. ELO is exact for Fightcade Patreon supporters (Fightcade only sends it to them),
+  estimated from rank and leaderboard spot for everyone else.
 - **Challenge filters:** warn about or auto-decline challenges by ping, Wi-Fi / VPN, country,
   set length, rank, players you haven't met, or a block list.
 - **Match screens:** VS / YOU WON! / YOU LOST!, and tonight's record in the channel header.

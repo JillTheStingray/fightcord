@@ -2097,6 +2097,7 @@ function api_for(owner) {
         api,
         hooks: hooksFor(owner),
         history,
+        elo,
         ui, sound, fmt, data,
         log: makeLog(owner.name),
         guard: (fn, where) => guard(owner, fn, where),
@@ -2104,6 +2105,50 @@ function api_for(owner) {
         diag, diagText
     };
 }
+
+/* =========================================================================== elo */
+
+// Exact ELO, when Fightcade sends it. Its socket's stplaying / stnoplaying events carry the
+// player's ELO (filled in for Fightcade Patreon supporters, 0 for everyone else) and hand it to
+// root.onUserPlayingStateChanges(user, isStart, channel, quark, gameid, playerid, port, ranked, elo, rank, scores).
+// Yours is kept per game in fightcord-core-config.json (myElo: {rom: {elo, at, start, end}});
+// anyone else's only in memory. Without it, fc.data.eloFor keeps estimating.
+const ELO_SEEN_MAX = 2000;
+const eloSeen = new Map();               // lower(name)|rom -> { elo, at }
+function recordElo(name, rom, value, isStart, rank) {
+    if (typeof value !== 'number' || !(value > 0) || !name || !rom) return false;
+    const v = Math.round(value), t = now();
+    const key = String(name).toLowerCase() + '|' + rom;
+    eloSeen.delete(key);
+    eloSeen.set(key, { elo: v, at: t });
+    if (eloSeen.size > ELO_SEEN_MAX) eloSeen.delete(eloSeen.keys().next().value);
+    const mine = app.isMe(name);
+    if (mine && coreStore) {
+        if (!coreStore.data.myElo || typeof coreStore.data.myElo !== 'object') coreStore.data.myElo = {};
+        const prev = coreStore.data.myElo[rom] || {};
+        // start = when this match began, end = when it finished (a start with no end = still playing)
+        coreStore.data.myElo[rom] = isStart ? { elo: v, at: t, start: v }
+            : { elo: v, at: t, start: prev.start && !prev.end && t - prev.at < 3 * 3600e3 ? prev.start : undefined, end: v };
+        coreStore.save();
+    }
+    emit('elo:real', { name, rom, elo: v, start: !!isStart, mine, rank: typeof rank === 'number' && rank > 0 ? rank : undefined });
+    return true;
+}
+const elo = {
+    // a player's real ELO in a game, or null (then estimate with fc.data.eloFor)
+    value(name, rom) {
+        if (!name || !rom) return null;
+        const hit = eloSeen.get(String(name).toLowerCase() + '|' + rom);
+        if (hit) return hit.elo;
+        if (app.isMe(name)) { const m = elo.mine(rom); return m ? m.elo : null; }
+        return null;
+    },
+    // yours, with the last match's start / end values: { elo, at, start, end } | null
+    mine(rom) {
+        const m = coreStore && coreStore.data.myElo && rom ? coreStore.data.myElo[rom] : null;
+        return m && m.elo > 0 ? Object.assign({}, m) : null;
+    }
+};
 
 const fc = api_for(CORE);
 
@@ -2121,10 +2166,14 @@ function boot(fcade, opts) {
     bootInfo.at = now();
     bootInfo.version = o.version || readJson(path.join(DIR, 'fightcord.json'), {}).version || '';
     safeMode = !!o.safe;
-    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full' });
+    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full', myElo: {} });
     coreStore.on(applyCoreSettings);
     applyCoreSettings();
     if (hasDom()) {
+        // exact ELO from Fightcade's playing events (see recordElo)
+        hooksFor(CORE).method(() => app.root(), 'onUserPlayingStateChanges', {
+            before(user, isStart, channel, quark, gameid, playerid, port, ranked, value, rank) { recordElo(user, gameid, value, isStart, rank); }
+        });
         ensureStyle();
         window.fightcord = fc;
         window.addEventListener('beforeunload', flushStores);
@@ -2144,7 +2193,7 @@ module.exports.CORE_API = CORE_API;
 // for the tests (plain Node, no page)
 module.exports._test = {
     fmt, data, history, api, apiState, modules, makeOwner, fault, guard, emit, eventsFor, configFor, tickFor, runTasks, tasks,
-    exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui,
+    exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui, elo, recordElo, boot,
     setDir(d) { DIR = d; historyCache = null; stores.clear(); },
     setRoot(r) { FCADE = r; },
     reset() { mods.clear(); order.length = 0; chHandlers.length = 0; chActive = null; tasks.clear(); }
