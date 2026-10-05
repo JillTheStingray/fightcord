@@ -8,10 +8,10 @@
  * (Lite / Full / Competitive), backup & restore of all settings, and a Diagnostics page.
  * Fightcade's own settings page keeps just a way in.
  *
- * Updates: GitHub Releases of JillTheStingray/fightcord. latest.json names the new version, a
- * zip of the plugin files and its sha256. The zip is checked, unpacked into .update\ first,
- * then moved into place; it applies on the next start of Fightcade. Only this one URL, only
- * .js files, only inside Fightcord's own folder.
+ * Updates (updater.js does the work): Fightcord updates itself while Fightcade starts. For
+ * long sessions this checks once a day too; an update found then is installed right away and
+ * a green button in the left rail (and a pop-up) offers to restart Fightcade to finish.
+ * The release notes show here, so nobody has to go to GitHub.
  */
 'use strict';
 
@@ -24,7 +24,6 @@ const MANIFEST = path.join(DIR, 'fightcord.json');
 const STATE_PATH = path.join(DIR, 'fightcord-state.json');
 const RPC_CONFIG = path.join(DIR, 'discord-rpc-config.json');
 const REPO = 'JillTheStingray/fightcord';
-const LATEST_URL = 'https://github.com/' + REPO + '/releases/latest/download/latest.json';
 const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
@@ -135,9 +134,9 @@ function paneHtml(id) {
             <div class="fcordBtns">${fc.ui.btn('Check for updates', { icon: 'refresh', act: 'check' })}
                 ${L && newer(L.version, version()) && !state.ready ? fc.ui.btn(T('Install {version}', { version: L.version }), { kind: 'success', icon: 'download', act: 'install' }) : ''}
                 ${state.ready ? fc.ui.btn('Restart Fightcade', { kind: 'sec', icon: 'refresh', act: 'restart' }) : ''}</div>
-            <div class="fc-set">${toggle(ET('Install updates automatically'), ET('Checks once a day; applies on the next start'), state.autoInstall, 'data-state="autoInstall"')}</div>
-            ${L && L.notes ? `<h3>${ET('What’s new in {version}', { version: L.version })}</h3><div class="fcordNotes">${E(L.notes)}</div>` : ''}
-            <p class="lead small">${ET('From github.com/{repo} (Releases). Plugin files only; a new installer is only needed if its dependencies change.', { repo: REPO })}</p>`;
+            <div class="fc-set">${toggle(ET('Update automatically'), ET('When Fightcade starts, and once a day while it’s open'), state.autoInstall, 'data-state="autoInstall"')}</div>
+            ${L && L.notes ? `<h3>${ET('What’s new in {version}', { version: L.version })}</h3><div class="fcordNotes">${notesHtml(L.notes)}</div>` : ''}
+            <p class="lead small">${ET('Updates come straight from Fightcord’s releases on GitHub and are checked against a checksum before anything is installed. You never need to download the installer again.')}</p>`;
     }
     if (id === 'backup') {
         return `<h2>${ET('Backup & restore')}</h2>
@@ -335,7 +334,7 @@ function onModalClick(e) {
     const act = a && a.getAttribute('data-act');
     if (act === 'restart') restartFightcade();
     else if (act === 'check') checkUpdates(true);
-    else if (act === 'install') installUpdate(state.latest);
+    else if (act === 'install') checkUpdates('install');
     else if (act === 'repo') openExternal('https://github.com/' + REPO);
     else if (act === 'folder') openExternal(DIR);
     else if (act === 'backup') backup();
@@ -421,13 +420,17 @@ function openExternal(target) {
 }
 
 // Relaunch the app -- never while an emulator (a match) is running
-function restartFightcade() {
+function restartFightcade(popup) {
     let busyGame = false;
     try {
         const out = require('child_process').execSync('tasklist /fo csv /nh', { timeout: 8000 }).toString().toLowerCase();
         busyGame = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/.test(out);
     } catch (e) { /* can't tell: be careful */ busyGame = false; }
-    if (busyGame) { note('restart', T('A match is running — restart after it.')); return; }
+    if (busyGame) {
+        note('restart', T('A match is running — restart after it.'));
+        if (popup) fc.ui.toast(T('A match is running — restart after it.'), { icon: 'refresh', kind: 'warning' });
+        return;
+    }
     fc.config.flush();
     try {
         const { remote } = require('electron');
@@ -435,6 +438,7 @@ function restartFightcade() {
         remote.app.exit(0);
     } catch (e) {
         note('restart', T('Close Fightcade from its tray icon (Quit) and open it again.'));
+        if (popup) fc.ui.toast(T('Close Fightcade from its tray icon (Quit) and open it again.'), { icon: 'refresh' });
     }
 }
 
@@ -456,135 +460,70 @@ function decorateFcSettings() {
 
 /* ------------------------------------------------------------------ updates */
 
-function newer(a, b) {
-    const pa = String(a || '').split('.').map(Number), pb = String(b || '').split('.').map(Number);
-    for (let i = 0; i < 3; i++) { if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0); }
-    return false;
-}
-
-// GET with redirects (GitHub release downloads bounce to a CDN) -> Buffer
-function httpGet(url, hops) {
-    hops = hops || 0;
-    return new Promise((resolve, reject) => {
-        const mod = url.indexOf('http:') === 0 ? require('http') : require('https');
-        const req = mod.get(url, { headers: { 'User-Agent': 'Fightcord', Accept: '*/*' } }, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 6) {
-                res.resume();
-                resolve(httpGet(new URL(res.headers.location, url).href, hops + 1));
-                return;
-            }
-            if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
-            const chunks = [];
-            res.on('data', c => chunks.push(c));
-            res.on('end', () => resolve(Buffer.concat(chunks)));
-            res.on('error', reject);
-        });
-        req.setTimeout(20000, () => req.destroy(new Error('timed out')));
-        req.on('error', reject);
-    });
-}
-
-// Minimal ZIP reader: central directory -> {name: Buffer}, stored + deflate entries
-function unzip(buf) {
-    const zlib = require('zlib');
-    let eocd = -1;
-    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
-        if (buf.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
-    }
-    if (eocd < 0) throw new Error('not a zip');
-    const count = buf.readUInt16LE(eocd + 10);
-    let p = buf.readUInt32LE(eocd + 16);
-    const out = {};
-    for (let n = 0; n < count; n++) {
-        if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('bad zip directory');
-        const method = buf.readUInt16LE(p + 10);
-        const csize = buf.readUInt32LE(p + 20);
-        const nlen = buf.readUInt16LE(p + 28), xlen = buf.readUInt16LE(p + 30), clen = buf.readUInt16LE(p + 32);
-        const local = buf.readUInt32LE(p + 42);
-        const name = buf.slice(p + 46, p + 46 + nlen).toString('utf8').replace(/\\/g, '/');
-        p += 46 + nlen + xlen + clen;
-        if (name.endsWith('/')) continue;
-        if (buf.readUInt32LE(local) !== 0x04034b50) throw new Error('bad zip entry');
-        const start = local + 30 + buf.readUInt16LE(local + 26) + buf.readUInt16LE(local + 28);
-        const data = buf.slice(start, start + csize);
-        if (method === 0) out[name] = data;
-        else if (method === 8) out[name] = zlib.inflateRawSync(data);
-        else throw new Error('unsupported zip method ' + method);
-    }
-    return out;
-}
-
-// where a zip entry may go: fightcord/<file>.js -> this folder, inject.js -> the loader
-function targetFor(name) {
-    if (/^fightcord\/[a-z0-9_.-]+\.js$/i.test(name)) return path.join(DIR, name.slice('fightcord/'.length));
-    if (name === 'inject.js') return path.join(DIR, '..', 'inject.js');
-    return null;
-}
-
+const UPD = () => fc.modules.get('updater');
+const newer = (a, b) => { const u = UPD(); return u ? u.newer(a, b) : false; };
 let busy = false;
 
-async function checkUpdates(manual) {
-    if (busy) return;
-    busy = true;
-    state.status = T('Checking…'); refreshUpdatesPane();
-    state.lastCheck = Date.now();          // one try a day, whatever the answer
-    try {
-        const latest = JSON.parse((await httpGet(LATEST_URL + '?t=' + Date.now())).toString('utf8'));
-        state.latest = latest;
-        if (newer(latest.version, version()) && !(state.ready && !newer(latest.version, state.ready))) {
-            state.status = T('Fightcord {version} is available.', { version: latest.version });
-            busy = false;
-            if (state.autoInstall || manual === 'install') await installUpdate(latest);
-        } else {
-            state.status = state.ready ? state.status : T('Up to date.');
-        }
-    } catch (e) {
-        // 404 = no release on GitHub yet: nothing's wrong, there's just nothing to get
-        state.status = /HTTP 404/.test(e.message) ? T('No release published yet — you have the newest Fightcord.')
-            : T('Couldn’t check for updates ({error}). It tries again tomorrow.', { error: e.message });
-    }
-    busy = false;
-    saveState();
-    refreshUpdatesPane();
+// the release notes (Markdown from the changelog): bold, and "- " bullets
+function notesHtml(md) {
+    const lines = String(md || '').replace(/\r/g, '').split('\n');
+    let html = '', item = '';
+    const flush = () => { if (item) html += '<li>' + E(item).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>') + '</li>'; item = ''; };
+    lines.forEach(l => {
+        if (/^\s*- /.test(l)) { flush(); item = l.replace(/^\s*- /, ''); }
+        else if (l.trim()) item = item ? item + ' ' + l.trim() : l.trim();
+        else flush();
+    });
+    flush();
+    return html ? '<ul>' + html + '</ul>' : '';
 }
 
-async function installUpdate(latest) {
-    if (busy || !latest || !latest.zip) return;
+async function checkUpdates(manual) {
+    const u = UPD();
+    if (busy || !u) return;
     busy = true;
-    state.status = T('Downloading {version}…', { version: latest.version }); refreshUpdatesPane();
-    try {
-        const url = /^https:\/\//.test(latest.zip) ? latest.zip
-            : 'https://github.com/' + REPO + '/releases/download/v' + latest.version + '/' + latest.zip;
-        if (url.indexOf('https://github.com/' + REPO + '/') !== 0) throw new Error('unexpected download address');
-        const buf = await httpGet(url);
-        const hash = require('crypto').createHash('sha256').update(buf).digest('hex');
-        if (!latest.sha256 || hash !== String(latest.sha256).toLowerCase()) throw new Error('download didn’t match its checksum');
-        const files = unzip(buf);
-        const plan = Object.keys(files).map(n => [n, targetFor(n)]).filter(([, t]) => t);
-        if (!plan.length) throw new Error('nothing to install in the update');
-        // stage everything first, then move into place
-        const stage = path.join(DIR, '.update');
-        if (fs.existsSync(stage)) fs.readdirSync(stage).forEach(f => fs.unlinkSync(path.join(stage, f)));
-        else fs.mkdirSync(stage);
-        plan.forEach(([n], i) => fs.writeFileSync(path.join(stage, i + '.part'), files[n]));
-        plan.forEach(([n, t], i) => {
-            if (n === 'inject.js' && !files[n].toString('utf8').includes('/* Fightcord loader */')) return;
-            fs.renameSync(path.join(stage, i + '.part'), t);
-        });
-        fs.readdirSync(stage).forEach(f => fs.unlinkSync(path.join(stage, f)));
-        const m = manifest();
-        m.version = latest.version;
-        writeJson(MANIFEST, m);
-        state.ready = latest.version;
-        state.status = T('Fightcord {version} is installed — restart Fightcade to finish.', { version: latest.version });
-        fc.ui.toast(T('Fightcord {version} is ready', { version: latest.version }), { icon: 'download', kind: 'success', ms: 12000,
-            sub: 'Restart Fightcade to finish updating.', onClick: () => open('updates') });
-    } catch (e) {
-        state.status = T('Update failed: {error}. Nothing was changed.', { error: e.message });
+    state.status = T('Checking…'); refreshUpdatesPane();
+    const r = await u.run(DIR, { version: version(), force: manual === 'install',
+        onStatus: (t, phase) => { if (phase === 'download') { state.status = T('Downloading {version}…', { version: r0(t) }); refreshUpdatesPane(); } } });
+    const fresh = u.readState(DIR);
+    state.lastCheck = fresh.lastCheck; state.latest = fresh.latest;
+    if (r.installed) {
+        state.ready = r.version;
+        state.status = T('Fightcord {version} is installed — restart Fightcade to finish.', { version: r.version });
+        fc.ui.toast(T('Fightcord {version} is ready', { version: r.version }), { icon: 'download', kind: 'success', ms: 20000,
+            sub: T('Restart Fightcade to finish updating.'), actions: [{ label: T('Restart now'), kind: 'success', fn: () => restartFightcade(true) }, { label: T('What’s new'), fn: () => open('updates') }] });
+    } else if (r.error) {
+        state.status = r.available ? T('Update failed: {error}. Nothing was changed.', { error: r.error })
+            : T('Couldn’t check for updates ({error}). It tries again tomorrow.', { error: r.error });
+    } else if (r.available) {
+        state.status = T('Fightcord {version} is available.', { version: r.latest.version });
+    } else if (!state.ready) {
+        state.status = r.latest ? T('Up to date.') : T('No release published yet — you have the newest Fightcord.');
     }
     busy = false;
     saveState();
     refreshUpdatesPane();
+    refreshUpdateButton();
+}
+// "Updating Fightcord to 2.4.0…" -> "2.4.0"
+const r0 = (t) => (String(t).match(/\d+\.\d+\.\d+/) || [''])[0];
+
+// Discord's green "update ready" button, at the top of the bottom of the left rail
+function refreshUpdateButton() {
+    document.querySelectorAll('.mainToolbar .buttonBar').forEach(bar => {
+        let b = bar.querySelector(':scope > .fcordUpd');
+        if (!state.ready) { if (b) b.remove(); return; }
+        if (!b) {
+            b = document.createElement('div');
+            b.className = 'fcordUpd';
+            b.innerHTML = fc.ui.icon('download');
+            b.addEventListener('mousedown', (e) => e.stopPropagation());
+            b.addEventListener('click', (e) => { e.stopPropagation(); restartFightcade(true); });
+            bar.insertBefore(b, bar.firstChild);
+        }
+        const t = T('Fightcord {version} is ready — click to restart Fightcade and finish updating', { version: state.ready });
+        if (b.title !== t) b.title = t;
+    });
 }
 
 function refreshUpdatesPane() {
@@ -594,6 +533,14 @@ function refreshUpdatesPane() {
 /* -------------------------------------------------------------------- style */
 
 const CSS = `
+.mainToolbar .buttonBar > .fcordUpd { width: 40px; height: 40px; margin: 0 auto 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #fff; background: var(--fc-success); box-shadow: 0 0 0 0 rgba(35,165,90,.6); animation: fcordUpdPulse 2s ease-out infinite; transition: border-radius .15s ease; }
+.mainToolbar .buttonBar > .fcordUpd:hover { border-radius: 14px; }
+.mainToolbar .buttonBar > .fcordUpd .fc-ic { width: 22px; height: 22px; }
+@keyframes fcordUpdPulse { 0% { box-shadow: 0 0 0 0 rgba(35,165,90,.6); } 70%, 100% { box-shadow: 0 0 0 10px rgba(35,165,90,0); } }
+.fcordNotes ul { margin: 0; padding-left: 20px; list-style: disc outside; white-space: normal; }
+.fcordNotes li { margin-bottom: 8px; }
+.fcordNotes code { padding: 0 4px; border-radius: 3px; background: var(--fc-s1); font-size: 13px; }
 #fcordModal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal); display: flex; visibility: hidden; opacity: 0;
     transform: scale(1.04); transition: opacity .18s ease, transform .18s ease, visibility 0s linear .18s;
     background: var(--fc-s3); color: var(--fc-text); font: 16px/1.375 var(--fc-font); }
@@ -646,7 +593,7 @@ const CSS = `
 #fcordModal .fcordBtns { display: flex; flex-wrap: wrap; align-items: center; margin: 16px 0 8px; }
 #fcordModal .fcordBtns > .fc-btn { margin: 0 8px 8px 0; }
 #fcordModal .fcordNote { font-size: 13px; color: var(--fc-warning); min-height: 18px; margin-bottom: 8px; }
-#fcordModal .fcordNotes { white-space: pre-wrap; font-size: 14px; padding: 12px 16px; border-radius: var(--fc-r2); background: var(--fc-s2); }
+#fcordModal .fcordNotes { white-space: normal; font-size: 14px; padding: 12px 16px; border-radius: var(--fc-r2); background: var(--fc-s2); }
 #fcordModal .fcordTiles { display: flex; flex-wrap: wrap; margin: 0 -6px; }
 #fcordModal .fcordTiles .fc-tile { flex: 1 1 140px; margin: 0 6px 12px; background: var(--fc-s2); }
 #fcordModal .fcordMods { border-radius: var(--fc-r2); overflow: hidden; background: var(--fc-s2); }
@@ -684,6 +631,16 @@ function onKeyDown(e) {
 function start(f) {
     fc = f;
     state = Object.assign({ autoInstall: true, lastCheck: 0, latest: null, status: '', ready: '' }, readJson(STATE_PATH, {}));
+    // already running the version that was waiting for a restart
+    if (state.ready && !(UPD() && UPD().newer(state.ready, version()))) { state.ready = ''; state.status = T('Up to date.'); }
+    const just = state.justUpdated;
+    if (just) {
+        delete state.justUpdated;
+        state.status = T('Updated to Fightcord {version} when Fightcade started.', { version: just.version });
+        if (Date.now() - (just.at || 0) < 10 * 60000) setTimeout(() => fc.ui.toast(T('Fightcord updated to {version}', { version: just.version }),
+            { icon: 'download', kind: 'success', ms: 9000, sub: T('It updated itself while Fightcade started.'), actions: [{ label: T('What’s new'), fn: () => open('updates') }] }), 6000);
+    }
+    saveState();
     window.__fcordCoreLoaded = true;
     fc.ui.style('fcordStyle', CSS);
     BUILTIN.forEach(([id, label, icon, order]) => fc.settings.section(id, label, icon, order));
@@ -707,6 +664,7 @@ function start(f) {
         const m = document.getElementById('fcordModal');
         if (m) m.remove();
         fc.ui.style('fcordStyle', null);
+        document.querySelectorAll('.fcordUpd').forEach(b => b.remove());
         window.__fcordCoreLoaded = false;
     });
     fc.cmd('fightcord', 'Open the Fightcord settings', () => open());
@@ -714,7 +672,9 @@ function start(f) {
         fc.ui.toast('Fightcord commands', { icon: 'info', ms: 15000, sub: fc.cmd.list().map(c => '/' + c.name + (c.args ? ' ' + c.args : '')).join(' · ') });
     });
     fc.watch(decorateFcSettings, { selector: '.settingsWrapper' });
-    // once a day, a little after start
+    fc.watch(refreshUpdateButton, { selector: '.mainToolbar' });
+    // the loader checked at startup; for long sessions, once a day after that
+    fc.tick(() => { if (state.autoInstall && Date.now() - (state.lastCheck || 0) > 20 * 3600000) checkUpdates(false); }, 15 * 60000, { whileHidden: true });
     setTimeout(() => { if (Date.now() - (state.lastCheck || 0) > 20 * 3600000) checkUpdates(false); }, 20000);
     fc.log('settings ready - Fightcord ' + version());
     return api;
@@ -727,9 +687,8 @@ const api = {
     profiles: () => PROFILES,
     profile: () => currentProfile(),
     applyProfile: (k) => applyProfile(k),
-    _unzip: unzip,
-    _newer: newer,
-    _targetFor: targetFor,
+    _notesHtml: (md) => notesHtml(md),
+    _refreshUpdateButton: () => refreshUpdateButton(),
     _checkUpdates: (m) => checkUpdates(m),
     _state: () => state,
     _search: (q) => runSearch(q)

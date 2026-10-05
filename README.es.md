@@ -28,8 +28,11 @@ de bienvenida corta te guía con el resto.
   ejemplo, puede ponerlo en cuarentena como "MachineLearning/Anomalous", que es una suposición de
   IA y no una amenaza conocida. Si confías en él, restáuralo de la cuarentena, o compílalo tú
   mismo desde este repositorio (ver abajo).
-- **Las actualizaciones** se instalan solas desde las versiones de este repositorio (se revisan una
-  vez al día y se verifican con checksum) y se aplican la próxima vez que abres Fightcade.
+- **Las actualizaciones** ocurren dentro de Fightcade: al abrirlo, Fightcord revisa las versiones de
+  este repositorio e instala la nueva antes de cargar (verificada con checksum). Nunca necesitas volver
+  aquí ni ejecutar el instalador otra vez. Si Fightcade queda abierto por días, un botón verde en la
+  barra izquierda ofrece reiniciar cuando la actualización está lista, y Configuración →
+  Actualizaciones muestra las novedades.
 - **Desinstalar:** vuelve a ejecutar el instalador → Desinstalar. Tu configuración queda guardada en
   una carpeta de respaldo y, si antes usabas Cerberus, se puede restaurar.
 

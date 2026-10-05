@@ -26,8 +26,10 @@ walks you through the rest.
   are wary of new unsigned installers too: Malwarebytes, for one, may quarantine it as
   "MachineLearning/Anomalous", which is an AI guess rather than a known threat. Restore it from
   quarantine if you trust it, or build it yourself from this repo (see below).
-- **Updates** install themselves from this repo's releases (checked once a day, verified by
-  checksum), and apply the next time you start Fightcade.
+- **Updates** happen inside Fightcade: when you open it, Fightcord checks this repo's releases and
+  installs a new version before it loads (verified by checksum). You never need to come back here or
+  run the installer again. If Fightcade stays open for days, a green button in the left rail offers a
+  restart once an update is ready, and Settings → Updates shows what's new.
 - **Uninstall:** run the installer again → Uninstall. Your settings are kept in a backup folder,
   and if you had Cerberus before, it can be put back.
 

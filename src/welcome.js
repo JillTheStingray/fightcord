@@ -48,6 +48,10 @@ const NEWS = [
         ['target', N_('Find a match'), N_('The new button in the channel header lists who’s free near your rank, on a good ping, with your odds and a Challenge button. Or type /find.')],
         ['eye', N_('Streamer mode'), N_('Ctrl+Shift+H blurs other players’ names, avatars and chat, and lines challenges up one at a time. Settings → Streamer mode.')],
         ['play', N_('OBS overlay'), N_('A scoreboard for your stream: you vs your opponent, the score and tonight’s record. Switch it on under Settings → Streamer mode.')]
+    ] },
+    { v: '2.4', title: 'Fightcord 2.4', items: [
+        ['download', N_('Updates itself as Fightcade starts'), N_('New versions now install while Fightcade opens, so you never need GitHub or the installer again.')],
+        ['refresh', N_('Restart when it suits you'), N_('An update that arrives while Fightcade is open shows a green button in the left rail. Its notes are in Settings → Updates.')]
     ] }
 ];
 

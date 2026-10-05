@@ -6,15 +6,16 @@
 #      the zip embedded as a resource -> one self-contained .exe
 # With -Release it also runs the harness smoke test (when snapshots are there) and writes the
 # in-app update for GitHub Releases:
-#   dist\fightcord-<version>-update.zip   (inject.js + fightcord\*.js, no node_modules)
+#   dist\fightcord-<version>-update.zip   (inject.js, fightcord\*.js, fightcord\node_modules, files.json)
 #   dist\latest.json                      ({version, zip, sha256, notes})
-# Run:  powershell -ExecutionPolicy Bypass -File build.ps1 [-Release] [-Notes "what changed"]
+# Run:  powershell -ExecutionPolicy Bypass -File build.ps1 [-Release] [-Notes "what changed" | -NotesFile notes.md]
 # Works in both layouts:
 #   repo:  build.ps1 next to src\ (modules, tests, dev-harness), rpc\, loader\, installer\
 #   dev:   fightcord\build.ps1 next to ..\fightcade-fontstyle and ..\fightcade-discord-rpc
 # (ASCII only on purpose: Windows PowerShell 5.1 reads BOM-less scripts as ANSI.)
 
-param([switch]$Release, [string]$Notes = '')
+param([switch]$Release, [string]$Notes = '', [string]$NotesFile = '')
+if ($NotesFile -and (Test-Path $NotesFile)) { $Notes = [System.IO.File]::ReadAllText($NotesFile, [System.Text.Encoding]::UTF8).Trim() }
 
 $ErrorActionPreference = 'Stop'
 $here  = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -30,7 +31,7 @@ $build = Join-Path $here 'build'
 $stage = Join-Path $build 'stage'
 $dist  = Join-Path $here 'dist'
 
-$plugins = @('fightcord-core.js', 'analytics.js', 'goals.js', 'progress.js', 'feed.js', 'welcome.js', 'events.js', 'find-match.js', 'streamer.js', 'i18n-pt.js', 'i18n-es.js', 'backgrounds.js', 'branding.js', 'challenge-card.js', 'context-menu.js', 'inbox.js', 'music.js', 'profile-card.js', 'splash-art.js', 'challenge-filters.js', 'channel-banner.js', 'hover-cards.js', 'notes.js', 'chat-extras.js', 'discord-theme.js', 'discover.js', 'emoji.js', 'fightcord.js', 'friends.js',
+$plugins = @('fightcord-core.js', 'updater.js', 'analytics.js', 'goals.js', 'progress.js', 'feed.js', 'welcome.js', 'events.js', 'find-match.js', 'streamer.js', 'i18n-pt.js', 'i18n-es.js', 'backgrounds.js', 'branding.js', 'challenge-card.js', 'context-menu.js', 'inbox.js', 'music.js', 'profile-card.js', 'splash-art.js', 'challenge-filters.js', 'channel-banner.js', 'hover-cards.js', 'notes.js', 'chat-extras.js', 'discord-theme.js', 'discover.js', 'emoji.js', 'fightcord.js', 'friends.js',
              'fontstyle.js', 'match-screens.js', 'member-list.js', 'scout.js', 'snapshot.js', 'stats.js', 'translate.js')
 
 # discord-rpc's optional native helper (register-scheme) is never used: discord-rpc loads it in a
@@ -133,7 +134,13 @@ if ($Release) {
     $upStage = Join-Path $build 'update'
     New-Item -ItemType Directory -Force (Join-Path $upStage 'fightcord') | Out-Null
     Copy-Item (Join-Path $stage 'inject.js') (Join-Path $upStage 'inject.js')
+    # everything the installer puts in fightcord\ (modules + the Discord-status library), so an update
+    # never needs the installer; files.json names this version's modules (dropped ones get removed)
     Get-ChildItem (Join-Path $stage 'fightcord') -Filter *.js | ForEach-Object { Copy-Item $_.FullName (Join-Path $upStage "fightcord\$($_.Name)") }
+    Copy-Item -Recurse (Join-Path $stage 'fightcord\node_modules') (Join-Path $upStage 'fightcord\node_modules')
+    $mods = @(Get-ChildItem (Join-Path $stage 'fightcord') -Filter *.js | ForEach-Object { $_.Name } | Sort-Object)
+    $list = [ordered]@{ version = $version; modules = $mods } | ConvertTo-Json
+    [System.IO.File]::WriteAllText((Join-Path $upStage 'files.json'), $list, (New-Object System.Text.UTF8Encoding($false)))
     $upName = "fightcord-$version-update.zip"
     $upZip = Join-Path $dist $upName
     New-Zip $upStage $upZip

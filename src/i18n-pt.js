@@ -1223,5 +1223,18 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "Your record with people you recently played": "Seu retrospecto com quem você enfrentou há pouco",
     "A magnifier next to names in chat and the member list": "Uma lupa ao lado dos nomes no chat e na lista de membros",
     "the star keeps one in Highlights": "a estrela guarda um nos Destaques",
-    "They’re saved as you play (the session tracker), or bring in your recent Fightcade matches.": "Eles são salvos enquanto você joga (o placar da sessão), ou importe suas partidas recentes do Fightcade."
+    "They’re saved as you play (the session tracker), or bring in your recent Fightcade matches.": "Eles são salvos enquanto você joga (o placar da sessão), ou importe suas partidas recentes do Fightcade.",
+    "Update automatically": "Atualizar automaticamente",
+    "When Fightcade starts, and once a day while it’s open": "Quando o Fightcade abre, e uma vez por dia enquanto estiver aberto",
+    "Updates come straight from Fightcord’s releases on GitHub and are checked against a checksum before anything is installed. You never need to download the installer again.": "As atualizações vêm direto das versões do Fightcord no GitHub e são conferidas por checksum antes de qualquer instalação. Você nunca precisa baixar o instalador de novo.",
+    "Restart now": "Reiniciar agora",
+    "Fightcord {version} is ready — click to restart Fightcade and finish updating": "O Fightcord {version} está pronto — clique para reiniciar o Fightcade e terminar a atualização",
+    "Updated to Fightcord {version} when Fightcade started.": "Atualizado para o Fightcord {version} quando o Fightcade abriu.",
+    "Fightcord updated to {version}": "Fightcord atualizado para {version}",
+    "It updated itself while Fightcade started.": "Ele se atualizou sozinho enquanto o Fightcade abria.",
+    "Fightcord 2.4": "Fightcord 2.4",
+    "Updates itself as Fightcade starts": "Atualiza sozinho quando o Fightcade abre",
+    "New versions now install while Fightcade opens, so you never need GitHub or the installer again.": "As versões novas agora se instalam enquanto o Fightcade abre, então você nunca mais precisa do GitHub nem do instalador.",
+    "Restart when it suits you": "Reinicie quando for melhor para você",
+    "An update that arrives while Fightcade is open shows a green button in the left rail. Its notes are in Settings → Updates.": "Uma atualização que chega com o Fightcade aberto mostra um botão verde na barra da esquerda. As novidades ficam em Configurações → Atualizações."
 } };

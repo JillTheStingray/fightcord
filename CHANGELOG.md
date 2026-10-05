@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.4.0
+
+- **Updates from inside Fightcade.** When you open Fightcade, Fightcord checks for a new version and
+  installs it before it loads, so you're on the newest Fightcord in that same start. The splash shows
+  "Updating Fightcord…". It gives up quietly when you're offline or the connection is slow.
+- **No more installer for updates.** Updates now also carry the Discord-status library and remove
+  modules Fightcord no longer has. After the first install, nobody needs to download anything from
+  GitHub again.
+- **Restart when it suits you.** If Fightcade stays open and an update arrives, a green button
+  appears at the bottom of the left rail, and the pop-up has a **Restart now** button. It never
+  restarts during a match.
+- **What's new, in the app.** Settings → Updates shows these release notes, instead of pointing to
+  the GitHub release page.
+- Updating from 2.3.x: this one arrives the usual way (restart once); from then on updates install
+  as Fightcade starts.
+
 ## 2.3.1
 
 - **Fightcade's own rank badges.** Everywhere Fightcord shows a rank now uses Fightcade's badges

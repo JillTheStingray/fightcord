@@ -8,6 +8,10 @@
  * them in dependency order. Old-style plugins (module.exports = fn) still run as
  * require(file)(FCADE). Without a core (an older install) it falls back to that alone.
  *
+ * Updates: while Fightcade starts, updater.js checks GitHub for a newer Fightcord and installs
+ * it before the modules load, so you're on the new version right away (the splash says
+ * "Updating…"). It gives up quietly when offline or slow; Settings -> Updates can turn it off.
+ *
  * Safe mode: hold Shift while Fightcade starts (or "safeMode": true in fightcord.json)
  * -> only the core and the settings screen run.
  *
@@ -121,6 +125,8 @@ function settingsSwitch(manifest) {
 
 // FightCord splash: from page load until Fightcade has logged in (or shows its login
 // screen). Plain DOM -- it runs before Fightcade's app exists. Click to skip.
+const splashCtl = { text: '', hold: false };
+
 function splash(manifest) {
     if (manifest.splash === false || !document.body) return;
     let art = '';
@@ -179,9 +185,31 @@ function splash(manifest) {
             else if (v.initializingApp) text = 'Loading your channels\u2026';
             else { text = 'Ready'; ready = true; }
         }
+        if (splashCtl.text) text = splashCtl.text;
         if (msg.textContent !== text) msg.textContent = text;
-        if ((ready && Date.now() - t0 > 800) || Date.now() - t0 > (window.__fcordSplashMax || 30000)) finish();
+        if ((ready && !splashCtl.hold && Date.now() - t0 > 800) || Date.now() - t0 > (window.__fcordSplashMax || 30000)) finish();
     }, 150);
+}
+
+// A newer Fightcord? Install it before anything loads. Resolves when done, skipped or given up on.
+function startupUpdate(manifest) {
+    let upd = null;
+    try { upd = require(path.join(DIR, 'updater.js')); } catch (e) { return Promise.resolve(null); }
+    const st = upd.readState(DIR);
+    // off in settings, or checked a moment ago (a restart): nothing to do
+    if (st.autoInstall === false || Date.now() - (st.lastCheck || 0) < 10 * 60000) return Promise.resolve(null);
+    let gaveUp = false;
+    const work = upd.run(DIR, {
+        version: manifest.version, startup: true, checkTimeout: 5000, downloadTimeout: 20000, cancelled: () => gaveUp,
+        onStatus: (text, phase) => { if (phase !== 'check') { splashCtl.hold = phase === 'download'; splashCtl.text = text; } }
+    }).then(r => {
+        if (r && r.installed) { manifest.version = r.version; LOG('updated to ' + r.version); }
+        else if (r && r.error) LOG('update check: ' + r.error);
+        return r;
+    }).catch(e => { LOG('update failed', e.message); return null; });
+    // never hold Fightcade up for long: past 25 s the update waits for Settings -> Updates
+    const cap = new Promise(res => setTimeout(() => { gaveUp = true; res(null); }, 25000));
+    return Promise.race([work, cap]).then(r => { splashCtl.hold = false; splashCtl.text = ''; return r; });
 }
 
 (function init() {
@@ -193,8 +221,11 @@ function splash(manifest) {
     }
     const unwatch = watchShift();
     splash(manifest);
+    const updated = startupUpdate(manifest);
     whenReady((FCADE) => {
-        unwatch();
-        loadPlugins(FCADE, manifest, shiftHeld || manifest.safeMode === true);
+        updated.then(() => {
+            unwatch();
+            loadPlugins(FCADE, readManifest().version ? Object.assign(manifest, { version: readManifest().version }) : manifest, shiftHeld || manifest.safeMode === true);
+        });
     });
 })();
