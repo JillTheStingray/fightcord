@@ -121,6 +121,10 @@
         const DAY = 86400e3, now = Date.now();
         const sets = [];
         let q = 1000;
+        // characters from their own generator, so the rest of the made-up history stays the same
+        let cseed = 11;
+        const crnd = () => (cseed = (cseed * 16807) % 2147483647) / 2147483647;
+        const CAST = ['Ken', 'Chun-Li', 'Yun', 'Yang', 'Dudley', 'Makoto', 'Ryu', 'Urien', 'Ibuki', 'Necro'];
         const addSet = (at, myRank, winP) => {
             const oppRank = Math.max(1, Math.min(6, myRank + Math.round((rnd() - 0.5) * 3)));
             const ft = pick([2, 3, 3, 5, 5, 5, 10]);
@@ -131,7 +135,7 @@
             const durSec = Math.round(ft * (110 + rnd() * 80));
             sets.push({ at, opp: pick(opps), game: 'SFIII 3rd Strike', channel, rom, result: won ? 'won' : 'lost',
                 mine: won ? ft : loser, theirs: won ? loser : ft, quark: 'demo' + (q++), ft, startedAt: at - durSec * 1000, durSec,
-                oppRank, myRank, ping, emu: 'fbneo' });
+                oppRank, myRank, ping, emu: 'fbneo', myChar: crnd() < 0.8 ? 'Akuma' : 'Ken', oppChar: CAST[Math.floor(crnd() * crnd() * CAST.length)] });
         };
         for (let d = 45; d >= 1; d--) {
             if (rnd() < 0.3) continue;

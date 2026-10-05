@@ -243,6 +243,31 @@ const streakOf = (sets) => fc.data.streakOf(sets);
 const recordVs = (opp) => H().recordVs(opp);
 const sessionStart = (at) => fc.data.sessionStart(at || Date.now(), cfg.sessionClearedAt);
 
+// Characters per set, from the emulator's files: when the games-won total goes up, the
+// characters on screen played the game that just ended. c = { total, mine: {char: games}, theirs, lastMine, lastTheirs }
+function charStep(c, s) {
+    if (!s) return c;
+    const total = (s.mine.score || 0) + (s.theirs.score || 0);
+    if (!c) c = { total, mine: {}, theirs: {}, lastMine: '', lastTheirs: '' };
+    if (total > c.total) {
+        const n = total - c.total;
+        if (s.mine.char) c.mine[s.mine.char] = (c.mine[s.mine.char] || 0) + n;
+        if (s.theirs.char) c.theirs[s.theirs.char] = (c.theirs[s.theirs.char] || 0) + n;
+    }
+    c.total = Math.max(c.total, total);
+    if (s.mine.char) c.lastMine = s.mine.char;
+    if (s.theirs.char) c.lastTheirs = s.theirs.char;
+    return c;
+}
+
+function trackEmu(m) {
+    const e = fc.emu && fc.emu.match(m.quark);
+    const s = e && fc.emu.sides(e, fc.app.me());
+    if (!s) return;
+    m.chars = charStep(m.chars, s);
+    m.emuScore = { mine: s.mine.score, theirs: s.theirs.score };
+}
+
 function recordSet(set) {
     H().add(set);
     refreshSessionPill();
@@ -439,6 +464,13 @@ async function resolveResult(m) {
     const me = fc.app.me();
     // record first (streaks / tonight's record include this set), then show
     const finish = (v, mine, theirs) => {
+        trackEmu(m);
+        const es = m.emuScore;
+        if (mine == null && es && es.mine != null && es.theirs != null && (!v || verdict(es.mine, es.theirs) === v)) {
+            mine = es.mine; theirs = es.theirs; v = v || verdict(mine, theirs);
+        }
+        const myChar = m.chars ? fc.data.mainChar(m.chars.mine, m.chars.lastMine) : '';
+        const oppChar = m.chars ? fc.data.mainChar(m.chars.theirs, m.chars.lastTheirs) : '';
         const before = streakOf(H().all());
         const ft = knownFt(m.opp);
         // your exact ELO before / after, when Fightcade sent it for this match (supporters)
@@ -448,7 +480,7 @@ async function resolveResult(m) {
             mine: mine == null ? null : mine, theirs: theirs == null ? null : theirs, quark: m.quark, ft: ft == null ? undefined : ft,
             startedAt: m.at, durSec: Math.round((Date.now() - m.at) / 1000),
             oppRank: m.oppRank || undefined, myRank: m.myRank || undefined, ping: m.ping == null ? undefined : m.ping, oppElo: m.oppElo || undefined,
-            eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined });
+            eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined, myChar: myChar || undefined, oppChar: oppChar || undefined });
         fc.emit('match:end', { quark: m.quark, opp: m.opp, result: v || null, mine, theirs });
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
             Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft } })), 60000);
@@ -547,6 +579,7 @@ function poll() {
         fc.log('match ended', m.quark);
         resolveResult(m);
     }
+    if (current && quark === current.quark) trackEmu(current);
 }
 
 // Earlier than the quark: "X accepts the challenge" in chat, or you clicking Accept.
@@ -760,6 +793,9 @@ function start(f) {
 }
 
 const api = {
+    charStep,
+    // the running match from the emulator: { quark, mine: {name, rank, score, char}, theirs } or null
+    live() { if (!current) return null; const e = fc.emu.match(current.quark); const s = e && fc.emu.sides(e, fc.app.me()); return s ? Object.assign({ quark: current.quark }, s) : null; },
     challenge: (name, ft, channel) => challenge(name, ft, channel),
     challengeState: (name, channel) => challengeState(name, channel),
     knownFt,

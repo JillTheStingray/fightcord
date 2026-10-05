@@ -56,6 +56,10 @@ const NEWS = [
     { v: '2.5', title: 'Fightcord 2.5', items: [
         ['play', N_('A new login screen'), N_('Game art, the FightCord mascot and a welcome back with your rank and last session. Settings → Appearance → Login screen.')],
         ['users', N_('Discover, made for you'), N_('Friends playing now, rivals who are free, this week’s events, and your rank and ELO on your games.')]
+    ] },
+    { v: '2.6', title: 'Fightcord 2.6', items: [
+        ['play', N_('Live from the emulator'), N_('The OBS overlay’s score now updates the moment a game ends, with both characters under the names.')],
+        ['trend', N_('Characters in your stats'), N_('Every set remembers who played which character: in your sets, head-to-heads, Analytics and the challenge card.')]
     ] }
 ];
 

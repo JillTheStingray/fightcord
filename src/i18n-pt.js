@@ -1277,5 +1277,15 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "A new login screen": "Uma nova tela de login",
     "Game art, the FightCord mascot and a welcome back with your rank and last session. Settings → Appearance → Login screen.": "Arte dos jogos, o mascote do FightCord e um bem-vindo de volta com seu rank e sua última sessão. Configurações → Aparência → Tela de login.",
     "Discover, made for you": "Descobrir, feito para você",
-    "Friends playing now, rivals who are free, this week’s events, and your rank and ELO on your games.": "Amigos jogando agora, rivais livres, os eventos da semana e seu rank e ELO nos seus jogos."
+    "Friends playing now, rivals who are free, this week’s events, and your rank and ELO on your games.": "Amigos jogando agora, rivais livres, os eventos da semana e seu rank e ELO nos seus jogos.",
+    "By your character": "Por seu personagem",
+    "By their character": "Pelo personagem do oponente",
+    "The character they played in your last set": "O personagem usado contra você no último set",
+    "{name}’s characters": "Personagens de {name}",
+    "your record against each": "seu retrospecto contra cada um",
+    "Fightcord 2.6": "Fightcord 2.6",
+    "Live from the emulator": "Direto do emulador",
+    "The OBS overlay’s score now updates the moment a game ends, with both characters under the names.": "O placar do overlay do OBS agora atualiza no instante em que um jogo termina, com os dois personagens embaixo dos nomes.",
+    "Characters in your stats": "Personagens nas suas estatísticas",
+    "Every set remembers who played which character: in your sets, head-to-heads, Analytics and the challenge card.": "Cada set lembra quem jogou com qual personagem: nos seus sets, nos confrontos diretos, na Análise e no cartão de desafio."
 } };

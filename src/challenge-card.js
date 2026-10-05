@@ -77,6 +77,7 @@ function show(d, fromQueue) {
     const rank = fc.data.rankLetter((u.channelRank && u.channelRank[d.channel]) || 0);
     const conn = fc.fmt.conn(fc.app.userInfo(d.name));
     const vs = fc.history.recordVs(d.name);
+    const lastChar = (fc.history.vs(d.name).filter(s => s.oppChar).pop() || {}).oppChar || '';
     const nt = mod('notes'), fr = mod('friends');
     const ft = +d.ranked || 0;
     const me = fc.app.me() || T('You');
@@ -99,7 +100,7 @@ function show(d, fromQueue) {
         <div class="ccStats">
             <div class="ccStat"><span>ELO</span><b class="ccElo">…</b></div>
             <div class="ccStat odds"><span>${E(T('Your odds'))}</span><b class="ccOdds">…</b><div class="ccBar"><i></i></div></div>
-            <div class="ccStat"><span>${E(T('You vs them'))}</span><b>${vs.w || vs.l ? vs.w + '–' + vs.l : E(T('first time'))}</b></div>
+            <div class="ccStat"><span>${E(T('You vs them'))}</span><b>${vs.w || vs.l ? vs.w + '–' + vs.l : E(T('first time'))}</b>${lastChar ? `<em class="ccChar" title="${E(T('The character they played in your last set'))}">${E(lastChar)}</em>` : ''}</div>
         </div>
         ${nt && nt.chips ? `<div class="ccNotes">${nt.chips(d.name)}</div>` : ''}
         ${(d.warn || []).length ? `<div class="ccWarn">${fc.ui.ic('warn')}${d.warn.map(w => E(T(w))).join(' · ')}</div>` : ''}
@@ -243,6 +244,7 @@ const CSS = `
 .ccStat { flex: 1; margin: 0 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); min-width: 0; }
 .ccStat span { display: block; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
 .ccStat b { display: block; margin-top: 2px; font-size: 16px; font-weight: 800; color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ccStat .ccChar { display: block; margin-top: 1px; font-size: 11px; font-style: normal; font-weight: 700; color: var(--fc-cyan, #22e3f2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ccStat.good b { color: var(--fc-success); } .ccStat.bad b { color: var(--fc-danger); }
 .ccBar { height: 4px; margin-top: 4px; border-radius: 2px; background: rgba(242,63,67,.35); overflow: hidden; }
 .ccBar i { display: block; height: 100%; width: 0; background: var(--fc-success); transition: width .5s ease; }

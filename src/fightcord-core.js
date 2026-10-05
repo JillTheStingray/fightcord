@@ -23,6 +23,7 @@
  *   fc.api       the one Fightcade API client (queue, cache, backoff, timeouts)
  *   fc.hooks     the challenge pipeline and other hooks on Fightcade's methods
  *   fc.history   the match history store (match-history.json)
+ *   fc.emu       the running match from the emulator's overlay files (score, characters)
  *   fc.ui        the design system: icons, buttons, toasts, popovers, modals, pages, charts
  *   fc.sound     one AudioContext: chimes, sound effects, ducking under music
  *   fc.fmt / fc.data   formatting and Fightcade data helpers (pure)
@@ -156,6 +157,34 @@ const FC_ORIGIN = 'https://web.fightcade.com/';
 
 const data = {
     RANKS, RANK_COLOR, PALETTE, ELO_BANDS, FC_ORIGIN,
+
+    // the emulator writes quarks as "1791217087358-7474.0"; Fightcade's are "1791217087358-7474"
+    quarkKey: (q) => String(q || '').trim().replace(/\.\d+$/, ''),
+    // the emulator's match files ({ name: text | null }) -> { quark, rom, p1, p2 } or null
+    parseEmu(raw) {
+        const v = (k) => String((raw && raw[k]) || '').replace(/^\uFEFF/, '').trim();
+        const quark = data.quarkKey(v('gamequark'));
+        if (!quark) return null;
+        const p = (n) => {
+            const sc = v(n + 'score');
+            return { name: v(n + 'name'), rank: data.rankLetter(v(n + 'rank')), score: /^\d+$/.test(sc) ? +sc : null,
+                char: v(n + 'character'), cc: v(n + 'country').toLowerCase() };
+        };
+        return { quark, rom: v('game'), p1: p('p1'), p2: p('p2') };
+    },
+    emuSides(m, me) {
+        const k = String(me || '').toLowerCase();
+        if (!m || !k) return null;
+        if (m.p1.name.toLowerCase() === k) return { mine: m.p1, theirs: m.p2 };
+        if (m.p2.name.toLowerCase() === k) return { mine: m.p2, theirs: m.p1 };
+        return null;
+    },
+    // the character someone played most in a set ({ Akuma: 3 }), else the last one seen
+    mainChar(counts, last) {
+        let best = '', n = 0;
+        Object.keys(counts || {}).forEach(c => { if (counts[c] > n) { best = c; n = counts[c]; } });
+        return best || last || '';
+    },
 
     // 5 -> 'A', 'a' -> 'A', 0 / junk -> ''
     rankLetter(r) {
@@ -1418,6 +1447,34 @@ const history = {
     MAX: HISTORY_MAX
 };
 
+/* ====================================================================== emulator */
+
+// Fightcade's FBNeo writes the running match to <Fightcade>/emulator/fbneo/fightcade/*.txt for
+// stream overlays: the game, the quark, both players' names, ranks, scores (games won in the
+// set), characters and countries. The files stay after the match until the next one starts,
+// so callers pass the quark they expect. Read on demand, at most once a second.
+const EMU_FILES = ['game', 'gamequark', 'p1name', 'p1rank', 'p1score', 'p1character', 'p1country',
+    'p2name', 'p2rank', 'p2score', 'p2character', 'p2country'];
+let emuCache = null, emuAt = 0;
+const emuDir = () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'fightcade');
+const emu = {
+    dir: emuDir,
+    // the match in the files, or null; with a quark, only when it's that match
+    match(quark) {
+        const t = now();
+        if (t - emuAt > 1000) {
+            emuAt = t;
+            const raw = {};
+            EMU_FILES.forEach(k => { try { raw[k] = fs.readFileSync(path.join(emuDir(), k + '.txt'), 'utf8'); } catch (e) { raw[k] = null; } });
+            emuCache = data.parseEmu(raw);
+        }
+        if (!emuCache || (quark && emuCache.quark !== data.quarkKey(quark))) return null;
+        return emuCache;
+    },
+    // { mine, theirs } players of a match, by your name; null when you aren't in it
+    sides: (m, me) => data.emuSides(m, me)
+};
+
 /* ============================================================================ ui */
 
 const ICONS = {
@@ -2174,6 +2231,7 @@ function api_for(owner) {
         api,
         hooks: hooksFor(owner),
         history,
+        emu,
         elo,
         t: tr,
         ui, sound, fmt, data,
@@ -2272,9 +2330,9 @@ module.exports.isCore = true;
 module.exports.CORE_API = CORE_API;
 // for the tests (plain Node, no page)
 module.exports._test = {
-    fmt, data, history, api, apiState, modules, makeOwner, fault, guard, emit, eventsFor, configFor, tickFor, runTasks, tasks,
+    fmt, data, history, emu, api, apiState, modules, makeOwner, fault, guard, emit, eventsFor, configFor, tickFor, runTasks, tasks,
     exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui, elo, recordElo, boot, tr, setLang, pickLang, N_,
-    setDir(d) { DIR = d; historyCache = null; stores.clear(); },
+    setDir(d) { DIR = d; historyCache = null; emuAt = 0; stores.clear(); },
     setRoot(r) { FCADE = r; },
     reset() { mods.clear(); order.length = 0; chHandlers.length = 0; chActive = null; tasks.clear(); }
 };

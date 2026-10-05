@@ -48,7 +48,7 @@ function pingBucket(ms) {
 function analyze(input) {
     const sets = (input || []).filter(known).slice().sort((a, b) => (a.at || 0) - (b.at || 0));
     const out = {
-        total: rec(), byOppRank: {}, byGap: {}, byPing: {}, byHour: [], heat: [], byFt: {}, byGame: {},
+        total: rec(), byOppRank: {}, byGap: {}, byPing: {}, byHour: [], heat: [], byFt: {}, byGame: {}, byMyChar: {}, byOppChar: {},
         byPos: { first: rec(), early: rec(), late: rec() },
         tilt: { after2: rec(), fresh: rec() }, withRanks: 0, withPing: 0
     };
@@ -73,6 +73,8 @@ function analyze(input) {
         if (typeof s.ft === 'number') { const k = s.ft ? 'FT' + s.ft : 'casual'; add(out.byFt[k] || (out.byFt[k] = rec()), s); }
         const game = String(s.channel || s.game || '').replace(/\s*\([^)]*\)\s*$/, '') || N_('Unknown game');
         add(out.byGame[game] || (out.byGame[game] = rec()), s);
+        if (s.myChar) add(out.byMyChar[s.myChar] || (out.byMyChar[s.myChar] = rec()), s);
+        if (s.oppChar) add(out.byOppChar[s.oppChar] || (out.byOppChar[s.oppChar] = rec()), s);
         // where in the session
         const sk = sessionKey(s.at || 0);
         pos = sk === lastSession ? pos + 1 : 1;
@@ -172,6 +174,13 @@ function heatHtml(a) {
         `<div class="row hours"><b></b>${[0, 3, 6, 9, 12, 15, 18, 21].map(h => `<span>${String(h).padStart(2, '0')}</span>`).join('')}</div></div>`;
 }
 
+// by character, once sets carry them (from 2.6 on); the most-played six of each
+function charCards(a, card) {
+    const top = (o) => Object.keys(o).sort((x, y) => o[y].n - o[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, o[k]]);
+    return (Object.keys(a.byMyChar).length ? card(E(T('By your character')), bars(top(a.byMyChar))) : '') +
+        (Object.keys(a.byOppChar).length ? card(E(T('By their character')), bars(top(a.byOppChar))) : '');
+}
+
 function tabHtml(ctx) {
     const a = analyze(ctx.sets);
     if (a.total.n < MIN_N) return fc.ui.empty({ icon: 'trend', title: 'Not enough sets yet',
@@ -195,6 +204,7 @@ function tabHtml(ctx) {
             ${card(E(T('By set length')), bars(Object.keys(a.byFt).sort().map(k => [k, a.byFt[k]])))}
             ${card(E(T('Where in the session')), bars([[N_('1st set'), a.byPos.first], [N_('2nd–5th'), a.byPos.early], [N_('6th+'), a.byPos.late]]))}
             ${card(E(T('By game')), bars(Object.keys(a.byGame).sort((x, y) => a.byGame[y].n - a.byGame[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, a.byGame[k]])))}
+            ${charCards(a, card)}
             ${card(E(T('When you win')) + ' <small>— ' + E(T('weekday × hour, greener = better, brighter = more sets')) + '</small>', heatHtml(a), true)}
         </div>`;
 }

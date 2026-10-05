@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.6.0
+
+- **Live from the emulator.** Fightcade's emulator writes the running match to small files for stream
+  overlays (`emulator\fbneo\fightcade`). Fightcord now reads them:
+  - The **OBS overlay** score updates the moment a game ends (it used to be every 15 seconds), and
+    shows both characters under the names.
+  - **Characters in your stats.** Every set remembers which character you and your opponent played
+    the most. They show in your sets list, as "your record against each of their characters" on a
+    head-to-head, as By your character / By their character in Analytics, and on the challenge card
+    ("3–2 · Chun-Li", what they played against you last time).
+  - Sets whose result Fightcade didn't report get their score from those files too.
+  Sets from before 2.6 have no characters. This works for FBNeo games (most of Fightcade).
+
 ## 2.5.0
 
 - **A new login screen.** Fightcade's log-in screen gets an "attract mode" makeover. Game art slowly

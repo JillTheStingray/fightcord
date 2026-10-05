@@ -118,7 +118,7 @@ function onKeyDown(e) {
 /* ------------------------------------------------------------- OBS overlay */
 
 // what the overlay shows (pure, so it can be tested)
-// m: { me, myRank, myCc, opp, oppRank, oppCc, game, ft, score: {mine, theirs} | null, session: {w, l}, showOpp,
+// m: { me, myRank, myCc, myChar, opp, oppRank, oppCc, oppChar, game, ft, score: {mine, theirs} | null, session: {w, l}, showOpp,
 //      rankImg(letter) -> Fightcade's badge url }
 function overlayState(m) {
     const o = m || {};
@@ -127,9 +127,9 @@ function overlayState(m) {
         playing,
         game: o.game || '',
         ft: o.ft || null,
-        me: { name: o.me || '', rank: o.myRank || '', img: o.myRank && o.rankImg ? o.rankImg(o.myRank) : '', cc: o.myCc || '' },
+        me: { name: o.me || '', rank: o.myRank || '', img: o.myRank && o.rankImg ? o.rankImg(o.myRank) : '', cc: o.myCc || '', char: playing ? o.myChar || '' : '' },
         opp: playing ? { name: o.showOpp === false ? T('Opponent') : o.opp, rank: o.oppRank || '', img: o.oppRank && o.rankImg ? o.rankImg(o.oppRank) : '',
-            cc: o.showOpp === false ? '' : (o.oppCc || '') } : null,
+            cc: o.showOpp === false ? '' : (o.oppCc || ''), char: o.oppChar || '' } : null,
         score: playing && o.score ? { mine: +o.score.mine || 0, theirs: +o.score.theirs || 0 } : null,
         session: o.session && (o.session.w || o.session.l) ? { w: o.session.w || 0, l: o.session.l || 0 } : null,
         labels: { tonight: T('Tonight'), waiting: T('Waiting for a match'), vs: 'VS' }
@@ -159,21 +159,34 @@ function gather() {
     const scout = mod('scout');
     const ft = opp && scout && scout.knownFt ? scout.knownFt(opp.toLowerCase()) : null;
     if (pl && live.quark !== pl.quarkId) { live.quark = pl.quarkId; live.score = null; live.at = 0; }
+    const em = pl ? emuSides(pl.quarkId) : null;
+    if (em && !opp && em.theirs.name) opp = em.theirs.name;
+    const emScore = em && em.mine.score != null && em.theirs.score != null ? { mine: em.mine.score, theirs: em.theirs.score } : null;
     return overlayState({
         me, myRank: pl ? rankOf(meU) : '', myCc: String((meU.country && meU.country.iso_code) || '').toLowerCase(),
         opp, oppRank: opp ? rankOf(oppU) : '', oppCc: String((oppU && oppU.country && oppU.country.iso_code) || '').toLowerCase(),
         game: shortName(chName), ft: typeof ft === 'number' && ft > 0 ? ft : null,
-        score: pl && live.quark === pl.quarkId ? live.score : null,
+        score: emScore || (pl && live.quark === pl.quarkId ? live.score : null),
+        myChar: em ? em.mine.char : '', oppChar: em ? em.theirs.char : '',
         session, showOpp: cfg.overlayOpp !== false, rankImg: (l) => fc.data.rankImg(l)
     });
 }
 
-// the running set's score from Fightcade's match list, every 15 s (same as Discord status)
+// the running match in the emulator's overlay files, when you're in it
+function emuSides(quark) {
+    const e = fc.emu && fc.emu.match(quark);
+    return e ? fc.emu.sides(e, fc.app.me()) : null;
+}
+
+// the running set's score from Fightcade's match list, every 15 s (same as Discord status), for
+// emulators that don't write the overlay files
 function pollScore() {
     if (!cfg.overlay || live.busy) return;
     const me = fc.app.me();
     const pl = fc.app.playing(me);
     if (!pl) return;
+    const em = emuSides(pl.quarkId);
+    if (em && em.mine.score != null) return;
     if (live.quark !== pl.quarkId) { live.quark = pl.quarkId; live.score = null; live.at = 0; }
     if (Date.now() - live.at < 15000) return;
     live.busy = true;
@@ -197,11 +210,13 @@ html,body{margin:0;background:transparent;font-family:'Segoe UI',system-ui,sans-
 .ri{width:24px;height:24px;margin:0 6px}
 .sc{margin:0 14px;padding:0 10px;border-radius:8px;background:rgba(255,255,255,.1);font-variant-numeric:tabular-nums}
 .vs{margin:0 14px;color:#22e3f2;font-style:italic}
+.nm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1.15}.rev .nm{align-items:flex-end}
+.ch{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#22e3f2}
 .sub{margin-top:4px;font-size:13px;font-weight:600;color:#a8aed6;text-align:center;white-space:nowrap}
 .hide{display:none}
 </style></head><body><div id="b"><div class="row"><span class="p" id="me"></span><span class="sc hide" id="sc"></span><span class="vs hide" id="vs">VS</span><span class="p" id="op"></span></div><div class="sub" id="sub"></div></div>
 <script>
-function side(el,p,rev){el.textContent='';if(!p)return;var n=document.createElement('span');n.textContent=p.name;var r=null;if(p.rank){r=document.createElement('span');r.className='r';r.textContent=p.rank;if(p.img){var i=document.createElement('img');i.className='ri';i.alt=p.rank;i.src=p.img;var t=r;i.onerror=function(){i.replaceWith(t)};r=i}}var parts=rev?[r,n]:[n,r];parts.forEach(function(x){if(x)el.appendChild(x)})}
+function side(el,p,rev){el.textContent='';el.className='p'+(rev?' rev':'');if(!p)return;var n=document.createElement('span');n.className='nm';var nn=document.createElement('span');nn.textContent=p.name;n.appendChild(nn);if(p.char){var c=document.createElement('span');c.className='ch';c.textContent=p.char;n.appendChild(c)}var r=null;if(p.rank){r=document.createElement('span');r.className='r';r.textContent=p.rank;if(p.img){var i=document.createElement('img');i.className='ri';i.alt=p.rank;i.src=p.img;var t=r;i.onerror=function(){i.replaceWith(t)};r=i}}var parts=rev?[r,n]:[n,r];parts.forEach(function(x){if(x)el.appendChild(x)})}
 function draw(s){side(document.getElementById('me'),s.me,true);side(document.getElementById('op'),s.opp,false);
 var sc=document.getElementById('sc'),vs=document.getElementById('vs');
 if(s.playing&&s.score){sc.textContent=s.score.mine+' \\u2013 '+s.score.theirs;sc.classList.remove('hide');vs.classList.add('hide')}

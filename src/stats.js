@@ -99,7 +99,7 @@ function setRow(s) {
     const score = s.mine != null && s.theirs != null ? s.mine + '–' + s.theirs : '—';
     const url = replayUrl(s);
     return `<div class="fcsSet">${mark}<span class="o" ${s.opp ? `data-opp="${E(s.opp)}"` : ''} title="${s.opp ? ET('Head-to-head with {name}', { name: s.opp }) : ''}">${E(s.opp || '?')}</span><span class="sc">${score}</span>
-        <span class="g" title="${E(s.channel || s.game || '')}">${E(gameOf(s))}</span><span class="t">${when(s.at)}</span>
+        <span class="ch">${s.myChar || s.oppChar ? E((s.myChar || '?') + ' vs ' + (s.oppChar || '?')) : ''}</span><span class="g" title="${E(s.channel || s.game || '')}">${E(gameOf(s))}</span><span class="t">${when(s.at)}</span>
         ${url ? fc.ui.btn('Replay', { size: 'sm', icon: 'play', cls: 'fcsRp', title: 'Watch the replay in Fightcade', attrs: `data-replay="${E(url)}"` }) : '<span class="fcsRp none"></span>'}
         ${s.quark ? `<span class="fcsStar${s.star ? ' on' : ''}" data-star="${E(s.quark)}" title="${ET(s.star ? 'Remove from highlights' : 'Keep in highlights')}">${s.star ? fc.ui.ic('star', 'fill') : fc.ui.ic('star')}</span>` : '<span class="fcsStar none"></span>'}
     </div>`;
@@ -197,9 +197,20 @@ function h2hHtml() {
         </div>
         <div class="fcsGrid">
             ${card(ET('Win rate vs {name} over time', { name }), lineChart(sets), true)}
+            ${charCard(sets, name)}
             ${card(ET('Every set') + ' <small>— ' + sets.length + '</small>', byTime.slice().reverse().map(setRow).join(''), true)}
         </div>` : fc.ui.empty({ icon: 'users', title: T('No sets against {name} yet', { name }), sub: view.game || view.period !== 'all' ? T('Try other filters.') : '' })}
     </div>`;
+}
+
+// your record against each character they played (sets from 2.6 on carry the characters)
+function charCard(sets, name) {
+    const by = {};
+    sets.forEach(s => { if (s.oppChar) (by[s.oppChar] || (by[s.oppChar] = [])).push(s); });
+    const rows = Object.keys(by).map(c => [c, tally(by[c])]).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+    if (!rows.length) return '';
+    return card(ET('{name}’s characters', { name }) + ' <small>— ' + ET('your record against each') + '</small>',
+        rows.map(([c, x]) => `<div class="fcsRow"><span class="n">${E(c)}</span><span class="r">${rec(x)}</span><span class="p ${x.rate == null ? '' : x.rate >= .5 ? 'good' : 'bad'}">${x.rate == null ? '—' : pct(x.rate)}</span></div>${bar(x.rate)}`).join(''));
 }
 
 function onH2HAction(act, el) {
@@ -688,7 +699,8 @@ const CSS = `
 #fcsStats .fcsSet > b.w { background: var(--fc-success); } #fcsStats .fcsSet > b.l { background: var(--fc-danger); }
 #fcsStats .fcsSet .o { flex: 1 1 30%; min-width: 0; font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcsStats .fcsSet .sc { flex: none; width: 48px; font-weight: 700; font-variant-numeric: tabular-nums; }
-#fcsStats .fcsSet .g { flex: 1 1 30%; min-width: 0; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fcsStats .fcsSet .ch { flex: 1 1 22%; min-width: 0; margin-right: 8px; color: var(--fc-text); font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fcsStats .fcsSet .g { flex: 1 1 26%; min-width: 0; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcsStats .fcsSet .t { flex: none; width: 128px; text-align: right; color: var(--fc-muted); font-size: 12px; }
 #fcsStats .fcsRp { flex: none; width: 82px; margin-left: 12px; }
 #fcsStats span.fcsRp.none { display: inline-block; }
