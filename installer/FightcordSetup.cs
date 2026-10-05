@@ -27,8 +27,8 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Fightcord Setup")]
 [assembly: AssemblyProduct("Fightcord")]
-[assembly: AssemblyVersion("2.4.0.0")]
-[assembly: AssemblyFileVersion("2.4.0.0")]
+[assembly: AssemblyVersion("2.5.0.0")]
+[assembly: AssemblyFileVersion("2.5.0.0")]
 
 namespace Fightcord
 {
@@ -510,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "2.4.0";
+        const string Version = "2.5.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 
@@ -879,7 +879,7 @@ namespace Fightcord
             "theme-background.png", "theme-background.jpg", "theme-background.gif", "theme-background.webp",
             "rank-history.json", "goals-config.json", "progress-config.json", "analytics-config.json",
             "feed-config.json", "feed-history.json", "welcome-config.json", "events-config.json",
-            "find-match-config.json", "streamer-config.json"
+            "find-match-config.json", "streamer-config.json", "login-screen-config.json"
         };
         
         void DoInstall()

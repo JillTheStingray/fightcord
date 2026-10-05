@@ -61,7 +61,7 @@ const PLUGINS = [
     ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
     ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
     ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
-    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')],
     ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 

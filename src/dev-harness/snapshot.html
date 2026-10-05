@@ -302,6 +302,45 @@
   if (q.get('view')) FCADE.selectChannel(q.get('view') === 'search' ? 'search-channel' : 'welcome-channel',
     q.get('cat') ? { category: q.get('cat') } : undefined);
 
+  // ?login=1: Fightcade's log-in screen instead (logged out). Its markup is rebuilt from FC's real
+  // component CSS ([data-v-4ba73ecf], in every snapshot's styles.css) and bundle strings.
+  //   &known=1   Fightcord has seen an account log in (the greeting)   &register=1   "Create an account"
+  //   &err=1     Fightcade's error messages                            __sim.login()  logs in
+  if (q.get('login') === '1') {
+    const V = 'data-v-4ba73ecf';
+    const reg = q.get('register') === '1', err = q.get('err') === '1';
+    const area = (cls, label, type, e) => `<div ${V} class="input-area ${cls}"><div ${V} class="title${e ? ' error' : ''}"><span ${V}>${label}</span><span ${V}>${e || ''}</span></div>` +
+      `<input ${V} type="${type}" autocorrect="off" spellcheck="false"></div>`;
+    const appEl = document.querySelector('#app');
+    const lobby = appEl.innerHTML;
+    appEl.innerHTML = `<div ${V} class="login">
+      <div ${V} class="logoWrapper"><img ${V} class="logo" src="https://web.fightcade.com/static/ui/logo_full_light.svg"></div>
+      <div ${V} class="formWrapper">
+        <div ${V} class="notificationWrapper"><div ${V} class="notificationTitle">New account succesfully created</div><div ${V} class="notificationBody">Please log in.</div></div>
+        <h2 ${V}>${reg ? 'Create an account' : 'Log in'}</h2>
+        <div ${V} class="form loginform">
+          <div ${V} class="title error">${err ? 'Wrong username or password' : ''}</div>
+          ${area('username', 'Username', 'text', err ? 'Check your username' : '')}
+          ${reg ? area('email', 'E-mail', 'text', '') : ''}
+          ${area('password', 'Password', 'password', '')}
+          <div ${V} class="button-generic">${reg ? 'Register' : 'Connect'}</div>
+          ${reg ? '' : `<div ${V} class="forgotPassword"><a ${V} href="https://www.fightcade.com/resetpassword" target="_blank">Forgot your password?</a></div>`}
+          <div ${V} class="coc">By using Fightcade you adhere to the <a ${V} href="https://fgcoc.com/" target="_blank">Fighting Game Community Code of Conduct.</a></div>
+        </div>
+        <h3 ${V}>${reg ? 'Already have an account?' : 'New user?'}</h3>
+        <div ${V} class="button-generic">${reg ? 'Log in' : 'Create an account'}</div>
+      </div></div>`;
+    const loginEl = appEl.querySelector('.login');
+    window.__spy.logins = [];
+    // like Fightcade's Login component: doWork() on Connect / Enter, `working` while it runs
+    loginEl.__vue__ = { working: false, doWork() { const i = loginEl.querySelectorAll('input'); window.__spy.logins.push(i[0].value); this.working = true; } };
+    loginEl.querySelector('.form .button-generic').addEventListener('click', () => loginEl.__vue__.doWork());
+    loginEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginEl.__vue__.doWork(); });
+    const meName = LU.name, meGravatar = LU.gravatar;
+    LU.name = '';
+    if (q.get('known') === '1') _files['./login-screen-config.json'] = JSON.stringify({ lastUser: { name: meName, gravatar: meGravatar || '' } });
+    window.__simLogin = () => { appEl.innerHTML = lobby; LU.name = meName; LU.gravatar = meGravatar; };
+  }
   // Fightcade's rank badges from dev-harness/static/ranks (copied from <Fightcade>\emulator\fbneo\ui, not in the repo);
   // without them the badges fall back to letters
   window.__fcStatic = 'static/';
@@ -363,6 +402,8 @@
   await load('../events.js');
   await load('../find-match.js');
   await load('../streamer.js');
+  await load('../splash-art.js');
+  await load('../login-screen.js');
   await load('../updater.js');
   await load('../fightcord.js');
 })();

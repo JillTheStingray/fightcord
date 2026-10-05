@@ -43,14 +43,18 @@ de bienvenida corta te guía con el resto.
   tu propio fondo de chat, o tus propios colores en el editor de tema.
 - Barra de canales, lista de miembros (agrupada por rango, con ping, avisos de Wi-Fi/VPN y puesto en
   el ranking), tarjetas al pasar el mouse, panel de perfil y menú de clic derecho, todo estilo Discord.
-- La pestaña de búsqueda como una página Descubrir: categorías, "Tus juegos", En vivo ahora, búsqueda
-  instantánea y páginas de juego.
+- La pestaña de búsqueda como una página Descubrir hecha para ti: tus juegos con tu rango y ELO, amigos
+  jugando ahora, rivales libres para jugar, partidas en vivo, los eventos de la semana, categorías,
+  búsqueda instantánea y páginas de juego.
+- Una nueva pantalla de inicio de sesión: arte de juegos detrás de una tarjeta elegante, la mascota de
+  FightCord y una bienvenida con tu rango y tu última sesión.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
   fuente y traducción automática de los mensajes que recibes.
 
 | | |
 |---|---|
 | ![La página Descubrir: tus juegos y partidas en vivo para ver](docs/screenshots/discover.png) | ![Configuración: perfiles y todos los módulos en una pantalla](docs/screenshots/settings.png) |
+| ![Descubrir hecho para ti: amigos jugando, rivales en línea, partidas en vivo](docs/screenshots/discover-foryou.png) | ![La pantalla de inicio: la mascota y una bienvenida](docs/screenshots/login.png) |
 
 **Para jugadores competitivos**
 - **Ficha del rival:** su rango, ELO, probabilidades de ganar y su cara a cara, apenas te desafía.

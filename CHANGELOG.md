@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.5.0
+
+- **A new login screen.** Fightcade's log-in screen gets an "attract mode" makeover. Game art slowly
+  pans and cross-fades behind it (your own games first) under a neon tint, and the FightCord mascot
+  floats above a sleek card. The card is Fightcade's own form, restyled, so logging in works exactly as
+  before. If you've logged in before, it says **Welcome back** with your rank badge and last session.
+  It remembers only that account's name and avatar, nothing else. Settings → Appearance → Login screen
+  (Background art: your games / popular / off).
+- **Discover, made for you.** New rows on the Discover home:
+  - **Friends playing now**, with Watch.
+  - **Rivals online:** people you've played in the last 30 days who are free now, with your record
+    and a Challenge button.
+  - **Events this week:** Fightcade's tournaments with Today / Tomorrow labels, countdowns and
+    reminder bells. Your games come first.
+  Each row has its own switch. Your games tiles now also show your rank badge, ELO and how far you are
+  to the next rank.
+- Goal pop-ups now wait until you've logged in.
+
 ## 2.4.0
 
 - **Updates from inside Fightcade.** When you open Fightcade, Fightcord checks for a new version and

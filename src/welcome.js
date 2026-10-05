@@ -52,6 +52,10 @@ const NEWS = [
     { v: '2.4', title: 'Fightcord 2.4', items: [
         ['download', N_('Updates itself as Fightcade starts'), N_('New versions now install while Fightcade opens, so you never need GitHub or the installer again.')],
         ['refresh', N_('Restart when it suits you'), N_('An update that arrives while Fightcade is open shows a green button in the left rail. Its notes are in Settings → Updates.')]
+    ] },
+    { v: '2.5', title: 'Fightcord 2.5', items: [
+        ['play', N_('A new login screen'), N_('Game art, the FightCord mascot and a welcome back with your rank and last session. Settings → Appearance → Login screen.')],
+        ['users', N_('Discover, made for you'), N_('Friends playing now, rivals who are free, this week’s events, and your rank and ELO on your games.')]
     ] }
 ];
 

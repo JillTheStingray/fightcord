@@ -40,13 +40,17 @@ walks you through the rest.
   chat background, or your own colours in the theme editor.
 - A Discord-style channel rail, member list (grouped by rank, with ping, Wi-Fi/VPN warnings and
   leaderboard spots), hover cards, a profile popout and a right-click menu.
-- The search tab as a Discover page: categories, "Your games", Live now, instant search, game pages.
+- The search tab as a Discover page made for you: your games with your rank and ELO, friends playing now,
+  rivals who are free to play, live matches, this week's events, categories, instant search and game pages.
+- A new login screen: game art behind a sleek card, the FightCord mascot, and a welcome back with your
+  rank and last session.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 
 | | |
 |---|---|
 | ![The Discover page: your games and live matches to watch](docs/screenshots/discover.png) | ![Settings: profiles and every module on one screen](docs/screenshots/settings.png) |
+| ![Discover made for you: friends playing now, rivals online, live matches](docs/screenshots/discover-foryou.png) | ![The login screen: the mascot and a welcome back](docs/screenshots/login.png) |
 
 **For competitive players**
 - **Scout card:** your opponent's rank, ELO, win odds and your head-to-head, the moment they

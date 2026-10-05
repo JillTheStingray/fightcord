@@ -101,6 +101,7 @@ const periodKey = (g) => g.scope + ':' + periodStart(g.scope, Date.now(), cleare
 
 // a goal just reached in this period: celebrate once
 function check() {
+    if (fc.app && !fc.app.me()) return;      // Fightcade's log-in screen: nothing to report yet
     let changed = false;
     results().forEach(({ g, r }) => {
         const key = periodKey(g);
@@ -306,7 +307,9 @@ function start(f) {
     fc.on('history:merged', check);
     fc.watch(refreshPill, { selector: '.channelToolbar' });
     fc.tick(check, 60000);                         // a new day / week starts on its own
-    setTimeout(() => { check(); lastSessionSummary(); }, 8000);
+    // after you've logged in (not on Fightcade's log-in screen)
+    const later = () => { if (fc.app.me()) { check(); lastSessionSummary(); } else setTimeout(later, 3000); };
+    setTimeout(later, 8000);
     return api;
 }
 

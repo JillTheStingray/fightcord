@@ -49,6 +49,8 @@
         },
         meMatch(opp) { return (sim._mine = sim.matchStart(me(), opp || sim.users().find(n => n !== me()))); },
         meMatchEnd() { if (sim._mine) sim.matchEnd(sim._mine); sim._mine = null; },
+        // snapshot.html?login=1: log in (the lobby comes back)
+        login() { if (window.__simLogin) window.__simLogin(); },
 
         join(name, o) {
             const p = o || {};

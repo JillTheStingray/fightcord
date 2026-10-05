@@ -28,6 +28,9 @@ const DEFAULTS = {
     enabled: true,
     yourGames: true,       // "Your games" row on the home view
     liveRow: true,         // "Live now" row on the home view
+    friendsRow: true,      // "Friends playing now"
+    rivalsRow: true,       // "Rivals online": people you've played lately who are free
+    eventsRow: true,       // "Events this week"
     tilt: true,            // 3D tilt, glare and the ambient glow
     animations: true
 };
@@ -314,7 +317,7 @@ html.fcd-on .welcomeWrapper .contentWrapper { display: flex; flex-direction: col
 html.fcd-on .welcomeWrapper .contentWrapper > * { flex: none; }
 /* the search bar sits on the page; the spotlight below it is the card */
 html.fcd-on .welcomeWrapper .contentWrapper > header {
-    order: -2; position: relative; z-index: 2;
+    order: -10; position: relative; z-index: 2;
     margin: 0; min-height: 0; padding: 16px 24px 0; border-radius: 0;
     display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; text-align: left;
     background: none; background-image: none; box-shadow: none;
@@ -692,7 +695,7 @@ html.fcd-on .categoryPreviewWrapper .categoryActions .browseButton {
 }
 
 /* ============================ your games ================================ */
-#fcdYours { display: none; order: -1; margin: 14px 0 0; }
+#fcdYours { display: none; order: -6; margin: 14px 0 0; }
 html.fcd-on #fcdYours.has { display: block; }
 html.fcd-on #fcdYours .fcdYoursGrid {
     grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); grid-auto-columns: auto;
@@ -915,7 +918,7 @@ const CSS2 = `
 #fcdQuick .fcdQKey { flex: none; margin-left: 8px; font-size: 11px; color: var(--dc-muted, #949ba4); }
 
 /* ============================= live now row ============================ */
-#fcdLive { display: none; order: -1; margin: 14px 0 0; }
+#fcdLive { display: none; order: -4; margin: 14px 0 0; }
 html.fcd-on #fcdLive.has { display: block; }
 html.fcd-on #fcdLive .fcdYoursGrid { grid-auto-columns: var(--fcd-col, 300px); }
 #fcdLive .fcdRowHead h3 .fcdLiveCount { color: #fff; background: var(--dc-red, #f23f43); }
@@ -1062,7 +1065,7 @@ const ANIM = `
 html.fcd-anim.fcd-browse #fcdNav.fresh { animation: fcdSlideIn .35s cubic-bezier(.2,.8,.2,1) both; }
 html.fcd-anim .welcomeWrapper .contentWrapper > header { animation: fcdRise .45s cubic-bezier(.2,.8,.2,1) both; }
 html.fcd-anim .fcdHeroArt.on, html.fcd-anim .fcdSpotArt > i.on { animation: fcdKen 14s ease-out both; }
-html.fcd-anim .welcomeListWrapper, html.fcd-anim #fcdYours.has, html.fcd-anim #fcdLive.has {
+html.fcd-anim .welcomeListWrapper, html.fcd-anim #fcdYours.has, html.fcd-anim #fcdLive.has, html.fcd-anim .fcdXRow.has {
     animation: fcdRise .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--fcd-i, 0) * 70ms + 60ms);
 }
 html.fcd-anim .welcomeListWrapper .gridWrapper, html.fcd-anim #fcdYours .fcdTile,
@@ -1086,7 +1089,8 @@ html.fcd-on:not(.fcd-anim) .categoryPreviewWrapper:hover .thumbnail { background
 html.fcd-anim .eventPreviewWrapper[data-fcd-live]::before, html.fcd-anim .fcdLivePill { animation: fcdPulse 1.6s ease-out infinite; }
 html.fcd-anim .fcdSpotText.fcd-in { animation: fcdSpotIn .5s cubic-bezier(.2,.8,.2,1) both; }
 html.fcd-anim .fcdCard.pop { animation: fcdPop .4s cubic-bezier(.2,.8,.2,1) both; }
-html.fcd-anim #fcdLive .fcdLiveCard { animation: fcdPop .4s cubic-bezier(.2,.8,.2,1) both; }
+html.fcd-anim #fcdLive .fcdLiveCard, html.fcd-anim .fcdXRow .fcdPCard, html.fcd-anim .fcdXRow .fcdEvCard { animation: fcdPop .4s cubic-bezier(.2,.8,.2,1) both; }
+html.fcd-anim .fcdEvCard.live .fcdEvCount, html.fcd-anim .fcdPCard.playing .fcdLiveDot { animation: fcdPulse 1.6s ease-out infinite; }
 html.fcd-anim .fcdSkel::after, html.fcd-anim .fcdSkelCard::after { animation: fcdShimmer 1.3s ease-in-out infinite; }
 .fcdSkelCard { cursor: default !important; }
 .fcdSkelCard::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 45%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent); }
@@ -1095,11 +1099,13 @@ html:not(.fcd-anim) .fcdAmbient > i, html:not(.fcd-anim) .fcdDotNav.on::after { 
 html.fcd-on:not(.fcd-anim) .fcdCard:hover, html.fcd-on:not(.fcd-anim) .fcdLiveCard:hover { transform: none !important; }
 `;
 
+const CSS3 = "\n/* ============================ for you rows ============================== */\n#fcdFriends { order: -5; } #fcdRivals { order: -3; } #fcdEvents { order: -2; }\n.fcdXRow { display: none; margin: 14px 0 0; }\nhtml.fcd-on .fcdXRow.has { display: block; }\nhtml.fcd-on .fcdXRow .fcdRowHead { display: flex; align-items: center; padding: 14px 24px 0; }\nhtml.fcd-on .fcdXRow .fcdRowHead h3 {\n    flex: 1; display: flex; align-items: center; margin: 0; font-family: var(--dc-font, sans-serif); font-size: 18px; font-weight: 700;\n    line-height: 24px; color: var(--dc-head, #f2f3f5);\n}\nhtml.fcd-on .fcdXRow .fcdRowHead h3 > .fc-ic { width: 20px; height: 20px; margin-right: 8px; color: var(--dc-blurple, #5865f2); vertical-align: middle; }\nhtml.fcd-on .fcdXRow .fcdShowAll { margin-right: 8px; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid {\n    display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: var(--fcd-col, 260px); grid-gap: 16px; width: auto;\n    overflow-x: auto; overflow-y: hidden; padding: 14px 24px 18px; scroll-snap-type: x proximity; scroll-padding: 0 24px; scroll-behavior: smooth;\n    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 56px), transparent 100%);\n}\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"] .fcdYoursGrid { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 56px), transparent 100%); }\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"][data-fcd-edge~=\"end\"] .fcdYoursGrid { -webkit-mask-image: none; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid::-webkit-scrollbar { height: 0; display: none; }\n.fcdXRow:hover .fcdArrows { opacity: 1; }\n\n.fcdPCard {\n    position: relative; height: 132px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start; display: flex; flex-direction: column;\n    background: var(--dc-bg3, #1e1f22); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdPCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-blurple, #5865f2), 0 12px 26px rgba(0,0,0,.45); }\n.fcdPCard.playing { box-shadow: 0 0 0 1px rgba(242,63,67,.35), 0 2px 8px rgba(0,0,0,.3); }\n.fcdPArt {\n    position: absolute; top: 0; left: 0; right: 0; height: 64px; background-size: cover; background-position: center 30%;\n    filter: saturate(1.2) brightness(.55); image-rendering: pixelated;\n}\n.fcdPArt::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent 20%, var(--dc-bg3, #1e1f22)); }\n.fcdPMain { position: relative; z-index: 1; flex: 1; display: flex; align-items: flex-end; padding: 0 12px; min-height: 0; }\n.fcdPAva { position: relative; flex: none; margin-right: 10px; line-height: 0; }\n.fcdPAva .fcdAva { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 3px var(--dc-bg3, #1e1f22); }\n.fcdPAva .st { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--dc-bg3, #1e1f22); }\n.fcdPAva .st.on { background: var(--dc-green, #23a55a); }\n.fcdPAva .st.playing { background: var(--dc-red, #f23f43); }\n.fcdPTx { flex: 1; min-width: 0; padding-bottom: 2px; }\n.fcdPTx b { display: inline-block; max-width: calc(100% - 26px); vertical-align: middle; font-size: 15px; font-weight: 700; color: var(--dc-head, #f2f3f5);\n    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }\n.fcdPTx b:hover { text-decoration: underline; }\n.fcdPTx .sub { display: flex; align-items: center; margin-top: 2px; font-size: 12.5px; color: var(--dc-text, #dbdee1); white-space: nowrap; overflow: hidden; }\n.fcdPTx .game { display: block; font-size: 11.5px; color: var(--dc-muted, #949ba4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdPTx .rec { font-weight: 700; } .fcdPTx .rec.up { color: var(--dc-green, #23a55a); } .fcdPTx .rec.down { color: var(--dc-red, #f23f43); }\n.fcdLiveDot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--dc-red, #f23f43); }\n.fcdPAct { position: relative; z-index: 1; display: flex; justify-content: flex-end; padding: 8px 12px 10px; }\n.fcdPBtn {\n    display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin-left: 6px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;\n    color: #fff; background: var(--dc-btn, #4e5058); transition: filter .15s ease, background-color .15s ease;\n}\n.fcdPBtn:hover { filter: brightness(1.15); }\n.fcdPBtn.watch { background: var(--dc-red, #f23f43); }\n.fcdPBtn.go { background: var(--dc-green, #23a55a); }\n.fcdPBtn.sent { background: var(--dc-btn, #4e5058); pointer-events: none; }\n.fcdPBtn.ghost { background: rgba(255,255,255,.08); color: var(--dc-text, #dbdee1); }\n.fcdPBtn .fc-ic { margin-right: 5px; }\n\n.fcdEvCard {\n    position: relative; height: 164px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start;\n    background: var(--dc-float, #111214); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdEvCard.mine { box-shadow: 0 0 0 1px rgba(240,178,50,.45), 0 2px 8px rgba(0,0,0,.3); }\n.fcdEvCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-yellow, #f0b232), 0 12px 26px rgba(0,0,0,.45); }\n.fcdEvArt { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; filter: brightness(.4) saturate(1.2); }\n.fcdEvIn { position: relative; z-index: 1; height: 100%; padding: 10px 12px; display: flex; flex-direction: column; color: #fff; }\n.fcdEvWhen { display: flex; align-items: center; font-size: 12px; font-weight: 800; letter-spacing: .02em; }\n.fcdEvWhen .d { padding: 2px 8px; border-radius: 4px; background: rgba(240,178,50,.22); color: var(--dc-yellow, #f0b232); text-transform: uppercase; }\n.fcdEvWhen .t { margin-left: 8px; color: rgba(255,255,255,.85); }\n.fcdEvBell { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n    color: rgba(255,255,255,.8); background: rgba(0,0,0,.35); transition: background-color .15s ease, color .15s ease; }\n.fcdEvBell .fc-ic { width: 16px; height: 16px; }\n.fcdEvBell:hover { background: rgba(255,255,255,.18); }\n.fcdEvBell.on { color: #1a1300; background: var(--dc-yellow, #f0b232); }\n.fcdEvName { margin-top: 10px; font-size: 16px; font-weight: 800; line-height: 20px; max-height: 40px; overflow: hidden; }\n.fcdEvMeta { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdEvMeta span + span::before { content: '·'; margin: 0 6px; }\n.fcdEvFoot { margin-top: auto; display: flex; align-items: center; }\n.fcdEvCount { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--dc-yellow, #f0b232); }\n.fcdEvCard.live .fcdEvCount { color: var(--dc-red, #f23f43); }\n\n.fcdTileRank { flex: none; width: 66px; margin-right: 12px; display: flex; flex-direction: column; align-items: center; }\n.fcdTileRank .elo { margin-top: 3px; font-size: 11.5px; font-weight: 700; color: var(--dc-text, #dbdee1); font-variant-numeric: tabular-nums; }\n.fcdTileRank .bar { display: block; width: 52px; height: 3px; margin-top: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }\n.fcdTileRank .bar > i { display: block; height: 100%; }\n.fcdTile:hover .fcdTileRank { display: none; }\n";
+
 function ensureStyle() {
     if (document.getElementById('fcdStyle')) return;
     const st = document.createElement('style');
     st.id = 'fcdStyle';
-    st.textContent = important(CSS) + important(CSS2) + ANIM;
+    st.textContent = important(CSS) + important(CSS2) + important(CSS3) + ANIM;
     document.head.appendChild(st);
 }
 
@@ -1465,7 +1471,7 @@ function updateAmbient(view) {
 
 /* --------------------------------------------------------------- 3D tilt */
 
-const TILT_SEL = '.channelPreviewWrapper, .eventPreviewWrapper, .categoryPreviewWrapper, .fcdCard, .fcdLiveCard';
+const TILT_SEL = '.channelPreviewWrapper, .eventPreviewWrapper, .categoryPreviewWrapper, .fcdCard, .fcdLiveCard, .fcdPCard, .fcdEvCard';
 let tiltEl = null, tiltRaf = 0, tiltEv = null;
 
 function artOf(el) {
@@ -1541,7 +1547,7 @@ function onArrowClick(e) {
     const a = e.target.closest('.fcdArr');
     if (a) {
         e.stopPropagation();
-        const row = a.closest('.welcomeListWrapper, #fcdYours, #fcdLive');
+        const row = a.closest('.welcomeListWrapper, #fcdYours, #fcdLive, .fcdXRow');
         const grid = row && row.querySelector('.welcomeListGrid, .welcomeListGridBig, .fcdYoursGrid');
         if (grid) grid.scrollBy({ left: (+a.dataset.d) * Math.max(240, grid.clientWidth * 0.85), behavior: config.animations ? 'smooth' : 'auto' });
         return;
@@ -1708,6 +1714,25 @@ function yourGames() {
     return [...items.values()].slice(0, 16);
 }
 
+// your rank in that game (last set's rank, or the Progress chart's) + ELO and how far to the next rank
+function tileRank(it) {
+    if (!it.rom && !it.full) return '';
+    const rom = String(it.rom || '').replace(/^fc1_/, '');
+    const pr = plugin('progress');
+    const sum = pr && pr.summary && rom ? pr.summary(rom) : null;
+    const last = sum && sum.last;
+    let rank = last && last.rank ? fc.data.rankNum(last.rank) : 0;
+    if (!rank) { const s = historySets().slice().reverse().find(x => x.rom === it.rom || x.channel === it.full); rank = s ? fc.data.rankNum(s.myRank) : 0; }
+    if (!rank) return '';
+    const real = fc.elo && fc.elo.mine ? fc.elo.mine(rom) : null;
+    const elo = real && real.elo ? real.elo : (last && typeof last.elo === 'number' ? last.elo : null);
+    const band = nextBand(rank, elo, fc.data.ELO_BANDS);
+    const tip = band ? (band.next ? T('{pct}% of the way to {rank}', { pct: Math.round(band.frac * 100), rank: fc.data.rankLetter(band.next) }) : T('Top rank')) : '';
+    return '<div class="fcdTileRank" title="' + esc(tip) + '">' + fc.ui.tag(rank, '', 22) +
+        (elo ? '<span class="elo">' + (real && real.elo ? '' : '~') + fc.fmt.num(Math.round(elo)) + '</span>' : '') +
+        (band ? '<i class="bar"><i style="width:' + Math.round(band.frac * 100) + '%;background:' + fc.data.rankColor(rank) + '"></i></i>' : '') + '</div>';
+}
+
 function tileSub(it) {
     if (it.played) {
         const rec = (it.w || it.l || it.d) ? ' · ' + it.w + '–' + it.l + (it.d ? '–' + it.d : '') : '';
@@ -1763,6 +1788,7 @@ function renderYours(content) {
         grid.innerHTML = list.map(it => `<div class="fcdTile" data-full="${esc(it.full)}" title="${esc(it.full)}" data-art="${esc(it.rom ? artUrl(it.rom) : '')}">
             <div class="fcdTileArt"><span class="fcdTileIni">${esc(initials(it.full))}</span></div>
             <div class="fcdTileBody"><div class="fcdTileName">${esc(it.short)}</div><div class="fcdTileSub">${tileSub(it)}</div></div>
+            ${it.played ? tileRank(it) : ''}
             <span class="fcdTilePlay" title="Play">▶</span>
         </div>`).join('');
         yoursLimit(row, true);
@@ -1975,6 +2001,259 @@ function onLiveClick(e) {
     if (!m) return;
     if (e.target.closest('[data-watch]')) { watch(m); return; }
     openGame(channelByName(m.channel, m.gameId));
+}
+
+
+/* ------------------------------------------------------------- for you rows */
+
+const DAY_MS = 86400000;
+
+// friends who are around: in a match first, then free (away ones left out)
+// friends: names; all: globalUsers -> [{ name, playing, channels }]
+function friendsNow(friends, all) {
+    const lower = new Map(Object.keys(all || {}).map(k => [k.toLowerCase(), k]));
+    const out = [];
+    (friends || []).forEach(f => {
+        const key = lower.get(String(f || '').toLowerCase());
+        const u = key && all[key];
+        if (!u) return;
+        const playing = u.playing && u.playing.quarkId ? u.playing : null;
+        if (!playing && u.away) return;
+        out.push({ name: key, playing, channels: Array.isArray(u.channels) ? u.channels : [] });
+    });
+    return out.sort((a, b) => (b.playing ? 1 : 0) - (a.playing ? 1 : 0) || a.name.localeCompare(b.name));
+}
+
+// people you've played in the last 30 days who are online and free now, most played first
+// -> [{ name, w, l, sets, last, channel, rom, rank }]
+function rivalsOnline(sets, all, me, now) {
+    const since = (now || Date.now()) - 30 * DAY_MS;
+    const lme = String(me || '').toLowerCase();
+    const map = new Map();
+    (sets || []).forEach(s => {
+        if (!s || !s.opp || !(s.at >= since)) return;
+        const k = s.opp.toLowerCase();
+        const e = map.get(k) || { name: s.opp, w: 0, l: 0, sets: 0, last: 0, channel: '', rom: '' };
+        e.sets++;
+        if (s.result === 'won') e.w++; else if (s.result === 'lost') e.l++;
+        if (s.at > e.last) { e.last = s.at; e.channel = s.channel || ''; e.rom = s.rom || ''; }
+        map.set(k, e);
+    });
+    const lower = new Map(Object.keys(all || {}).map(k => [k.toLowerCase(), k]));
+    const out = [];
+    map.forEach((e, k) => {
+        const key = lower.get(k);
+        const u = key && all[key];
+        if (!u || k === lme || u.away || (u.playing && u.playing.quarkId)) return;
+        const rk = u.channelRank || {};
+        out.push(Object.assign({}, e, { name: key, rank: +(rk[e.channel] || 0) || Math.max(0, ...Object.values(rk).map(Number).filter(n => n > 0)) }));
+    });
+    return out.sort((a, b) => b.sets - a.sets || b.last - a.last).slice(0, 12);
+}
+
+// the next 7 days of events; yours (reminded) first unless asked for all
+// list: events.js upcoming() -> [{...ev, day: 0 today | 1 tomorrow | 2..6}]
+function eventsWeek(list, now, all) {
+    const t = now || Date.now();
+    const midnight = new Date(t); midnight.setHours(0, 0, 0, 0);
+    const week = (list || []).filter(ev => ev && ev.date > t - 30 * 60000 && ev.date < t + 7 * DAY_MS);
+    const mine = week.filter(ev => ev.why);
+    const pick = all || !mine.length ? week : mine;
+    return pick.slice().sort((a, b) => a.date - b.date)
+        .map(ev => Object.assign({}, ev, { day: Math.max(0, Math.floor((ev.date - midnight.getTime()) / DAY_MS)), mine: !!ev.why }));
+}
+
+// how far through its ELO band a rank is -> { frac, next } (next = the rank above, or null at S)
+function nextBand(rank, elo, bands) {
+    const b = bands && bands[rank];
+    if (!b || typeof elo !== 'number') return null;
+    return { frac: Math.max(0, Math.min(1, (elo - b[0]) / (b[1] - b[0]))), next: rank < 6 ? rank + 1 : null };
+}
+
+// one row: header (icon, title, count), a horizontal grid of cards
+function ensureRow(content, id, title, icon, onClick) {
+    let row = document.getElementById(id);
+    if (!row || row.parentNode !== content) {
+        row?.remove();
+        row = document.createElement('div');
+        row.id = id;
+        row.className = 'fcdXRow';
+        row.innerHTML = '<div class="fcdRowHead"><h3>' + fc.ui.ic(icon) + ET(title) + '<span class="fcdCount"></span></h3><span class="fcdShowAll"></span>' +
+            '<div class="fcdArrows">' + arrowsHtml() + '</div></div><div class="fcdYoursGrid"></div>';
+        row.addEventListener('click', onClick);
+        content.appendChild(row);
+        row.__keys = '';
+    }
+    return row;
+}
+function fillRow(row, items, keys, html, colW) {
+    const grid = row.querySelector('.fcdYoursGrid');
+    if (keys !== row.__keys) {
+        row.__keys = keys;
+        grid.innerHTML = items.map(html).join('');
+        grid.__fcdWired = false;
+        wireScroller(row, grid);
+    }
+    const cnt = row.querySelector('.fcdCount');
+    const ct = items.length ? String(items.length) : '';
+    if (cnt.textContent !== ct) cnt.textContent = ct;
+    fitColumns(grid, colW);
+    row.__items = items;
+    row.classList.toggle('has', items.length > 0);
+    if (row.__fcdEdge) row.__fcdEdge();
+}
+const hideRow = (id) => document.getElementById(id)?.classList.remove('has');
+const gameOf = (chans) => (chans || []).find(c => fc.app.isGameChannel(c)) || '';
+
+/* friends playing now */
+
+function friendCardHtml(f) {
+    const m = f.playing ? liveMatches().find(x => String(x.quark) === String(f.playing.quarkId)) : null;
+    const chan = f.playing ? f.playing.channelId : gameOf(f.channels);
+    const opp = m ? m.players.find(n => n !== f.name) : '';
+    const rank = (users()[f.name]?.channelRank || {})[chan] || 0;
+    const sub = f.playing ? (opp ? ET('vs {name}', { name: opp }) : ET('in a match')) : ET('Online');
+    const act = m && canWatch(m) ? '<span class="fcdPBtn watch" data-act="watch">' + fc.ui.ic('eye') + ET('Watch') + '</span>'
+        : chan ? '<span class="fcdPBtn" data-act="open">' + ET('Open game') + '</span>' : '';
+    return '<div class="fcdPCard' + (f.playing ? ' playing' : '') + '" data-n="' + esc(f.name) + '" data-art="' + esc(chan ? artUrl((chanCache.get(chan) || {}).gameid || (m && m.gameId) || '') : '') + '">' +
+        '<div class="fcdPArt"></div>' +
+        '<div class="fcdPMain"><span class="fcdPAva"><img class="fcdAva" src="' + esc(avatarUrl(f.name)) + '" alt=""><i class="st ' + (f.playing ? 'playing' : 'on') + '"></i></span>' +
+        '<div class="fcdPTx"><b data-act="scout">' + esc(f.name) + '</b>' + (rank ? rankPill(rank) : '') +
+        '<span class="sub">' + (f.playing ? '<span class="fcdLiveDot"></span>' : '') + sub + '</span>' +
+        '<span class="game">' + esc(shortName(chan)) + '</span></div></div>' +
+        '<div class="fcdPAct">' + act + '</div></div>';
+}
+
+function renderFriends(content) {
+    const fr = plugin('friends');
+    if (!config.friendsRow || !fr || !fr.list) { hideRow('fcdFriends'); return; }
+    const row = ensureRow(content, 'fcdFriends', 'Friends playing now', 'users', onPeopleClick);
+    const list = friendsNow(fr.list(), users());
+    const keys = list.map(f => f.name + ':' + (f.playing ? f.playing.quarkId : '') + ':' + gameOf(f.channels)).join('|');
+    fillRow(row, list, keys, friendCardHtml, 260);
+    row.querySelectorAll('.fcdPCard').forEach(c => { if (c.dataset.art) setBg(c.querySelector('.fcdPArt'), c.dataset.art); });
+}
+
+/* rivals online */
+
+function rivalCardHtml(r) {
+    const rec = r.w || r.l ? r.w + '–' + r.l : '';
+    return '<div class="fcdPCard rival" data-n="' + esc(r.name) + '" data-art="' + esc(r.rom ? artUrl(r.rom) : '') + '">' +
+        '<div class="fcdPArt"></div>' +
+        '<div class="fcdPMain"><span class="fcdPAva"><img class="fcdAva" src="' + esc(avatarUrl(r.name)) + '" alt=""><i class="st on"></i></span>' +
+        '<div class="fcdPTx"><b data-act="scout">' + esc(r.name) + '</b>' + (r.rank ? rankPill(r.rank) : '') +
+        '<span class="sub">' + (rec ? '<span class="rec ' + (r.w >= r.l ? 'up' : 'down') + '">' + esc(rec) + '</span><span>&nbsp;·&nbsp;</span>' : '') +
+        ET('last played {when}', { when: ago(r.last) }) + '</span>' +
+        '<span class="game">' + esc(shortName(r.channel)) + '</span></div></div>' +
+        '<div class="fcdPAct"><span class="fcdPBtn go" data-act="challenge">' + fc.ui.ic('swords') + ET('Challenge') + '</span></div></div>';
+}
+
+function renderRivals(content) {
+    if (!config.rivalsRow) { hideRow('fcdRivals'); return; }
+    const row = ensureRow(content, 'fcdRivals', 'Rivals online', 'swords', onPeopleClick);
+    const list = rivalsOnline(historySets(), users(), myName(), Date.now());
+    fillRow(row, list, list.map(r => r.name + ':' + r.w + '-' + r.l + ':' + r.rank).join('|'), rivalCardHtml, 260);
+    row.querySelectorAll('.fcdPCard').forEach(c => { if (c.dataset.art) setBg(c.querySelector('.fcdPArt'), c.dataset.art); });
+}
+
+function onPeopleClick(e) {
+    const card = e.target.closest('.fcdPCard');
+    if (!card) return;
+    const name = card.dataset.n;
+    const a = e.target.closest('[data-act]');
+    const act = a && a.dataset.act;
+    if (act === 'scout') { const sc = plugin('scout'); if (sc && sc.openCard) sc.openCard(name, a.getBoundingClientRect(), 'right'); return; }
+    if (act === 'challenge') {
+        const ms = plugin('match-screens');
+        const st = ms && ms.challenge ? ms.challenge(name) : { ok: false, why: T('Match screens are off') };
+        if (st.ok) { a.classList.add('sent'); a.innerHTML = fc.ui.ic('check') + ET('Sent'); }
+        else fc.ui.toast(st.why || T('Couldn’t challenge'), { kind: 'warning', icon: 'sword' });
+        return;
+    }
+    const u = users()[name] || {};
+    const p = u.playing && u.playing.quarkId ? u.playing : null;
+    if (act === 'watch' && p) { const m = liveMatches().find(x => String(x.quark) === String(p.quarkId)); if (m) watch(m); return; }
+    const chan = p ? p.channelId : gameOf(u.channels);
+    if (chan) openGame(channelByName(chan, (chanCache.get(chan) || {}).gameid));
+}
+
+/* events this week */
+
+let eventsAll = false;
+function dayName(ev) {
+    if (ev.day === 0) return T('Today');
+    if (ev.day === 1) return T('Tomorrow');
+    return new Date(ev.date).toLocaleDateString(fc.t.locale(), { weekday: 'long' });
+}
+function countdown(t) {
+    const m = Math.round((t - Date.now()) / 60000);
+    if (m <= 0) return T('Live now');
+    if (m < 60) return T('in {n} min', { n: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return T('in {h}h {m}m', { h, m: m % 60 });
+    const d = Math.round(h / 24);
+    return d === 1 ? T('in a day') : T('in {n} days', { n: d });
+}
+function eventCardHtml(ev) {
+    const clock = new Date(ev.date).toLocaleTimeString(fc.t.locale(), { hour: 'numeric', minute: '2-digit' });
+    const live = ev.date <= Date.now();
+    return '<div class="fcdEvCard' + (ev.mine ? ' mine' : '') + (live ? ' live' : '') + '" data-k="' + esc(ev.key) + '">' +
+        '<div class="fcdEvArt" style="background-image:url(&quot;' + esc(ev.image || (ev.gameid ? artUrl(ev.gameid) : '')) + '&quot;) !important"></div>' +
+        '<div class="fcdEvIn"><div class="fcdEvWhen"><span class="d">' + esc(dayName(ev)) + '</span><span class="t">' + esc(clock) + '</span>' +
+        '<span class="fcdEvBell' + (ev.mine ? ' on' : '') + '" data-act="bell" title="' + ET(ev.mine ? 'Reminder set — click to remove' : 'Remind me') + '">' + fc.ui.icon('bell') + '</span></div>' +
+        '<div class="fcdEvName" title="' + esc(ev.name) + '">' + esc(ev.name) + '</div>' +
+        '<div class="fcdEvMeta">' + (ev.region ? '<span>' + esc(ev.region) + '</span>' : '') + (ev.channel ? '<span>' + esc(shortName(ev.channel)) + '</span>' : '') + '</div>' +
+        '<div class="fcdEvFoot"><span class="fcdEvCount">' + esc(countdown(ev.date)) + '</span>' +
+        (ev.channel ? '<span class="fcdPBtn" data-act="open">' + ET('Open channel') + '</span>' : '') +
+        (ev.link ? '<span class="fcdPBtn ghost" data-act="info">' + ET('Info') + '</span>' : '') + '</div></div></div>';
+}
+
+function renderEvents(content) {
+    const evm = plugin('events');
+    if (!config.eventsRow || !evm || !evm.upcoming) { hideRow('fcdEvents'); return; }
+    const row = ensureRow(content, 'fcdEvents', 'Events this week', 'bell', onEventsClick);
+    const now = Date.now();
+    if (row.__at && now - row.__at < 5000 && row.__keys) {
+        row.querySelectorAll('.fcdEvCard').forEach((c, i) => { const ev = row.__items[i]; const el = c.querySelector('.fcdEvCount'); const t = ev ? countdown(ev.date) : ''; if (el && el.textContent !== t) el.textContent = t; });
+        return;
+    }
+    row.__at = now;
+    const raw = evm.upcoming();
+    const mineCount = raw.filter(ev => ev.why && ev.date < now + 7 * DAY_MS).length;
+    const list = eventsWeek(raw, now, eventsAll).slice(0, 20);
+    const all = eventsWeek(raw, now, true).length;
+    const btn = row.querySelector('.fcdShowAll');
+    const label = mineCount && all > mineCount ? (eventsAll ? T('Your games only') : T('Show all ({n})', { n: all })) : '';
+    if (btn.textContent !== label) btn.textContent = label;
+    fillRow(row, list, list.map(ev => ev.key + ':' + ev.mine + ':' + ev.day).join('|'), eventCardHtml, 248);
+}
+
+function onEventsClick(e) {
+    const row = e.currentTarget;
+    if (e.target.closest('.fcdShowAll')) { eventsAll = !eventsAll; row.__at = 0; row.__keys = ''; tick(); return; }
+    const card = e.target.closest('.fcdEvCard');
+    if (!card) return;
+    const ev = (row.__items || []).find(x => x.key === card.dataset.k);
+    if (!ev) return;
+    const a = e.target.closest('[data-act]');
+    const act = a && a.dataset.act;
+    if (act === 'bell') { const evm = plugin('events'); if (evm && evm.toggle) evm.toggle(ev.key); row.__at = 0; row.__keys = ''; tick(); return; }
+    if (act === 'info' && /^https?:\/\//i.test(ev.link || '')) { openUri(ev.link); return; }
+    if (ev.channel) {
+        const c = joinedChannels().find(x => (x.id || x.name) === ev.channel);
+        if (c) select(c.id);
+        else if (act === 'open') { const r = root(); if (r && typeof r.joinChannel === 'function') { try { r.joinChannel(ev.channel); } catch (err) { LOG('join failed', err.message); } } }
+        else openGame(channelByName(ev.channel, ev.gameid));
+    }
+}
+
+// a card's art, once it has loaded (no flash of a broken image)
+function setBg(el, url) {
+    if (!el || !url || el.__bg === url) return;
+    el.__bg = url;
+    const img = new Image();
+    img.onload = () => { if (el.__bg === url) el.style.setProperty('background-image', 'url("' + url + '")', 'important'); };
+    img.src = url;
 }
 
 /* --------------------------------------------------------------- game page */
@@ -2619,7 +2898,10 @@ function tick() {
         if (content) {
             decorateSpotlight(content);
             renderYours(content);
+            renderFriends(content);
             renderLive(content);
+            renderRivals(content);
+            renderEvents(content);
             decorateRows(content);
             decorateCards(content);
         }
@@ -2656,7 +2938,7 @@ function start(f) {
     fc.watch(tick);
     fc.tick(tick, 300);
     fc.on('friends:changed', () => { yoursKeys = ''; tick(); });
-    const redo = () => { yoursKeys = ''; liveKeys = ''; tick(); };
+    const redo = () => { yoursKeys = ''; liveKeys = ''; document.querySelectorAll('.fcdXRow').forEach(r => { r.__keys = ''; r.__at = 0; }); tick(); };
     const opt = (key, label, hint, show) => ({ key, type: 'switch', label, hint, show, onChange: redo });
     fc.settings.block({
         id: 'discover', section: 'search', title: 'Discover', hint: '— the search tab', store, order: 10,
@@ -2664,6 +2946,9 @@ function start(f) {
             opt('enabled', 'Discover layout', 'Sidebar, spotlight, instant search, game pages, card rows'),
             opt('yourGames', 'Your games row', 'Played, joined and favourite games up top', (d) => d.enabled),
             opt('liveRow', 'Live now row', 'Matches in your channels, with Watch', (d) => d.enabled),
+            opt('friendsRow', 'Friends playing now', 'Friends in your channels: who’s in a match, with Watch', (d) => d.enabled),
+            opt('rivalsRow', 'Rivals online', 'People you’ve played lately who are free now, with Challenge', (d) => d.enabled),
+            opt('eventsRow', 'Events this week', 'Upcoming tournaments with countdowns and reminder bells', (d) => d.enabled),
             opt('tilt', '3D tilt & glow', 'Cards tilt toward the mouse, the page glows in the game’s colours', (d) => d.enabled),
             opt('animations', 'Animations', 'Off = no motion', (d) => d.enabled)
         ]
@@ -2685,6 +2970,6 @@ const api = {
     get _config() { return config; }
 };
 
-module.exports = { id: 'discover', name: 'Search tab (Discover)', start };
-Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));
+module.exports = { id: 'discover', name: 'Search tab (Discover)', start, friendsNow, rivalsOnline, eventsWeek, nextBand };
+Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });
 

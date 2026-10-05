@@ -133,6 +133,10 @@ async function check(br, base, page) {
     // the Discover views, on the first snapshot that has them
     const lobby = snaps.find(s => /lobby|browse/.test(s));
     if (lobby) pages.push('dev-harness/snapshot.html?s=' + encodeURIComponent(lobby) + '&view=home', 'dev-harness/snapshot.html?s=' + encodeURIComponent(lobby) + '&view=search');
+    // the Discover home with Fightcade's full rows, and the log-in screen
+    const browse = snaps.find(s => /browse/.test(s));
+    if (browse && browse !== lobby) pages.push('dev-harness/snapshot.html?s=' + encodeURIComponent(browse) + '&view=home');
+    pages.push('dev-harness/snapshot.html?s=' + encodeURIComponent(snaps[snaps.length - 1]) + '&login=1&known=1');
     pages.push('dev-harness/styleguide.html');
     if (ONLY) pages = pages.filter(p => p.includes(ONLY));
     if (LANG) pages = pages.map(p => p.includes('snapshot.html') ? p + '&lang=' + LANG : p);

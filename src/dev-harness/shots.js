@@ -25,11 +25,31 @@ const W = 1440, H = 900;
 
 const CHANNEL = '2026-09-27T19-44-38-street-fighter-iii-3rd-strike-fight-for-';
 const LOBBY = '2026-09-27T16-53-42-lobby';
+const BROWSE = '2026-09-28T22-53-10-browse-search';      // has Fightcade's full home rows
 
 // run: code evaluated in the page once it has settled (await-able; sleep(ms) is there)
 const SCENES = [
     { name: 'channel', snap: CHANNEL, run: '' },
-    { name: 'discover', snap: LOBBY, view: 'home', run: '' },
+    { name: 'discover', snap: BROWSE, view: 'home', wait: 9000, run: `
+        // a few friends, three events, rivals from the demo history
+        const F = fightcord, us = Object.keys(F.app.users()), fr = F.modules.get('friends');
+        const free = us.filter(n => !F.app.playing(n) && !F.app.users()[n].away && !F.app.isMe(n));
+        [us.find(n => F.app.playing(n)), free[3], free[7]].forEach(n => n && fr.add(n));
+        __sim.event('Saturday Showdown', 95); __sim.event('Blue Wolves #260', 60 * 26); __sim.event('SSEU #208', 60 * 50);
+        F.modules.get('discover')._tick();
+        await sleep(1500);
+        document.querySelector('.welcomeWrapper > .contentWrapper').scrollTop = 0;
+        await sleep(400);` },
+    { name: 'discover-foryou', snap: BROWSE, view: 'home', wait: 9000, run: `
+        const F = fightcord, us = Object.keys(F.app.users()), fr = F.modules.get('friends');
+        const free = us.filter(n => !F.app.playing(n) && !F.app.users()[n].away && !F.app.isMe(n));
+        [us.find(n => F.app.playing(n)), free[3], free[7]].forEach(n => n && fr.add(n));
+        __sim.event('Saturday Showdown', 95); __sim.event('Blue Wolves #260', 60 * 26); __sim.event('SSEU #208', 60 * 50);
+        F.modules.get('discover')._tick();
+        await sleep(1500);
+        document.getElementById('fcdYours').scrollIntoView({ block: 'start' });
+        await sleep(500);` },
+    { name: 'login', snap: CHANNEL, q: 'login=1&known=1', wait: 6000, run: `await sleep(2500);` },
     { name: 'scout', snap: CHANNEL, run: `
         // a B-ranked player near you (the harness API rates names 120-219 as B), on a normal connection
         const n = Object.keys(fightcord.app.users())[123];
@@ -157,7 +177,7 @@ function cdp(wsUrl) {
             const c = await cdp(t.webSocketDebuggerUrl);
             await c.send('Page.enable');
             await c.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
-            await c.send('Page.navigate', { url: base + '?s=' + encodeURIComponent(sc.snap) + '&demo=1' + (sc.view ? '&view=' + sc.view : '') + (LANG ? '&lang=' + LANG : '') });
+            await c.send('Page.navigate', { url: base + '?s=' + encodeURIComponent(sc.snap) + '&demo=1' + (sc.view ? '&view=' + sc.view : '') + (sc.q ? '&' + sc.q : '') + (LANG ? '&lang=' + LANG : '') });
             await sleep(sc.wait || 6000);
             const code = `(async () => { const sleep = (ms) => new Promise(r => setTimeout(r, ms));
                 ${PRELUDE}
