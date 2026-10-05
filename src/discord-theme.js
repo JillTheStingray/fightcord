@@ -957,7 +957,7 @@ const api = {
     // for the welcome screen
     presets: () => Object.assign({}, PRESETS),
     swatches: () => Object.assign({}, SWATCHES),
-    theme: () => ({ enabled: config.enabled, preset: config.preset, accent: config.accent }),
+    theme: () => ({ enabled: config.enabled, preset: config.preset, accent: config.accent, font: config.font }),
     setTheme(t) {
         if (t.preset && PRESETS[t.preset]) config.preset = t.preset;
         if (t.accent && hexRgb(t.accent)) config.accent = String(t.accent).toLowerCase();

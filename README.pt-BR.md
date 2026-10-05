@@ -47,6 +47,8 @@ de boas-vindas curta te guia pelo resto.
   instantânea e páginas de jogo.
 - Uma nova tela de login: arte dos jogos atrás de um cartão elegante, o mascote do FightCord e um
   bem-vindo de volta com seu rank e sua última sessão.
+- Seu estilo no emulador: a barra com os nomes e o placar nas suas partidas na cor do seu tema, e doze
+  fontes para escolher (pixel, fliperama, esports, ...), cada uma com prévia.
 - Chat: menções, horários, prévias de links, ir para o presente, atalhos `:emoji:`, estilos de fonte
   e tradução automática das mensagens recebidas.
 

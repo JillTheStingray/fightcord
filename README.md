@@ -44,6 +44,8 @@ walks you through the rest.
   rivals who are free to play, live matches, this week's events, categories, instant search and game pages.
 - A new login screen: game art behind a sleek card, the FightCord mascot, and a welcome back with your
   rank and last session.
+- Your style in the emulator: the bar with the names and score in your matches in your theme colour, and
+  a choice of twelve fonts for it (pixel, arcade, esports, ...), each with a preview.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

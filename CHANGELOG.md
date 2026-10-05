@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.7.0
+
+- **Your style in the emulator.** Settings → Appearance → Emulator overlay (off until you turn it on).
+  The bar with the names and score at the top of your matches, and the spectators panel, are drawn in
+  Fightcord's style, in your theme colour. Fightcade's rank badges and flags stay.
+- **Pick the emulator's font.** Twelve fonts for the names, the score and the chat in your matches:
+  your theme font, Fightcade's own, and pixel, arcade, terminal, esports and sci-fi fonts (Press Start 2P,
+  Pixelify Sans, Silkscreen, VT323, Teko, Russo One, Chakra Petch, Orbitron, Audiowide, Exo 2). Each card
+  shows a preview, and the big one shows exactly what the emulator will draw. The fonts come free from
+  Google Fonts (open licence); Fightcord turns the one you pick into the emulator's bitmap font.
+- How: Fightcade's emulator draws that bar from image and font files in `emulator\fbneo\ui`. Fightcord
+  keeps Fightcade's originals and puts them back when you turn it off or uninstall. It never writes while
+  a match is running, and the emulator itself isn't changed. Only you see it.
+
 ## 2.6.0
 
 - **Live from the emulator.** Fightcade's emulator writes the running match to small files for stream

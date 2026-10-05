@@ -1457,8 +1457,27 @@ const EMU_FILES = ['game', 'gamequark', 'p1name', 'p1rank', 'p1score', 'p1charac
     'p2name', 'p2rank', 'p2score', 'p2character', 'p2country'];
 let emuCache = null, emuAt = 0;
 const emuDir = () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'fightcade');
+// Fightcade's emulators, by process name (a running one = a match / training / replay)
+const EMU_PROCS = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/;
+let emuRunAt = 0, emuRunVal = null;
 const emu = {
     dir: emuDir,
+    // the folder FBNeo draws its in-game bar from (background.png, spectators.png, rank badges, flags)
+    uiDir: () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'ui'),
+    PROCS: EMU_PROCS,
+    // is an emulator open? -> Promise<true | false | null (can't tell)>; asked at most every 3 s
+    running() {
+        if (now() - emuRunAt < 3000) return Promise.resolve(emuRunVal);
+        return new Promise((resolve) => {
+            let cp = null;
+            try { cp = require('child_process'); } catch (e) { resolve(null); return; }
+            cp.exec('tasklist /fo csv /nh', { timeout: 8000, windowsHide: true }, (e, out) => {
+                emuRunAt = now();
+                emuRunVal = e ? null : EMU_PROCS.test(String(out).toLowerCase());
+                resolve(emuRunVal);
+            });
+        });
+    },
     // the match in the files, or null; with a quark, only when it's that match
     match(quark) {
         const t = now();

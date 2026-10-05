@@ -123,7 +123,7 @@
       stat: (p, cb) => setTimeout(() => p in _files ? cb(null, { size: String(_files[p]).length, mtimeMs: _mtimes[p] || 1 }) : cb(new Error('ENOENT ' + p)), 0),
       mkdir: (p, o, cb) => setTimeout(() => (typeof o === 'function' ? o : cb)(null), 0)
     };
-    if (m === 'path') return { join: (...a) => a.join('/'), dirname: (p) => String(p).replace(/\/[^/]*$/, '') || '.',
+    if (m === 'path') return { join: (...a) => a.join('/'), resolve: (...a) => a.join('/'), dirname: (p) => String(p).replace(/\/[^/]*$/, '') || '.',
       basename: (p) => String(p).split('/').pop() };
     throw new Error('no module ' + m);
   };
@@ -404,6 +404,7 @@
   await load('../streamer.js');
   await load('../splash-art.js');
   await load('../login-screen.js');
+  await load('../emu-skin.js');
   await load('../updater.js');
   await load('../fightcord.js');
 })();

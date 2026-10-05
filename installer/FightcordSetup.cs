@@ -27,8 +27,8 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Fightcord Setup")]
 [assembly: AssemblyProduct("Fightcord")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyVersion("2.7.0.0")]
+[assembly: AssemblyFileVersion("2.7.0.0")]
 
 namespace Fightcord
 {
@@ -510,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "2.6.0";
+        const string Version = "2.7.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 
@@ -879,7 +879,7 @@ namespace Fightcord
             "theme-background.png", "theme-background.jpg", "theme-background.gif", "theme-background.webp",
             "rank-history.json", "goals-config.json", "progress-config.json", "analytics-config.json",
             "feed-config.json", "feed-history.json", "welcome-config.json", "events-config.json",
-            "find-match-config.json", "streamer-config.json", "login-screen-config.json"
+            "find-match-config.json", "streamer-config.json", "login-screen-config.json", "emu-skin-config.json"
         };
         
         void DoInstall()
@@ -965,6 +965,35 @@ namespace Fightcord
 
         // --------------------------------------------------------------- uninstall
 
+        // emu-skin.js swaps the emulator's bar images and font (emulator\fbneo\ui) and keeps Fightcade's in
+        // fightcord\emu-ui-original. Put them back -- only files that are still the ones Fightcord
+        // wrote (its config lists their sha256), so a Fightcade update's newer files are left alone.
+        void RestoreEmulatorUi()
+        {
+            try
+            {
+                string bak = Path.Combine(FcordDir, "emu-ui-original");
+                string cfg = Path.Combine(FcordDir, "emu-skin-config.json");
+                if (!Directory.Exists(bak) || !File.Exists(cfg)) return;
+                Match w = Regex.Match(File.ReadAllText(cfg), "\"written\"\\s*:\\s*\\{([^}]*)\\}");
+                if (!w.Success) return;
+                string ui = Path.Combine(root, "emulator", "fbneo", "ui");
+                foreach (Match m in Regex.Matches(w.Groups[1].Value, "\"([\\w.-]+\\.(?:png|fnt))\"\\s*:\\s*\"([0-9a-f]{64})\""))
+                {
+                    string f = m.Groups[1].Value, live = Path.Combine(ui, f), orig = Path.Combine(bak, f);
+                    if (!File.Exists(live) || !File.Exists(orig)) continue;
+                    string have;
+                    using (var sha = System.Security.Cryptography.SHA256.Create())
+                    using (var s = File.OpenRead(live))
+                        have = BitConverter.ToString(sha.ComputeHash(s)).Replace("-", "").ToLowerInvariant();
+                    if (have != m.Groups[2].Value) continue;
+                    File.Copy(orig, live, true);
+                    Log(L.F("Restored the emulator's {0}", f));
+                }
+            }
+            catch (Exception e) { Log("  " + e.Message); }
+        }
+
         void DoUninstall()
         {
             string prev = LatestBackup();
@@ -993,6 +1022,7 @@ namespace Fightcord
             string music = Path.Combine(FcordDir, "music");
             if (Directory.Exists(music)) CopyDir(music, Path.Combine(keep, "music"), null);
 
+            RestoreEmulatorUi();
             Log(L.T("Removing Fightcord"));
             if (Directory.Exists(FcordDir)) Directory.Delete(FcordDir, true);
             string loader = Path.Combine(Inject, "inject.js");
@@ -1092,7 +1122,8 @@ namespace Fightcord
             { "Restoring {0}", "Restaurando {0}" },
             { "Fightcord removed.", "Fightcord removido." },
             { "Your previous setup is back.", "Sua configura\u00e7\u00e3o anterior voltou." },
-            { "Fightcade runs plain.", "O Fightcade roda normal." }
+            { "Fightcade runs plain.", "O Fightcade roda normal." },
+            { "Restored the emulator's {0}", "O {0} do emulador foi restaurado" }
         };
         static readonly Dictionary<string, string> Es = new Dictionary<string, string>
         {
@@ -1155,7 +1186,8 @@ namespace Fightcord
             { "Restoring {0}", "Restaurando {0}" },
             { "Fightcord removed.", "Fightcord quitado." },
             { "Your previous setup is back.", "Tu configuraci\u00f3n anterior volvi\u00f3." },
-            { "Fightcade runs plain.", "Fightcade funciona normal." }
+            { "Fightcade runs plain.", "Fightcade funciona normal." },
+            { "Restored the emulator's {0}", "Se restaur\u00f3 el {0} del emulador" }
         };
     }
     // ---- end i18n tables ----

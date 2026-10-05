@@ -59,7 +59,8 @@
     "Restoring {0}": "Restaurando {0}",
     "Fightcord removed.": "Fightcord removido.",
     "Your previous setup is back.": "Sua configuração anterior voltou.",
-    "Fightcade runs plain.": "O Fightcade roda normal."
+    "Fightcade runs plain.": "O Fightcade roda normal.",
+    "Restored the emulator's {0}": "O {0} do emulador foi restaurado"
   },
   "es": {
     "Fightcord Setup": "Instalación de Fightcord",
@@ -121,6 +122,7 @@
     "Restoring {0}": "Restaurando {0}",
     "Fightcord removed.": "Fightcord quitado.",
     "Your previous setup is back.": "Tu configuración anterior volvió.",
-    "Fightcade runs plain.": "Fightcade funciona normal."
+    "Fightcade runs plain.": "Fightcade funciona normal.",
+    "Restored the emulator's {0}": "Se restauró el {0} del emulador"
   }
 }

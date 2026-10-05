@@ -60,6 +60,10 @@ const NEWS = [
     { v: '2.6', title: 'Fightcord 2.6', items: [
         ['play', N_('Live from the emulator'), N_('The OBS overlay’s score now updates the moment a game ends, with both characters under the names.')],
         ['trend', N_('Characters in your stats'), N_('Every set remembers who played which character: in your sets, head-to-heads, Analytics and the challenge card.')]
+    ] },
+    { v: '2.7', title: 'Fightcord 2.7', items: [
+        ['play', N_('Your style in the emulator'), N_('The bar with the names and score in your matches, in your theme colour. Settings → Appearance → Emulator overlay.')],
+        ['star', N_('Pick the emulator’s font'), N_('Twelve fonts for the names, score and chat in your matches — pixel, arcade, esports — each with a preview.')]
     ] }
 ];
 
