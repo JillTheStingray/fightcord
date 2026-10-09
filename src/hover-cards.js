@@ -91,7 +91,7 @@ function show(row) {
     card.dataset.chan = t ? (t.getAttribute('title') || t.textContent.replace(/^#/, '')).trim() : '';
     card.innerHTML = cardHtml(name, card.dataset.chan);
     const r = row.getBoundingClientRect();
-    card.style.left = Math.max(8, r.left - 300 - 10) + 'px';
+    card.style.left = (r.left > 320 ? r.left - 300 - 10 : Math.min(window.innerWidth - 308, r.right + 10)) + 'px';
     card.classList.remove('in');
     card.style.top = '0px';
     const h = card.offsetHeight;

@@ -68,6 +68,10 @@ const NEWS = [
     { v: '2.8', title: 'Fightcord 2.8', items: [
         ['music', N_('A music visualizer'), N_('Bars, a wave or a pulsing ring behind the chat that move with your background music, and punch on every kick. Settings → Appearance → Animated background.')],
         ['bolt', N_('Smooth as your screen'), N_('The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).')]
+    ] },
+    { v: '2.9', title: 'Fightcord 2.9', items: [
+        ['users', N_('A calmer lobby'), N_('The member list sits left of the chat, one line per player, with one Filter button. Prefer it on the right? Settings → Member list → Side.')],
+        ['target', N_('Goals at a glance'), N_('Tonight’s record, your win streak and a bar per goal in the top bar; a bar pulses when you make progress.')]
     ] }
 ];
 

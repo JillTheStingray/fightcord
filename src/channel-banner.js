@@ -53,7 +53,8 @@ function statsFor(ch) {
 function build(wrapper, ch) {
     const b = document.createElement('div');
     b.className = 'cbnBanner';
-    const btn = (act, label, icon, title) => `<span class="cbnBtn" data-cb="${act}" title="${E(T(title))}">${fc.ui.icon(icon)}${E(T(label))}</span>`;
+    // icon buttons (2.9: calmer); the name and what it opens are in the tooltip
+    const btn = (act, label, icon, title) => `<span class="cbnBtn" data-cb="${act}" title="${E(T(label) + ' — ' + T(title))}">${fc.ui.icon(icon)}</span>`;
     b.innerHTML = `<div class="cbnBg"></div><div class="cbnShade"></div>
         <div class="cbnArt"></div>
         <div class="cbnText"><div class="cbnName" title="${E(ch.name)}">${E(shortName(ch.name))}${ch.ranked ? `<span class="cbnRanked" title="${E(T('Ranked channel'))}">${E(T('RANKED'))}</span>` : ''}</div><div class="cbnLine"></div></div>
@@ -195,7 +196,7 @@ const CSS = `
 .cbnFriends img:hover { transform: translateY(-2px); z-index: 1; }
 .cbnFriends .more { margin-left: 6px; font-size: 12px; color: rgba(255,255,255,.7); }
 .cbnBtns { position: relative; flex: none; display: flex; }
-.cbnBtn { height: 30px; margin-left: 8px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; cursor: pointer;
+.cbnBtn { width: 30px; height: 30px; margin-left: 6px; padding: 0; justify-content: center; border-radius: 6px; display: inline-flex; align-items: center; cursor: pointer;
     font-size: 13px; font-weight: 600; color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
     transition: background-color .12s ease; white-space: nowrap; }
 .cbnBtn:hover { background: rgba(255,255,255,.22); }
@@ -210,9 +211,8 @@ const CSS = `
 .cbnBanner.slim .cbnName { font-size: 14px; flex: 0 1 auto; margin-right: 12px; }
 .cbnBanner.slim .cbnLine { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
 .cbnBanner.slim .cbnFold { transform: rotate(180deg); }
-@media (max-width: 1300px) { .cbnFriends .lbl { display: none; } .cbnBtn { padding: 0 9px; } }
-@media (max-width: 1100px) { .cbnBtn[data-cb="events"], .cbnBtn[data-cb="profile"] { display: none; } }
-.cbnBtn > .fc-ic { width: 15px; height: 15px; margin-right: 6px; }
+@media (max-width: 1300px) { .cbnFriends .lbl { display: none; } }
+.cbnBtn > .fc-ic { width: 16px; height: 16px; margin: 0; }
 .cbnFold > .fc-ic { width: 16px; height: 16px; }
 .cbnBanner .cbnFold { transform: rotate(180deg); }
 .cbnBanner.slim .cbnFold { transform: none; }

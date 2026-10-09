@@ -48,6 +48,8 @@ walks you through the rest.
   a choice of twelve fonts for it (pixel, arcade, esports, ...), each with a preview.
 - A music visualizer behind the chat: bars, a wave or a pulsing ring that move with your background
   music and punch on every kick.
+- A calm lobby: the member list on the left, one line per player, one Filter button, and tonight's
+  record with your goals as one strip in the top bar.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

@@ -5,7 +5,9 @@
  *     with rank-coloured names, plus "Playing now" and "Friends" sections on top
  *   - a Discord status line under each name: flag, country, ping, Wi-Fi/VPN
  *   - ping as green/yellow/red signal bars
- *   - filter chips (rank, < 100 ms, my region) and sort (name / ping / top)
+ *   - one Filter button (rank, < 100 ms, my region in a popover) and sort (name / ping / top)
+ *   - calm by default (2.9): on the left of the chat, one line per player (details in the hover
+ *     card), and Fightcade's Playing list folded away until you open it
  *   - ⚔ 3–1 on players you've recently played, #12 on the game's leaderboard
  *
  * Local only. Rows are regrouped with CSS `order` and marked with classes -- Fightcade's
@@ -23,10 +25,13 @@ const DEFAULTS = {
     rankColors: true,     // names in their rank colour
     bars: true,           // signal bars instead of ping text
     played: true,         // ⚔ W–L on people you've played
-    top: true,            // #12 leaderboard spot next to the name
+    top: false,           // #12 leaderboard spot next to the name (off since 2.9: calmer)
     activity: true,       // "Playing now" + "Friends" sections on top
     filter: { ranks: [], lowPing: false, region: false },
-    sort: 'name'          // name | ping | top
+    sort: 'name',         // name | ping | top
+    side: 'left',         // left | right of the chat
+    details: false,       // the 'country · ms · Wi-Fi' line under each name
+    playingOpen: false    // Fightcade's Playing (live matches) list unfolded
 };
 
 const E = (s) => fc.fmt.esc(s);
@@ -302,14 +307,23 @@ function processList(list, grouped) {
 
 /* ------------------------------------------------------------- chips + sort */
 
-function chipBarHtml() {
+const chip = (key, label, on, title) => `<span class="fcm-chip${on ? ' on' : ''}" data-chip="${key}" title="${E(title || '')}">${label}</span>`;
+const activeFilters = () => cfg.filter.ranks.length + (cfg.filter.lowPing ? 1 : 0) + (cfg.filter.region ? 1 : 0);
+
+// what the Filter button opens
+function filterPopHtml() {
     const f = cfg.filter;
-    const chip = (key, label, on, title) => `<span class="fcm-chip${on ? ' on' : ''}" data-chip="${key}" title="${E(title || '')}">${label}</span>`;
-    const active = f.ranks.length || f.lowPing || f.region;
-    return RANKS.map(r => chip('rank:' + r, r, f.ranks.includes(r), r === '?' ? T('Unranked') : T('Rank {rank}', { rank: r }))).join('') +
+    return `<div class="fcm-popt">${E(T('Ranks'))}</div><div class="fcm-poprow">` +
+        RANKS.map(r => chip('rank:' + r, r, f.ranks.includes(r), r === '?' ? T('Unranked') : T('Rank {rank}', { rank: r }))).join('') + '</div>' +
+        `<div class="fcm-popt">${E(T('Connection'))}</div><div class="fcm-poprow">` +
         chip('lowPing', '&lt; 100 ms', f.lowPing, T('Only players under 100 ms')) +
-        chip('region', E(T('My region')), f.region, myContinent() ? T('Only players in {region}', { region: T(myContinent()) }) : T('Your country is unknown')) +
-        (active ? chip('clear', '×', false, T('Clear filters')) : '') +
+        chip('region', E(T('My region')), f.region, myContinent() ? T('Only players in {region}', { region: T(myContinent()) }) : T('Your country is unknown')) + '</div>' +
+        (activeFilters() ? `<div class="fcm-poprow">${chip('clear', E(T('Clear filters')), false, '')}</div>` : '');
+}
+
+function chipBarHtml() {
+    const n = activeFilters();
+    return `<span class="fcm-fbtn${n ? ' on' : ''}" data-pop="filter" title="${E(T('Filter by rank, ping or region'))}">${fc.ui.ic('filter')}${E(T('Filter'))}${n ? `<b>${n}</b>` : ''}</span>` +
         `<span class="fcm-sort" title="${E(T('Sort'))}">` +
         ['name', 'ping', 'top'].map(s => `<span class="fcm-seg${cfg.sort === s ? ' on' : ''}" data-sort="${s}">${E(T({ name: 'Name', ping: 'Ping', top: 'Top' }[s]))}</span>`).join('') +
         `</span>`;
@@ -320,9 +334,22 @@ function refreshChipBars() {
     document.querySelectorAll('.fcm-chips').forEach(b => { if (b.innerHTML !== html) b.innerHTML = html; });
 }
 
+let filterPop = null;
+function openFilters(btn) {
+    if (filterPop) { filterPop.close(); return; }
+    const box = document.createElement('div');
+    box.className = 'fcm-filters';
+    box.innerHTML = filterPopHtml();
+    box.addEventListener('click', (e) => { onChipClick(e); box.innerHTML = filterPopHtml(); });
+    box.addEventListener('mousedown', (e) => e.stopPropagation());
+    filterPop = fc.ui.popover(btn, box, { side: 'bottom', width: 236, onClose: () => { filterPop = null; } });
+}
+
 function onChipClick(e) {
     e.stopPropagation();
     e.preventDefault();
+    const pop = e.target.closest('[data-pop]');
+    if (pop) { openFilters(pop); return; }
     const chip = e.target.closest('[data-chip]');
     const seg = e.target.closest('[data-sort]');
     const f = cfg.filter;
@@ -408,7 +435,35 @@ ${P} .fcm-bars i { width: 3px; margin-left: 2px; border-radius: 1px; background:
 ${P} .fcm-bars i:nth-child(1) { height: 5px; } ${P} .fcm-bars i:nth-child(2) { height: 8px; } ${P} .fcm-bars i:nth-child(3) { height: 12px; }
 ${P} .fcm-bars.good { color: var(--fc-success); } ${P} .fcm-bars.ok { color: var(--fc-warning); } ${P} .fcm-bars.bad { color: #f23f43; } ${P} .fcm-bars.unk { color: #80848e; }
 ${P} .fcm-bars.good i, ${P} .fcm-bars.ok i:nth-child(-n+2), ${P} .fcm-bars.bad i:nth-child(1) { opacity: 1; }
-${P} .fcm-chips { display: flex; flex-wrap: wrap; align-items: center; padding: 6px 8px 2px; }
+${P} .fcm-chips { display: flex; flex-wrap: nowrap; align-items: center; padding: 6px 8px 2px; }
+${P} .fcm-fbtn { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 12px; cursor: pointer; user-select: none;
+    font: 600 12px/24px var(--fc-font); background: var(--fc-btn); color: var(--fc-text); }
+${P} .fcm-fbtn:hover { background: var(--fc-btn-h); }
+${P} .fcm-fbtn .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
+${P} .fcm-fbtn.on { background: var(--fc-accent); color: #fff; }
+${P} .fcm-fbtn b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; text-align: center;
+    font: 700 11px/16px var(--fc-font); background: rgba(255,255,255,.25); }
+/* Fightcade's Playing list: folded unless opened from its title */
+${P} .matchesTitleWrapper.fcm-fold { cursor: pointer; }
+${P} .matchesTitleWrapper.fcm-fold .matchesTitle::before { content: '▸'; display: inline-block; width: 14px; transition: transform .15s; }
+html body .usersListWrapper.fcm-pl-open .matchesTitleWrapper.fcm-fold .matchesTitle::before { transform: rotate(90deg); }
+html body .usersListWrapper:not(.fcm-pl-open) .matchesList { display: none !important; }
+/* on the left of the chat: rail | members | chat */
+html.fcm-left body .channelContent > .usersListToolbar { order: -1 !important; }
+html.fcm-left.dc-layout body .usersListToolbar .usersListWrapper { border-left: 0 !important; border-right: 1px solid var(--dc-divider) !important; }
+html.fcm-left body .channelContent > .chatWrapper { box-shadow: none !important; }
+/* one line per player, a narrower column */
+html.fcm-compact.dc-layout body .usersListToolbar, html.fcm-compact.dc-layout body .usersListToolbar .usersListWrapper { width: 264px !important; min-width: 264px !important; }
+html.fcm-compact body .usersListWrapper .fcm-sub { display: none !important; }
+html.fcm-compact body .usersListWrapper .userItem .avatarWrapper, html.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 28px !important; height: 28px !important; }
+html.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing) { height: 36px !important; min-height: 36px !important; }
+.fcm-filters .fcm-popt { margin: 2px 2px 6px; font: 700 11px/14px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+.fcm-filters .fcm-poprow { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
+.fcm-filters .fcm-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; margin: 0 4px 4px 0; border-radius: 12px;
+    font: 500 12px/24px var(--fc-font); cursor: pointer; user-select: none; background: var(--fc-btn); color: var(--fc-text); }
+.fcm-filters .fcm-chip:hover { background: var(--fc-btn-h); }
+.fcm-filters .fcm-chip.on { background: var(--fc-accent); color: #fff; }
+.fcm-filters .fcm-chip[data-chip="clear"] { background: transparent; color: var(--fc-muted); padding: 0 4px; }
 ${P} .fcm-chip, ${P} .fcm-seg { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; margin: 0 4px 4px 0;
     border-radius: 11px; font: 500 12px/22px var(--fc-font); cursor: pointer; user-select: none;
     background: var(--fc-btn); color: var(--fc-text); }
@@ -424,19 +479,50 @@ ${P} .fcm-seg.on { background: var(--fc-accent); color: #fff; }
 
 /* -------------------------------------------------------------------- sweep */
 
+// Fightcade's Playing (live matches) list folds away; its title opens it again. The eye next
+// to it is Fightcade's own button, so only the title and count react.
+function ensurePlayingFold(w) {
+    w.classList.toggle('fcm-pl-open', !!cfg.playingOpen);
+    w.querySelectorAll('.matchesTitleWrapper').forEach(t => {
+        if (t.__fcmFold) return;
+        t.__fcmFold = true;
+        t.classList.add('fcm-fold');
+        t.title = T('Show or hide the matches being played');
+        t.addEventListener('click', (e) => {
+            if (e.target.closest('.spectatorsIconWrapper')) return;
+            e.stopPropagation();
+            cfg.playingOpen = !cfg.playingOpen;
+            store.save();
+            document.querySelectorAll('.usersListWrapper').forEach(x => x.classList.toggle('fcm-pl-open', cfg.playingOpen));
+        });
+    });
+}
+
+// the layout: which side, one line or two per player
+function applyLayout() {
+    const html = document.documentElement;
+    html.classList.toggle('fcm-left', !!cfg.enabled && cfg.side !== 'right');
+    html.classList.toggle('fcm-compact', !!cfg.enabled && !cfg.details);
+}
+
 function sweep() {
     if (!cfg.enabled) return;
+    applyLayout();
     document.querySelectorAll('.usersListWrapper').forEach(w => {
         // other channels: when shown. (The wrapper is position:fixed, so offsetParent is always
         // null -- a hidden channel shows up as zero size instead.)
         if (!w.offsetWidth && !w.offsetHeight) return;
         ensureChipBar(w);
+        ensurePlayingFold(w);
         w.querySelectorAll('.usersOnlineList').forEach(l => { l.classList.toggle('fcm-colors', cfg.rankColors); processList(l, cfg.group); });
         w.querySelectorAll('.usersAwayList').forEach(l => { l.classList.toggle('fcm-colors', cfg.rankColors); processList(l, false); });
     });
 }
 
 function teardown() {
+    document.documentElement.classList.remove('fcm-left', 'fcm-compact');
+    document.querySelectorAll('.fcm-pl-open').forEach(n => n.classList.remove('fcm-pl-open'));
+    if (filterPop) filterPop.close();
     document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live').forEach(n => n.remove());
     document.querySelectorAll('.fcm-playing').forEach(n => n.classList.remove('fcm-playing'));
     document.querySelectorAll('.fcm-list').forEach(l => l.classList.remove('fcm-list', 'fcm-grouped', 'fcm-colors'));
@@ -490,6 +576,9 @@ function start(f) {
         id: 'member-list', section: 'members', title: 'Member list', hint: '— only you see this', store, order: 10,
         fields: [
             opt('enabled', N_('Discord-style member list')),
+            { key: 'side', type: 'select', label: N_('Side'), hint: N_('Where the member list sits next to the chat'), show: on,
+                options: [['left', N_('Left')], ['right', N_('Right')]], onChange: () => redo('side') },
+            opt('details', N_('Details under names'), N_('Country, ping and Wi-Fi on a second line (they’re always in the hover card)'), on),
             opt('group', N_('Group by rank'), N_('Like Discord roles'), on),
             opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch) and Friends at the top'), on),
             opt('rankColors', N_('Rank-coloured names'), N_('S gold · A red · B purple · C blue · D green'), on),

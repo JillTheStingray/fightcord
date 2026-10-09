@@ -1332,5 +1332,21 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "A music visualizer": "Um visualizador de música",
     "Bars, a wave or a pulsing ring behind the chat that move with your background music, and punch on every kick. Settings → Appearance → Animated background.": "Barras, uma onda ou um anel pulsante atrás do chat que se movem com a sua música de fundo e batem forte a cada bumbo. Configurações → Aparência → Fundo animado.",
     "Smooth as your screen": "Tão fluido quanto a sua tela",
-    "The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).": "O visualizador roda na taxa de atualização do seu monitor (ou a 60 / 30 fps, você escolhe)."
+    "The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).": "O visualizador roda na taxa de atualização do seu monitor (ou a 60 / 30 fps, você escolhe).",
+    "Ranks": "Ranks",
+    "Connection": "Conexão",
+    "Filter by rank, ping or region": "Filtrar por rank, ping ou região",
+    "Filter": "Filtrar",
+    "Show or hide the matches being played": "Mostrar ou esconder as partidas em andamento",
+    "Side": "Lado",
+    "Where the member list sits next to the chat": "De que lado do chat fica a lista de membros",
+    "Left": "Esquerda",
+    "Right": "Direita",
+    "Details under names": "Detalhes sob os nomes",
+    "Country, ping and Wi-Fi on a second line (they’re always in the hover card)": "País, ping e Wi-Fi numa segunda linha (eles sempre aparecem no cartão ao passar o mouse)",
+    "Fightcord 2.9": "Fightcord 2.9",
+    "A calmer lobby": "Um lobby mais calmo",
+    "The member list sits left of the chat, one line per player, with one Filter button. Prefer it on the right? Settings → Member list → Side.": "A lista de membros fica à esquerda do chat, uma linha por jogador, com um só botão de Filtro. Prefere à direita? Configurações → Lista de membros → Lado.",
+    "Goals at a glance": "Metas num relance",
+    "Tonight’s record, your win streak and a bar per goal in the top bar; a bar pulses when you make progress.": "O retrospecto da noite, sua sequência de vitórias e uma barra por meta na barra de cima; a barra pulsa quando você avança."
 } };

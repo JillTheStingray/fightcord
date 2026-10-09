@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.9.0
+
+- **A calmer lobby.** The member list moves to the left of the chat (Settings → Member list → **Side**
+  puts it back on the right), one line per player:
+  - country, ping and Wi-Fi moved to the hover card (**Details under names** brings the second line back);
+  - the filter chips are one **Filter** button (ranks, < 100 ms, My region) with a count, next to the sort;
+  - Fightcade's **Playing** list folds away; click "Playing" to open it (remembered);
+  - the leaderboard `#12` next to names is off by default (your ⚔ record with people stays).
+- **Icon buttons in the channel banner:** Stats, Rankings, Replays, Events and Profile are small icons
+  with their names in the tooltip.
+- **Goals at a glance.** Tonight's record and your goals are one strip in the top bar: the record, your
+  win streak (from 2 in a row), and a thin bar per goal that pulses when it moves and flashes green
+  when it's done.
+- The hover card opens on whichever side of the list has room.
+
 ## 2.8.0
 
 - **A music visualizer.** Settings → Appearance → Animated background → **Music visualizer**. It moves with

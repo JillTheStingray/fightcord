@@ -51,6 +51,8 @@ de boas-vindas curta te guia pelo resto.
   fontes para escolher (pixel, fliperama, esports, ...), cada uma com prévia.
 - Um visualizador de música atrás do chat: barras, uma onda ou um anel pulsante que se movem com a sua
   música de fundo e batem forte a cada bumbo.
+- Um lobby mais calmo: a lista de membros à esquerda, uma linha por jogador, um só botão de Filtro, e o
+  retrospecto da noite com suas metas numa faixa na barra de cima.
 - Chat: menções, horários, prévias de links, ir para o presente, atalhos `:emoji:`, estilos de fonte
   e tradução automática das mensagens recebidas.
 

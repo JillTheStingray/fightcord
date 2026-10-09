@@ -52,6 +52,8 @@ de bienvenida corta te guía con el resto.
   y doce fuentes para elegir (píxel, arcade, esports, ...), cada una con vista previa.
 - Un visualizador de música detrás del chat: barras, una onda o un anillo pulsante que se mueven con tu
   música de fondo y golpean en cada bombo.
+- Un lobby más tranquilo: la lista de miembros a la izquierda, una línea por jugador, un solo botón de
+  Filtro, y el récord de la noche con tus metas en una franja en la barra de arriba.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
   fuente y traducción automática de los mensajes que recibes.
 

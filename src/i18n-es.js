@@ -1332,5 +1332,21 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "A music visualizer": "Un visualizador de música",
     "Bars, a wave or a pulsing ring behind the chat that move with your background music, and punch on every kick. Settings → Appearance → Animated background.": "Barras, una onda o un anillo pulsante detrás del chat que se mueven con tu música de fondo y golpean en cada bombo. Configuración → Apariencia → Fondo animado.",
     "Smooth as your screen": "Tan fluido como tu pantalla",
-    "The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).": "El visualizador va a la frecuencia de tu monitor (o a 60 / 30 fps, tú eliges)."
+    "The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).": "El visualizador va a la frecuencia de tu monitor (o a 60 / 30 fps, tú eliges).",
+    "Ranks": "Rangos",
+    "Connection": "Conexión",
+    "Filter by rank, ping or region": "Filtrar por rango, ping o región",
+    "Filter": "Filtrar",
+    "Show or hide the matches being played": "Mostrar u ocultar las partidas en curso",
+    "Side": "Lado",
+    "Where the member list sits next to the chat": "De qué lado del chat va la lista de miembros",
+    "Left": "Izquierda",
+    "Right": "Derecha",
+    "Details under names": "Detalles bajo los nombres",
+    "Country, ping and Wi-Fi on a second line (they’re always in the hover card)": "País, ping y Wi-Fi en una segunda línea (siempre están en la tarjeta al pasar el ratón)",
+    "Fightcord 2.9": "Fightcord 2.9",
+    "A calmer lobby": "Un lobby más tranquilo",
+    "The member list sits left of the chat, one line per player, with one Filter button. Prefer it on the right? Settings → Member list → Side.": "La lista de miembros va a la izquierda del chat, una línea por jugador, con un solo botón de Filtro. ¿La prefieres a la derecha? Configuración → Lista de miembros → Lado.",
+    "Goals at a glance": "Metas de un vistazo",
+    "Tonight’s record, your win streak and a bar per goal in the top bar; a bar pulses when you make progress.": "El récord de la noche, tu racha de victorias y una barra por meta en la barra de arriba; la barra late cuando avanzas."
 } };

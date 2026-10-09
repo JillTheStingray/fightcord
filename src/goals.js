@@ -170,8 +170,38 @@ function refreshPill() {
             const after = actions.querySelector(':scope > .fcmsPill');
             if (after) after.insertAdjacentElement('afterend', pill); else actions.insertBefore(pill, actions.firstChild);
         }
-        const html = fc.ui.ring(o.frac, { size: 22, stroke: 3, color: o.done === o.total ? 'var(--fc-success)' : 'var(--fc-accent)' }) + `<span>${o.done}/${o.total}</span>`;
+        const html = hudHtml();
         if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; pill.title = T('{n} of {total} goals done', { n: o.done, total: o.total }); }
+        pulse(pill);
+        // joined to tonight's record (match-screens.js) as one strip
+        const rec = actions.querySelector(':scope > .fcmsPill');
+        if (rec) rec.classList.add('fcms-joined');
+    });
+}
+
+// the HUD (2.9): one thin bar per goal (up to 3, the rest in the list), next to tonight's record
+function hudHtml() {
+    const rs = results();
+    const o = overall();
+    return `<span class="fcglBars">${rs.slice(0, 3).map(({ g, r }) =>
+        `<i class="${r.done ? 'done' : ''}" data-g="${E(g.id)}" title="${E(r.text + ' · ' + r.detail)}"><u style="width:${Math.round(Math.min(1, r.frac) * 100)}%"></u></i>`).join('')}</span>` +
+        `<span class="fcglNum">${o.done}/${o.total}</span>`;
+}
+
+// a goal that moved since last time pulses; one that just finished flashes green
+const lastFrac = {};
+function pulse(pill) {
+    results().slice(0, 3).forEach(({ g, r }) => {
+        const before = lastFrac[g.id];
+        lastFrac[g.id] = r.frac;
+        if (before == null || r.frac <= before) return;
+        const bar = pill.querySelector('.fcglBars > i[data-g="' + g.id + '"]');
+        if (!bar) return;
+        const cls = r.done ? 'win' : 'up';
+        bar.classList.remove('up', 'win');
+        void bar.offsetWidth;                         // restart the animation
+        bar.classList.add(cls);
+        setTimeout(() => bar.classList.remove(cls), 1600);
     });
 }
 
@@ -272,6 +302,19 @@ const CSS = `
     background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; }
 .fcglPill:hover { background: var(--fc-btn-h); }
 .fcglPill .fc-ring { margin-right: 6px; }
+.fcglBars { display: inline-flex; flex-direction: column; justify-content: center; height: 32px; margin-right: 8px; }
+.fcglBars > i { position: relative; display: block; width: 46px; height: 4px; margin: 1.5px 0; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
+.fcglBars > i > u { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--fc-accent); transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.fcglBars > i.done > u { background: var(--fc-success); }
+.fcglBars > i.up { animation: fcglUp 1.4s ease-out; }
+.fcglBars > i.win { animation: fcglWin 1.5s ease-out; }
+@keyframes fcglUp { 0% { box-shadow: 0 0 0 0 var(--fc-accent); } 30% { box-shadow: 0 0 10px 2px var(--fc-accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes fcglWin { 0%, 40% { box-shadow: 0 0 12px 3px var(--fc-success); transform: scaleY(1.6); } 100% { box-shadow: 0 0 0 0 transparent; transform: none; } }
+html.fc-still .fcglBars > i { animation: none !important; }
+.fcglNum { font-variant-numeric: tabular-nums; }
+/* the HUD: tonight's record and the goals as one joined strip */
+.channelActions > .fcmsPill + .fcglPill { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.08); }
+
 .fcglPop .h { margin-bottom: 6px; font-size: 16px; font-weight: 700; color: var(--fc-head); }
 .fcglPop .f { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--fc-divider); }
 .fcglRow { display: flex; align-items: center; padding: 6px 0; }

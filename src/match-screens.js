@@ -356,8 +356,11 @@ function refreshSessionPill() {
             pill.addEventListener('click', (e) => { e.stopPropagation(); toggleSessionCard(pill); });
             actions.insertBefore(pill, actions.firstChild);
         }
-        const txt = fc.fmt.wl(r);
-        if (pill.textContent !== txt) pill.innerHTML = fc.ui.ic('trophy') + E(txt);
+        const st = streakOf(sets);
+        const hot = st.kind === 'won' && st.n >= 2;
+        const txt = fc.fmt.wl(r) + (hot ? String(st.n) : '');
+        if (pill.textContent !== txt) pill.innerHTML = fc.ui.ic('trophy') + E(fc.fmt.wl(r)) + (hot ? `<span class="fcmsHot" title="${E(T('{n} WIN STREAK', { n: st.n }))}">${fc.ui.ic('flame', 'fill')}${st.n}</span>` : '');
+        pill.classList.toggle('fcms-joined', !!actions.querySelector(':scope > .fcglPill'));
     });
 }
 
@@ -720,6 +723,9 @@ const CSS = `
 .fcmsPill { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; margin-right: 8px; border-radius: var(--fc-r1);
     background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; }
 .fcmsPill:hover { background: var(--fc-btn-h); }
+.fcmsPill.fcms-joined { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fcmsPill .fcmsHot { display: inline-flex; align-items: center; margin-left: 8px; color: #ff8a3d; font-weight: 800; }
+.fcmsPill .fcmsHot .fc-ic { width: 14px; height: 14px; margin-right: 2px; }
 .fc-pop.fcmsPop { padding: 14px 16px 10px; max-height: 70vh; }
 #fcmsSession .h { font-size: 16px; font-weight: 700; color: var(--fc-head); }
 #fcmsSession .h span { font-weight: 500; color: var(--fc-muted); font-size: 14px; }
