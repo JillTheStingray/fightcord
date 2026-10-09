@@ -74,7 +74,39 @@ let waitingForGesture = false;
 let ducked = false;          // the VS / result screens are up
 const state = { playing: false, reason: '' };
 
+// The music visualizer (backgrounds.js) listens through an AnalyserNode. Attached only when it
+// asks, and only once the AudioContext runs: an <audio> routed through WebAudio is heard only
+// while the context runs, so without a running context the music stays as it is.
+let tap = null;              // { el, src, an }
+function analyser() {
+    if (!audio) return null;
+    if (tap && tap.el === audio) return tap.an;
+    const ctx = fc.sound.ctx();
+    if (!ctx || ctx.state !== 'running') return null;
+    try {
+        const src = ctx.createMediaElementSource(audio);
+        const an = ctx.createAnalyser();
+        an.fftSize = 512;
+        an.smoothingTimeConstant = 0.55;          // quick enough for the kick drum
+        src.connect(an);
+        an.connect(ctx.destination);
+        dropTap();
+        tap = { el: audio, src, an };
+        fc.log('visualizer listening');
+        return an;
+    } catch (e) {
+        fc.log.warn('visualizer tap failed', e.message);
+        return null;
+    }
+}
+function dropTap() {
+    if (!tap) return;
+    try { tap.src.disconnect(); tap.an.disconnect(); } catch (e) { /* gone */ }
+    tap = null;
+}
+
 function unload() {
+    dropTap();
     clearInterval(fadeTimer);
     fadeTimer = 0;
     if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
@@ -199,6 +231,7 @@ function render(el) {
         <div class="muList">${listHtml()}</div>
         <div class="muBar">${fc.ui.btn('Add a track…', { kind: 'sec', size: 'sm', icon: 'plus', act: 'add' })}
             ${fc.ui.btn('Test sound', { kind: 'ghost', size: 'sm', icon: 'music', act: 'test', title: 'Plays a short chime' })}
+            ${fc.ui.btn('Visualizer…', { kind: 'ghost', size: 'sm', icon: 'trend', act: 'viz', title: 'A visualizer behind the chat: Appearance → Animated background → Music visualizer' })}
             <input type="file" class="mu_file" accept="audio/*,.mp3,.ogg,.wav,.m4a,.flac" style="display:none"><span class="muNow">${E(nowText())}</span></div>
         <div class="fc-note">${E(T('Playing but can’t hear it? Open the Windows volume mixer (right-click the speaker icon) and check that Fightcade isn’t muted or turned down, and that it uses the right speakers / headset.'))}</div>`;
 }
@@ -245,6 +278,7 @@ function wire(el) {
         const a = e.target.closest('[data-act]');
         if (a && a.getAttribute('data-act') === 'add') { el.querySelector('.mu_file').click(); return; }
         if (a && a.getAttribute('data-act') === 'test') { testSound(); return; }
+        if (a && a.getAttribute('data-act') === 'viz') { const s = fc.modules.get('fightcord'); if (s && s.open) s.open('appearance'); return; }
         const t = e.target.closest('.muTrack');
         if (t) {
             config.track = t.dataset.track;
@@ -320,6 +354,10 @@ const api = {
         tick();
         fc.settings.refresh('music');
     },
+    // for the music visualizer: the analyser (null until the music plays and audio can run),
+    // and whether it's playing at what volume (the visualizer evens out the volume)
+    analyser: () => analyser(),
+    level: () => ({ playing: !!(audio && !audio.paused && state.playing), volume: audio ? audio.volume : 0 }),
     _tick: () => tick(),
     _state: () => ({ playing: state.playing, reason: state.reason, loaded, volume: audio ? audio.volume : 0, paused: audio ? audio.paused : true }),
     _tracks: () => tracks(),

@@ -46,6 +46,8 @@ walks you through the rest.
   rank and last session.
 - Your style in the emulator: the bar with the names and score in your matches in your theme colour, and
   a choice of twelve fonts for it (pixel, arcade, esports, ...), each with a preview.
+- A music visualizer behind the chat: bars, a wave or a pulsing ring that move with your background
+  music and punch on every kick.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

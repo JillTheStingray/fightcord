@@ -64,6 +64,10 @@ const NEWS = [
     { v: '2.7', title: 'Fightcord 2.7', items: [
         ['play', N_('Your style in the emulator'), N_('The bar with the names and score in your matches, in your theme colour. Settings → Appearance → Emulator overlay.')],
         ['star', N_('Pick the emulator’s font'), N_('Twelve fonts for the names, score and chat in your matches — pixel, arcade, esports — each with a preview.')]
+    ] },
+    { v: '2.8', title: 'Fightcord 2.8', items: [
+        ['music', N_('A music visualizer'), N_('Bars, a wave or a pulsing ring behind the chat that move with your background music, and punch on every kick. Settings → Appearance → Animated background.')],
+        ['bolt', N_('Smooth as your screen'), N_('The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).')]
     ] }
 ];
 

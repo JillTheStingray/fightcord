@@ -11,6 +11,7 @@
  *   __sim.leave('NewGuy') / __sim.away('X', true)
  *   __sim.chat('Name', 'hello', n)               n chat lines appended to the open channel
  *   __sim.users()                                the names in globalUsers
+ *   __sim.music() / __sim.music(false)           a silent synth loop for the music visualizer
  */
 (function () {
     const F = () => window.FCADE;
@@ -72,6 +73,40 @@
             if (!sec) { sec = { title: 'Events', events: [] }; w.results = (w.results || []).concat([sec]); }
             sec.events.push(ev);
             return ev;
+        },
+
+        // background music for the visualizer, without a music file: a silent synth loop (kick
+        // drum, a few tones, some noise) feeding an AnalyserNode that music.js hands out.
+        // __sim.music(false) stops it.
+        music(on) {
+            const mu = window.fightcord && window.fightcord.modules.get('music');
+            if (!mu) return 'no music module';
+            if (sim._music) { clearInterval(sim._music.kick); sim._music.ctx.close(); sim._music = null; }
+            if (on === false) { delete mu.analyser; delete mu.level; return 'stopped'; }
+            const ctx = new AudioContext();
+            const an = ctx.createAnalyser();
+            an.fftSize = 512; an.smoothingTimeConstant = 0.55;
+            const mute = ctx.createGain(); mute.gain.value = 0;      // nothing reaches the speakers
+            an.connect(mute); mute.connect(ctx.destination);
+            [330, 523, 880, 1760, 3520].forEach((f, i) => {
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.type = i % 2 ? 'sawtooth' : 'triangle'; o.frequency.value = f; g.gain.value = 0.25 / (i + 1);
+                o.connect(g); g.connect(an); o.start();
+            });
+            const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = noise.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.05;
+            const ns = ctx.createBufferSource(); ns.buffer = noise; ns.loop = true; ns.connect(an); ns.start();
+            const kick = setInterval(() => {                      // 120 bpm
+                const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+                o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+                g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                o.connect(g); g.connect(an); o.start(t); o.stop(t + 0.3);
+            }, 500);
+            ctx.resume();
+            sim._music = { ctx, kick };
+            Object.defineProperty(mu, 'analyser', { configurable: true, value: () => an });
+            Object.defineProperty(mu, 'level', { configurable: true, value: () => ({ playing: true, volume: 1 }) });
+            return 'playing (silent)';
         },
 
         // Fightcade's playing event with an exact ELO (what Patreon supporters get); start = match began

@@ -1315,5 +1315,22 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "Your style in the emulator": "Tu estilo en el emulador",
     "The bar with the names and score in your matches, in your theme colour. Settings → Appearance → Emulator overlay.": "La barra con los nombres y el marcador de tus partidas, en el color de tu tema. Configuración → Apariencia → Overlay del emulador.",
     "Pick the emulator’s font": "Elige la fuente del emulador",
-    "Twelve fonts for the names, score and chat in your matches — pixel, arcade, esports — each with a preview.": "Doce fuentes para los nombres, el marcador y el chat de tus partidas — píxel, arcade, esports — cada una con vista previa."
+    "Twelve fonts for the names, score and chat in your matches — pixel, arcade, esports — each with a preview.": "Doce fuentes para los nombres, el marcador y el chat de tus partidas — píxel, arcade, esports — cada una con vista previa.",
+    "Music visualizer": "Visualizador de música",
+    "Bars": "Barras",
+    "Wave": "Onda",
+    "Pulse": "Pulso",
+    "Moves with your background music (Settings → Music). It rests while no music plays.": "Se mueve con tu música de fondo (Configuración → Música). Se queda quieto mientras no suena música.",
+    "Visualizer…": "Visualizador…",
+    "A visualizer behind the chat: Appearance → Animated background → Music visualizer": "Un visualizador detrás del chat: Apariencia → Fondo animado → Visualizador de música",
+    "Match my screen": "Igual a mi pantalla",
+    "Frame rate": "Fotogramas por segundo",
+    "Smoother uses a little more of your computer, only while it’s showing": "Más fluido usa un poco más de tu computadora, solo mientras se ve",
+    "60 fps": "60 fps",
+    "30 fps": "30 fps",
+    "Fightcord 2.8": "Fightcord 2.8",
+    "A music visualizer": "Un visualizador de música",
+    "Bars, a wave or a pulsing ring behind the chat that move with your background music, and punch on every kick. Settings → Appearance → Animated background.": "Barras, una onda o un anillo pulsante detrás del chat que se mueven con tu música de fondo y golpean en cada bombo. Configuración → Apariencia → Fondo animado.",
+    "Smooth as your screen": "Tan fluido como tu pantalla",
+    "The visualizer runs at your monitor’s refresh rate (or 60 / 30 fps, your choice).": "El visualizador va a la frecuencia de tu monitor (o a 60 / 30 fps, tú eliges)."
 } };

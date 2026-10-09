@@ -50,6 +50,8 @@ de bienvenida corta te guía con el resto.
   FightCord y una bienvenida con tu rango y tu última sesión.
 - Tu estilo en el emulador: la barra con los nombres y el marcador de tus partidas en el color de tu tema,
   y doce fuentes para elegir (píxel, arcade, esports, ...), cada una con vista previa.
+- Un visualizador de música detrás del chat: barras, una onda o un anillo pulsante que se mueven con tu
+  música de fondo y golpean en cada bombo.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
   fuente y traducción automática de los mensajes que recibes.
 

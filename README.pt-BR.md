@@ -49,6 +49,8 @@ de boas-vindas curta te guia pelo resto.
   bem-vindo de volta com seu rank e sua última sessão.
 - Seu estilo no emulador: a barra com os nomes e o placar nas suas partidas na cor do seu tema, e doze
   fontes para escolher (pixel, fliperama, esports, ...), cada uma com prévia.
+- Um visualizador de música atrás do chat: barras, uma onda ou um anel pulsante que se movem com a sua
+  música de fundo e batem forte a cada bumbo.
 - Chat: menções, horários, prévias de links, ir para o presente, atalhos `:emoji:`, estilos de fonte
   e tradução automática das mensagens recebidas.
 

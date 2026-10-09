@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.8.0
+
+- **A music visualizer.** Settings → Appearance → Animated background → **Music visualizer**. It moves with
+  your background music, behind the chat, in your theme colours. Three looks:
+  - **Bars:** frequency bars rising from above the message box, bass in the middle.
+  - **Wave:** a glowing neon curve of the music.
+  - **Pulse:** a ring that swells with the bass, with particles that rush on the beat.
+  It finds the kick drum: the bars jump and the floor lights up, the wave swells, the ring sends out
+  a shockwave. It evens out quiet and loud tracks and any music volume, rests when no music plays,
+  and pauses in matches and when Fightcade isn't in front. The Music settings link to it.
+- **Frame rate:** the visualizer runs at your screen's refresh rate (up to 144 Hz), or at 60 / 30 fps
+  if you'd rather it used less of your computer.
+- With an animated background on, hovering a chat message gives it a soft see-through tint instead of
+  a dark box.
+- With Animations off, the neon particles stand still too.
+
 ## 2.7.0
 
 - **Your style in the emulator.** Settings → Appearance → Emulator overlay (off until you turn it on).
