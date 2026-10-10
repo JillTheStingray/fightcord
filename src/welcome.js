@@ -72,6 +72,10 @@ const NEWS = [
     { v: '2.9', title: 'Fightcord 2.9', items: [
         ['users', N_('A calmer lobby'), N_('The member list sits left of the chat, one line per player, with one Filter button. Prefer it on the right? Settings → Member list → Side.')],
         ['target', N_('Goals at a glance'), N_('Tonight’s record, your win streak and a bar per goal in the top bar; a bar pulses when you make progress.')]
+    ] },
+    { v: '2.10', title: 'Fightcord 2.10', items: [
+        ['trophy', N_('Rankings, replays and more, in Fightcade'), N_('The channel banner’s buttons open the game’s rankings, replays to watch, events and profiles right here.')],
+        ['sword', N_('Fight night'), N_('A new VS screen with the game’s art, characters on your Discord status, and matchup notes per character in Analytics.')]
     ] }
 ];
 

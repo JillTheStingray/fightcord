@@ -174,6 +174,26 @@ function heatHtml(a) {
         `<div class="row hours"><b></b>${[0, 3, 6, 9, 12, 15, 18, 21].map(h => `<span>${String(h).padStart(2, '0')}</span>`).join('')}</div></div>`;
 }
 
+// your matchups: record vs each character they played, and your note (click to write one)
+function matchupCard(sets, card) {
+    const nt = fc.modules.get('notes');
+    const by = {};
+    sets.forEach(s => {
+        if (!s.oppChar) return;
+        const k = (s.rom || '') + '|' + s.oppChar;
+        (by[k] || (by[k] = { rom: s.rom || '', char: s.oppChar, sets: [] })).sets.push(s);
+    });
+    const rows = Object.keys(by).map(k => Object.assign(by[k], { r: fc.data.recordOf(by[k].sets) })).sort((x, y) => y.sets.length - x.sets.length).slice(0, 10);
+    if (!rows.length) return '';
+    return card(E(T('Matchups')) + ' <small>— ' + E(T('click one for your notes')) + '</small>', rows.map(m => {
+        const note = nt && nt.matchup ? nt.matchup(m.rom, m.char) : null;
+        const rate = m.r.w + m.r.l ? m.r.w / (m.r.w + m.r.l) : null;
+        return `<div class="anMu" data-mu="${E(m.rom + '|' + m.char)}" title="${E(T('Matchup notes vs {char}', { char: m.char }))}">` +
+            `<b>${E(m.char)}</b><span class="r ${rate == null ? '' : rate >= 0.5 ? 'good' : 'bad'}">${E(fc.fmt.wl(m.r))}</span>` +
+            `<span class="n${note ? '' : ' empty'}">${E(note ? note.text : T('Add a note'))}</span></div>`;
+    }).join(''), true);
+}
+
 // by character, once sets carry them (from 2.6 on); the most-played six of each
 function charCards(a, card) {
     const top = (o) => Object.keys(o).sort((x, y) => o[y].n - o[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, o[k]]);
@@ -205,12 +225,20 @@ function tabHtml(ctx) {
             ${card(E(T('Where in the session')), bars([[N_('1st set'), a.byPos.first], [N_('2nd–5th'), a.byPos.early], [N_('6th+'), a.byPos.late]]))}
             ${card(E(T('By game')), bars(Object.keys(a.byGame).sort((x, y) => a.byGame[y].n - a.byGame[x].n).slice(0, 6).map(k => [k.length > 14 ? k.slice(0, 13) + '…' : k, a.byGame[k]])))}
             ${charCards(a, card)}
+            ${matchupCard(ctx.sets, card)}
             ${card(E(T('When you win')) + ' <small>— ' + E(T('weekday × hour, greener = better, brighter = more sets')) + '</small>', heatHtml(a), true)}
         </div>`;
 }
 
 const CSS = `
 .fcsTab .fcsCard svg.fc-chart { width: 100%; height: auto; }
+.anMu { display: flex; align-items: baseline; padding: 7px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.anMu:hover { background: var(--fc-hover); }
+.anMu b { flex: none; width: 120px; color: var(--fc-head); font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.anMu .r { flex: none; width: 64px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.anMu .r.good { color: var(--fc-success); } .anMu .r.bad { color: var(--fc-danger); }
+.anMu .n { flex: 1; min-width: 0; font-style: italic; color: var(--fc-text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.anMu .n.empty { font-style: normal; color: var(--fc-muted); }
 .anIns { display: flex; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--fc-divider); font-size: 14px; }
 .anIns:first-of-type { border-top: 0; }
 .anIns .fc-ic { flex: none; width: 18px; height: 18px; margin: 1px 10px 0 0; color: var(--fc-accent); }

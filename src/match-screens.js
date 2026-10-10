@@ -57,6 +57,18 @@ function activeChannelName() {
 }
 
 const gameName = () => activeChannelName().replace(/\s*\([^)]*\)\s*$/, '');
+const gameRom = () => { const c = fc.app.channel(activeChannelName()); return (c && c.gameid) || ''; };
+
+// Characters for the VS screen: the emulator's own files once it shows them, else what the
+// opponent played against you last time (character select usually comes after the VS screen)
+function vsCharacters(me, opp) {
+    const pl = fc.app.playing(me);
+    const e = pl && fc.emu ? fc.emu.match(pl.quarkId) : null;
+    const s = e ? fc.emu.sides(e, me) : null;
+    if (s && (s.mine.char || s.theirs.char)) return { me: s.mine.char, opp: s.theirs.char, live: true };
+    const last = H().vs(opp).filter(x => x.oppChar).pop();
+    return { me: '', opp: last ? last.oppChar : '', live: false };
+}
 
 function card(name) {
     const u = fc.app.users()[name] || {};
@@ -66,7 +78,8 @@ function card(name) {
         cc: ((u.country && u.country.iso_code) || '').toLowerCase(),
         country: (u.country && u.country.full_name) || '',
         rank: fc.data.rankLetter((u.channelRank || {})[activeChannelName()] || 0),
-        color: fc.data.hashColor(name)
+        color: fc.data.rankLetter((u.channelRank || {})[activeChannelName()] || 0)
+            ? fc.data.rankColor((u.channelRank || {})[activeChannelName()]) : fc.data.hashColor(name)
     };
 }
 
@@ -162,12 +175,13 @@ function pushEsc(fn) {
     return () => window.removeEventListener('keyup', h, true);
 }
 
-function playerHtml(p, side) {
+function playerHtml(p, side, ch) {
     return `<div class="player ${side}">
         <img class="avatar" src="${E(p.avatar)}">
         <div class="pname">${E(p.name)}</div>
         <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
             `${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
+        ${ch ? `<div class="pchar">${E(ch)}</div>` : ''}
     </div>`;
 }
 
@@ -176,12 +190,19 @@ function showVs(meName, oppName) {
     if (!cfg.enabled || !cfg.vs) return;
     vsShown++;
     const me = card(meName), opp = card(oppName);
+    const rom = gameRom();
+    const ch = vsCharacters(meName, oppName);
+    const vs = recordVs(oppName), t = recordOf(sessionSets());
+    const lines = [];
+    if (vs.w || vs.l || vs.d) lines.push(T("You're {record} vs {name}", { record: fc.fmt.wl(vs), name: oppName }));
+    if (t.w || t.l || t.d) lines.push(T('Tonight {record}', { record: fc.fmt.wl(t) }));
     openOverlay('vs', `
-        <div class="half l" style="background:${me.color}"></div>
-        <div class="half r" style="background:${opp.color}"></div>
-        ${playerHtml(me, 'l')}${playerHtml(opp, 'r')}
-        <div class="vsword">VS</div>
-        <div class="game">${E(gameName())}</div>`, 3600);
+        ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
+        <div class="half l" style="--c:${me.color}"></div>
+        <div class="half r" style="--c:${opp.color}"></div>
+        ${playerHtml(me, 'l', ch.me)}${playerHtml(opp, 'r', ch.opp ? (ch.live ? ch.opp : T('last time: {char}', { char: ch.opp })) : '')}
+        <div class="vsword">VS</div><div class="ring"></div>
+        <div class="game">${E(gameName())}${lines.length ? `<small>${lines.map(E).join('  ·  ')}</small>` : ''}</div>`, 3600);
     play('vs');
 }
 
@@ -220,10 +241,13 @@ function showResult(kind, mine, theirs, oppName, game, extras) {
                 `--y:${(Math.sin(a) * d).toFixed(1)}vmax;--r:${Math.round(Math.random() * 720)}deg;animation-delay:${(0.15 + Math.random() * 0.2).toFixed(2)}s"></span>`;
         }
     }
+    const rom = gameRom();
     openOverlay('res ' + kind, `
+        ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="rays"></div>${bits}
         <div class="big">${title}</div>
         <div class="sub">${E(score)}${oppName ? 'vs ' + E(oppName) : ''}<small>${E(game || '')}</small>
+            ${ex.myChar && ex.oppChar ? `<span class="chars">${E(ex.myChar)} <i>vs</i> ${E(ex.oppChar)}</span>` : ''}
             ${ex.streak ? `<span class="streak ${kind === 'won' ? 'hot' : 'cold'}">${ex.hot ? fc.ui.ic('flame', 'fill') : ''}${E(ex.streak)}</span>` : ''}
             ${(ex.lines || []).length ? `<span class="extra">${ex.lines.map(E).join('  ·  ')}</span>` : ''}
             ${rematchHtml(ex.rematch)}
@@ -265,6 +289,10 @@ function trackEmu(m) {
     const s = e && fc.emu.sides(e, fc.app.me());
     if (!s) return;
     m.chars = charStep(m.chars, s);
+    if (s.theirs.char && s.theirs.char !== m.oppCharSeen) {
+        m.oppCharSeen = s.theirs.char;
+        fc.emit('match:character', { quark: m.quark, opp: m.opp, rom: m.rom || e.rom || '', char: s.theirs.char });
+    }
     m.emuScore = { mine: s.mine.score, theirs: s.theirs.score };
 }
 
@@ -486,7 +514,7 @@ async function resolveResult(m) {
             eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined, myChar: myChar || undefined, oppChar: oppChar || undefined });
         fc.emit('match:end', { quark: m.quark, opp: m.opp, result: v || null, mine, theirs });
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
-            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft } })), 60000);
+            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar })), 60000);
     };
     // 1. Fightcade's own end-of-match message (up to ~8 s)
     for (let i = 0; i < 16; i++) {
@@ -635,7 +663,23 @@ const CSS = `
 
 /* ---------- VS ---------- */
 #fcmsOverlay.vs { background: #0b0a0d; }
+/* 2.10: the game's art behind everything, the halves in the players' rank colours over it */
+#fcmsOverlay .art { position: absolute; left: -4%; top: -4%; right: -4%; bottom: -4%; background-size: cover; background-position: center;
+    image-rendering: pixelated; filter: saturate(1.2) brightness(.55); animation: fcms-art 4s ease-out both; }
+@keyframes fcms-art { from { transform: scale(1.12); } to { transform: scale(1); } }
 #fcmsOverlay.vs .half { position: absolute; top: 0; bottom: 0; width: 60%; }
+#fcmsOverlay.vs .half.l { background: linear-gradient(90deg, var(--c) 0%, var(--c) 40%, transparent 100%); opacity: .82; }
+#fcmsOverlay.vs .half.r { background: linear-gradient(270deg, var(--c) 0%, var(--c) 40%, transparent 100%); opacity: .82; }
+#fcmsOverlay .pchar { display: inline-block; margin-top: 1.8vmin; padding: .5vmin 2vmin; border-radius: 1vmin; background: rgba(0,0,0,.45);
+    color: #fff; font-size: 3vmin; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; box-shadow: inset 0 0 0 .25vmin rgba(255,255,255,.25); }
+#fcmsOverlay.vs .ring { position: absolute; left: 50%; top: 50%; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; border-radius: 50%;
+    border: 1vmin solid #fff; opacity: 0; pointer-events: none; animation: fcms-ring .7s .95s ease-out both; }
+@keyframes fcms-ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.2); } }
+#fcmsOverlay .game small { display: block; margin-top: 1.4vmin; font-size: 2.2vmin; letter-spacing: .08em; text-transform: none; color: rgba(255,255,255,.9); }
+#fcmsOverlay.res .art { filter: saturate(1.1) brightness(.28) blur(.4vmin); }
+#fcmsOverlay .sub .chars { display: block; margin-top: 1.2vmin; font-size: 3vmin; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+#fcmsOverlay .sub .chars i { font-style: italic; opacity: .6; margin: 0 .8vmin; }
+html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring { animation: none !important; }
 #fcmsOverlay.vs .half.l { left: -10%; transform: skewX(-12deg); animation: fcms-left .55s cubic-bezier(.2,.9,.2,1) both; }
 #fcmsOverlay.vs .half.r { right: -10%; transform: skewX(-12deg); animation: fcms-right .55s cubic-bezier(.2,.9,.2,1) both; }
 @keyframes fcms-left { from { transform: translateX(-100%) skewX(-12deg); } to { transform: translateX(0) skewX(-12deg); } }

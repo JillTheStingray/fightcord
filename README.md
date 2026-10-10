@@ -50,6 +50,8 @@ walks you through the rest.
   music and punch on every kick.
 - A calm lobby: the member list on the left, one line per player, one Filter button, and tonight's
   record with your goals as one strip in the top bar.
+- The game's rankings, replays to watch, events and player profiles inside Fightcade, plus a VS
+  screen with the game's art, characters on your Discord status and matchup notes per character.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

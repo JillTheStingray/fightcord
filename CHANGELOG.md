@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.10.0
+
+- **Rankings, Replays, Events and Profile inside Fightcade.** The channel banner's buttons open one page
+  with four tabs instead of fightcade.com:
+  - **Rankings:** the game's leaderboard (100 at a time), you highlighted, search and "Jump to me";
+    a row opens that player's profile, a name the scout card;
+  - **Replays:** recent matches (All / Mine / Friends / Top 100) with **Watch**, which plays them in
+    Fightcade;
+  - **Events:** this game's tournaments first, with countdowns, the reminder bell and Info;
+  - **Profile:** Fightcade's rank, matches and hours, your leaderboard spot, your record and
+    characters, your ELO trend; for others Challenge / Head-to-head / Notes. Fightcade's own
+    right-click **Profile** opens it too (in game channels).
+  Each tab keeps a link to fightcade.com.
+- **A new VS screen:** the game's art behind it, both halves in the players' rank colours, the
+  character they played against you last time, and your record vs them and tonight. The result
+  screen shows both characters ("Akuma vs Chun-Li").
+- **Characters on Discord:** your status reads "You (B · Akuma) 3 - 1 Rival (D · Yang)", with the score
+  straight from the emulator (instant). Settings → Discord status → **Show characters**.
+- **Matchup notes:** Stats → Analytics → **Matchups** lists every character you've faced with your record;
+  click one to write a note. When the emulator shows your opponent picked them, a card with your record
+  and note waits in the lobby. The challenge card links to it.
+- **Gentler on Fightcade's servers:** one request at a time (at most ~3 a second), Fightcade's own
+  "retry after" respected, and what you click on waits out a slow-down instead of failing.
+
 ## 2.9.0
 
 - **A calmer lobby.** The member list moves to the left of the chat (Settings → Member list → **Side**

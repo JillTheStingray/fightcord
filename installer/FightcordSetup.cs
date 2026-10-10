@@ -27,8 +27,8 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Fightcord Setup")]
 [assembly: AssemblyProduct("Fightcord")]
-[assembly: AssemblyVersion("2.9.0.0")]
-[assembly: AssemblyFileVersion("2.9.0.0")]
+[assembly: AssemblyVersion("2.10.0.0")]
+[assembly: AssemblyFileVersion("2.10.0.0")]
 
 namespace Fightcord
 {
@@ -510,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "2.9.0";
+        const string Version = "2.10.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 

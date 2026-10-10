@@ -44,6 +44,12 @@ function augment(d) {
     const orig = d.callback;
     d.callback = function (id) {
         if (typeof id === 'string' && id.indexOf('fc:') === 0) { run(id, name, d); return undefined; }
+        // Fightcade's own "Profile": inside Fightcade (the game hub) when you're in a game channel
+        if (id === 'profile') {
+            const hub = mod('game-hub');
+            const ch = fc.app.channel(fc.app.activeChannelId());
+            if (hub && hub.open && ch && ch.gameid) { hub.open({ tab: 'profile', who: name, channel: ch.name, rom: ch.gameid }); return undefined; }
+        }
         return orig && orig.apply(this, arguments);
     };
     setTimeout(decorate, 0);

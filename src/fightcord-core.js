@@ -1125,10 +1125,23 @@ const apiState = {
     cache: new Map(), inflight: new Map(), queue: [], running: 0, lastStart: 0,
     blockedUntil: 0, fails: 0, stats: { requests: 0, cached: 0, errors: 0, blocked: 0 }
 };
-const API_GAP = 250, API_PARALLEL = 2, API_CACHE_MAX = 400;
+// one request at a time, ~3 a second at most: Fightcade answers "too many requests" well before that
+const API_GAP = 300, API_PARALLEL = 1, API_CACHE_MAX = 400;
 
 function apiPump() {
     if (apiState.running >= API_PARALLEL || !apiState.queue.length) return;
+    // Fightcade asked us to slow down: what can't wait gives up now, the rest (things you
+    // clicked on, opts.wait) runs when the pause is over
+    if (now() < apiState.blockedUntil) {
+        apiState.queue = apiState.queue.filter(j => {
+            if (j.waitUntil && j.waitUntil >= apiState.blockedUntil) return true;
+            apiState.stats.blocked++;
+            j.reject(new Error('rate limited'));
+            return false;
+        });
+        if (apiState.queue.length && !apiState.wake) apiState.wake = setTimeout(() => { apiState.wake = 0; apiPump(); }, apiState.blockedUntil - now() + 50);
+        return;
+    }
     const wait = apiState.lastStart + API_GAP - now();
     if (wait > 0) { setTimeout(apiPump, wait); return; }
     apiState.queue.sort((a, b) => a.pri - b.pri || a.seq - b.seq);
@@ -1160,7 +1173,8 @@ async function apiFetch(job) {
     if (res.status === 429 || text.trim().charAt(0) === '<') {
         apiState.fails++;
         apiState.stats.errors++;
-        apiState.blockedUntil = now() + Math.min(5 * 60000, 10000 * Math.pow(2, apiState.fails));
+        const after = res.headers && typeof res.headers.get === 'function' ? parseFloat(res.headers.get('retry-after')) : NaN;
+        apiState.blockedUntil = now() + Math.min(5 * 60000, after > 0 ? Math.max(3000, after * 1000) : 10000 * Math.pow(2, apiState.fails));
         throw new Error(res.status === 429 ? 'rate limited' : 'blocked by Cloudflare');
     }
     apiState.fails = 0;
@@ -1171,7 +1185,8 @@ async function apiFetch(job) {
 }
 
 let apiSeq = 0;
-// fc.api.request(body, { ttl (ms, default 5 min), timeout (ms), priority: 'high'|'normal'|'low', fresh })
+// fc.api.request(body, { ttl (ms, default 5 min), timeout (ms), priority: 'high'|'normal'|'low', fresh,
+//   wait (ms: wait out a slow-down pause up to this long instead of failing -- for things you clicked) })
 function apiRequest(body, opts) {
     const o = opts || {};
     const key = JSON.stringify(body);
@@ -1181,12 +1196,15 @@ function apiRequest(body, opts) {
     // backing off: an old answer beats an error
     if (now() < apiState.blockedUntil) {
         if (hit) { apiState.stats.cached++; return Promise.resolve(hit.data); }
-        apiState.stats.blocked++;
-        return Promise.reject(new Error('rate limited'));
+        if (!(o.wait && now() + o.wait >= apiState.blockedUntil)) {
+            apiState.stats.blocked++;
+            return Promise.reject(new Error('rate limited'));
+        }
     }
     if (apiState.inflight.has(key)) return apiState.inflight.get(key);
     const p = new Promise((resolve, reject) => {
-        apiState.queue.push({ key, pri: PRI[o.priority] == null ? 1 : PRI[o.priority], seq: apiSeq++, timeout: o.timeout || 10000, resolve, reject });
+        apiState.queue.push({ key, pri: PRI[o.priority] == null ? 1 : PRI[o.priority], seq: apiSeq++, timeout: o.timeout || 10000, resolve, reject,
+            waitUntil: o.wait ? now() + o.wait : 0 });
         apiPump();
     });
     apiState.inflight.set(key, p);
@@ -1204,6 +1222,7 @@ const LB_PAGES = 3, LB_TTL = 10 * 60000;
 const api = {
     request: apiRequest,
     blocked: () => now() < apiState.blockedUntil,
+    blockedFor: () => Math.max(0, apiState.blockedUntil - now()),
     stats: () => Object.assign({ queued: apiState.queue.length, running: apiState.running, cache: apiState.cache.size,
         blockedFor: Math.max(0, apiState.blockedUntil - now()) }, apiState.stats),
     clearCache: () => { apiState.cache.clear(); boards.clear(); },

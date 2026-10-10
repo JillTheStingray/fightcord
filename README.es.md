@@ -54,6 +54,8 @@ de bienvenida corta te guía con el resto.
   música de fondo y golpean en cada bombo.
 - Un lobby más tranquilo: la lista de miembros a la izquierda, una línea por jugador, un solo botón de
   Filtro, y el récord de la noche con tus metas en una franja en la barra de arriba.
+- La clasificación del juego, repeticiones para ver, eventos y perfiles de jugadores dentro de Fightcade,
+  y además una pantalla de VS con el arte del juego, personajes en tu estado de Discord y notas por personaje.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
   fuente y traducción automática de los mensajes que recibes.
 

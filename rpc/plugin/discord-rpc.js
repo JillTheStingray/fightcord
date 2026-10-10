@@ -34,8 +34,8 @@
   var pth = (function () { try { return require('path'); } catch (e) { return null; } })();
 
   // Optional settings file, sits next to this plugin. All keys are optional.
-  //   { "showScore": true, "showRanks": true, "showNames": true, "showSession": true, "debug": false }
-  var cfg = { showScore: true, showRanks: true, showNames: true, showSession: true, debug: false };
+  //   { "showScore": true, "showRanks": true, "showNames": true, "showSession": true, "showCharacters": true, "debug": false }
+  var cfg = { showScore: true, showRanks: true, showNames: true, showSession: true, showCharacters: true, debug: false };
   (function loadConfig() {
     if (!fsm || !pth || typeof __dirname === 'undefined') return;
     try {
@@ -348,18 +348,65 @@
     return (raw || 'Fightcade').replace(/\s*\([^)]*\)\s*$/, '').trim();
   }
 
-  function tag(name, rank) {
-    return name + (cfg.showRanks && rank ? ' (' + rank + ')' : '');
+  // "Name (B · Akuma)": the rank and, once known, the character
+  function tag(name, rank, ch) {
+    var bits = [];
+    if (cfg.showRanks && rank) bits.push(rank);
+    if (ch) bits.push(ch);
+    return name + (bits.length ? ' (' + bits.join(' · ') + ')' : '');
   }
 
-  function matchLine(state) {
-    if (!state.opponent || !cfg.showNames) {
-      // Still worth showing the score even when names are hidden.
-      return haveScore() ? '⚔  ' + score.mine + ' - ' + score.theirs : '⚔  In Match';
+  // ── The emulator's own match files ─────────────────────────────────────────
+  // Fightcade's FBNeo writes the running match to <Fightcade>/emulator/fbneo/fightcade/*.txt
+  // for stream overlays: both names, scores and characters, kept until the next match. This
+  // plugin sits in <Fightcade>/fc2-electron/resources/app/inject/<folder>/. Read at most once a second.
+  var emuFiles = { at: 0, data: null };
+  function readEmu(quarkId) {
+    if (!fsm || !pth || typeof __dirname === 'undefined' || !quarkId) return null;
+    if (Date.now() - emuFiles.at > 1000) {
+      emuFiles.at = Date.now();
+      var dir = pth.resolve(__dirname, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'fightcade');
+      var rd = function (n) {
+        try { return String(fsm.readFileSync(pth.join(dir, n + '.txt'), 'utf8')).replace(/^\uFEFF/, '').trim(); }
+        catch (e) { return ''; }
+      };
+      var q = rd('gamequark').replace(/\.\d+$/, '');     // the emulator writes "<quark>.0"
+      emuFiles.data = q ? {
+        quark: q,
+        p1: { name: rd('p1name'), score: rd('p1score'), ch: rd('p1character') },
+        p2: { name: rd('p2name'), score: rd('p2score'), ch: rd('p2character') }
+      } : null;
     }
-    var me  = tag(state.username, state.myRank);
-    var opp = tag(state.opponent, state.oppRank);
-    var mid = haveScore() ? '  ' + score.mine + ' - ' + score.theirs + '  ' : ' vs ';
+    var d = emuFiles.data;
+    return d && d.quark === String(quarkId) ? d : null;
+  }
+  // { mine, theirs } from the files when this match is in them and you're one of the players
+  function emuSides(state) {
+    var d = readEmu(state.quarkId);
+    if (!d) return null;
+    var me = String(state.username || '').toLowerCase();
+    if (d.p1.name.toLowerCase() === me) return { mine: d.p1, theirs: d.p2 };
+    if (d.p2.name.toLowerCase() === me) return { mine: d.p2, theirs: d.p1 };
+    return null;
+  }
+  var isNum = function (s) { return /^\d+$/.test(String(s)); };
+
+  // "⚔  You (Akuma)  3 - 1  Rival (Yang)": the emulator's score (instant) or the web API's,
+  // characters once the emulator shows them
+  function matchLine(state) {
+    var es = state.playing ? emuSides(state) : null;
+    var sc = null;
+    if (cfg.showScore && es && isNum(es.mine.score) && isNum(es.theirs.score)) sc = [es.mine.score, es.theirs.score];
+    else if (haveScore()) sc = [score.mine, score.theirs];
+    var chMe = cfg.showCharacters && es ? es.mine.ch : '', chOpp = cfg.showCharacters && es ? es.theirs.ch : '';
+    if (!state.opponent || !cfg.showNames) {
+      // names hidden: the characters and the score still say plenty
+      if (chMe && chOpp) return '⚔  ' + chMe + (sc ? '  ' + sc[0] + ' - ' + sc[1] + '  ' : ' vs ') + chOpp;
+      return sc ? '⚔  ' + sc[0] + ' - ' + sc[1] : '⚔  In Match';
+    }
+    var me  = tag(state.username, state.myRank, chMe);
+    var opp = tag(state.opponent, state.oppRank, chOpp);
+    var mid = sc ? '  ' + sc[0] + ' - ' + sc[1] + '  ' : ' vs ';
     return '⚔  ' + me + mid + opp;
   }
 
@@ -503,7 +550,8 @@
         prevActive = active;
         prevQuark  = state.quarkId;
 
-        if (state.playing) refreshScore(state.quarkId, state.username, state.opponent);
+        var es = state.playing ? emuSides(state) : null;
+        if (state.playing && !(es && isNum(es.mine.score))) refreshScore(state.quarkId, state.username, state.opponent);
         else if (score.quark) resetScore(null);
 
         if (rpcReady && rpc) publish(buildActivity(state, emuOpen));

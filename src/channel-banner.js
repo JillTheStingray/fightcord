@@ -62,10 +62,10 @@ function build(wrapper, ch) {
             <div class="cbnFriends"></div>
             <div class="cbnBtns">
                 ${btn('stats', N_('Stats'), 'chart', N_('Your stats in this game'))}
-                ${ch.links.rankings ? btn('rankings', N_('Rankings'), 'trophy', N_('Rankings (fightcade.com)')) : ''}
-                ${ch.links.replays ? btn('replays', N_('Replays'), 'play', N_('Replays (fightcade.com)')) : ''}
-                ${ch.links.events ? btn('events', N_('Events'), 'clock', N_('Events (fightcade.com)')) : ''}
-                ${ch.links.profile ? btn('profile', N_('Profile'), 'user', N_('Your profile (fightcade.com)')) : ''}
+                ${btn('rankings', N_('Rankings'), 'trophy', N_('The leaderboard for this game'))}
+                ${btn('replays', N_('Replays'), 'play', N_('Recent matches to watch'))}
+                ${btn('events', N_('Events'), 'clock', N_('Upcoming tournaments'))}
+                ${btn('profile', N_('Profile'), 'user', N_('Your profile in this game'))}
             </div>
         </div>
         <span class="cbnFold" data-cb="fold" title="${E(T('Shrink / expand the banner'))}">${fc.ui.icon('chevronDown')}</span>`;
@@ -84,6 +84,9 @@ function build(wrapper, ch) {
         const act = a.dataset.cb;
         if (act === 'fold') { cfg.collapsed = !cfg.collapsed; store.save(); applyFold(); fc.settings.refresh('channel-banner'); return; }
         if (act === 'stats') { const st = mod('stats'); if (st && st.open) st.open({ game: shortName(ch.name) }); return; }
+        // Rankings / Replays / Events / Profile open inside Fightcade (2.10); the site is a link in each tab
+        const hub = mod('game-hub');
+        if (hub && hub.open && ['rankings', 'replays', 'events', 'profile'].includes(act)) { hub.open({ tab: act, channel: ch.name, rom: ch.rom, links: ch.links }); return; }
         if (ch.links[act]) { try { window.open(ch.links[act], '_blank'); } catch (err) { /* ignore */ } }
     });
     if (ch.rom) {

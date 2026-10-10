@@ -61,7 +61,7 @@ const PLUGINS = [
     ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
     ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
     ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
-    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')], ['game-hub.js', N_('Game hub (Rankings, Replays, Events, Profile)')],
     ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 
@@ -118,12 +118,13 @@ function paneHtml(id) {
             <div class="fcordBtns">${fc.ui.btn('Restart Fightcade', { kind: 'sec', icon: 'refresh', act: 'restart' })}<span class="fcordNote" data-note="restart"></span></div>`;
     }
     if (id === 'rpc') {
-        const c = Object.assign({ showScore: true, showRanks: true, showNames: true, showSession: true, debug: false }, readJson(RPC_CONFIG, {}));
+        const c = Object.assign({ showScore: true, showRanks: true, showNames: true, showSession: true, showCharacters: true, debug: false }, readJson(RPC_CONFIG, {}));
         return `<h2>${ET('Discord status')}</h2>
             <p class="lead">${ET('What your Discord profile shows while you’re on Fightcade. Changes apply after a restart.')}</p>
             <div class="fc-set">${toggle(ET('Show the score'), ET('The set score during a match'), c.showScore, 'data-rpc="showScore"')}
             ${toggle(ET('Show ranks'), ET('Your rank and your opponent’s'), c.showRanks, 'data-rpc="showRanks"')}
             ${toggle(ET('Show opponent names'), '"vs KenjiRival"', c.showNames, 'data-rpc="showNames"')}
+            ${toggle(ET('Show characters'), ET('"Akuma vs Yang", from the emulator (most games)'), c.showCharacters, 'data-rpc="showCharacters"')}
             ${toggle(ET('Tonight’s record'), ET('"· 7–3 tonight" from the session tracker'), c.showSession, 'data-rpc="showSession"')}
             ${toggle(ET('Debug log'), ET('Writes discord-rpc-debug.log — leave off unless something is wrong'), c.debug, 'data-rpc="debug"')}</div>`;
     }

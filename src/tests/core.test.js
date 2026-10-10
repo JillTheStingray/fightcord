@@ -232,8 +232,14 @@ test('api: cache, shared in-flight requests, priority, Cloudflare backoff with s
     assert.ok(api.blocked());
     await assert.rejects(api.user('Carol'), /rate limited/);
     assert.equal((await api.user('Alice', { ttl: 0 })).name, 'Alice', 'stale answer while blocked');
-    T.apiState.blockedUntil = 0;
+    // something you clicked waits the pause out and then loads; background work still gives up
     mode = 'ok';
+    T.apiState.blockedUntil = Date.now() + 150;
+    const waited = api.user('Dana', { wait: 2000, priority: 'high' });
+    await assert.rejects(api.user('Eve', { priority: 'low' }), /rate limited/);
+    assert.equal((await waited).name, 'Dana');
+    assert.ok(!api.blocked());
+    T.apiState.blockedUntil = 0;
 });
 
 test('api: timeouts', async () => {

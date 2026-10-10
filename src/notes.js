@@ -7,6 +7,10 @@
  * Shown on the scout card, the member list (coloured dots), the challenge card, the
  * member hover card and the head-to-head page. Edit them from any of those (Notes),
  * or /note <name> in chat. Event: notes:changed (name).
+ *
+ * Matchup notes (2.10): one note per game + opponent character ("parry the dive kick"). When the
+ * emulator shows who they picked, a card in the lobby says your record vs that character and the
+ * note; Analytics lists every matchup with its note. Same file, key "<rom>|<character>".
  */
 'use strict';
 
@@ -58,6 +62,72 @@ function set(name, patch) {
 function toggleTag(name, id) {
     const cur = (cfg.people[key(name)] || {}).tags || [];
     set(name, { tags: cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id) });
+}
+
+/* ------------------------------------------------------------------ matchups */
+
+const muKey = (rom, ch) => String(rom || '') + '|' + String(ch || '').toLowerCase();
+const matchup = (rom, ch) => (cfg && cfg.matchups[muKey(rom, ch)]) || null;
+
+function setMatchup(rom, ch, text) {
+    if (!cfg || !ch) return;
+    const k = muKey(rom, ch), t = String(text || '').trim().slice(0, 500);
+    if (t) cfg.matchups[k] = { rom: rom || '', char: ch, text: t, updated: Date.now() };
+    else delete cfg.matchups[k];
+    changed('');
+}
+
+// your record vs a character in a game, from the sets that know the characters (2.6+)
+function matchupRecord(rom, ch) {
+    const k = String(ch || '').toLowerCase();
+    const sets = fc.history.all().filter(s => String(s.oppChar || '').toLowerCase() === k && (!rom || !s.rom || s.rom === rom));
+    return Object.assign({ n: sets.length }, fc.data.recordOf(sets));
+}
+
+function editMatchup(rom, ch, rect) {
+    if (!cfg || !ch) return;
+    closeEditor();
+    const box = document.createElement('div');
+    box.id = 'ntEdit';
+    const r = matchupRecord(rom, ch), cur = matchup(rom, ch);
+    box.innerHTML = `<div class="h">${E(T('Matchup notes vs'))} <b>${E(ch)}</b>${r.w || r.l ? ` · ${E(fc.fmt.wl(r))}` : ''}</div>
+        <textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea>
+        <div class="f"><span class="fc-muted">${E(T('Shown when you face {char}', { char: ch }))}</span>${fc.ui.btn('Save', { size: 'sm', act: 'save' })}</div>`;
+    const save = () => { setMatchup(rom, ch, box.querySelector('textarea').value); closeEditor(); };
+    box.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey) && e.target.tagName === 'TEXTAREA') { e.preventDefault(); save(); }
+    }, true);
+    box.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('[data-act="save"]')) save(); });
+    const at = rect || { left: window.innerWidth / 2 - 160, right: window.innerWidth / 2 - 160, top: window.innerHeight / 3, bottom: window.innerHeight / 3, width: 0, height: 0 };
+    const me = editor = fc.ui.popover(at, box, { cls: 'ntPop', width: 320, onClose: () => { if (editor === me) editor = null; } });
+    box.querySelector('textarea').focus();
+}
+
+// the emulator shows who they picked: your record and your note, once per set and character
+const muShown = new Set();
+function onCharacter(ev) {
+    if (!cfg || !ev || !ev.char) return;
+    const k = ev.quark + '|' + ev.char;
+    if (muShown.has(k)) return;
+    muShown.add(k);
+    const r = matchupRecord(ev.rom, ev.char), note = matchup(ev.rom, ev.char);
+    if (!note && r.n < 3) return;
+    fc.ui.toast(T('vs {char}', { char: ev.char }) + (r.w || r.l ? ' · ' + fc.fmt.wl(r) : ''), {
+        icon: 'sword', ms: 12000,
+        sub: note ? '“' + note.text + '”' : T('No matchup note yet'),
+        actions: [{ label: note ? T('Edit note') : T('Add a note'), kind: 'sec', fn: () => editMatchup(ev.rom, ev.char) }]
+    });
+}
+
+// [data-mu="rom|Character"] anywhere (Analytics, the challenge card) opens the editor
+function onMuClick(e) {
+    const el = e.target.closest && e.target.closest('[data-mu]');
+    if (!el) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const v = el.getAttribute('data-mu'), i = v.indexOf('|');
+    editMatchup(v.slice(0, i), v.slice(i + 1), el.getBoundingClientRect());
 }
 
 /* ------------------------------------------------------------------- display */
@@ -189,10 +259,16 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)) });
+    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {} });
     cfg = store.data;
     if (!cfg.people || typeof cfg.people !== 'object') cfg.people = {};
     if (!Array.isArray(cfg.tags) || !cfg.tags.length) cfg.tags = DEFAULT_TAGS.map(t => Object.assign({}, t));
+    if (!cfg.matchups || typeof cfg.matchups !== 'object') cfg.matchups = {};
+    fc.on('match:character', onCharacter);
+    if (typeof document !== 'undefined') {
+        document.addEventListener('click', onMuClick, true);
+        fc.own(() => document.removeEventListener('click', onMuClick, true));
+    }
     window.__fcNotesLoaded = true;
     fc.ui.style('ntStyle', CSS);
     fc.own(() => { fc.ui.style('ntStyle', null); closeEditor(); window.__fcNotesLoaded = false; });
@@ -207,6 +283,7 @@ function start(f) {
 
 const api = {
     get, has, set, toggleTag, chips, dots, edit,
+    matchup, setMatchup, matchupRecord, editMatchup, _onCharacter: (ev) => onCharacter(ev),
     tags: () => (cfg ? cfg.tags : DEFAULT_TAGS),
     get _config() { return cfg; }
 };
