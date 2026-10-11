@@ -1,6 +1,6 @@
 # Fightcord
 
-[Sitio web](https://jillthestingray.github.io/fightcord/es/) · [English](README.md) · [Português (Brasil)](README.pt-BR.md) · **Español**
+[Sitio web](https://fightcord.pages.dev/es/) · [English](README.md) · [Português (Brasil)](README.pt-BR.md) · **Español**
 
 **Fightcade, pero se ve y funciona como Discord**, más un montón de herramientas para jugadores
 competitivos. Un instalador, ninguna otra descarga, todo funciona dentro de la app de Fightcade en
@@ -34,7 +34,7 @@ de bienvenida corta te guía con el resto.
   barra izquierda ofrece reiniciar cuando la actualización está lista, y Configuración →
   Actualizaciones muestra las novedades.
 - **Desinstalar:** vuelve a ejecutar el instalador → Desinstalar. Tu configuración queda guardada en
-  una carpeta de respaldo y, si antes usabas Cerberus, se puede restaurar.
+  una carpeta de respaldo.
 
 ## Qué obtienes
 
@@ -152,9 +152,6 @@ issue con el texto de "Copiar información de depuración".
 
 **¿Puedo usar solo una parte?** Sí: Configuración → Mi Fightcord activa y desactiva módulos uno por
 uno, o elige el perfil Ligero.
-
-**¿Funciona con Cerberus?** Fightcord lo reemplaza. El instalador mueve Cerberus a una carpeta de
-respaldo y trae tu configuración, historial de partidas y sonidos.
 
 **Encontré un error de traducción.** Las traducciones son nuevas — abre un issue o un pull request en
 `src/i18n-es.js` (la app) o `installer/i18n.json` (el instalador).

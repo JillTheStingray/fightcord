@@ -109,11 +109,49 @@ const SCENES = [
         fightcord.modules.get('events')._check();
         await sleep(600);` },
     { name: 'welcome', snap: CHANNEL, run: `fightcord.modules.get('welcome').open(0); await sleep(1000);` },
+    // the website (fightcord-site): Looks, voice chat, the game hub, the VS screen, the emulator bar, the visualizer
+    ...['dark', 'neon', 'crt', 'strike', 'tokyo'].map(k => ({ name: 'look-' + k, snap: CHANNEL, wait: 7000, run: `
+        __sim.music();
+        fightcord.modules.get('discord-theme').applyLook('${k}', true);
+        await sleep(3500);` })),
+    { name: 'voice', snap: CHANNEL, run: `
+        // made-up opponents with Fightcord (+ voice), an incoming challenge, a live voice pill
+        const pr = fightcord.modules.get('presence'), vs = fightcord.config('voice');
+        vs.data.enabled = true; vs.save();
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        [0, 5, 9, 14, 17].forEach((i, j) => pr._heard(others[i], j % 2 === 0));
+        __sim.elo(null, 1512, false); __sim.elo(others[0], 1546, false);           // a close set, not a 1% one
+        await sleep(800);
+        fightcord.modules.get('voice')._demo(others[9], 'connected');
+        fightcord.modules.get('challenge-card').show({ name: others[0], channel: fightcord.app.activeChannelId(), id: 'demo1', ranked: 3, demo: true });
+        await sleep(1500);` },
+    ...['rankings', 'replays', 'profile'].map(tab => ({ name: 'hub-' + tab, snap: CHANNEL, run: `
+        const ch = fightcord.app.channel(fightcord.app.activeChannelId());
+        fightcord.modules.get('game-hub').open({ tab: '${tab}', channel: ch.name, rom: ch.gameid${tab === 'profile' ? ", who: fightcord.app.me()" : ''} });
+        await sleep(3500);` })),
+    { name: 'vs', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        fightcord.modules.get('match-screens')._showVs(fightcord.app.me(), others[3]);
+        await sleep(1400);` },
+    { name: 'emulator', snap: CHANNEL, run: `
+        const st = fightcord.config('emu-skin'); st.data.enabled = true; st.save();
+        fightcord.modules.get('fightcord').open('appearance');
+        await sleep(1500);
+        fightcord.settings.refresh('emu-skin');
+        await sleep(1500);
+        const t = document.querySelector('[data-fc-block="emu-skin"]');
+        if (t) t.scrollIntoView({ block: 'start' });
+        await sleep(1500);` },
+    { name: 'visualizer', snap: CHANNEL, run: `
+        __sim.music();
+        fightcord.modules.get('backgrounds').setLook({ style: 'visualizer', look: 'bars', intensity: 0.85 });
+        await sleep(3000);` },
     { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` }
 ];
 
 // every scene: the made-up chat in view (scrolled to the bottom), no leftover toasts
 const PRELUDE = `
+    window.__fcbgAlwaysOn = true;          // headless never has focus: keep the animated background drawing
     const w = fightcord.app.channelElement();
     if (w) w.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
     document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
@@ -154,11 +192,16 @@ async function launch() {
     const exe = BROWSERS.find(b => fs.existsSync(b));
     if (!exe) throw new Error('no Edge / Chrome found');
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'fcshots-'));
-    const proc = spawn(exe, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--mute-audio', '--hide-scrollbars',
+    const proc = spawn(exe, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--mute-audio', '--autoplay-policy=no-user-gesture-required', '--hide-scrollbars',
         '--remote-debugging-port=0', `--window-size=${W},${H}`, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
     const portFile = path.join(profile, 'DevToolsActivePort');
     for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
-    return { port: +fs.readFileSync(portFile, 'utf8').split('\n')[0], close() { killTree(proc, profile); } };
+    // a crash mid-run must not leave the browser behind
+    let closed = false;
+    const close = () => { if (!closed) { closed = true; killTree(proc, profile); } };
+    process.on('exit', close);
+    process.on('uncaughtException', (e) => { console.error(e); close(); process.exit(1); });
+    return { port: +fs.readFileSync(portFile, 'utf8').split('\n')[0], close };
 }
 function cdp(wsUrl) {
     const ws = new WebSocket(wsUrl);
@@ -193,7 +236,7 @@ function cdp(wsUrl) {
             const code = `(async () => { const sleep = (ms) => new Promise(r => setTimeout(r, ms));
                 ${PRELUDE}
                 ${sc.run}
-                ${sc.keepToasts ? '' : "document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());"}
+                ${sc.keepToasts ? '' : "document.querySelectorAll('#fcToasts > *').forEach(t => t.remove()); { const s = document.createElement('style'); s.textContent = '#fcToasts { display: none !important; }'; document.head.appendChild(s); }"}
                 document.getAnimations().forEach(a => { try { a.finish(); } catch (e) {} });
                 await sleep(400);
                 return JSON.stringify(window.__demoLeaks ? window.__demoLeaks() : ['demo mode did not load']); })()`;

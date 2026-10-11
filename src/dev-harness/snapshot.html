@@ -280,8 +280,11 @@
     let data = { res: 'OK', results: [] };
     if (body.req === 'searchrankings') {
       const off = body.offset || 0, lim = body.limit || 100;
-      const all = Array.from({ length: 300 }, (_, i) => ({ name: names[i] || 'Ranked' + i, country: { iso_code: ['jp', 'us', 'br'][i % 3] },
-        gameinfo: { [body.gameid]: { rank: i < 40 ? 6 : i < 120 ? 5 : i < 220 ? 4 : 3, num_matches: 5000 - i * 10, time_played: (900 - i * 2) * 3600 } } }));
+      // believable numbers: wobbly, falling slowly down the board (the rank brackets are what tests use)
+      const wob = (i, k) => ((i * 7919 + k * 104729) % 1000) / 1000;
+      const all = Array.from({ length: 300 }, (_, i) => ({ name: names[i] || 'Ranked' + i, country: { iso_code: ['jp', 'us', 'br', 'cl', 'kr', 'fr', 'mx', 'gb', 'pe', 'ca'][(i * 3 + 1) % 10] },
+        gameinfo: { [body.gameid]: { rank: i < 40 ? 6 : i < 120 ? 5 : i < 220 ? 4 : 3, num_matches: Math.round(4200 / (1 + i / 25) * (0.7 + wob(i, 1) * 0.6)) + 40,
+          time_played: Math.round(1300 / (1 + i / 30) * (0.6 + wob(i, 2) * 0.8) + 20) * 3600 } } }));
       data = { res: 'OK', results: { results: all.slice(off, off + lim), count: all.length } };
     }
     if (body.req === 'getuser') {

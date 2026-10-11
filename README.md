@@ -1,6 +1,6 @@
 # Fightcord
 
-[Website](https://jillthestingray.github.io/fightcord/) · **English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
+[Website](https://fightcord.pages.dev/) · **English** · [Português (Brasil)](README.pt-BR.md) · [Español](README.es.md)
 
 **Fightcade, but it looks and works like Discord**, plus a stack of tools for competitive players.
 One installer, no other downloads, everything runs inside the Fightcade app on your PC.
@@ -30,8 +30,7 @@ walks you through the rest.
   installs a new version before it loads (verified by checksum). You never need to come back here or
   run the installer again. If Fightcade stays open for days, a green button in the left rail offers a
   restart once an update is ready, and Settings → Updates shows what's new.
-- **Uninstall:** run the installer again → Uninstall. Your settings are kept in a backup folder,
-  and if you had Cerberus before, it can be put back.
+- **Uninstall:** run the installer again → Uninstall. Your settings are kept in a backup folder.
 
 ## What you get
 
@@ -150,9 +149,6 @@ it without Fightcord (safe mode), then check Settings → Diagnostics, or open a
 
 **Can I use only some of it?** Yes: Settings → My Fightcord switches single modules, or pick the
 Lite profile.
-
-**Does it work with Cerberus?** Fightcord replaces it. The installer moves Cerberus into a backup
-folder and brings your settings, match history and sounds along.
 
 ## Building it yourself
 

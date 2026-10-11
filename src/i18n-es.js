@@ -1468,8 +1468,8 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "Others with Fightcord see an F next to your name. Voice chat needs this on.": "Quien tiene Fightcord ve una F junto a tu nombre. El chat de voz necesita esto activado.",
     "Fightcord players find each other through the same free public relays as voice chat. Your name is sent hashed, and nothing is stored, but anyone listening who knows your name could tell you use Fightcord.": "Los jugadores de Fightcord se encuentran a través de los mismos relays públicos gratuitos que el chat de voz. Tu nombre se envía con hash y no se guarda nada, pero quien esté escuchando y conozca tu nombre podría saber que usas Fightcord.",
     "Voice chat with your opponent": "Chat de voz con tu rival",
-    "Talk during a set with players who have Fightcord. Off until you turn it on in Settings → Voice chat; Ctrl+Shift+M mutes, even in the emulator.": "Habla durante un set con jugadores que tienen Fightcord. Desactivado hasta que lo actives en Ajustes → Chat de voz; Ctrl+Shift+M silencia, incluso en el emulador.",
+    "Talk during a set with players who have Fightcord. Off until you turn it on in Settings → Voice chat; Ctrl+Shift+M mutes, even in the emulator.": "Habla durante un set con jugadores que tienen Fightcord. Desactivado hasta que lo actives en Configuración → Chat de voz; Ctrl+Shift+M silencia, incluso en el emulador.",
     "See who has Fightcord": "Mira quién tiene Fightcord",
-    "An F next to their name, green with a mic when their voice chat is on. You show up too, unless you turn it off in Settings → Voice chat.": "Una F junto a su nombre, verde con un micrófono cuando su chat de voz está activado. Tú también apareces, salvo que lo desactives en Ajustes → Chat de voz.",
+    "An F next to their name, green with a mic when their voice chat is on. You show up too, unless you turn it off in Settings → Voice chat.": "Una F junto a su nombre, verde con un micrófono cuando su chat de voz está activado. Tú también apareces, salvo que lo desactives en Configuración → Chat de voz.",
     "Fightcord 2.12": "Fightcord 2.12"
 } };
