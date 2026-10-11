@@ -467,7 +467,18 @@ function start(f) {
     return api;
 }
 
-const api = { _sync: () => sync(), _frames: () => frames, _viz: () => ({ live: viz.live, glow: viz.glow, vals: viz.vals.slice() }), get _config() { return cfg; } };
+// a Look (discord-theme.js) sets the background that goes with it: { style, look, intensity }
+function setLook(o) {
+    if (!o) return;
+    if (STYLES[o.style]) cfg.style = o.style;
+    if (o.look && LOOKS[o.look]) cfg.look = o.look;
+    if (typeof o.intensity === 'number') cfg.intensity = Math.max(0.1, Math.min(1, o.intensity));
+    store.save();
+    update();
+    fc.settings.refresh('backgrounds');
+}
+
+const api = { setLook: (o) => setLook(o), _sync: () => sync(), _frames: () => frames, _viz: () => ({ live: viz.live, glow: viz.glow, vals: viz.vals.slice() }), get _config() { return cfg; } };
 
 module.exports = { id: 'backgrounds', name: 'Animated backgrounds', start, bands, dbRange, agc, beat, bassLift, LOOKS };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

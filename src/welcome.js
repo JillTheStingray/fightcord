@@ -76,6 +76,9 @@ const NEWS = [
     { v: '2.10', title: 'Fightcord 2.10', items: [
         ['trophy', N_('Rankings, replays and more, in Fightcade'), N_('The channel banner’s buttons open the game’s rankings, replays to watch, events and profiles right here.')],
         ['sword', N_('Fight night'), N_('A new VS screen with the game’s art, characters on your Discord status, and matchup notes per character in Analytics.')]
+    ] },
+    { v: '2.11', title: 'Fightcord 2.11', items: [
+        ['palette', N_('Looks'), N_('Arcade CRT, 3rd Strike and Neon Tokyo: colours, font, background and emulator font in one click. Settings → Appearance.')]
     ] }
 ];
 
@@ -107,7 +110,8 @@ const STEPS = ['look', 'features', 'music', 'friends', 'tour'];
 const STEP_LABEL = { look: N_('Look'), features: N_('Features'), music: N_('Music'), friends: N_('Friends'), tour: N_('Tour') };
 const PREVIEW = {
     dark: ['#1e1f22', '#2b2d31', '#313338'], amoled: ['#000000', '#0a0a0a', '#151515'],
-    classic: ['#202225', '#2f3136', '#36393f'], neon: ['#0d0f1f', '#151833', '#1c2045']
+    classic: ['#202225', '#2f3136', '#36393f'], neon: ['#0d0f1f', '#151833', '#1c2045'],
+    crt: ['#050705', '#0a0c0a', '#172017'], strike: ['#0b0909', '#121010', '#241e1b'], tokyo: ['#080616', '#0e0b1f', '#241b47']
 };
 
 let screen = null, step = 0, unlayer = null;
@@ -207,7 +211,13 @@ function onClick(e) {
     const d = t.closest('[data-step]');
     if (d) { step = +d.dataset.step; render(); return; }
     const pr = t.closest('[data-preset]');
-    if (pr) { mod('discord-theme').setTheme({ preset: pr.dataset.preset, enabled: true }); render(); return; }
+    if (pr) {
+        const th = mod('discord-theme');
+        // the 2.11 Looks bring their font, background and emulator font along
+        if (th.looks && th.looks()[pr.dataset.preset] && ['crt', 'strike', 'tokyo'].includes(pr.dataset.preset)) th.applyLook(pr.dataset.preset);
+        else th.setTheme({ preset: pr.dataset.preset, enabled: true });
+        render(); return;
+    }
     const ac = t.closest('[data-accent]');
     if (ac) { mod('discord-theme').setTheme({ accent: ac.dataset.accent }); render(); return; }
     const pf = t.closest('[data-profile]');

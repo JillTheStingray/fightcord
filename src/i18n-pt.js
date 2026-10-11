@@ -1406,5 +1406,20 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "Rankings, replays and more, in Fightcade": "Ranking, replays e mais, dentro do Fightcade",
     "The channel banner’s buttons open the game’s rankings, replays to watch, events and profiles right here.": "Os botões do banner do canal abrem aqui mesmo o ranking do jogo, replays para assistir, eventos e perfis.",
     "Fight night": "Noite de luta",
-    "A new VS screen with the game’s art, characters on your Discord status, and matchup notes per character in Analytics.": "Uma nova tela de VS com a arte do jogo, personagens no seu status do Discord e notas de confronto por personagem na Análise."
+    "A new VS screen with the game’s art, characters on your Discord status, and matchup notes per character in Analytics.": "Uma nova tela de VS com a arte do jogo, personagens no seu status do Discord e notas de confronto por personagem na Análise.",
+    "Arcade CRT": "CRT de fliperama",
+    "3rd Strike": "3rd Strike",
+    "Neon Tokyo": "Neon Tokyo",
+    "Discord": "Discord",
+    "The Discord look Fightcord started with": "O visual do Discord com que o Fightcord começou",
+    "Deep navy, blurple and cyan, with a pulsing visualizer": "Azul-marinho, roxo e ciano, com um visualizador pulsante",
+    "Black glass, amber glow, scanlines and a terminal font": "Vidro preto, brilho âmbar, linhas de varredura e fonte de terminal",
+    "Charcoal and fight-poster orange, the game’s art drifting behind": "Carvão e laranja de pôster de luta, com a arte do jogo passando atrás",
+    "Midnight indigo, hot pink and cyan, soft neon waves": "Índigo da meia-noite, rosa-choque e ciano, ondas de neon suaves",
+    "Looks": "Visuais",
+    "A whole look in one click": "Um visual completo num clique",
+    "Also set the background and emulator font": "Também mudar o fundo e a fonte do emulador",
+    "gg, one more?": "gg, mais uma?",
+    "Fightcord 2.11": "Fightcord 2.11",
+    "Arcade CRT, 3rd Strike and Neon Tokyo: colours, font, background and emulator font in one click. Settings → Appearance.": "CRT de fliperama, 3rd Strike e Neon Tokyo: cores, fonte, fundo e fonte do emulador num clique. Configurações → Aparência."
 } };

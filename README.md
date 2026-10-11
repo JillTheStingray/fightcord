@@ -52,6 +52,8 @@ walks you through the rest.
   record with your goals as one strip in the top bar.
 - The game's rankings, replays to watch, events and player profiles inside Fightcade, plus a VS
   screen with the game's art, characters on your Discord status and matchup notes per character.
+- Looks in one click: Arcade CRT, 3rd Strike and Neon Tokyo set the colours, font, background and
+  emulator font together.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

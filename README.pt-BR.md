@@ -55,6 +55,8 @@ de boas-vindas curta te guia pelo resto.
   retrospecto da noite com suas metas numa faixa na barra de cima.
 - O ranking do jogo, replays para assistir, eventos e perfis de jogadores dentro do Fightcade, além de uma
   tela de VS com a arte do jogo, personagens no seu status do Discord e notas de confronto por personagem.
+- Visuais num clique: CRT de fliperama, 3rd Strike e Neon Tokyo mudam juntos as cores, a fonte, o fundo e
+  a fonte do emulador.
 - Chat: menções, horários, prévias de links, ir para o presente, atalhos `:emoji:`, estilos de fonte
   e tradução automática das mensagens recebidas.
 

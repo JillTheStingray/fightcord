@@ -591,6 +591,14 @@ function start(f) {
 
 const api = {
     sync: (force) => sync(force),
+    // a Look picks the emulator font that goes with it (used once the overlay skin is on)
+    setFont(id) {
+        if (!cfg || !FONTS.some(x => x.id === id)) return;
+        cfg.fontChoice = id;
+        store.save();
+        fc.settings.refresh('emu-skin');
+        sync(true);
+    },
     _draw: { bar: (a) => drawBar(a || accent()), eye: (a) => drawEye(a || accent()), font: (src, id) => drawFont(src, fontSpec(id || cfg.fontChoice)), line: renderLine },
     _fontReady: (id) => fontReady(fontSpec(id || cfg.fontChoice)),
     parseFnt,

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.11.0
+
+- **Looks.** Settings → Appearance starts with a gallery of whole looks, each a click:
+  - **Arcade CRT:** black glass, amber accent, a terminal font (Share Tech Mono), faint scanlines
+    and a soft phosphor glow; the Bars visualizer and VT323 in the emulator.
+  - **3rd Strike:** charcoal and fight-poster orange, Chakra Petch, the game's art drifting behind
+    the chat, Teko in the emulator.
+  - **Neon Tokyo:** midnight indigo, hot pink and cyan, Exo 2, neon waves, Orbitron in the emulator.
+  - plus **Discord** and **FightCord Neon** as before.
+  A Look sets the theme's colours, accent and font, and the animated background and emulator font to
+  go with it (untick "Also set the background and emulator font" to keep yours). The fonts come free
+  from Google Fonts and load only when picked; they're in the theme's Font list too. Theme codes and
+  the welcome screen know the new looks.
+
 ## 2.10.0
 
 - **Rankings, Replays, Events and Profile inside Fightcade.** The channel banner's buttons open one page

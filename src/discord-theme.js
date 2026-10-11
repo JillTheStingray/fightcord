@@ -31,7 +31,7 @@ const DEFAULTS = {
     chatArt: false,        // keep Fightcade's game artwork faintly behind the chat
     cleanNames: true,      // hide Cerberus' extras on the chat name line (thumbs, dot, ping)
     chatSize: 18,          // chat text px; Discord's default is 16, 18 matches a zoomed Discord
-    preset: 'dark',        // dark | amoled | classic | neon | custom
+    preset: 'dark',        // dark | amoled | classic | neon | crt | strike | tokyo | custom
     accent: '#5865f2',     // Discord blurple
     font: '',              // '' = Discord's gg sans / Noto Sans
     custom: { bg: '#1b1a1f', panel: '#1b1a1f', dark: '#131215', text: '#dfdfe2' },
@@ -40,8 +40,27 @@ const DEFAULTS = {
 };
 
 const N_ = (s) => s;          // translated where shown
-const PRESETS = { dark: N_('Dark'), amoled: N_('AMOLED black'), classic: N_('Classic grey'), neon: N_('FightCord Neon'), custom: N_('Custom (theme editor)') };
+const PRESETS = { dark: N_('Dark'), amoled: N_('AMOLED black'), classic: N_('Classic grey'), neon: N_('FightCord Neon'),
+    crt: N_('Arcade CRT'), strike: N_('3rd Strike'), tokyo: N_('Neon Tokyo'), custom: N_('Custom (theme editor)') };
+// fonts from Google Fonts (free, open licence), loaded only when picked
+const GFONTS = { "'Share Tech Mono', monospace": 'Share+Tech+Mono', "'Chakra Petch', sans-serif": 'Chakra+Petch:wght@400;500;600;700',
+    "'Exo 2', sans-serif": 'Exo+2:wght@400;500;600;700' };
+// Looks (2.11): a whole look in one click -- the theme's colours, accent and font, and (unless you
+// keep your own) the animated background and the emulator overlay's font to go with it
+const LOOKS = {
+    dark: { name: N_('Discord'), desc: N_('The Discord look Fightcord started with'), preset: 'dark', accent: '#5865f2', font: '',
+        bg: { style: 'particles', intensity: 0.5 }, emuFont: 'theme', sw: ['#131215', '#1b1a1f', '#dfdfe2'] },
+    neon: { name: N_('FightCord Neon'), desc: N_('Deep navy, blurple and cyan, with a pulsing visualizer'), preset: 'neon', accent: '#5865f2', font: '',
+        bg: { style: 'visualizer', look: 'pulse', intensity: 0.55 }, emuFont: 'theme', sw: ['#080a15', '#0d0f1f', '#22e3f2'] },
+    crt: { name: N_('Arcade CRT'), desc: N_('Black glass, amber glow, scanlines and a terminal font'), preset: 'crt', accent: '#ffb000', font: "'Share Tech Mono', monospace",
+        bg: { style: 'visualizer', look: 'bars', intensity: 0.45 }, emuFont: 'vt323', sw: ['#050705', '#0a0c0a', '#ffb000'] },
+    strike: { name: N_('3rd Strike'), desc: N_('Charcoal and fight-poster orange, the game’s art drifting behind'), preset: 'strike', accent: '#f0923a', font: "'Chakra Petch', sans-serif",
+        bg: { style: 'art', intensity: 0.55 }, emuFont: 'teko', sw: ['#0b0909', '#121010', '#f0923a'] },
+    tokyo: { name: N_('Neon Tokyo'), desc: N_('Midnight indigo, hot pink and cyan, soft neon waves'), preset: 'tokyo', accent: '#eb459e', font: "'Exo 2', sans-serif",
+        bg: { style: 'waves', intensity: 0.6 }, emuFont: 'orbitron', sw: ['#080616', '#0e0b1f', '#eb459e'] }
+};
 const FONTS = { '': 'Discord (gg sans)', "'Segoe UI', sans-serif": 'Segoe UI', "'Noto Sans', sans-serif": 'Noto Sans',
+    "'Share Tech Mono', monospace": 'Share Tech Mono', "'Chakra Petch', sans-serif": 'Chakra Petch', "'Exo 2', sans-serif": 'Exo 2',
     'Arial, sans-serif': 'Arial', 'Verdana, sans-serif': 'Verdana', "'Trebuchet MS', sans-serif": 'Trebuchet MS' };
 // swatch names: N_('Blurple') N_('Green') N_('Red') N_('Pink') N_('Orange') N_('Teal')
 const SWATCHES = { Blurple: '#5865f2', Green: '#23a55a', Red: '#f23f43', Pink: '#eb459e', Orange: '#f0923a', Teal: '#1abc9c' };
@@ -108,6 +127,27 @@ html.dc-theme.dc-preset-neon {
     --dc-hover: #151936; --dc-select: #1b2045; --dc-active: #232a5a; --dc-float: #070814;
     --dc-divider: #1e2344; --dc-text: #dde1f5; --dc-head: #ffffff; --dc-muted: #8a90b8; --dc-faint: #5d6390;
     --dc-icon: #a3a9d6; --dc-btn: #1d2247; --dc-btn-h: #283064; --dc-link: #22e3f2;
+}
+html.dc-theme.dc-preset-crt {
+    /* Arcade CRT: black glass with a green cast, amber accent */
+    --dc-bg: #0a0c0a; --dc-bg2: #0d100d; --dc-bg3: #050705; --dc-input: #121612; --dc-input-edge: #1c241c;
+    --dc-hover: #111611; --dc-select: #172017; --dc-active: #1d281d; --dc-float: #040504;
+    --dc-divider: #1a221a; --dc-text: #cfeccf; --dc-head: #ecffec; --dc-muted: #6f9a6f; --dc-faint: #4a6a4a;
+    --dc-icon: #8fbf8f; --dc-btn: #162016; --dc-btn-h: #1f2c1f; --dc-link: #ffb000;
+}
+html.dc-theme.dc-preset-strike {
+    /* 3rd Strike: charcoal with warm off-white, poster orange */
+    --dc-bg: #121010; --dc-bg2: #161312; --dc-bg3: #0b0909; --dc-input: #1d1917; --dc-input-edge: #2a2421;
+    --dc-hover: #1b1716; --dc-select: #241e1b; --dc-active: #2d2521; --dc-float: #080606;
+    --dc-divider: #2a2320; --dc-text: #ece4dc; --dc-head: #fff6ec; --dc-muted: #a3938a; --dc-faint: #6e625c;
+    --dc-icon: #c4b2a6; --dc-btn: #2a221e; --dc-btn-h: #3a2f29; --dc-link: #ffb46b;
+}
+html.dc-theme.dc-preset-tokyo {
+    /* Neon Tokyo: midnight indigo, hot pink, cyan links */
+    --dc-bg: #0e0b1f; --dc-bg2: #120e27; --dc-bg3: #080616; --dc-input: #1a1436; --dc-input-edge: #261d4a;
+    --dc-hover: #1a1435; --dc-select: #241b47; --dc-active: #2e2259; --dc-float: #070513;
+    --dc-divider: #231a45; --dc-text: #e6defc; --dc-head: #ffffff; --dc-muted: #9a8fc4; --dc-faint: #675d96;
+    --dc-icon: #b6a9e8; --dc-btn: #241b4a; --dc-btn-h: #30245f; --dc-link: #22e3f2;
 }
 /* a chat background picture (theme editor) */
 html.dc-theme.dc-has-bg .channelContent {
@@ -557,6 +597,31 @@ function important(css) {
 
 // the settings block's theme editor
 const EDITOR_CSS = `
+/* Looks (2.11): the cards */
+.dcLooksHead { align-items: center; }
+.dcKeep { display: inline-flex; align-items: center; font-size: 12.5px; color: var(--fc-muted); cursor: pointer; }
+.dcKeep input { margin: 0 6px 0 0; }
+.dcLooks { display: flex; flex-wrap: wrap; margin: 4px -5px 14px; }
+.dcLook { width: calc(20% - 10px); min-width: 104px; margin: 5px; padding: 6px 6px 8px; border-radius: 10px; box-sizing: border-box; cursor: pointer;
+    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); transition: box-shadow .12s, transform .12s; }
+.dcLook:hover { transform: translateY(-2px); }
+.dcLook.on { box-shadow: inset 0 0 0 2px var(--fc-accent), 0 0 14px rgba(88,101,242,.25); }
+.dcLook .pv { position: relative; height: 70px; border-radius: 7px; overflow: hidden; }
+.dcLook .pv > i { position: absolute; left: 0; top: 0; bottom: 0; width: 18px; }
+.dcLook .pv .msg { position: absolute; left: 26px; right: 6px; top: 16px; display: flex; align-items: flex-start; }
+.dcLook .pv .av { flex: none; width: 22px; height: 22px; margin-right: 7px; border-radius: 50%; }
+.dcLook .pv .msg > div { min-width: 0; }
+.dcLook .pv .msg b { display: block; font-size: 12px; line-height: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dcLook .pv .msg span { display: block; font-size: 11.5px; line-height: 15px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcLook .pv.dcLook-crt::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 1px, transparent 1px 3px); }
+.dcLook > b { display: block; margin-top: 7px; font-size: 13px; color: var(--fc-head); }
+.dcLook > small { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.3; color: var(--fc-muted); }
+@media (max-width: 1100px) { .dcLook { width: calc(33.333% - 10px); } }
+/* Arcade CRT: faint scanlines over the whole window and a soft phosphor glow on text */
+html.dc-theme.dc-preset-crt body::after { content: ''; position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 2147483600; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); }
+html.dc-theme.dc-preset-crt .chatContent .message.chat .line { text-shadow: 0 0 6px rgba(120,255,140,.18); }
 .dcSwatches { display: flex; align-items: center; }
 .dcSwatch { flex: none; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; cursor: pointer; }
 .dcSwatch.on { box-shadow: 0 0 0 2px var(--fc-s2), 0 0 0 4px var(--fc-head); }
@@ -605,8 +670,15 @@ function applyCustom(html, on) {
     customSig = sig;
     if (custom) Object.keys(customPalette(c)).forEach(k => html.style.setProperty(k, customPalette(c)[k], 'important'));
     else CUSTOM_VARS.forEach(k => html.style.removeProperty(k));
-    if (on && config.font) html.style.setProperty('--dc-font', config.font, 'important');
+    if (on && config.font) html.style.setProperty('--dc-font', config.font + ', \'Noto Sans\', sans-serif', 'important');
     else html.style.removeProperty('--dc-font');
+    const gf = on && GFONTS[config.font];
+    let gl = document.getElementById('dcThemeFontPick');
+    if (gf) {
+        if (!gl) { gl = document.createElement('link'); gl.id = 'dcThemeFontPick'; gl.rel = 'stylesheet'; document.head.appendChild(gl); }
+        const href = 'https://fonts.googleapis.com/css2?family=' + gf + '&display=swap';
+        if (gl.getAttribute('href') !== href) gl.setAttribute('href', href);
+    } else if (gl) gl.remove();
     const bg = on && bgUrl;
     html.classList.toggle('dc-has-bg', !!bg);
     if (bg) {
@@ -822,6 +894,9 @@ function blockHtml() {
     return `<div class="fc-set-title">${E(T('Discord theme'))} <small>— ${E(T('only you see it'))} · Ctrl+Shift+T</small></div>
         ${sw('enabled', 'Discord theme')}
         <div class="dcRest"${config.enabled ? '' : ' hidden'}>
+        <div class="fc-field dcLooksHead"><span class="fc-field-text"><b>${E(T('Looks'))}</b><small>${E(T('A whole look in one click'))}</small></span>
+            <label class="dcKeep"><input type="checkbox" class="dcKeepIn"${lookAll ? ' checked' : ''}><span>${E(T('Also set the background and emulator font'))}</span></label></div>
+        <div class="dcLooks">${Object.keys(LOOKS).map(k => lookCard(k)).join('')}</div>
         ${sel('preset', 'Theme', Object.keys(PRESETS).map(k => [k, PRESETS[k]]))}
         <div class="fc-field"><span class="fc-field-text"><b>${E(T('Accent colour'))}</b></span><span class="dcSwatches">
             ${Object.keys(SWATCHES).map(n => `<span class="dcSwatch${SWATCHES[n] === config.accent ? ' on' : ''}" data-hex="${SWATCHES[n]}" title="${E(T(n))}" style="background:${SWATCHES[n]}"></span>`).join('')}
@@ -845,6 +920,37 @@ function blockHtml() {
         </div>`;
 }
 
+// a Look's card: its colours, a sample message in its font, its name
+let lookAll = true;
+function lookCard(k) {
+    const L = LOOKS[k];
+    const on = config.preset === L.preset && config.accent === L.accent && config.font === L.font;
+    const font = (L.font || "'gg sans', 'Noto Sans', sans-serif").replace(/"/g, '&quot;');
+    return `<div class="dcLook${on ? ' on' : ''}" data-look="${k}" title="${E(T(L.desc))}">
+        <div class="pv dcLook-${k}" style="background:${L.sw[1]};font-family:${font}"><i style="background:${L.sw[0]}"></i>
+            <div class="msg"><span class="av" style="background:${L.accent}"></span><div><b style="color:${L.accent}">TurtleTime</b><span>${E(T('gg, one more?'))}</span></div></div></div>
+        <b>${E(T(L.name))}</b><small>${E(T(L.desc))}</small></div>`;
+}
+
+// apply a Look: the theme, then (unless kept) the background and the emulator font
+function applyLook(k, all) {
+    const L = LOOKS[k];
+    if (!L) return;
+    config.enabled = true;
+    config.preset = L.preset;
+    config.accent = L.accent;
+    config.font = L.font;
+    store.save();
+    refresh();
+    if (all !== false) {
+        const bg = fc.modules.get('backgrounds');
+        if (bg && bg.setLook) bg.setLook(L.bg);
+        const es = fc.modules.get('emu-skin');
+        if (es && es.setFont) es.setFont(L.emuFont);
+    }
+    fc.log('look applied:', k, all !== false ? '(with background + emulator font)' : '');
+}
+
 function render(el) { el.classList.add('dcBlock'); el.innerHTML = blockHtml(); }
 
 function wire(el) {
@@ -856,7 +962,8 @@ function wire(el) {
             const k = t.dataset.opt;
             const v = t.type === 'checkbox' ? t.checked : k === 'chatSize' ? +t.value : k === 'accent' ? t.value.toLowerCase() : t.value;
             setOption(k, v);
-        } else if (t.dataset.c) { store.save(); refresh(); }
+        } else if (t.classList.contains('dcKeepIn')) { lookAll = t.checked; }
+        else if (t.dataset.c) { store.save(); refresh(); }
         else if (t.dataset.dim) store.save();
         else if (t.classList.contains('dcFile')) {
             const f = t.files && t.files[0];
@@ -888,6 +995,8 @@ function wire(el) {
     el.addEventListener('click', (e) => {
         const s = e.target.closest('.dcSwatch');
         if (s) { setOption('accent', s.dataset.hex); return; }
+        const lk = e.target.closest('[data-look]');
+        if (lk) { applyLook(lk.dataset.look, lookAll); return; }
         const a = e.target.closest('[data-act]');
         const act = a && a.getAttribute('data-act');
         if (act === 'pick') el.querySelector('.dcFile').click();
@@ -942,6 +1051,7 @@ function start(f) {
         fc.ui.style('dcThemeStyle', null);
         const html = document.documentElement;
         ['dc-theme', 'dc-layout', 'dc-chat-art', 'dc-clean-names', 'dc-has-bg'].concat(Object.keys(PRESETS).map(p => 'dc-preset-' + p)).forEach(c => html.classList.remove(c));
+        const gl = document.getElementById('dcThemeFontPick'); if (gl) gl.remove();
         clearRail();
         window.__fcDiscordThemeLoaded = false;
     });
@@ -956,6 +1066,8 @@ function start(f) {
 const api = {
     // for the welcome screen
     presets: () => Object.assign({}, PRESETS),
+    looks: () => Object.assign({}, LOOKS),
+    applyLook: (k, all) => applyLook(k, all),
     swatches: () => Object.assign({}, SWATCHES),
     theme: () => ({ enabled: config.enabled, preset: config.preset, accent: config.accent, font: config.font }),
     setTheme(t) {
@@ -972,5 +1084,5 @@ const api = {
     get _config() { return config; }
 };
 
-module.exports = { id: 'discord-theme', name: 'Discord theme', start };
+module.exports = { id: 'discord-theme', name: 'Discord theme', start, PRESETS, FONTS, GFONTS, LOOKS };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

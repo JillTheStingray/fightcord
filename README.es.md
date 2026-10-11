@@ -56,6 +56,8 @@ de bienvenida corta te guía con el resto.
   Filtro, y el récord de la noche con tus metas en una franja en la barra de arriba.
 - La clasificación del juego, repeticiones para ver, eventos y perfiles de jugadores dentro de Fightcade,
   y además una pantalla de VS con el arte del juego, personajes en tu estado de Discord y notas por personaje.
+- Estilos en un clic: CRT de arcade, 3rd Strike y Neon Tokyo cambian juntos los colores, la fuente, el
+  fondo y la fuente del emulador.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
   fuente y traducción automática de los mensajes que recibes.
 
