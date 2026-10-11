@@ -57,6 +57,17 @@ function serve() {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Edge relaunches itself from its launcher, so killing the launcher's tree misses the real browser
+// (Windows): end every process started with this run's own profile folder
+function killTree(proc, profile) {
+    try {
+        if (process.platform !== 'win32') { proc.kill(); return; }
+        const dir = String(profile || '').replace(/'/g, "''");
+        require('child_process').spawnSync('powershell', ['-NoProfile', '-Command',
+            "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*" + dir + "*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"], { stdio: 'ignore' });
+    } catch (e) { /* gone */ }
+}
+
 async function launch() {
     const exe = BROWSERS.find(b => fs.existsSync(b));
     if (!exe) throw new Error('no Edge / Chrome found');
@@ -68,7 +79,7 @@ async function launch() {
     const port = +fs.readFileSync(portFile, 'utf8').split('\n')[0];
     return {
         port, exe,
-        close() { try { proc.kill(); } catch (e) { /* gone */ } setTimeout(() => { try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* locked */ } }, 1500); }
+        close() { killTree(proc, profile); setTimeout(() => { try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* locked */ } }, 1500); }
     };
 }
 

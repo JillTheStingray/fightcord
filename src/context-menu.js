@@ -39,6 +39,8 @@ function augment(d) {
     if (nt && nt.edit && !mine) add.push({ id: 'fc:notes', text: fc.t('Notes & tags') });
     if (st && st.open && !mine) add.push({ id: 'fc:h2h', text: 'Head-to-head' });
     if (sc && sc.openCard) add.push({ id: 'fc:scout', text: 'Scout' });
+    const vo = mod('voice');
+    if (vo && vo.enabled && vo.enabled() && !mine) add.push({ id: 'fc:novoice', text: fc.t(vo.isBlocked(name) ? 'Allow voice chat' : 'Never voice with') });
     add.push({ id: 'fc:copy', text: 'Copy name' });
     add.forEach(i => d.items.push(i));
     const orig = d.callback;
@@ -64,6 +66,7 @@ function run(id, name, d) {
         else if (id === 'fc:notes') { const nt = mod('notes'); if (nt) setTimeout(() => nt.edit(name, pos), 30); }
         else if (id === 'fc:h2h') { const st = mod('stats'); if (st) st.open({ opp: name }); }
         else if (id === 'fc:scout') { const sc = mod('scout'); if (sc) setTimeout(() => sc.openCard(name, pos, 'right'), 30); }
+        else if (id === 'fc:novoice') { const vo = mod('voice'); if (vo) vo.setBlocked(name, !vo.isBlocked(name)); }
         else if (id === 'fc:copy') fc.ui.copy(name);
     } catch (e) { fc.log.warn(id + ' failed', e.message); }
 }

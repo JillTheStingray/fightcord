@@ -139,6 +139,17 @@ function serve() {
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const BROWSERS = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
     'C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'];
+// Edge relaunches itself from its launcher, so killing the launcher's tree misses the real browser
+// (Windows): end every process started with this run's own profile folder
+function killTree(proc, profile) {
+    try {
+        if (process.platform !== 'win32') { proc.kill(); return; }
+        const dir = String(profile || '').replace(/'/g, "''");
+        require('child_process').spawnSync('powershell', ['-NoProfile', '-Command',
+            "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*" + dir + "*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"], { stdio: 'ignore' });
+    } catch (e) { /* gone */ }
+}
+
 async function launch() {
     const exe = BROWSERS.find(b => fs.existsSync(b));
     if (!exe) throw new Error('no Edge / Chrome found');
@@ -147,7 +158,7 @@ async function launch() {
         '--remote-debugging-port=0', `--window-size=${W},${H}`, '--user-data-dir=' + profile, 'about:blank'], { stdio: 'ignore' });
     const portFile = path.join(profile, 'DevToolsActivePort');
     for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
-    return { port: +fs.readFileSync(portFile, 'utf8').split('\n')[0], close() { try { proc.kill(); } catch (e) { /* gone */ } } };
+    return { port: +fs.readFileSync(portFile, 'utf8').split('\n')[0], close() { killTree(proc, profile); } };
 }
 function cdp(wsUrl) {
     const ws = new WebSocket(wsUrl);

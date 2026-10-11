@@ -50,6 +50,8 @@ function cardHtml(name, chanHint) {
     const isFr = !!(fr && fr.isFriend && fr.isFriend(name));
     const cst = !isMe && ms && ms.challengeState ? ms.challengeState(name) : null;
     const notes = nt && nt.chips ? nt.chips(name) : '';
+    const pr = mod('presence');
+    const pres = pr && pr.line ? pr.line(name) : '';
     return `<div class="hcBanner" style="background:${fc.data.hashColor(name)}"></div>
         <div class="hcAva ${status}"><img src="${E(fc.data.avatarUrl(name, u && u.gravatar, 160))}" alt="" onerror="this.style.visibility='hidden'"><i></i></div>
         <div class="hcBody">
@@ -57,6 +59,7 @@ function cardHtml(name, chanHint) {
             <div class="hcMeta">${fc.ui.flag(cc)}${E((u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '')}
                 ${rank ? fc.ui.tag(rank) : ''}</div>
             ${conn ? `<div class="hcConn">${E(conn)}</div>` : ''}
+            ${pres}
             ${playLine}
             ${vs && (vs.w || vs.l || vs.played) ? `<div class="hcVs"><span>You vs ${E(name)}</span><b>${vs.w}–${vs.l}</b>${vs.played ? `<small>${vs.played} sets</small>` : ''}</div>` : ''}
             ${notes ? `<div class="hcNotes">${notes}</div>` : ''}

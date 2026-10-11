@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.12.0
+
+- **Voice chat with your opponent** (Fightcord players only, off until you turn it on in Settings →
+  Voice chat). When a set starts and your opponent has voice on too, you're asked "Join / Not now"
+  (or join straight away with friends or everyone, your choice), and once you both join you can talk
+  for the set. It ends with the match.
+  - Voice-activated, with a mic sensitivity slider that keeps stick clicks out, and **Ctrl+Shift+M**
+    to mute / unmute that works even with the emulator in front.
+  - Pick your microphone and speakers, test your mic, set the opponent's volume; the background music
+    dips while someone talks. Right-click a player → "Never voice with" to never be asked.
+  - Voice goes straight between the two PCs (like the match itself), encrypted. The "let's connect"
+    handshake passes through free public relays, encrypted too. Nothing is stored or recorded.
+- **See who has Fightcord.** An **F** next to a name in the member list, the hover and scout cards and
+  incoming challenges means that player has Fightcord; a green F with a mic means voice chat is on,
+  and challenges say "Voice chat available". Voice only starts with players who have it, so nobody
+  waits for nothing. You're visible by default: Settings → Voice chat → "Show that I use Fightcord"
+  turns it off (names travel hashed, but anyone listening who knows your name could tell).
+
 ## 2.11.0
 
 - **Looks.** Settings → Appearance starts with a gallery of whole looks, each a click:

@@ -86,6 +86,9 @@ walks you through the rest.
 | ![Rank & ELO history](docs/screenshots/progress.png) | ![Match analytics](docs/screenshots/analytics.png) |
 
 **Social**
+- **Voice chat with your opponent** during a set, for Fightcord players: off until you turn it on,
+  both players have to join, voice-activated with **Ctrl+Shift+M** to mute even inside the emulator.
+- **See who has Fightcord:** an F next to their name (green with a mic when their voice chat is on).
 - **Friends list** with online / match alerts and a Watch button, plus **player notes & tags**.
 - **Lobby feed:** joins, matches you can watch, upsets and win streaks in each channel.
 - **Event reminders:** a heads-up before Fightcade tournaments for your games start (or any
@@ -126,6 +129,8 @@ Fightcord has no server and no analytics. It only talks to:
 | Updates | this GitHub repo | once a day |
 | Discord status | the Discord app on your PC | while Discord status is on |
 | OBS overlay | a page at `127.0.0.1` that only this PC can open | while the overlay is on (Settings → Streamer mode) |
+| "Who has Fightcord" | free public Nostr relays (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | while Fightcade runs, unless you turn off "Show that I use Fightcord": your Fightcade name, hashed, and whether voice chat is on, every few minutes; relays forward it live and don't store it |
+| Voice chat | the same relays for the encrypted handshake, then directly your opponent's PC (STUN: Google / Cloudflare to find a route) | only during a set, only when you both joined |
 
 Settings, notes, friends and match history stay in Fightcord's folder on your PC
 (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Settings → Backup & restore saves them

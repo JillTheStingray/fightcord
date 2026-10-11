@@ -248,6 +248,8 @@ function renderCard(card, name, data) {
     const notes = nt && nt.chips ? nt.chips(name) : '';
     const ms = mod('match-screens');
     const chal = !me && ms && ms.challengeState ? ms.challengeState(name) : null;
+    const pr = mod('presence');
+    const pres = pr && pr.line ? pr.line(name) : '';
     card.innerHTML = `
         <div class="fcsc-banner" style="background:${fc.data.hashColor(name)}"></div>
         ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close', cls: 'fcsc-x' })}
@@ -257,6 +259,7 @@ function renderCard(card, name, data) {
             ${info && info.country ? `<div class="fcsc-from">${fc.ui.flag(info.country)} ${E(info.countryName || info.country.toUpperCase())}</div>` : ''}
             <div class="fcsc-state"><i class="dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}` +
                 `${info && info.rank ? ' · ' + E(T('channel rank {rank}', { rank: fc.data.rankLetter(info.rank) })) : ''}</div>
+            ${pres ? `<div class="fcsc-pres">${pres}</div>` : ''}
             ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
             <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
             ${!me ? `<div class="fcsc-acts">

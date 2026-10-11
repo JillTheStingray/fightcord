@@ -82,6 +82,10 @@ function show(d, fromQueue) {
     const ntm = mod('notes');
     const muNote = lastChar && ntm && ntm.matchup ? ntm.matchup(lastSet.rom || '', lastChar) : null;
     const nt = mod('notes'), fr = mod('friends');
+    // F mark; "voice chat available" when both sides have it on
+    const pr = mod('presence'), vo = mod('voice');
+    const pi = pr && pr.info ? pr.info(d.name) : null;
+    const voice = !!(pi && pi.voice && vo && vo.enabled && vo.enabled() && !(vo.isBlocked && vo.isBlocked(d.name)));
     const ft = +d.ranked || 0;
     const me = fc.app.me() || T('You');
     const el = document.createElement('div');
@@ -97,8 +101,9 @@ function show(d, fromQueue) {
             <div class="ccP me">${fc.ui.avatar(me, { size: 44 })}<b>${E(me)}</b></div>
             <div class="ccVsTxt">VS</div>
             <div class="ccP them"><div class="ccRing">${fc.ui.avatar(d.name, { size: 56 })}</div>
-                <b>${fc.ui.flag(cc)}${E(d.name)}${fr && fr.isFriend && fr.isFriend(d.name) ? ' <span class="ccStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</b>
-                <span class="ccMeta">${rank ? fc.ui.tag(rank) + ' ' : ''}${E(conn)}</span></div>
+                <b>${fc.ui.flag(cc)}${E(d.name)}${fr && fr.isFriend && fr.isFriend(d.name) ? ' <span class="ccStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}${pi ? pr.mark(d.name) : ''}</b>
+                <span class="ccMeta">${rank ? fc.ui.tag(rank) + ' ' : ''}${E(conn)}</span>
+                ${voice ? `<span class="ccVoice">${fc.ui.ic('mic')}${E(T('Voice chat available'))}</span>` : ''}</div>
         </div>
         <div class="ccStats">
             <div class="ccStat"><span>ELO</span><b class="ccElo">…</b></div>
@@ -242,6 +247,9 @@ const CSS = `
 .ccStar { color: var(--fc-warning); }
 .ccMeta { margin-top: 3px; display: flex; align-items: center; font-size: 12px; color: var(--fc-muted); }
 .ccMeta .fc-tag { margin-right: 6px; }
+.ccVoice { display: inline-flex; align-items: center; margin-top: 4px; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600;
+    color: var(--fc-success); background: rgba(35,165,90,.14); }
+.ccVoice .fc-ic { width: 11px; height: 11px; margin-right: 4px; }
 .ccVsTxt { font-size: 28px; font-weight: 900; font-style: italic; color: var(--fc-head); text-shadow: 0 0 18px var(--fc-accent); }
 .ccStats { position: relative; display: flex; margin: 0 -4px; }
 .ccStat { flex: 1; margin: 0 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); min-width: 0; }

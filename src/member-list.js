@@ -145,7 +145,9 @@ function renderRow(item, info) {
     const nt = mod('notes');
     const noteDots = nt && nt.dots ? nt.dots(info.name) : '';
     const live = cfg.activity ? liveLine(info) : '';
-    const sig = [info.country, info.flagCss, info.ping, info.net, info.top, cfg.bars ? 1 : 0, gameTxt, friend ? 'F' : '', noteDots, live,
+    const pr = mod('presence');
+    const pres = pr && pr.mark ? pr.mark(info.name) : '';
+    const sig = [info.country, info.flagCss, info.ping, info.net, info.top, cfg.bars ? 1 : 0, gameTxt, friend ? 'F' : '', noteDots, live, pres,
         vs ? vs.w + '-' + vs.l + '-' + vs.sets : ''].join('|');
     if (item.dataset.fcmSig === sig && item.querySelector(':scope > .fcm-bars, .fcm-sub')) return;
     item.dataset.fcmSig = sig;
@@ -187,6 +189,10 @@ function renderRow(item, info) {
         // ★ for friends, right after the name
         if (friend) { const star = afterName(nag, 'fcm-fr'); star.innerHTML = fc.ui.ic('star', 'fill'); star.title = T('Friend'); }
         else { const s = nag.querySelector(':scope > .fcm-fr'); if (s) s.remove(); }
+
+        // F (+ mic): has Fightcord (+ voice chat on)
+        if (pres) { const pm = afterName(nag, 'fcm-pres'); if (pm.innerHTML !== pres) pm.innerHTML = pres; }
+        else { const pm = nag.querySelector(':scope > .fcm-pres'); if (pm) pm.remove(); }
 
         // notes: coloured dots for the player's tags
         if (noteDots) { const nd = afterName(nag, 'fcm-nt', ':scope > .fcm-fr'); if (nd.innerHTML !== noteDots) nd.innerHTML = noteDots; }
@@ -415,6 +421,7 @@ ${P} .userItem .nameAndGame > .fcm-vs.behind { color: #f23f43 !important; backgr
 ${P} .fcm-ms.good { color: var(--fc-success); } ${P} .fcm-ms.ok { color: var(--fc-warning); } ${P} .fcm-ms.bad { color: #f23f43; }
 ${P} .fcm-net { color: var(--fc-text); }
 ${P} .userItem .nameAndGame > .fcm-nt { display: inline-block !important; }
+${P} .userItem .nameAndGame > .fcm-pres { display: inline-flex !important; align-items: center !important; }
 ${P} .userItem.fcm-playing { background: rgba(242,63,67,.07) !important; box-shadow: inset 2px 0 0 #f23f43 !important; border-radius: 4px !important; }
 ${P} .userItem .nameAndGame > .fcm-live { display: flex !important; align-items: center !important; margin-top: 1px !important; font-size: 12px !important;
     color: var(--fc-muted) !important; white-space: nowrap !important; overflow: hidden !important; }
@@ -523,7 +530,7 @@ function teardown() {
     document.documentElement.classList.remove('fcm-left', 'fcm-compact');
     document.querySelectorAll('.fcm-pl-open').forEach(n => n.classList.remove('fcm-pl-open'));
     if (filterPop) filterPop.close();
-    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live').forEach(n => n.remove());
+    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live, .fcm-pres').forEach(n => n.remove());
     document.querySelectorAll('.fcm-playing').forEach(n => n.classList.remove('fcm-playing'));
     document.querySelectorAll('.fcm-list').forEach(l => l.classList.remove('fcm-list', 'fcm-grouped', 'fcm-colors'));
     document.querySelectorAll('.fcm-row').forEach(r => {
@@ -568,6 +575,7 @@ function start(f) {
     fc.tick(sweep, 2000);                                   // ping / matches / away change without a DOM change
     fc.tick(() => refreshOpponents(false), 60000, { delay: 3000 });
     fc.on('friends:changed', sweep);
+    fc.on('presence:changed', sweep);
     fc.on('notes:changed', sweep);
 
     const opt = (key, label, hint, show) => ({ key, type: 'switch', label, hint, show, onChange: () => redo(key) });

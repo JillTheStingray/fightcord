@@ -17,7 +17,8 @@
  *   /vs            help + where the sound folder is
  *   /vs test       preview the VS screen      /vs win · /vs lose · /vs draw
  *
- * Events: match:start {quark, opp}, match:end {quark, opp, result}, set:recorded (fc.history).
+ * Events: match:accepted {opp, channel} (the VS screen), match:start {quark, opp}, match:end {quark, opp, result},
+ * match:character, set:recorded (fc.history).
  */
 'use strict';
 
@@ -571,6 +572,7 @@ function vsOnce(opp) {
     if (lastVs.opp === key && !lastVs.released &&
         (t - lastVs.at < VS_HOLD_MS || (current && current.opp.toLowerCase() === key))) return;
     lastVs = { opp: key, at: t, released: false };
+    fc.emit('match:accepted', { opp, channel: activeChannelName() });
     showVs(fc.app.me(), opp);
 }
 

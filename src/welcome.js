@@ -79,6 +79,10 @@ const NEWS = [
     ] },
     { v: '2.11', title: 'Fightcord 2.11', items: [
         ['palette', N_('Looks'), N_('Arcade CRT, 3rd Strike and Neon Tokyo: colours, font, background and emulator font in one click. Settings → Appearance.')]
+    ] },
+    { v: '2.12', title: 'Fightcord 2.12', items: [
+        ['mic', N_('Voice chat with your opponent'), N_('Talk during a set with players who have Fightcord. Off until you turn it on in Settings → Voice chat; Ctrl+Shift+M mutes, even in the emulator.')],
+        ['users', N_('See who has Fightcord'), N_('An F next to their name, green with a mic when their voice chat is on. You show up too, unless you turn it off in Settings → Voice chat.')]
     ] }
 ];
 
