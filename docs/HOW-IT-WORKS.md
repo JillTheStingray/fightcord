@@ -39,12 +39,12 @@ single plugins.
 
 * Finds Fightcade on its own (Documents, OneDrive, C:\Fightcade…, or a running Fightcade); Browse
   if it's somewhere else.
-* **Install** — if Cerberus / the old "FC2 Injector" loader is there, it is **moved** (not copied)
+* **Install** — if another Fightcade mod loader is there, it is **moved** (not copied)
   to `resources\app\fightcord-backup\<date-time>\`, your settings, match history, sounds and
   snapshots are brought into `inject\fightcord\`, then Fightcord is unpacked.
 * **Update / Repair** — the same button once installed; keeps your settings and switches.
 * **Uninstall** — keeps your settings in `fightcord-backup\uninstall-<date-time>\`, removes
-  Fightcord, and can put the previous setup (Cerberus) back.
+  Fightcord, and can put the previous setup back.
 * Fightcade must be closed; the installer offers to close it, but never while an emulator is
   running (a match).
 * No admin rights. The .exe isn't code-signed, so Windows SmartScreen may say "Windows protected

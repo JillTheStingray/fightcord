@@ -603,7 +603,7 @@ namespace Fightcord
             Controls.Add(feats);
             Label note = new Label
             {
-                Text = L.T("Cerberus is backed up and removed. Your settings and match history come along."),
+                Text = L.T("Your previous mod is backed up and removed. Your settings and match history come along."),
                 ForeColor = Theme.Muted, Location = new Point(X, 470), Size = new Size(W, 20)
             };
             Controls.Add(note);
@@ -801,7 +801,7 @@ namespace Fightcord
             lines.Add(new KeyValuePair<char, string>('y', L.T("Fightcade found.")));
             if (ours) lines.Add(new KeyValuePair<char, string>('y', v == Version ? L.F("Fightcord {0} is installed \u2014 up to date.", v) : L.F("Fightcord {0} is installed \u2014 this setup has {1}.", v, Version)));
             else lines.Add(new KeyValuePair<char, string>('i', L.T("Fightcord is not installed yet.")));
-            if (HasCerberus()) lines.Add(new KeyValuePair<char, string>('i', L.T("Cerberus found \u2014 it will be backed up and removed.")));
+            if (HasCerberus()) lines.Add(new KeyValuePair<char, string>('i', L.T("A previous Fightcade mod was found \u2014 it will be backed up and removed.")));
             else if (HasOldSetup()) lines.Add(new KeyValuePair<char, string>('i', L.T("An older plugin setup was found \u2014 it will be backed up and replaced.")));
             if (FightcadeRunning()) lines.Add(new KeyValuePair<char, string>('!', L.T("Fightcade is open \u2014 it has to be closed to install.")));
             status.SetLines(lines);
@@ -914,7 +914,7 @@ namespace Fightcord
                 string snaps = Path.Combine(was, "fc-snapshots"), snapsTo = Path.Combine(FcordDir, "fc-snapshots");
                 if (Directory.Exists(snaps) && !Directory.Exists(snapsTo)) { Directory.Move(snaps, snapsTo); Log("  fc-snapshots\\"); }
 
-                Log(L.T(cerb ? "Cerberus and the old loader are out (kept in the backup)" : "The old loader is out (kept in the backup)"));
+                Log(L.T(cerb ? "The previous mod and its loader are out (kept in the backup)" : "The old loader is out (kept in the backup)"));
             }
 
             Log(L.F("Installing Fightcord {0}", Version));
@@ -1002,7 +1002,7 @@ namespace Fightcord
             else Invoke(new Action(delegate
             {
                 DialogResult r = MessageBox.Show(this, L.T("Remove Fightcord from Fightcade?") +
-                    (prev != null ? "\n\n" + L.F("Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", Path.GetFileName(prev)) + "\n\n" + L.T("Yes = remove and restore   No = just remove") : ""),
+                    (prev != null ? "\n\n" + L.F("Your previous setup from {0} can be put back. Restore it?", Path.GetFileName(prev)) + "\n\n" + L.T("Yes = remove and restore   No = just remove") : ""),
                     "Fightcord", prev != null ? MessageBoxButtons.YesNoCancel : MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
                 if (r == DialogResult.Cancel) { prev = "cancel"; return; }
                 restore = r == DialogResult.Yes;
@@ -1080,7 +1080,7 @@ namespace Fightcord
             { "VS screens, stats & replays", "Telas VS, estat\u00edsticas e replays" },
             { "Friends, notes & hover cards", "Amigos, notas e perfis" },
             { "Themes, music, Rich Presence & updates", "Temas, m\u00fasica e Rich Presence" },
-            { "Cerberus is backed up and removed. Your settings and match history come along.", "O Cerberus vai para um backup; configura\u00e7\u00f5es e hist\u00f3rico v\u00eam junto." },
+            { "Your previous mod is backed up and removed. Your settings and match history come along.", "O mod anterior vai para um backup; configura\u00e7\u00f5es e hist\u00f3rico v\u00eam junto." },
             { "Install", "Instalar" },
             { "Open Fightcade", "Abrir Fightcade" },
             { "Uninstall", "Desinstalar" },
@@ -1098,7 +1098,7 @@ namespace Fightcord
             { "Fightcord {0} is installed \u2014 up to date.", "Fightcord {0} instalado \u2014 atualizado." },
             { "Fightcord {0} is installed \u2014 this setup has {1}.", "Fightcord {0} instalado \u2014 este instalador tem a {1}." },
             { "Fightcord is not installed yet.", "O Fightcord ainda n\u00e3o est\u00e1 instalado." },
-            { "Cerberus found \u2014 it will be backed up and removed.", "Cerberus encontrado \u2014 ele ser\u00e1 salvo num backup e removido." },
+            { "A previous Fightcade mod was found \u2014 it will be backed up and removed.", "Um mod anterior do Fightcade foi encontrado \u2014 ele ser\u00e1 salvo num backup e removido." },
             { "An older plugin setup was found \u2014 it will be backed up and replaced.", "Uma configura\u00e7\u00e3o de plugins antiga foi encontrada \u2014 ela ser\u00e1 salva num backup e substitu\u00edda." },
             { "Fightcade is open \u2014 it has to be closed to install.", "O Fightcade est\u00e1 aberto \u2014 ele precisa ser fechado para instalar." },
             { "A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again.", "Uma partida ou emulador ainda est\u00e1 rodando.\n\nTermine, feche o Fightcade (bot\u00e3o direito no \u00edcone da bandeja \u2192 Sair) e tente de novo." },
@@ -1107,14 +1107,14 @@ namespace Fightcord
             { "Backing up the current setup to {0}", "Fazendo backup da configura\u00e7\u00e3o atual em {0}" },
             { "Bringing your settings and match history along", "Trazendo suas configura\u00e7\u00f5es e seu hist\u00f3rico de partidas" },
             { "your sounds", "seus sons" },
-            { "Cerberus and the old loader are out (kept in the backup)", "O Cerberus e o loader antigo foram removidos (guardados no backup)" },
+            { "The previous mod and its loader are out (kept in the backup)", "O mod anterior e o loader dele foram removidos (guardados no backup)" },
             { "The old loader is out (kept in the backup)", "O loader antigo foi removido (guardado no backup)" },
             { "Installing Fightcord {0}", "Instalando o Fightcord {0}" },
             { "The installer is missing its files (payload.zip). Rebuild it with build.ps1.", "O instalador est\u00e1 sem os arquivos (payload.zip). Gere-o de novo com o build.ps1." },
             { "{0} files", "{0} arquivos" },
             { "Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks.", "Pronto. Abra o Fightcade - est\u00e1 tudo em Configura\u00e7\u00f5es \u2192 Fightcord e nos outros blocos." },
             { "Remove Fightcord from Fightcade?", "Remover o Fightcord do Fightcade?" },
-            { "Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", "Sua configura\u00e7\u00e3o anterior (Cerberus / plugins antigos) de {0} pode ser restaurada. Restaurar?" },
+            { "Your previous setup from {0} can be put back. Restore it?", "Sua configura\u00e7\u00e3o anterior de {0} pode ser restaurada. Restaurar?" },
             { "Yes = remove and restore   No = just remove", "Sim = remover e restaurar   N\u00e3o = s\u00f3 remover" },
             { "Cancelled.", "Cancelado." },
             { "Keeping your settings and match history in {0}", "Guardando suas configura\u00e7\u00f5es e seu hist\u00f3rico de partidas em {0}" },
@@ -1144,7 +1144,7 @@ namespace Fightcord
             { "VS screens, stats & replays", "Pantallas VS y estad\u00edsticas" },
             { "Friends, notes & hover cards", "Amigos, notas y perfiles" },
             { "Themes, music, Rich Presence & updates", "Temas, m\u00fasica y Rich Presence" },
-            { "Cerberus is backed up and removed. Your settings and match history come along.", "Cerberus pasa a un respaldo; tu configuraci\u00f3n e historial se mantienen." },
+            { "Your previous mod is backed up and removed. Your settings and match history come along.", "El mod anterior pasa a un respaldo; tu configuraci\u00f3n e historial se mantienen." },
             { "Install", "Instalar" },
             { "Open Fightcade", "Abrir Fightcade" },
             { "Uninstall", "Desinstalar" },
@@ -1162,7 +1162,7 @@ namespace Fightcord
             { "Fightcord {0} is installed \u2014 up to date.", "Fightcord {0} instalado \u2014 al d\u00eda." },
             { "Fightcord {0} is installed \u2014 this setup has {1}.", "Fightcord {0} instalado \u2014 este instalador trae la {1}." },
             { "Fightcord is not installed yet.", "Fightcord todav\u00eda no est\u00e1 instalado." },
-            { "Cerberus found \u2014 it will be backed up and removed.", "Se encontr\u00f3 Cerberus \u2014 se respaldar\u00e1 y se quitar\u00e1." },
+            { "A previous Fightcade mod was found \u2014 it will be backed up and removed.", "Se encontr\u00f3 un mod anterior de Fightcade \u2014 se respaldar\u00e1 y se quitar\u00e1." },
             { "An older plugin setup was found \u2014 it will be backed up and replaced.", "Se encontr\u00f3 una configuraci\u00f3n de plugins antigua \u2014 se respaldar\u00e1 y se reemplazar\u00e1." },
             { "Fightcade is open \u2014 it has to be closed to install.", "Fightcade est\u00e1 abierto \u2014 hay que cerrarlo para instalar." },
             { "A match or emulator is still running.\n\nFinish it, close Fightcade (right-click its tray icon \u2192 Quit), then try again.", "Todav\u00eda hay una partida o emulador abierto.\n\nTerm\u00ednala, cierra Fightcade (clic derecho en su \u00edcono de la bandeja \u2192 Salir) y vuelve a intentar." },
@@ -1171,14 +1171,14 @@ namespace Fightcord
             { "Backing up the current setup to {0}", "Respaldando la configuraci\u00f3n actual en {0}" },
             { "Bringing your settings and match history along", "Trayendo tu configuraci\u00f3n y tu historial de partidas" },
             { "your sounds", "tus sonidos" },
-            { "Cerberus and the old loader are out (kept in the backup)", "Cerberus y el loader antiguo se quitaron (guardados en el respaldo)" },
+            { "The previous mod and its loader are out (kept in the backup)", "El mod anterior y su loader se quitaron (guardados en el respaldo)" },
             { "The old loader is out (kept in the backup)", "El loader antiguo se quit\u00f3 (guardado en el respaldo)" },
             { "Installing Fightcord {0}", "Instalando Fightcord {0}" },
             { "The installer is missing its files (payload.zip). Rebuild it with build.ps1.", "Al instalador le faltan sus archivos (payload.zip). Vuelve a generarlo con build.ps1." },
             { "{0} files", "{0} archivos" },
             { "Done. Open Fightcade - everything is under Settings \u2192 Fightcord and the other blocks.", "Listo. Abre Fightcade - todo est\u00e1 en Configuraci\u00f3n \u2192 Fightcord y en los otros bloques." },
             { "Remove Fightcord from Fightcade?", "\u00bfQuitar Fightcord de Fightcade?" },
-            { "Your previous setup (Cerberus / old plugins) from {0} can be put back. Restore it?", "Tu configuraci\u00f3n anterior (Cerberus / plugins antiguos) de {0} se puede restaurar. \u00bfRestaurarla?" },
+            { "Your previous setup from {0} can be put back. Restore it?", "Tu configuraci\u00f3n anterior de {0} se puede restaurar. \u00bfRestaurarla?" },
             { "Yes = remove and restore   No = just remove", "S\u00ed = quitar y restaurar   No = solo quitar" },
             { "Cancelled.", "Cancelado." },
             { "Keeping your settings and match history in {0}", "Guardando tu configuraci\u00f3n y tu historial de partidas en {0}" },

@@ -152,7 +152,7 @@ function paneHtml(id) {
         return `<h2>${ET('About')}</h2>
             <p class="lead">${ET('Fightcord turns Fightcade into something that looks and works like Discord: the theme, chat, member list, search tab, match screens, stats and your Discord status. Fightcord isn’t made by or affiliated with Fightcade or Discord.')}</p>
             <div class="fcordBtns">${fc.ui.btn('GitHub page', { kind: 'sec', icon: 'link', act: 'repo' })}${fc.ui.btn('Open Fightcord folder', { kind: 'sec', icon: 'copy', act: 'folder' })}</div>
-            <p class="lead small">${ET('Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup (Cerberus) in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.')}</p>`;
+            <p class="lead small">${ET('Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.')}</p>`;
     }
     const sec = fc.settings.sections().find(s => s.id === id);
     return `<h2>${ET(sec ? sec.label : id)}</h2>`;

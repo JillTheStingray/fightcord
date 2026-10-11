@@ -245,8 +245,7 @@ A rebuild of the whole thing, plus the biggest batch of new features so far.
 The versions before 2.0 were shared privately; they're folded together here.
 
 - The Discord theme, Discover search tab, member list, chat extras, translator, `:emoji:`
-  shortcodes, font styles, scout card, match screens and Discord status, in one installer that
-  replaces Cerberus (and can put it back).
+  shortcodes, font styles, scout card, match screens and Discord status, in one installer.
 - Challenge filters, the stats page (with Fightcade history import), friends, player notes & tags,
   the challenge card, channel banner, hover cards, profile popout, right-click menu, notification
   inbox, animated backgrounds, lobby music and the splash screen.

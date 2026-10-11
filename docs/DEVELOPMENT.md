@@ -14,13 +14,13 @@ Fightcade inject plugins:
 * **`discover.js`** — the search tab as Discord's Discover page: sidebar, spotlight, instant search, game pages, live matches.
 * **`snapshot.js`** — dev helper: saves the page layout/CSS/screenshot so the UI can be worked on offline.
 
-All hang off Fightcade's own settings page and coexist with Cerberus.
+All hang off Fightcord's own settings screen.
 
 ## Install
 
 These plugins ship as **Fightcord**: run `..\fightcord\dist\FightcordSetup.exe` (see
 `..\fightcord\README.md`). It installs its own loader as `inject\inject.js` and the plugins into
-`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`, replacing Cerberus (backed up).
+`<Fightcade>\fc2-electron\resources\app\inject\fightcord\` (any previous loader is backed up).
 While developing, `install.bat` copies the current `.js` files into that folder; restart Fightcade after.
 Settings are saved next to the plugins (`fontstyle-config.json`, `scout-config.json`, …).
 
@@ -127,7 +127,7 @@ tiles fill in a moment later and degrade to a short "unavailable" note if Cloudf
 API calls are strictly on demand: cached for 5 minutes, no background polling, and an exponential
 cool-off when Cloudflare or a 429 pushes back (the card then shows "unavailable" rather than
 retrying). The challenge hook re-wraps itself whenever Fightcade swaps its callbacks object and
-always chains to the previous handler, so Cerberus's auto-reject filters keep working.
+always chains to the previous handler, so other challenge handlers keep working.
 
 ---
 
@@ -252,12 +252,12 @@ The player list, redone like Discord's member list:
 * **Rank groups** — "Looking to play" is split into Rank S — 2, Rank A — 7, … Unranked — 17, like
   Discord's role groups, with names in their rank colour (S gold, A red, B purple, C blue, D green,
   E grey). "Not available" stays one block, like Discord's Offline.
-* **Status line** — under each name: flag, country, ping, and Wi-Fi/VPN when Cerberus knows it
+* **Status line** — under each name: flag, country, ping, and Wi-Fi/VPN when Fightcade reports it
   (or Fightcade's own "Playing …" line when there is one). The 🔍 scout badge shows on hover.
 * **Signal bars** — green under 100 ms, yellow under 180, red above; hover for the exact number.
 * **Filters** — chips above the list: rank letters (any combination), `< 100 ms`, and `My region`
-  (same continent as you). They combine with Cerberus's player search; × clears them.
-* **Sort** — Name (Fightcade's order), Ping (lowest first) or Top (Cerberus leaderboard #), inside
+  (same continent as you). They combine with the player search; × clears them.
+* **Sort** — Name (Fightcade's order), Ping (lowest first) or Top (leaderboard #), inside
   each rank group.
 * **Played before** — `⚔ 3–1` next to players you've recently played (green if you lead, red if
   behind). One request for *your* recent sets covers everyone, refreshed every 10 minutes, so it only
