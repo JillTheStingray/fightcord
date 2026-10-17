@@ -55,6 +55,8 @@ walks you through the rest.
   emulator font together.
 - A calm, one-row channel header, our own rank icons everywhere ranks show, and real system logos
   in Discover.
+- Private lobbies, like a Discord server: invite-only, with a chat that keeps its history, a member
+  list with Challenge, and a voice room for up to 8.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

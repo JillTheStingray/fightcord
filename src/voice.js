@@ -60,8 +60,33 @@ const to32 = (n) => Buffer.from(n.toString(16).padStart(64, '0'), 'hex');
 const sha = (...parts) => crypto.createHash('sha256').update(Buffer.concat(parts.map(p => Buffer.isBuffer(p) ? p : Buffer.from(p)))).digest();
 const tagged = (tag, ...parts) => { const t = sha(tag); return sha(t, t, ...parts); };
 
-// x-only public key of a 32-byte secret
-function pubkey(sk) { return to32(mul(G, toBig(sk))[0]); }
+// x-only public key of a 32-byte secret (kept: a lobby signs every message with the same key)
+const pkCache = new Map();
+function pubkey(sk) {
+    const k = Buffer.from(sk).toString('hex');
+    let pk = pkCache.get(k);
+    if (!pk) { pk = to32(mul(G, toBig(sk))[0]); if (pkCache.size > 64) pkCache.clear(); pkCache.set(k, pk); }
+    return pk;
+}
+
+// x-only public key -> its point (the even y), null if it isn't on the curve
+function lift(pk) {
+    const x = toBig(pk);
+    if (x <= 0n || x >= P) return null;
+    const y2 = mod(x * x * x + 7n);
+    let y = 1n, b = y2, ex = (P + 1n) / 4n;
+    while (ex > 0n) { if (ex & 1n) y = mod(y * b); b = mod(b * b); ex >>= 1n; }
+    if (mod(y * y) !== y2) return null;
+    return [x, y % 2n === 0n ? y : P - y];
+}
+
+// the secret two keys share (ECDH): mine x theirs = theirs x mine; the x alone, so the y we
+// guessed for an x-only key doesn't matter
+function ecdh(sk, pk) {
+    const pt = lift(pk);
+    if (!pt) throw new Error('bad public key');
+    return sha('fightcord-ecdh', to32(mul(pt, toBig(sk))[0]));
+}
 
 // BIP340 Schnorr signature of a 32-byte message
 function sign(msg, sk, aux) {
@@ -226,7 +251,7 @@ module.exports = {
     id: 'voice', name: 'Voice chat',
     start: (f) => start(f),
     // pure parts, for the tests
-    pubkey, sign, verify, makeEvent, checkEvent, roomTopic, roomKey, isCaller, seal, open, decide, Session, gate, RELAYS, KIND
+    pubkey, lift, ecdh, sign, verify, makeEvent, checkEvent, roomTopic, roomKey, isCaller, seal, open, decide, Session, gate, RELAYS, KIND
 };
 
 /* ===================================================== relays (the handshake) */
@@ -424,11 +449,15 @@ function toggleMute() {
     renderPill();
 }
 
-function hotkey(on) {
+// one Ctrl+Shift+M for everyone who needs it (a set's voice, a lobby's voice room): the set wins
+const keyUsers = new Map();              // who -> fn
+function hotkey(on, who, fn) {
+    const w = who || 'set';
+    if (on) keyUsers.set(w, fn || toggleMute); else keyUsers.delete(w);
     try {
         const gs = require('electron').remote.globalShortcut;
-        if (on && !gs.isRegistered(HOTKEY)) gs.register(HOTKEY, () => toggleMute());
-        if (!on && gs.isRegistered(HOTKEY)) gs.unregister(HOTKEY);
+        if (keyUsers.size && !gs.isRegistered(HOTKEY)) gs.register(HOTKEY, () => { const f = keyUsers.get('set') || [...keyUsers.values()].pop(); if (f) f(); });
+        if (!keyUsers.size && gs.isRegistered(HOTKEY)) gs.unregister(HOTKEY);
     } catch (e) { fc.log('mute key unavailable:', e.message); }
 }
 
@@ -680,6 +709,9 @@ const api = {
         renderPill();
     },
     _end: (why) => end(why || 'test', false),
+    // private lobbies' voice rooms use the same mic, devices, gate and mute key
+    rtc: { getMic: () => getMic(), meter: (st) => meter(st), gathered: (pc) => gathered(pc), gate, ICE,
+        settings: () => cfg || {}, hotkey: (on, who, fn) => hotkey(on, who, fn) },
     _toggleMute: () => toggleMute()
 };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

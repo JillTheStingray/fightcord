@@ -87,6 +87,9 @@ const NEWS = [
     { v: '2.13', title: 'Fightcord 2.13', items: [
         ['bolt', N_('A calmer Fightcord'), N_('One-row channel header with a ⋯ menu, the channel notice folded to one line, simpler cards and fewer pop-ups.')],
         ['trophy', N_('New rank icons and system logos'), N_('Our own badges for every rank, the in-match bar included, and real logos for each system in Discover.')]
+    ] },
+    { v: '2.14', title: 'Fightcord 2.14', items: [
+        ['lock', N_('Private lobbies'), N_('Your own invite-only lobby, like a Discord server: a chat that keeps its history, a member list with Challenge, and a voice room. The + under your game channels makes one.')]
     ] }
 ];
 

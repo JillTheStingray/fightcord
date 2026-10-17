@@ -95,6 +95,7 @@ de boas-vindas curta te guia pelo resto.
 - **Lembretes de eventos:** um aviso antes dos torneios do Fightcade dos seus jogos começarem (ou de
   qualquer evento em que você tocar o sininho), com um botão para abrir o canal.
 - **Status no Discord:** mostra seu jogo, oponente e o tempo de partida no seu perfil do Discord.
+- **Lobbies privados**, como um servidor do Discord: só com convite, com um chat que guarda o histórico, lista de membros com Desafiar e uma sala de voz para até 8.
 - **Música** no lobby (traga sua própria faixa; nenhuma vem incluída).
 
 **Para streamers**

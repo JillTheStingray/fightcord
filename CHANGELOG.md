@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.14.0
+
+- **Private lobbies, like a Discord server** (Fightcord players only). The **+** under your game
+  channels creates a lobby or joins one with an invite code (FC-XXXXXX-XXXXXX-XXXXXX-XXXXXX).
+  - **A chat that keeps its history:** you see what was said while you were away. @mentions,
+    links, and a notification when someone mentions you (or for every message, or never).
+  - **A member list:** who's online, away, in a match or in voice. Click someone to challenge
+    them, open their scout card or mention them.
+  - **Challenge from the lobby:** each lobby plays one game. Fightcord gets you both into that
+    game's Fightcade channel and sends Fightcade's own challenge.
+  - **A voice room** for up to 8 people, straight between players like voice chat, with the same
+    mic settings and **Ctrl+Shift+M** to mute.
+  - **Only people with the code (and Fightcord) can get in.** Everything is encrypted with a key that
+    only exists in the invite code. The owner can remove someone (everyone else gets a new key, so
+    they can't read anything new), make a new invite code, rename the lobby or change its game.
+
 ## 2.13.0
 
 - **A calmer Fightcord.**

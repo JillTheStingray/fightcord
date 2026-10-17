@@ -146,7 +146,11 @@ const SCENES = [
         __sim.music();
         fightcord.modules.get('backgrounds').setLook({ style: 'visualizer', look: 'bars', intensity: 0.85 });
         await sleep(3000);` },
-    { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` }
+    { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
+    // private lobbies: made-up members and chat (the harness has no relays)
+    { name: 'lobby', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ more: [{ id: 'demo1', name: 'Parry Club', seeds: ['0'], epoch: 0, lastRead: 0 }] }); await sleep(1500);` },
+    { name: 'lobby-voice', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ voice: true }); await sleep(1500);` },
+    { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 
 // every scene: the made-up chat in view (scrolled to the bottom), no leftover toasts
