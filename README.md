@@ -53,6 +53,8 @@ walks you through the rest.
   screen with the game's art, characters on your Discord status and matchup notes per character.
 - Looks in one click: Arcade CRT, 3rd Strike and Neon Tokyo set the colours, font, background and
   emulator font together.
+- A calm, one-row channel header, our own rank icons everywhere ranks show, and real system logos
+  in Discover.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.13.0
+
+- **A calmer Fightcord.**
+  - **The channel header is one row:** tonight's record with your goals, a **Find a match** button,
+    then small icons for the Feed (with a dot for what's new), the Game hub and your Stats. A **⋯** menu
+    holds Test Game, Training, Replays, Events, Profile and "Slim banner". The banner's second row of
+    buttons is gone.
+  - **The channel notice folds to one line** ("Channel info · Rules · 13 links · 4 events"); click it to
+    open. Remembered per channel, and it can be switched off in Settings → Chat.
+  - **Cards are simpler and match:** the scout card is one 2×2 grid (ELO, your odds, vs you, form), one
+    warning line, recent sets folded away and one row of buttons. The hover card is smaller, with one
+    line and one button row. The challenge card shows its warnings on one line.
+  - **Fewer pop-ups:** at most 2 at once. "Friend is online", the matchup note during a match and the
+    "Last session" summary are off by default; each can be switched back on in Settings.
+- **New rank icons** for S, A, B, C, D, E and unknown, everywhere ranks show (the in-match bar too), with
+  names in the icons' colours. Settings → Appearance → Rank icons switches back to Fightcade's own.
+- **System logos** in Discover: the real logos of each system (Dreamcast, PlayStation, Super NES, …).
+- Fightcade's "New messages" bar above the message box now matches the theme.
+- Fixed: some spacing (the new-messages bar, the "F" marks) didn't apply in Fightcade's browser engine.
+
 ## 2.12.0
 
 - **Voice chat with your opponent** (Fightcord players only, off until you turn it on in Settings →

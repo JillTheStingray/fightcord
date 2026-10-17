@@ -171,9 +171,10 @@ function line(name) {
 }
 
 const CSS = `
-.fcPres { display: inline-flex; align-items: center; gap: 2px; height: 15px; padding: 0 4px; margin: 0 0 0 5px; border-radius: 4px; vertical-align: middle;
+.fcPres { display: inline-flex; align-items: center; height: 15px; padding: 0 4px; margin: 0 0 0 5px; border-radius: 4px; vertical-align: middle;
     background: var(--fc-accent); color: #fff; font: 800 9.5px/1 var(--fc-font); letter-spacing: 0; text-transform: none; flex: none; cursor: default; }
 .fcPres > b { font-weight: 800; }
+.fcPres > b + .fc-ic { margin-left: 2px; }
 .fcPres .fc-ic { width: 10px; height: 11px; stroke-width: 3; }
 .fcPres.v { background: var(--fc-success); }
 .fcPres.big { height: 18px; padding: 0 5px; font-size: 11.5px; border-radius: 5px; }

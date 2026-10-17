@@ -19,7 +19,7 @@
 let fc = null;
 let store = null, cfg = null;           // friends-config.json
 
-const DEFAULTS = { friends: [], notify: true, sound: true };
+const DEFAULTS = { friends: [], notify: true, notifyOnline: false, sound: true };     // 2.13: "is online" pop-ups off by default
 const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
@@ -142,6 +142,7 @@ function alert(k, title, sub, name, kind) {
     if (alerts.length > 100) alerts.shift();
     fc.emit('friends:alert', a);
     if (!cfg.notify) return;
+    if (kind === 'online' && !cfg.notifyOnline) return;            // it's still in the inbox
     const st = fc.modules.get('streamer');
     if (st && st.quiet && st.quiet()) return;           // streaming: it would name them on screen
     fc.ui.toast(title, { sub, icon: 'star', kind: 'warning', ms: 7000, onClick: open,
@@ -336,7 +337,8 @@ function start(f) {
         hint: '— only on your PC · /friends in chat',
         fields: [
             { type: 'html', html: () => `<div class="fc-note">${fc.fmt.plural(cfg.friends.length, 'friend')} saved.</div>` },
-            { key: 'notify', type: 'switch', label: 'Pop-up when a friend comes online or starts a match' },
+            { key: 'notify', type: 'switch', label: 'Pop-up when a friend starts a match' },
+            { key: 'notifyOnline', type: 'switch', label: 'Also when a friend comes online', hint: 'Off = only in the inbox', show: (d) => d.notify },
             { key: 'sound', type: 'switch', label: 'Play a chime with it', show: (d) => d.notify, onChange: (v) => { if (v) fc.sound.play('ping'); } },
             { type: 'button', label: 'Friends page', button: 'Open', act: 'open', onClick: () => { const s = fc.modules.get('fightcord'); if (s && s.close) s.close(); open(); } }
         ]

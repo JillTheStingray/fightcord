@@ -722,6 +722,9 @@ function start(f) {
     fc.ui.style('fcsStyle', CSS);
     fc.own(() => { fc.ui.style('fcsStyle', null); close(); window.__fcStatsLoaded = false; });
     fc.cmd('stats', 'Your stats', () => open());
+    // the channel header (2.13): your stats in this game
+    fc.own(fc.ui.header.icon({ id: 'stats', icon: 'chart', title: 'Your stats in this game', show: (ctx) => !!ctx.rom,
+        fn: (ctx) => open({ game: String(ctx.channel || '').replace(/\s*\([^)]*\)\s*$/, '') }) }));
     // switching to another channel / page closes it (opening it FROM a channel -- the 🏆
     // pill, /stats -- must not)
     const onNav = () => close();

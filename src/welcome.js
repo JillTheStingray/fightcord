@@ -83,6 +83,10 @@ const NEWS = [
     { v: '2.12', title: 'Fightcord 2.12', items: [
         ['mic', N_('Voice chat with your opponent'), N_('Talk during a set with players who have Fightcord. Off until you turn it on in Settings → Voice chat; Ctrl+Shift+M mutes, even in the emulator.')],
         ['users', N_('See who has Fightcord'), N_('An F next to their name, green with a mic when their voice chat is on. You show up too, unless you turn it off in Settings → Voice chat.')]
+    ] },
+    { v: '2.13', title: 'Fightcord 2.13', items: [
+        ['bolt', N_('A calmer Fightcord'), N_('One-row channel header with a ⋯ menu, the channel notice folded to one line, simpler cards and fewer pop-ups.')],
+        ['trophy', N_('New rank icons and system logos'), N_('Our own badges for every rank, the in-match bar included, and real logos for each system in Discover.')]
     ] }
 ];
 

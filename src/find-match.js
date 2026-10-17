@@ -191,7 +191,7 @@ function onClick(box, e) {
 
 function refreshPill() {
     document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
-        let pill = actions.querySelector(':scope > .fcfmPill');
+        let pill = actions.querySelector('.fcfmPill');
         if (!cfg.enabled || !cfg.pill) { if (pill) pill.remove(); return; }
         if (pill) return;
         pill = document.createElement('div');
@@ -200,8 +200,7 @@ function refreshPill() {
         pill.innerHTML = fc.ui.icon('target') + `<span>${E(T('Find a match'))}</span>`;
         pill.addEventListener('mousedown', (e) => e.stopPropagation());
         pill.addEventListener('click', (e) => { e.stopPropagation(); open(pill); });
-        const after = actions.querySelector(':scope > .fcglPill') || actions.querySelector(':scope > .fcmsPill');
-        if (after) after.insertAdjacentElement('afterend', pill); else actions.insertBefore(pill, actions.firstChild);
+        fc.ui.header.place(actions, pill, 'findmatch');
     });
 }
 
@@ -209,6 +208,10 @@ const CSS = `
 .fcfmPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px; margin-right: 8px; border-radius: var(--fc-r1);
     background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; text-transform: none; letter-spacing: normal; }
 .fcfmPill:hover { background: var(--fc-btn-h); }
+/* 2.13: the one accent button in the header (the thing to do next) */
+.fcHdr .fcfmPill { background: var(--fc-accent); color: #fff; }
+.fcHdr .fcfmPill:hover { background: var(--fc-accent-h, var(--fc-accent)); filter: brightness(1.1); }
+.cbn-merged .fcHdr .fcfmPill { box-shadow: 0 2px 10px rgba(0,0,0,.35); }
 .fcfmPill svg { width: 16px; height: 16px; margin-right: 6px; }
 .fcfmPop .h { display: flex; align-items: baseline; font-size: 16px; font-weight: 700; color: var(--fc-head); }
 .fcfmPop .h small { flex: 1; min-width: 0; margin-left: 8px; font-size: 12px; font-weight: 500; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

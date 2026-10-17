@@ -297,6 +297,11 @@ html.fcd-browse #fcdNav { display: flex; }
     transition: border-radius .2s ease;
 }
 #fcdNav .fcdNavItem:hover .fcdTag, #fcdNav .fcdNavItem.on .fcdTag { border-radius: 50%; }
+#fcdNav .fcdTag.sys { width: 52px; border-radius: 7px; font-size: 11px; }
+#fcdNav .fcdNavItem:hover .fcdTag.sys, #fcdNav .fcdNavItem.on .fcdTag.sys { border-radius: 7px; }
+#fcdNav .fcdTag.logo { width: 52px; padding: 2px 4px; box-sizing: border-box; border-radius: 7px; background: var(--fcd-logo-bg, #f2f3f5); overflow: hidden; }
+#fcdNav .fcdNavItem:hover .fcdTag.logo, #fcdNav .fcdNavItem.on .fcdTag.logo { border-radius: 7px; box-shadow: 0 0 0 2px var(--fc-accent, #5865f2); }
+#fcdNav .fcdTag.logo > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 #fcdNav .fcdLbl { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcdNav .fcdCnt { float: right; min-width: 18px; height: 18px; margin-top: 2px; padding: 0 5px; border-radius: 9px; box-sizing: border-box;
     font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; color: #fff; background: var(--dc-green, #23a55a); }
@@ -1152,7 +1157,8 @@ function navItem(key, icon, label, extraCls) {
 function buildNav() {
     const L = filterLists();
     // (Friends shows once friends.js is running -- it loads after this plugin)
-    const key = L.genres.join('|') + '#' + L.systems.join('|') + (fc.modules.has('friends') ? '#fr' : '');
+    // (system logos too: system-logos.js also loads after this plugin)
+    const key = L.genres.join('|') + '#' + L.systems.join('|') + (fc.modules.has('friends') ? '#fr' : '') + (fc.modules.has('system-logos') ? '#logos' : '');
     let nav = document.getElementById('fcdNav');
     if (nav && navKey === key) return nav;
     navKey = key;
@@ -1160,8 +1166,13 @@ function buildNav() {
     const common = COMMON_GENRES.filter(g => L.genres.includes(g));
     const rest = L.genres.filter(g => !common.includes(g));
     const genre = (g) => navItem('g:' + g, ico(GENRE_ICON[g] || 'pad'), g);
-    const system = (s) => navItem('s:' + s,
-        `<span class="fcdTag" style="background:${tagColor(s)}">${esc(SYSTEM_TAG[s] || initials(s))}</span>`, s);
+    // the system's real logo when system-logos.js has one (2.13), else coloured initials
+    const logos = fc.modules.get('system-logos');
+    const system = (s) => {
+        const logo = logos && logos.url ? logos.url(s) : '';
+        return navItem('s:' + s, logo ? `<span class="fcdTag logo"><img src="${logo}" alt="" draggable="false"></span>`
+            : `<span class="fcdTag sys" style="background:${tagColor(s)}">${esc(SYSTEM_TAG[s] || initials(s))}</span>`, s);
+    };
     const html = `<div class="fcdNavHead">${ET('Discover')}<span class="fcdGear" data-key="settings" title="${ET('Fightcord settings (Ctrl+,)')}">${svgIcon('gear')}</span></div><div class="fcdNavList">
         ${navItem('home', ico('home'), N_('Home'))}
         ${navItem('yours', ico('pad'), N_('Your games'))}

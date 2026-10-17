@@ -477,6 +477,23 @@ html.dc-layout .chatInput .emojiBtn, html.dc-layout .chatInput .fontStyleBtn {
 html.dc-layout .chatInput .fontStyleBtn { right: 28px; }
 html.dc-layout .chatInput .emojiBtn { right: 60px; }
 html.dc-layout .chatInput .emojiBtn:hover, html.dc-layout .chatInput .fontStyleBtn:hover { opacity: 1; color: var(--dc-head); }
+/* Fightcade's "New messages · Discard · Go to first" bar (also mentions / challenges): Discord's bar on top of the box */
+html.dc-layout .chatInput .notificationsHelpersWrapper { left: 16px !important; right: 16px !important; width: auto !important; bottom: 60px !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem {
+    justify-content: space-between !important; padding: 5px 14px 9px !important; margin-bottom: -4px;
+    border-radius: 8px 8px 0 0; box-shadow: none !important; text-transform: none !important; letter-spacing: 0;
+    font: 600 13px/18px var(--dc-font, inherit) !important; color: #fff !important; background: var(--fc-accent, #5865f2) !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem + .notificationsHelpersItem { border-radius: 0; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.mention { background: #f23f43 !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.challenge { background: #23a55a !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .title {
+    width: auto !important; flex: 1 1 auto; margin: 0 !important; text-align: left !important; color: #fff !important;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options {
+    width: auto !important; flex: none; display: flex; align-items: center; margin-left: 12px; font-size: 13px !important; text-align: right !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > * + * { margin-left: 16px !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > * { margin: 0 !important; color: rgba(255,255,255,.85) !important; cursor: pointer; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > *:hover { color: #fff !important; text-decoration: underline; }
 
 /* ============================== member list ============================== */
 html.dc-layout .usersListToolbar,

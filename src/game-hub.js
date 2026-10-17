@@ -404,6 +404,7 @@ function close() { if (page) page.close(); }
 /* -------------------------------------------------------------------- style */
 
 const CSS = `
+html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .fc-page-h { position: relative; overflow: hidden; }
 #ghHub .fc-page-h::before { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: var(--gh-art) center 30% / cover;
     opacity: .16; filter: saturate(1.2); pointer-events: none; image-rendering: pixelated; }
@@ -496,6 +497,13 @@ const CSS = `
 function start(f) {
     fc = f;
     fc.ui.style('ghStyle', CSS);
+    // the channel header (2.13): the hub's icon, and its other tabs in the ⋯ menu
+    const hubAt = (tab) => (ctx) => open({ tab, channel: ctx.channel, rom: ctx.rom, links: ctx.links });
+    const inGame = (ctx) => !!ctx.rom;
+    fc.own(fc.ui.header.icon({ id: 'hub', icon: 'trophy', title: N_('Game hub: rankings, replays, events and profiles'), fn: hubAt('rankings'), show: inGame }));
+    fc.own(fc.ui.header.more({ id: 'hub-replays', label: N_('Replays'), icon: 'play', order: 20, fn: hubAt('replays'), show: inGame }));
+    fc.own(fc.ui.header.more({ id: 'hub-events', label: N_('Events'), icon: 'clock', order: 21, fn: hubAt('events'), show: inGame }));
+    fc.own(fc.ui.header.more({ id: 'hub-profile', label: N_('Profile'), icon: 'user', order: 22, fn: hubAt('profile'), show: inGame }));
     seenStore = fc.config('game-hub', { avatars: {} });
     seen = seenStore.data.avatars || (seenStore.data.avatars = {});
     fc.tick(rememberAvatars, 30000, { delay: 5000 });
@@ -504,7 +512,11 @@ function start(f) {
         if (!page) return;
         page.body.querySelectorAll('.ghWait span').forEach(s => { const t = Math.ceil(fc.api.blockedFor() / 1000); s.textContent = t > 0 ? T('Fightcade asked to slow down — loading in {s}s', { s: t }) : T('Loading…'); });
     }, 1000, { whileHidden: true });
-    fc.own(() => { fc.ui.style('ghStyle', null); close(); });
+    fc.own(() => { fc.ui.style('ghStyle', null); close(); document.documentElement.classList.remove('gh-on'); });
+    // Fightcade's own REPLAYS / RANKINGS / EVENTS / PROFILE links next to the channel name: the header's trophy
+    // and ⋯ menu open the same things here (2.13), so they step aside (still read for their addresses)
+    document.documentElement.classList.add('gh-on');
+    fc.watch(() => document.querySelectorAll('.channelToolbar .channelInfo a.link').forEach(a => { if (a.parentElement && !a.parentElement.classList.contains('ghNative')) a.parentElement.classList.add('ghNative'); }), { selector: '.channelToolbar' });
     return api;
 }
 

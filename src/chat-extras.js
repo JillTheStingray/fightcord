@@ -33,7 +33,9 @@ const DEFAULTS = {
     animate: true,         // new messages slide in
     rankColors: true,      // names in the colour of their channel rank
     systemCards: true,     // challenge / match messages as compact pills and cards
-    timeDividers: true     // a divider when 20+ minutes pass between messages
+    timeDividers: true,    // a divider when 20+ minutes pass between messages
+    noticeFolded: true,    // Fightcade's channel notice (rules, links, events) as one line (2.13)
+    noticeOpen: {}         // channels where you opened it
 };
 
 const E = (s) => fc.fmt.esc(s);
@@ -554,6 +556,19 @@ function updateJump() {
 }
 
 const CSS = `
+/* the channel notice, folded to one line (2.13) */
+.messageWrapper.motd.fcx-motd-shut > .motd { display: none !important; }
+.messageWrapper.motd.fcx-motd-shut { border: 0 !important; box-shadow: none !important; background: none !important; padding: 0 !important; }
+.fcxMotd { display: flex; align-items: center; margin: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; user-select: none;
+    background: rgba(255,255,255,.045); color: var(--fc-muted); font: 500 13px/18px var(--fc-font); box-shadow: inset 3px 0 0 var(--fc-accent); }
+.fcxMotd:hover { background: rgba(255,255,255,.08); color: var(--fc-text); }
+.fcxMotd > .fc-ic { width: 16px; height: 16px; flex: none; margin-right: 8px; color: var(--fc-accent); }
+.fcxMotd > b { flex: none; color: var(--fc-head); font-weight: 600; margin-right: 10px; }
+.fcxMotd > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcxMotd > i { display: inline-flex; flex: none; margin-left: 8px; transition: transform .15s; }
+.fcxMotd > i > .fc-ic { width: 16px; height: 16px; }
+.messageWrapper.motd.fcx-motd:not(.fcx-motd-shut) > .fcxMotd > i { transform: rotate(180deg); }
+.messageWrapper.motd.fcx-motd:not(.fcx-motd-shut) > .fcxMotd { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention,
 html body .chatContent .messageWrapper.chat .message.chat.fcx-mention-head > header {
     background: rgba(250,168,26,.12) !important; box-shadow: inset 2px 0 0 #f0b232 !important; }
@@ -637,12 +652,61 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 
 /* -------------------------------------------------------------------- sweep */
 
+/* ---------------------------------------------------- the channel notice (2.13) */
+
+// what the notice holds -> the words on its folded line
+function noticeSummary(n, tt) {
+    const t = tt || T;                       // (tests pass their own translator)
+    const bits = [];
+    if (n.rules) bits.push(t('Rules'));
+    if (n.links) bits.push(t.plural(n.links, '{n} link', '{n} links', { n: n.links }));
+    if (n.events) bits.push(t.plural(n.events, '{n} event', '{n} events', { n: n.events }));
+    return bits;
+}
+function noticeOf(motd) {
+    return {
+        rules: [...motd.querySelectorAll('.highlight')].some(h => /rules/i.test(h.textContent)),
+        links: motd.querySelectorAll('.blocks .link, a.link').length,
+        events: motd.querySelectorAll('.eventsItem').length
+    };
+}
+function foldNotices(chat) {
+    chat.querySelectorAll('.messageWrapper.motd').forEach(w => {
+        const motd = w.querySelector(':scope > .motd');
+        let bar = w.querySelector(':scope > .fcxMotd');
+        if (!cfg.noticeFolded || !motd) { if (bar) bar.remove(); w.classList.remove('fcx-motd', 'fcx-motd-shut'); return; }
+        const c = fc.app.channelOf(w);
+        const key = c ? c.name || c.id : '';
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'fcxMotd';
+            bar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = !w.classList.contains('fcx-motd-shut');
+                if (open) delete cfg.noticeOpen[bar.dataset.ch]; else cfg.noticeOpen[bar.dataset.ch] = true;
+                store.save();
+                foldNotices(chat);
+            });
+            w.insertBefore(bar, motd);
+        }
+        bar.dataset.ch = key;
+        const shut = !cfg.noticeOpen[key];
+        w.classList.add('fcx-motd');
+        w.classList.toggle('fcx-motd-shut', shut);
+        const sum = noticeSummary(noticeOf(motd)).join(' · ');
+        const html = fc.ui.icon('info') + '<b>' + E(T('Channel info')) + '</b>' + (sum ? '<span>' + E(sum) + '</span>' : '') +
+            '<i title="' + E(T(shut ? 'Show' : 'Hide')) + '">' + fc.ui.icon('chevronDown') + '</i>';
+        if (bar.__html !== html) { bar.__html = html; bar.innerHTML = html; }
+    });
+}
+
 function sweep() {
     const me = fc.app.me();
     document.querySelectorAll('.chatContent').forEach(chat => {
         trackNew(chat);
         if (chat.offsetParent === null) return;
         stateOf(chat);
+        foldNotices(chat);
         markMentions(chat, me);
         formatTimes(chat);
         polish(chat);
@@ -706,7 +770,8 @@ function start(f) {
             opt('animate', 'Animate new messages', 'They slide in'),
             opt('rankColors', 'Rank colours', 'Names coloured by channel rank (S gold, A red, B purple…)'),
             opt('systemCards', 'Compact system messages', 'Challenge and match messages as pills and cards'),
-            opt('timeDividers', 'Time dividers', 'A line with the time after a 20+ minute gap')
+            opt('timeDividers', 'Time dividers', 'A line with the time after a 20+ minute gap'),
+            opt('noticeFolded', 'Fold the channel notice', 'Rules, links and events as one line until you open it (remembered per channel)')
         ]
     });
     sweep();
@@ -714,11 +779,12 @@ function start(f) {
 }
 
 const api = {
+    _noticeSummary: (n) => noticeSummary(n),
     _buildPreview: (u) => buildPreview(u),
     _allowed: allowed,
     _sweep: () => sweep(),
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'chat-extras', name: 'Chat extras', start };
+module.exports = { id: 'chat-extras', name: 'Chat extras', start, noticeSummary };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

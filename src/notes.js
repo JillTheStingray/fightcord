@@ -113,6 +113,7 @@ function onCharacter(ev) {
     muShown.add(k);
     const r = matchupRecord(ev.rom, ev.char), note = matchup(ev.rom, ev.char);
     if (!note && r.n < 3) return;
+    if (!cfg.matchupToast) return;                  // 2.13: off by default (the VS screen shows "last time")
     fc.ui.toast(T('vs {char}', { char: ev.char }) + (r.w || r.l ? ' · ' + fc.fmt.wl(r) : ''), {
         icon: 'sword', ms: 12000,
         sub: note ? '“' + note.text + '”' : T('No matchup note yet'),
@@ -259,7 +260,7 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {} });
+    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {}, matchupToast: false });
     cfg = store.data;
     if (!cfg.people || typeof cfg.people !== 'object') cfg.people = {};
     if (!Array.isArray(cfg.tags) || !cfg.tags.length) cfg.tags = DEFAULT_TAGS.map(t => Object.assign({}, t));
@@ -277,6 +278,8 @@ function start(f) {
     fc.cmd('notes', 'Notes & tags on a player', (arg, ctx) => { if (arg) edit(arg.split(/\s+/)[0], ctx.input ? ctx.input.getBoundingClientRect() : null); }, { args: '<name>' });
 
     fc.settings.block({ id: 'notes', section: 'members', order: 30, render: wireTags, refresh: renderTags });
+    fc.settings.block({ id: 'notes-matchups', section: 'match', title: 'Matchup notes', hint: '— your notes per character', store, order: 40,
+        fields: [{ key: 'matchupToast', type: 'switch', label: 'Pop-up when your opponent picks a character', hint: 'Your record and note against that character, during the match' }] });
     fc.log('ready,', Object.keys(cfg.people).length, 'players noted');
     return api;
 }

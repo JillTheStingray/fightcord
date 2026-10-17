@@ -53,22 +53,13 @@ function statsFor(ch) {
 function build(wrapper, ch) {
     const b = document.createElement('div');
     b.className = 'cbnBanner';
-    // icon buttons (2.9: calmer); the name and what it opens are in the tooltip
-    const btn = (act, label, icon, title) => `<span class="cbnBtn" data-cb="${act}" title="${E(T(label) + ' — ' + T(title))}">${fc.ui.icon(icon)}</span>`;
     b.innerHTML = `<div class="cbnBg"></div><div class="cbnShade"></div>
         <div class="cbnArt"></div>
         <div class="cbnText"><div class="cbnName" title="${E(ch.name)}">${E(shortName(ch.name))}${ch.ranked ? `<span class="cbnRanked" title="${E(T('Ranked channel'))}">${E(T('RANKED'))}</span>` : ''}</div><div class="cbnLine"></div></div>
         <div class="cbnRight">
             <div class="cbnFriends"></div>
-            <div class="cbnBtns">
-                ${btn('stats', N_('Stats'), 'chart', N_('Your stats in this game'))}
-                ${btn('rankings', N_('Rankings'), 'trophy', N_('The leaderboard for this game'))}
-                ${btn('replays', N_('Replays'), 'play', N_('Recent matches to watch'))}
-                ${btn('events', N_('Events'), 'clock', N_('Upcoming tournaments'))}
-                ${btn('profile', N_('Profile'), 'user', N_('Your profile in this game'))}
-            </div>
         </div>
-        <span class="cbnFold" data-cb="fold" title="${E(T('Shrink / expand the banner'))}">${fc.ui.icon('chevronDown')}</span>`;
+`;
     b.addEventListener('mousedown', (e) => e.stopPropagation());
     b.addEventListener('click', (e) => {
         const f = e.target.closest('[data-fr]');
@@ -234,6 +225,10 @@ function start(f) {
     fc.tick(tick, 2000);
     fc.on('friends:changed', tick);
     fc.on('set:recorded', tick);
+    // shrink / grow it from the header's ⋯ menu (2.13)
+    fc.own(fc.ui.header.more({ id: 'banner-slim', icon: 'chevronDown', order: 40, show: () => !!cfg.enabled,
+        label: () => T(cfg.collapsed ? 'Full banner' : 'Slim banner'),
+        fn: () => { cfg.collapsed = !cfg.collapsed; store.save(); applyFold(); fc.settings.refresh('channel-banner'); } }));
     fc.settings.block({
         id: 'channel-banner', section: 'appearance', title: 'Channel banner', hint: '— game art, who’s online and your record at the top of each channel',
         store, order: 20,

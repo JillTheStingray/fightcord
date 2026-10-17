@@ -172,6 +172,7 @@ function openCard(name, anchorRect, side) {
     const me = pop = fc.ui.popover(popAnchor, card, { cls: 'fcsc-pop', width: 320, side: popSide, onClose: () => { if (pop === me) pop = null; } });
     loadScout(name).then(data => {
         if (pop !== me) return;
+        card.__data = data;
         renderCard(card, name, data);
         // first look at this game: refine ELO / #spot once the leaderboard has landed
         if (data && data.boardPending) {
@@ -179,15 +180,6 @@ function openCard(name, anchorRect, side) {
         }
     });
     return card;
-}
-
-function winBar(w, l) {
-    const total = w + l;
-    return total ? `<div class="fcsc-bar"><i style="width:${Math.round(w / total * 100)}%"></i></div>` : '';
-}
-
-function section(title, html) {
-    return `<div class="fcsc-sec"><div class="fcsc-h">${title}</div>${html}</div>`;
 }
 
 function stateOf(info) {
@@ -204,38 +196,34 @@ function quitsNote(q) {
         : 'Left ' + q.unfinished + ' of ' + q.ranked + ' ranked sets unfinished' + (q.behind ? ' (' + q.behind + ' while behind)' : '');
 }
 
+// the numbers: one 2x2 grid (ELO, your odds, vs you, form), one warning, recent sets folded away
 function sectionsHtml(name, data) {
-    if (!data) return `<div class="fcsc-sec fc-muted"><span class="fc-spin"></span> ${E(T('Loading…'))}</div>`;
-    if (data.error) return `<div class="fcsc-sec fc-muted">${E(T('Match history unavailable — {error}', { error: data.error }))}</div>`;
-    const gameid = gameId();
+    if (!data) return `<div class="fcsc-wait fc-muted"><span class="fc-spin"></span> ${E(T('Loading…'))}</div>`;
+    if (data.error) return `<div class="fcsc-wait fc-muted">${E(T('Match history unavailable — {error}', { error: data.error }))}</div>`;
     const g = data.game, f = data.form, h = data.h2h, o = data.odds;
-    const rank = g && g.rank
-        ? fc.ui.tag(g.rank) + (data.elo ? ` <b>${E(fc.data.fmtElo(data.elo))}</b><span class="fc-muted"> ELO${data.elo.est ? ' ' + E(T('est.')) : ''}</span>` : '') +
-          (g.matches ? `<span class="fc-muted"> · ${E(T('{n} matches', { n: fc.fmt.num(g.matches) }))}</span>` : '') +
-          (data.lb ? `<div class="fcsc-note">${E(T('#{n} on the leaderboard', { n: data.lb.pos }))}${data.lb.hours ? ' · ' + E(T('{n}h played', { n: fc.fmt.num(data.lb.hours) })) : ''}</div>` : '')
-        : `<span class="fc-muted">${E(T('Unranked'))}</span>`;
+    const elo = data.elo
+        ? { label: 'ELO', value: E(fc.data.fmtElo(data.elo)) + (data.elo.est ? ` <em>${E(T('est.'))}</em>` : ''),
+            sub: (g && g.rank ? fc.ui.tag(g.rank, '', 14) + ' ' : '') + (data.lb ? '<span title="' + E(T('#{n} on the leaderboard', { n: data.lb.pos })) + '">#' + data.lb.pos + '</span>' : g && g.matches ? E(T('{n} matches', { n: fc.fmt.num(g.matches) })) : '') }
+        : { label: 'Rank', value: g && g.rank ? fc.ui.tag(g.rank) : E(T('Unranked')) };
     const odds = o
-        ? `<b>${fc.fmt.pct(o.game)}</b><span class="fc-muted"> ${E(T('per game'))} · </span><b class="${o.set >= .5 ? 'up' : 'down'}">${fc.fmt.pct(o.set)}</b>` +
-          `<span class="fc-muted"> ${E(T('to win an FT{ft}', { ft: o.ft }))}</span>${winBar(Math.round(o.set * 100), 100 - Math.round(o.set * 100))}` +
-          `<div class="fcsc-note">${E(T('You {mine} vs {theirs}', { mine: fc.data.fmtElo(data.myElo), theirs: fc.data.fmtElo(data.elo) }))}${(data.elo.est || data.myElo.est) ? ' · ' + E(T('estimated from rank and leaderboard spot')) : ''}</div>`
-        : '';
-    const q = quitsNote(data.quits);
-    const form = (data.scored
-        ? `<b>${E(T('{w}W – {l}L', { w: f.w, l: f.l }))}</b><span class="fc-muted"> ${E(T('in the last {n} sets', { n: data.scored }))}</span>${winBar(f.w, f.l)}`
-        : `<span class="fc-muted">${E(T('No recent sets'))}</span>`) +
-        (q ? `<div class="fcsc-quits" title="${E(T('Ranked sets that ended before anyone reached the FT. Could also be disconnects.'))}">${fc.ui.icon('warn')}${E(q)}</div>` : '');
+        ? { label: 'Your odds', value: fc.fmt.pct(o.set), tone: o.set >= .5 ? 'up' : 'down', sub: E(T('to win an FT{ft}', { ft: o.ft })),
+            title: T('{pct} per game', { pct: fc.fmt.pct(o.game) }) + ' · ' + T('You {mine} vs {theirs}', { mine: fc.data.fmtElo(data.myElo), theirs: fc.data.fmtElo(data.elo) }) }
+        : { label: 'Your odds', value: '—', sub: E(T('not enough to go on')) };
     const vs = (h.w || h.l)
-        ? `<b class="${h.w > h.l ? 'up' : h.w < h.l ? 'down' : ''}">${h.w} – ${h.l}</b><span class="fc-muted">${h.last ? ' · ' + E(T('last {when}', { when: fc.fmt.day(h.last) })) : ''}</span>${winBar(h.w, h.l)}`
-        : `<span class="fc-muted">${E(T('Never played'))}</span>`;
-    const rows = data.recent.slice(0, 5).map(r => {
+        ? { label: 'Vs you', value: h.w + '–' + h.l, tone: h.w > h.l ? 'up' : h.w < h.l ? 'down' : '', sub: h.last ? E(T('last {when}', { when: fc.fmt.day(h.last) })) : '' }
+        : { label: 'Vs you', value: E(T('first time')) };
+    const form = data.scored
+        ? { label: 'Form', value: E(T('{w}W – {l}L', { w: f.w, l: f.l })), tone: f.w > f.l ? 'up' : f.w < f.l ? 'down' : '', sub: E(T('in the last {n} sets', { n: data.scored })) }
+        : { label: 'Form', value: '—', sub: E(T('No recent sets')) };
+    const rows = data.recent.slice(0, 3).map(r => {
         const known = r.mine != null && r.theirs != null;
         const mark = known && r.mine > r.theirs ? '<b class="up">W</b>' : known && r.mine < r.theirs ? '<b class="down">L</b>' : '<span class="fc-muted">·</span>';
         return `<tr><td class="m">${mark}</td><td class="o">${E(r.opp)}</td><td class="s">${known ? r.mine + '–' + r.theirs : ''}</td>` +
             `<td class="d">${E(fc.fmt.day(r.date))}</td></tr>`;
     }).join('');
-    return section(E(T('Rank')) + (gameid ? ` <span class="fcsc-game">· ${E(gameid)}</span>` : ''), rank) +
-        (odds ? section(E(T('Your odds')), odds) : '') + section(E(T('Form')), form) + section(E(T('Vs you')), vs) +
-        section(E(T('Recent sets')), rows ? `<table class="fcsc-sets">${rows}</table>` : `<span class="fc-muted">${E(T('Nothing recent'))}</span>`);
+    return fc.ui.stats([elo, odds, vs, form]) +
+        fc.ui.warn(quitsNote(data.quits), T('Ranked sets that ended before anyone reached the FT. Could also be disconnects.')) +
+        (rows ? `<details class="fcsc-recent"><summary>${E(T('Recent sets'))}</summary><table class="fcsc-sets">${rows}</table></details>` : '');
 }
 
 function renderCard(card, name, data) {
@@ -249,28 +237,19 @@ function renderCard(card, name, data) {
     const ms = mod('match-screens');
     const chal = !me && ms && ms.challengeState ? ms.challengeState(name) : null;
     const pr = mod('presence');
-    const pres = pr && pr.line ? pr.line(name) : '';
-    card.innerHTML = `
-        <div class="fcsc-banner" style="background:${fc.data.hashColor(name)}"></div>
-        ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close', cls: 'fcsc-x' })}
-        <div class="fcsc-body">
-            <div class="fcsc-av">${fc.ui.avatar(name, { size: 80, status: st.k, ring: 'var(--fc-s0)' })}</div>
-            <div class="fcsc-name" title="${E(name)}">${E(name)}</div>
-            ${info && info.country ? `<div class="fcsc-from">${fc.ui.flag(info.country)} ${E(info.countryName || info.country.toUpperCase())}</div>` : ''}
-            <div class="fcsc-state"><i class="dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}` +
-                `${info && info.rank ? ' · ' + E(T('channel rank {rank}', { rank: fc.data.rankLetter(info.rank) })) : ''}</div>
-            ${pres ? `<div class="fcsc-pres">${pres}</div>` : ''}
+    const marks = (isFriend ? `<span class="fcsc-star" title="${E(T('Friend'))}">${fc.ui.ic('star', 'fill')}</span>` : '') + (pr && pr.mark ? pr.mark(name) : '');
+    // one meta line: flag · state · ping
+    const meta = (info && info.country ? fc.ui.flag(info.country, info.countryName || '') : '') +
+        `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}</span>`;
+    card.innerHTML = fc.ui.cardHead({ name, banner: fc.data.hashColor(name), avatar: fc.ui.avatar(name, { size: 72, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, close: true }) +
+        `<div class="fcsc-body">
             ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
             <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
             ${!me ? `<div class="fcsc-acts">
-                ${chal ? fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', disabled: !chal.ok, title: chal.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(chal.why) }) : ''}
-                ${nt ? fc.ui.btn('Notes', { kind: 'sec', size: 'sm', icon: 'note', act: 'notes', title: 'Private notes & tags' }) : ''}
-                ${mod('stats') ? fc.ui.btn('H2H', { kind: 'sec', size: 'sm', icon: 'chart', act: 'h2h', title: 'Head-to-head stats' }) : ''}
+                ${chal ? fc.ui.btn('Challenge', { icon: 'sword', act: 'challenge', cls: 'fc-grow', disabled: !chal.ok, title: chal.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(chal.why) }) : ''}
+                ${fc.ui.btn(chal ? '' : 'Mention', { kind: 'sec', icon: 'chat', act: 'mention', cls: chal ? '' : 'fc-grow', title: T('Put @{name} in the chat box', { name }) })}
+                ${fc.ui.btn('', { kind: 'sec', icon: 'more', act: 'more', title: 'More' })}
             </div>` : ''}
-            <div class="fcsc-main">
-                ${fc.ui.btn('Mention', { act: 'mention', icon: 'chat', cls: 'fc-grow', title: T('Put @{name} in the chat box', { name }) })}
-                ${fr && fr.isFriend && !me ? fc.ui.btn(isFriend ? T('Friend') : T('Add friend'), { kind: 'sec', icon: 'star', act: 'friend', cls: isFriend ? 'fcsc-fr on' : 'fcsc-fr', title: isFriend ? T('Remove friend') : T('Add friend') }) : ''}
-            </div>
         </div>`;
     card.onclick = (e) => onCardClick(e, card, name);
     if (pop && pop.el.contains(card)) fc.ui.place(pop.el, popAnchor, popSide);
@@ -282,6 +261,15 @@ function onCardClick(e, card, name) {
     e.stopPropagation();
     const act = b.getAttribute('data-act');
     if (act === 'close') closeCard();
+    else if (act === 'more') {
+        const fr = mod('friends'), nt = mod('notes'), st = mod('stats');
+        const r = card.getBoundingClientRect();
+        const items = [];
+        if (nt) items.push({ label: T('Notes & tags'), icon: 'note', fn: () => nt.edit(name, { left: r.left, bottom: r.top + 60, top: r.top, right: r.right }) });
+        if (st && st.open) items.push({ label: T('Head-to-head'), icon: 'chart', fn: () => { closeCard(); st.open({ opp: name }); } });
+        if (fr && fr.isFriend) { const on = fr.isFriend(name); items.push({ label: T(on ? 'Remove friend' : 'Add friend'), icon: 'star', fn: () => { fr.toggle(name); renderCard(card, name, card.__data || null); } }); }
+        if (items.length) fc.ui.menu(b, items, { side: 'bottom' });
+    }
     else if (act === 'mention') { closeCard(); fc.app.mention(name); }
     else if (act === 'friend') {
         const fr = mod('friends');
@@ -309,46 +297,31 @@ function onCardClick(e, card, name) {
 const CSS = `
 .fc-pop.fcsc-pop { padding: 0; overflow-x: hidden; }
 .fcsc { position: relative; width: 320px; }
-.fcsc-banner { height: 60px; }
-.fcsc .fcsc-x { position: absolute; top: 8px; right: 8px; color: #fff; background: rgba(0,0,0,.35); }
-.fcsc .fcsc-x:hover { background: rgba(0,0,0,.55); }
-.fcsc-body { position: relative; padding: 48px 16px 16px; }
-.fcsc-av { position: absolute; left: 12px; top: -44px; line-height: 0; padding: 4px; border-radius: 50%; background: var(--fc-s0); }
-.fcsc-av .fc-avatar > .st { border-width: 4px; }
-.fcsc-name { font: 700 20px/24px var(--fc-font); color: var(--fc-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fcsc-from { margin-top: 2px; font-size: 14px; }
-.fcsc-from .fc-flag { margin-right: 4px; }
-.fcsc-state { margin-top: 6px; font-size: 13px; color: var(--fc-muted); }
-.fcsc-state .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #80848e; }
-.fcsc-state .dot.on { background: var(--fc-success); }
-.fcsc-state .dot.away { background: var(--fc-warning); }
-.fcsc-state .dot.playing { background: var(--fc-danger); }
+.fcsc-body { padding: 0 16px 16px; }
+.fcsc-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #80848e; }
+.fcsc-dot.on { background: var(--fc-success); }
+.fcsc-dot.away { background: var(--fc-warning); }
+.fcsc-dot.playing { background: var(--fc-danger); }
+.fcsc-star { color: var(--fc-warning); display: inline-flex; }
+.fcsc-star .fc-ic { width: 14px; height: 14px; }
 .fcsc-notes { margin-top: 10px; }
-.fcsc-panel { margin-top: 12px; padding: 0 12px 12px; border-radius: var(--fc-r2); background: var(--fc-s2); }
-.fcsc-sec { padding-top: 12px; font-size: 13px; }
-.fcsc-h { margin-bottom: 4px; font: 700 12px/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
-.fcsc-game { text-transform: none; font-weight: 400; }
-.fcsc b { color: var(--fc-head); font-weight: 600; }
+.fcsc-wait { padding: 16px 0 4px; font-size: 13px; }
+.fcsc-panel .fc-stat em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
+.fcsc-panel .fc-stat .fc-tag { vertical-align: -2px; }
 .fcsc b.up { color: var(--fc-success); }
 .fcsc b.down { color: var(--fc-danger); }
-.fcsc-note { margin-top: 3px; font-size: 11px; color: var(--fc-muted); }
-.fcsc-quits { display: flex; align-items: center; margin-top: 6px; padding: 4px 8px; border-radius: var(--fc-r1); font-size: 12px; font-weight: 600;
-    color: var(--fc-warning); background: rgba(240, 178, 50, .12); }
-.fcsc-quits .fc-ic { width: 14px; height: 14px; margin-right: 6px; flex: none; }
-.fcsc-bar { height: 4px; margin-top: 6px; border-radius: 2px; overflow: hidden; background: rgba(242,63,67,.5); }
-.fcsc-bar > i { display: block; height: 100%; background: var(--fc-success); }
-.fcsc-sets { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.fcsc-recent { margin-top: 8px; font-size: 13px; }
+.fcsc-recent > summary { cursor: pointer; font: 700 11px/18px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); outline: none; }
+.fcsc-recent > summary:hover { color: var(--fc-text); }
+.fcsc-sets { width: 100%; margin-top: 4px; border-collapse: collapse; table-layout: fixed; }
 .fcsc-sets td { padding: 3px 0; }
 .fcsc-sets .m { width: 16px; font-weight: 700; }
 .fcsc-sets .o { padding-right: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fcsc-sets .s { width: 36px; text-align: right; color: var(--fc-head); }
+.fcsc-sets .s { width: 40px; text-align: right; color: var(--fc-head); }
 .fcsc-sets .d { width: 70px; padding-left: 8px; text-align: right; font-size: 12px; color: var(--fc-muted); }
-.fcsc-acts { display: flex; margin-top: 10px; }
-.fcsc-acts > .fc-btn { flex: 1; }
+.fcsc-acts { display: flex; margin-top: 12px; }
+.fcsc-acts > .fc-grow { flex: 1; }
 .fcsc-acts > .fc-btn + .fc-btn { margin-left: 8px; }
-.fcsc-main { display: flex; margin-top: 8px; }
-.fcsc-main > .fc-btn + .fc-btn { margin-left: 8px; }
-.fcsc-fr.on { color: var(--fc-warning); }
 .fcScoutBadge { cursor: pointer; opacity: .35; margin-left: 4px; }
 .fcScoutBadge .fc-ic { width: 11px; height: 11px; vertical-align: -1px; }
 .fcScoutBadge:hover { opacity: .9; }

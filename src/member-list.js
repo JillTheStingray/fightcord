@@ -395,11 +395,11 @@ function css() {
 ${P} .fcm-list.fcm-grouped { display: flex !important; flex-direction: column !important; }
 ${P} .fcm-list { display: flex !important; flex-direction: column !important; }
 ${P} .userItem.fcm-hidden { display: none !important; }
-${P} .userItem.fcm-row.fcm-first { margin-top: 30px !important; }
+${P} .userItem.fcm-row.fcm-first { margin-top: 36px !important; }
 ${P} .userItem.fcm-row.fcm-first::before {
-    content: attr(data-fcm-head); position: absolute; left: 8px; top: -24px; pointer-events: none; white-space: nowrap;
-    font: 500 14px/18px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
-    padding-left: 22px; background: var(--fcm-hi) no-repeat left center / 16px 16px; }
+    content: attr(data-fcm-head); position: absolute; left: 6px; top: -31px; pointer-events: none; white-space: nowrap;
+    font: 500 14px/26px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
+    padding-left: 32px; background: var(--fcm-hi) no-repeat left center / 26px 26px; }
 ${P} .userItem.fcm-row .flagWrapper,
 ${P} .userItem.fcm-row .rankWrapper,
 ${P} .userItem.fcm-row .pingWrapper { display: none !important; }
@@ -576,6 +576,7 @@ function start(f) {
     fc.tick(() => refreshOpponents(false), 60000, { delay: 3000 });
     fc.on('friends:changed', sweep);
     fc.on('presence:changed', sweep);
+    fc.on('ranks:changed', () => { fc.ui.style('fcmStyle', css()); sweep(); });     // rank icons: new colours
     fc.on('notes:changed', sweep);
 
     const opt = (key, label, hint, show) => ({ key, type: 'switch', label, hint, show, onChange: () => redo(key) });
@@ -589,7 +590,7 @@ function start(f) {
             opt('details', N_('Details under names'), N_('Country, ping and Wi-Fi on a second line (they’re always in the hover card)'), on),
             opt('group', N_('Group by rank'), N_('Like Discord roles'), on),
             opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch) and Friends at the top'), on),
-            opt('rankColors', N_('Rank-coloured names'), N_('S gold · A red · B purple · C blue · D green'), on),
+            opt('rankColors', N_('Rank-coloured names'), N_('Each name in its rank’s colour'), on),
             opt('bars', N_('Signal bars'), N_('Instead of the ping number'), on),
             opt('played', N_('Played before'), N_('Your record with people you recently played'), on),
             opt('top', N_('Leaderboard spot'), N_('#12 next to players in this game’s top 300'), on)

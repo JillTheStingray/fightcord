@@ -23,7 +23,8 @@ const T = (s, v) => fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => 
 
 // what Fightcord replaces, and the exact sizes the emulator expects for the bar images
 const SIZES = { 'background.png': [1220, 50], 'spectators.png': [135, 50] };
-const FILES = ['background.png', 'spectators.png', 'font.fnt', 'font_0.png'];
+const RANK_FILES = [0, 1, 2, 3, 4, 5, 6].map(n => 'rank' + n + '.png');      // 38x38, from rank-icons.js
+const FILES = ['background.png', 'spectators.png', 'font.fnt', 'font_0.png'].concat(RANK_FILES);
 const BACKUP = 'emu-ui-original';
 
 /* -------------------------------------------------------------- the files */
@@ -392,10 +393,11 @@ const originalFnt = () => parseFnt(originalFile('font.fnt'));
 let busy = false, lastKey = '', pending = false, noUi = false;
 const uiDir = () => fc.emu.uiDir();
 const backupDir = () => fc.files.path(BACKUP);
+const ranksOn = () => { const ri = fc.modules.get('rank-icons'); return !!(ri && ri.enabled && ri.enabled()); };
 const wantKey = () => {
-    if (!cfg.enabled) return null;
+    if (!cfg.enabled && !ranksOn()) return null;
     const s = fontSpec(cfg.fontChoice);
-    return accent() + '|' + (s ? s.id + ':' + s.family : 'fightcade');
+    return (cfg.enabled ? accent() + '|' + (s ? s.id + ':' + s.family : 'fightcade') : 'bar-off') + (ranksOn() ? '|ranks' : '');
 };
 
 // Brings the files in line with the setting; waits while an emulator is open (or can't tell)
@@ -412,7 +414,7 @@ async function sync(force) {
         const run = await fc.emu.running();
         if (run !== false) return;              // an emulator is open (or can't tell): after the match
         let files = null;
-        if (want) {
+        if (want && cfg.enabled) {
             const a = accent();
             files = { 'background.png': png(drawBar(a)), 'spectators.png': png(drawEye(a)) };
             const spec = fontSpec(cfg.fontChoice);
@@ -423,6 +425,12 @@ async function sync(force) {
                 if (f) { files['font.fnt'] = f.fnt; files['font_0.png'] = f.page; }
                 else fc.log('emulator font: ' + (src ? 'too big for the page' : 'no original font.fnt') + ', kept Fightcade’s');
             }
+        }
+        // Fightcord's rank icons in the bar (their own switch, with or without the rest of the skin)
+        if (want && ranksOn()) {
+            const ri = fc.modules.get('rank-icons');
+            const rf = ri && ri.emuFiles ? await ri.emuFiles(38) : null;
+            if (rf) files = Object.assign(files || {}, rf);
         }
         const r = applyFiles(uiDir(), backupDir(), cfg, files);
         cfg.written = r.state.written;
@@ -566,6 +574,7 @@ function start(f) {
     // up after a match, when the files are free again
     fc.tick(() => sync(), 5000, { whileHidden: true });
     fc.on('match:end', () => setTimeout(() => sync(true), 8000));
+    fc.on('ranks:changed', () => setTimeout(() => sync(true), 200));
     fc.settings.block({
         id: 'emu-skin', section: 'appearance', title: 'Emulator overlay', hint: '— the bar with names and the score in your matches',
         store, order: 65,

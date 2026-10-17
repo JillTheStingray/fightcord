@@ -1777,6 +1777,47 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-chart .bar { fill: var(--c, var(--fc-accent)); }
 .fc-chart text { fill: var(--fc-muted); font-size: 10px; }
 .fc-chart text.v { fill: var(--fc-head); font-weight: 700; }
+
+/* card building blocks (ui.cardHead / ui.stats / ui.warn), 2.13 */
+.fc-ch { position: relative; }
+.fc-ch-banner { height: 56px; }
+.fc-ch .fc-ch-x { position: absolute; top: 8px; right: 8px; color: #fff; background: rgba(0,0,0,.35); }
+.fc-ch .fc-ch-x:hover { background: rgba(0,0,0,.55); }
+.fc-ch-body { position: relative; padding: 40px 16px 0; }
+.fc-ch-av { position: absolute; left: 12px; top: -40px; line-height: 0; padding: 4px; border-radius: 50%; background: var(--fc-s0); }
+.fc-ch-av .fc-avatar > .st { border-width: 4px; }
+.fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 18px/24px var(--fc-font); color: var(--fc-head); }
+.fc-ch-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-ch-name > *:not(span) { flex: none; margin-left: 6px; }
+.fc-ch-meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 13px; color: var(--fc-muted); }
+.fc-ch-meta .fc-flag { margin-right: 6px; }
+.fc-ch-meta .fc-tag { margin-right: 6px; }
+.fc-ch-sub { margin-top: 2px; font-size: 13px; color: var(--fc-muted); }
+.fc-stats { display: flex; flex-wrap: wrap; margin: 12px -4px 0; }
+.fc-stat { flex: 1 1 calc(50% - 8px); min-width: 0; margin: 0 4px 8px; padding: 8px 10px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s2); }
+.fc-stats.three .fc-stat { flex-basis: calc(33.3% - 8px); }
+.fc-stat > span { display: block; font: 700 11px/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-stat > b { display: block; margin-top: 2px; font: 800 16px/20px var(--fc-font); color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-stat > small { display: block; margin-top: 1px; font-size: 11.5px; color: var(--fc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-stat.up > b { color: var(--fc-success); }
+.fc-stat.down > b { color: var(--fc-danger); }
+.fc-warn { display: flex; align-items: center; margin-top: 8px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: 12.5px; font-weight: 600;
+  color: var(--fc-warning); background: rgba(240,178,50,.12); }
+.fc-warn > .fc-ic { width: 14px; height: 14px; flex: none; margin-right: 6px; }
+
+/* the channel header row (ui.header) */
+.channelActions.fcHdr-native > .testGame, .channelActions.fcHdr-native > .trainingGame { display: none !important; }
+.fcHdr { display: flex; align-items: center; }
+.fc-hbtn { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; margin-right: 6px;
+  border-radius: var(--fc-r1); color: var(--fc-text); background: var(--fc-btn); cursor: pointer; transition: background-color var(--fc-fast), color var(--fc-fast); }
+.fc-hbtn:hover { background: var(--fc-btn-h); color: var(--fc-head); }
+.fc-hbtn > .fc-ic { width: 18px; height: 18px; }
+.fc-hbtn .fc-hdot { position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px;
+  font: 700 10px/16px var(--fc-font); text-align: center; color: #fff; background: var(--fc-danger); box-shadow: 0 0 0 2px var(--fc-s1); }
+.fcHdrMoreBtn { margin-right: 0; }
+.fcHdrMenu .fc-menu-item { min-width: 170px; }
+.cbn-merged .fc-hbtn { background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); color: #fff; }
+.cbn-merged .fc-hbtn:hover { background: rgba(0,0,0,.55); }
 `;
 
 function ensureStyle() {
@@ -1815,6 +1856,8 @@ function copyText(text) {
     try { if (navigator.clipboard) { navigator.clipboard.writeText(String(text)); return true; } } catch (e) { /* no clipboard */ }
     return false;
 }
+
+const TOAST_MAX = 2;            // toasts on screen at once
 
 const ui = {
     ICONS,
@@ -1906,10 +1949,15 @@ const ui = {
         const key = title + '|' + (p.sub || '');
         const old = [...host.children].find(t => t.__fcKey === key);
         if (old && old.__fcClose) old.__fcClose(true);
-        while (host.children.length >= 4) host.firstChild.remove();
+        // at most 2 at once (2.13, was 4): the oldest goes, but one you can still act on outlasts plain ones
+        while (host.children.length >= TOAST_MAX) {
+            const plain = [...host.children].find(t => !t.__fcAct);
+            (plain || host.firstChild).remove();
+        }
         const el = document.createElement('div');
         el.className = 'fc-toast' + (p.kind ? ' ' + p.kind : '');
         el.__fcKey = key;
+        el.__fcAct = (p.actions || []).length > 0;
         const icon = p.icon || ({ success: 'check', danger: 'warn', warning: 'warn' })[p.kind] || '';
         el.innerHTML = `<div class="t">${icon ? ui.icon(icon) : ''}<span>${fmt.esc(tr(title))}</span></div>` +
             (p.sub ? `<div class="s">${fmt.esc(tr(p.sub))}</div>` : '') +
@@ -2124,7 +2172,150 @@ const ui = {
         }
     },
 
-    copy: copyText
+    copy: copyText,
+
+    // Card building blocks (2.13), so every card looks the same. Values are HTML (escape your own text).
+    // The top of a player card: banner, avatar over its edge, name (+ marks), one meta line, one sub line
+    //   fc.ui.cardHead({ name, banner, avatar, marks, meta, sub, close })
+    cardHead(o) {
+        const p = o || {};
+        return `<div class="fc-ch"><div class="fc-ch-banner" style="background:${p.banner || 'var(--fc-s3)'}"></div>` +
+            (p.close ? ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close', cls: 'fc-ch-x' }) : '') +
+            `<div class="fc-ch-body"><div class="fc-ch-av">${p.avatar || ''}</div>` +
+            `<div class="fc-ch-name"><span title="${fmt.esc(p.name || '')}">${fmt.esc(p.name || '')}</span>${p.marks || ''}</div>` +
+            (p.meta ? `<div class="fc-ch-meta">${p.meta}</div>` : '') + (p.sub ? `<div class="fc-ch-sub">${p.sub}</div>` : '') + '</div></div>';
+    },
+    // a row of stat boxes: [{ label, value, sub, tone: 'up'|'down', title }] (2 or 4 = a 2-column grid)
+    stats(items) {
+        const list = (items || []).filter(Boolean);
+        return `<div class="fc-stats${list.length === 3 ? ' three' : ''}">` + list.map(s =>
+            `<div class="fc-stat${s.tone ? ' ' + s.tone : ''}"${s.title ? ` title="${fmt.esc(s.title)}"` : ''}><span>${fmt.esc(tr(s.label))}</span>` +
+            `<b>${s.value}</b>${s.sub ? `<small>${s.sub}</small>` : ''}</div>`).join('') + '</div>';
+    },
+    // one warning line (several reasons joined)
+    warn(text, title) {
+        const t = Array.isArray(text) ? text.filter(Boolean).join(' · ') : text;
+        return t ? `<div class="fc-warn"${title ? ` title="${fmt.esc(title)}"` : ''}>${ui.icon('warn')}<span>${fmt.esc(t)}</span></div>` : '';
+    }
+};
+
+/* ================================================================ channel header */
+
+// One calm row in each game channel's header (2.13). Modules hand their pills to
+// fc.ui.header.place(actions, el, id) instead of pushing them in anywhere; small icon buttons and
+// the items of the ⋯ menu are registered with fc.ui.header.icon({...}) / .more({...}) and drawn here.
+// Fightcade's own Test Game / Training buttons move into the ⋯ menu (clicked for real from there).
+// Left to right: LIVE · voice · tonight + goals · Find a match · Feed · icons · ⋯
+const HDR_ORDER = { live: 10, voice: 20, session: 30, goals: 31, findmatch: 40, feed: 60, hub: 70, stats: 80, more: 99 };
+const hdrIcons = new Map(), hdrMore = new Map();
+let hdrWatching = false;
+const NATIVE_HDR = [['testGame', 'Test Game', 'pad'], ['trainingGame', 'Training', 'target']];
+
+function hdrCtx(actions) {
+    const wrapper = actions.closest('.channelWrapper');
+    const c = app.channelOf(actions);
+    const romEl = wrapper && wrapper.querySelector('.channelInfo .name[title="Rom name"]');
+    const links = {};
+    if (wrapper) wrapper.querySelectorAll('.channelToolbar a.link').forEach(a => { links[a.textContent.trim().toLowerCase()] = a.href; });
+    return { actions, wrapper, channel: c ? c.name || c.id : '', rom: (c && c.gameid) || (romEl ? romEl.textContent.trim() : ''), links };
+}
+function hdrBox(actions) {
+    let box = actions.querySelector(':scope > .fcHdr');
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'fcHdr';
+        box.addEventListener('mousedown', (e) => e.stopPropagation());
+        box.addEventListener('click', onHdrClick);
+        actions.insertBefore(box, actions.firstChild);
+    }
+    return box;
+}
+// the native buttons this header can take over (the ones Fightcade drew here)
+const hdrNatives = (actions) => NATIVE_HDR.filter(([cls]) => actions.querySelector(':scope > .' + cls));
+function hdrMenuItems(ctx) {
+    const items = [];
+    hdrNatives(ctx.actions).forEach(([cls, label, icon]) => items.push({ label: tr(label), icon, fn: () => { const b = ctx.actions.querySelector(':scope > .' + cls); if (b) b.click(); } }));
+    const mine = [...hdrMore.values()].filter(m => !m.show || m.show(ctx)).sort((a, b) => (a.order || 50) - (b.order || 50));
+    if (items.length && mine.length) items.push('sep');
+    mine.forEach(m => items.push({ label: typeof m.label === 'function' ? m.label(ctx) : tr(m.label), icon: m.icon, fn: () => m.fn(ctx) }));
+    return items;
+}
+function onHdrClick(e) {
+    const b = e.target.closest('[data-hdr-core]');
+    if (!b) return;
+    e.stopPropagation();
+    const actions = b.closest('.channelActions');
+    const ctx = hdrCtx(actions);
+    if (b.dataset.hdrCore === 'more') { ui.menu(b, hdrMenuItems(ctx), { side: 'bottom', cls: 'fcHdrMenu' }); return; }
+    const it = hdrIcons.get(b.dataset.hdrCore);
+    if (it) { try { it.fn(ctx); } catch (err) { LOG.warn('header ' + it.id, err); } }
+}
+
+// draws the registered icons + ⋯ in every game channel's header, takes the native buttons in
+function hdrRender() {
+    if (!hasDom()) return;
+    document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
+        if (actions.closest('.searchResultsGrid')) return;
+        const ctx = hdrCtx(actions);
+        if (!ctx.channel) return;
+        const box = hdrBox(actions);
+        const want = [...hdrIcons.values()].filter(i => !i.show || i.show(ctx));
+        box.querySelectorAll(':scope > [data-hdr-core]').forEach(el => {
+            if (el.dataset.hdrCore !== 'more' && !want.some(i => i.id === el.dataset.hdrCore)) el.remove();
+        });
+        want.forEach(i => {
+            let el = box.querySelector(':scope > [data-hdr-core="' + i.id + '"]');
+            if (!el) {
+                el = document.createElement('span');
+                el.className = 'fc-hbtn';
+                el.dataset.hdrCore = i.id;
+                el.innerHTML = ui.icon(i.icon);
+                box.appendChild(el);
+            }
+            el.title = typeof i.title === 'function' ? i.title(ctx) : tr(i.title || '');
+            el.style.order = String(i.order != null ? i.order : HDR_ORDER[i.id] || 50);
+        });
+        const natives = hdrNatives(actions);
+        actions.classList.toggle('fcHdr-native', natives.length > 0);
+        const hasMenu = natives.length > 0 || [...hdrMore.values()].some(m => !m.show || m.show(ctx));
+        let more = box.querySelector(':scope > [data-hdr-core="more"]');
+        if (hasMenu && !more) {
+            more = document.createElement('span');
+            more.className = 'fc-hbtn fcHdrMoreBtn';
+            more.dataset.hdrCore = 'more';
+            more.title = tr('More');
+            more.innerHTML = ui.icon('more');
+            more.style.order = String(HDR_ORDER.more);
+            box.appendChild(more);
+        } else if (!hasMenu && more) more.remove();
+    });
+}
+function hdrEnsure() {
+    if (hdrWatching || !hasDom()) return;
+    hdrWatching = true;
+    watchFor(CORE)(hdrRender, { selector: '.channelToolbar' });
+}
+
+ui.header = {
+    ORDER: HDR_ORDER,
+    // put a module's own pill in the row, at its place (id: one of HDR_ORDER, or give order)
+    place(actions, el, id, order) {
+        if (!actions || !el) return el;
+        const box = hdrBox(actions);
+        el.dataset.hdr = id;
+        el.style.order = String(order != null ? order : HDR_ORDER[id] != null ? HDR_ORDER[id] : 50);
+        if (el.parentNode !== box) box.appendChild(el);
+        hdrEnsure();
+        return el;
+    },
+    // find a module's pill in this header (wherever it sits)
+    find: (actions, sel) => (actions ? actions.querySelector(sel) : null),
+    // a small icon button: { id, icon, title, order, fn(ctx), show(ctx) } -> remove()
+    icon(def) { hdrIcons.set(def.id, def); hdrEnsure(); setTimeout(hdrRender, 0); return () => { hdrIcons.delete(def.id); hdrRender(); }; },
+    // a ⋯ menu item: { id, label (text or fn(ctx)), icon, order, fn(ctx), show(ctx) } -> remove()
+    more(def) { hdrMore.set(def.id, def); hdrEnsure(); setTimeout(hdrRender, 0); return () => { hdrMore.delete(def.id); hdrRender(); }; },
+    refresh: () => hdrRender(),
+    _menu: (actions) => hdrMenuItems(hdrCtx(actions))
 };
 
 /* ========================================================================= sound */

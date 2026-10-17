@@ -148,12 +148,20 @@ function fillOdds(el, name) {
         // they often leave ranked sets unfinished (1 in 5 or more): say so before you accept
         const q = data && data.quits;
         if (q && scout.quitsNote && scout.quitsNote(q) && q.unfinished / q.ranked >= 0.2) {
-            const w = document.createElement('div');
-            w.className = 'ccWarn ccQuits';
-            w.title = scout.quitsNote(q) + '. ' + T('Could also be disconnects.');
-            w.innerHTML = fc.ui.ic('warn') + E(T('Leaves sets unfinished: {n} of {total} ranked', { n: q.unfinished, total: q.ranked }));
-            const btns = el.querySelector('.ccBtns');
-            if (btns && !el.querySelector('.ccQuits')) btns.parentNode.insertBefore(w, btns);
+            const txt = T('Leaves sets unfinished: {n} of {total} ranked', { n: q.unfinished, total: q.ranked });
+            const why = scout.quitsNote(q) + '. ' + T('Could also be disconnects.');
+            // one warning line (2.13): joins the filters' warning when there is one
+            const had = el.querySelector('.ccWarn');
+            if (had && !had.dataset.quits) { had.dataset.quits = '1'; had.insertAdjacentHTML('beforeend', ' · ' + E(txt)); had.title = why; }
+            else if (!had) {
+                const w = document.createElement('div');
+                w.className = 'ccWarn ccQuits';
+                w.dataset.quits = '1';
+                w.title = why;
+                w.innerHTML = fc.ui.ic('warn') + E(txt);
+                const btns = el.querySelector('.ccBtns');
+                if (btns) btns.parentNode.insertBefore(w, btns);
+            }
         }
     }).catch(() => { setTxt('.ccElo', '—'); setTxt('.ccOdds', '—'); });
 }
@@ -263,7 +271,7 @@ const CSS = `
 .ccBar i { display: block; height: 100%; width: 0; background: var(--fc-success); transition: width .5s ease; }
 .ccNotes { margin-top: 10px; }
 .ccNotes:empty { display: none; }
-.ccWarn { margin-top: 10px; padding: 6px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--fc-warning); background: rgba(240,178,50,.12); }
+.ccWarn { margin-top: 10px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: 12.5px; font-weight: 600; color: var(--fc-warning); background: rgba(240,178,50,.12); }
 .ccBtns { position: relative; display: flex; margin-top: 14px; }
 .ccBtn { flex: 1; height: 40px; margin-right: 8px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
     font-weight: 800; font-size: 14px; color: #fff; user-select: none; transition: transform .12s ease, filter .12s ease, box-shadow .12s ease; }

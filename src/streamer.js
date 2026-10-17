@@ -94,7 +94,7 @@ function setOn(on, quietly) {
 
 function refreshPill() {
     document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
-        let pill = actions.querySelector(':scope > .fcstPill');
+        let pill = actions.querySelector('.fcstPill');
         if (!active()) { if (pill) pill.remove(); return; }
         if (pill) return;
         pill = document.createElement('div');
@@ -103,7 +103,7 @@ function refreshPill() {
         pill.innerHTML = `<i></i>${E(T('LIVE'))}`;
         pill.addEventListener('mousedown', (e) => e.stopPropagation());
         pill.addEventListener('click', (e) => { e.stopPropagation(); setOn(false); });
-        actions.insertBefore(pill, actions.firstChild);
+        fc.ui.header.place(actions, pill, 'live');
     });
 }
 

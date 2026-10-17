@@ -51,24 +51,22 @@ function cardHtml(name, chanHint) {
     const cst = !isMe && ms && ms.challengeState ? ms.challengeState(name) : null;
     const notes = nt && nt.chips ? nt.chips(name) : '';
     const pr = mod('presence');
-    const pres = pr && pr.line ? pr.line(name) : '';
-    return `<div class="hcBanner" style="background:${fc.data.hashColor(name)}"></div>
-        <div class="hcAva ${status}"><img src="${E(fc.data.avatarUrl(name, u && u.gravatar, 160))}" alt="" onerror="this.style.visibility='hidden'"><i></i></div>
-        <div class="hcBody">
-            <div class="hcName">${E(name)}${isFr ? ' <span class="hcStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}</div>
-            <div class="hcMeta">${fc.ui.flag(cc)}${E((u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '')}
-                ${rank ? fc.ui.tag(rank) : ''}</div>
-            ${conn ? `<div class="hcConn">${E(conn)}</div>` : ''}
-            ${pres}
-            ${playLine}
-            ${vs && (vs.w || vs.l || vs.played) ? `<div class="hcVs"><span>You vs ${E(name)}</span><b>${vs.w}–${vs.l}</b>${vs.played ? `<small>${vs.played} sets</small>` : ''}</div>` : ''}
+
+    // 2.13: the shared card head; one line under it (in a match, else your record vs them)
+    const marks = (isFr ? '<span class="hcStar" title="' + E(T('Friend')) + '">' + fc.ui.ic('star', 'fill') + '</span>' : '') + (pr && pr.mark ? pr.mark(name) : '');
+    const meta = fc.ui.flag(cc) + (rank ? fc.ui.tag(rank) : '') +
+        '<span>' + E([(u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '', conn].filter(Boolean).join(' · ')) + '</span>';
+    const vsLine = !playLine && vs && (vs.w || vs.l || vs.played)
+        ? `<div class="hcVs"><span>${E(T('You vs {name}', { name }))}</span><b class="${vs.w > vs.l ? 'up' : vs.w < vs.l ? 'down' : ''}">${vs.w}–${vs.l}</b>${vs.played ? `<small>${E(T('{n} sets', { n: vs.played }))}</small>` : ''}</div>` : '';
+    return fc.ui.cardHead({ name, banner: fc.data.hashColor(name), avatar: fc.ui.avatar(name, { size: 64, status: status === 'live' ? 'playing' : status, ring: 'var(--fc-s0)' }), marks, meta }) +
+        `<div class="hcBody">
+            ${playLine}${vsLine}
             ${notes ? `<div class="hcNotes">${notes}</div>` : ''}
             ${isMe ? '' : `<div class="hcBtns">
                 ${cst ? fc.ui.btn('Challenge', { size: 'sm', icon: 'sword', cls: 'hcGo', disabled: !cst.ok, title: cst.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(cst.why), attrs: 'data-hc="challenge"' }) : ''}
                 ${fr ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'star', cls: isFr ? 'hcFr on' : 'hcFr', title: isFr ? T('Remove friend') : T('Add friend'), attrs: 'data-hc="friend"' }) : ''}
                 ${nt ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'note', title: 'Notes & tags', attrs: 'data-hc="notes"' }) : ''}
-                ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'chart', title: 'Head-to-head', attrs: 'data-hc="h2h"' })}
-                ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', title: 'Scout', attrs: 'data-hc="scout"' })}
+                ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', title: 'Scout: ELO, odds, form, head-to-head', attrs: 'data-hc="scout"' })}
             </div>`}
         </div>`;
 }
@@ -178,39 +176,30 @@ function onScroll(e) {
 }
 
 const CSS = `
-#hcCard { position: fixed; z-index: 100001; width: 300px; overflow: hidden; border-radius: 10px; pointer-events: auto;
+#hcCard { position: fixed; z-index: 100001; width: 300px; overflow: hidden; border-radius: var(--fc-r3); pointer-events: auto;
     background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
     box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.55);
     opacity: 0; transform: translateX(8px) scale(.98); transition: opacity .14s ease, transform .16s ease; }
 #hcCard.in { opacity: 1; transform: none; }
-#hcCard .hcBanner { height: 56px; }
-#hcCard .hcAva { position: absolute; top: 18px; left: 14px; width: 76px; height: 76px; border-radius: 50%; padding: 5px; box-sizing: border-box;
-    background: var(--fc-s0); }
-#hcCard .hcAva img { width: 66px; height: 66px; border-radius: 50%; display: block; background: var(--fc-s1); }
-#hcCard .hcAva i { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; border-radius: 50%; box-sizing: border-box;
-    border: 4px solid var(--fc-s0); background: #80848e; }
-#hcCard .hcAva.on i { background: #23a55a; } #hcCard .hcAva.away i { background: #f0b232; } #hcCard .hcAva.live i { background: #f23f43; }
-#hcCard .hcAva.live img { box-shadow: 0 0 0 2px #f23f43; }
-#hcCard .hcBody { padding: 44px 14px 14px; }
-#hcCard .hcName { font-size: 19px; font-weight: 800; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#hcCard .hcStar { color: #f0b232; font-size: 15px; }
-#hcCard .hcMeta { display: flex; align-items: center; margin-top: 2px; font-size: 13px; color: var(--fc-text); }
-#hcCard .hcConn { margin-top: 2px; font-size: 12px; color: var(--fc-muted); }
-#hcCard .hcPlay { position: relative; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(242,63,67,.1);
-    box-shadow: inset 3px 0 0 #f23f43; }
-#hcCard .hcPlay .t { font-size: 12px; font-weight: 700; color: #f23f43; text-transform: uppercase; letter-spacing: .03em; }
+#hcCard .hcBody { padding: 0 14px 14px; }
+#hcCard .hcStar { color: var(--fc-warning); display: inline-flex; }
+#hcCard .hcStar .fc-ic { width: 14px; height: 14px; }
+#hcCard .fc-ch-meta > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+#hcCard .hcPlay { position: relative; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: rgba(242,63,67,.1);
+    box-shadow: inset 3px 0 0 var(--fc-danger); }
+#hcCard .hcPlay .t { font-size: 12px; font-weight: 700; color: var(--fc-danger); text-transform: uppercase; letter-spacing: .03em; }
 #hcCard .hcPlay .t b { color: var(--fc-head); text-transform: none; letter-spacing: 0; }
 #hcCard .hcPlay .g { margin-top: 2px; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 70px; }
 #hcCard .hcWatch { position: absolute; right: 8px; top: 50%; margin-top: -13px; height: 26px; padding: 0 10px; border-radius: 4px;
-    display: flex; align-items: center; font-size: 12px; font-weight: 700; color: #fff; background: #f23f43; cursor: pointer; }
-#hcCard .hcVs { display: flex; align-items: baseline; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.05); }
+    display: flex; align-items: center; font-size: 12px; font-weight: 700; color: #fff; background: var(--fc-danger); cursor: pointer; }
+#hcCard .hcVs { display: flex; align-items: baseline; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: var(--fc-s2); }
 #hcCard .hcVs span { flex: 1; font-size: 12px; color: var(--fc-muted); }
 #hcCard .hcVs b { font-size: 16px; font-weight: 800; color: var(--fc-head); }
+#hcCard .hcVs b.up { color: var(--fc-success); }
+#hcCard .hcVs b.down { color: var(--fc-danger); }
 #hcCard .hcVs small { margin-left: 6px; font-size: 11px; color: var(--fc-muted); }
 #hcCard .hcNotes { margin-top: 10px; }
 #hcCard .hcBtns { display: flex; margin-top: 12px; }
-#hcCard .hcMeta .fc-flag { margin-right: 6px; }
-#hcCard .hcMeta .fc-tag { margin-left: 8px; }
 #hcCard .hcBtns > .fc-btn { margin-left: 6px; }
 #hcCard .hcBtns > .fc-btn:first-child { margin-left: 0; }
 #hcCard .hcBtns > .hcGo { flex: 1; min-width: 0; }

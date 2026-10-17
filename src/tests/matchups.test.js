@@ -45,8 +45,16 @@ test('matchups: one note per game + character, your record from the sets', () =>
     assert.equal(api.matchup('sfiii3nr1', 'Yang'), null);
 });
 
+test('matchups: no pop-up unless it is switched on (2.13 default)', () => {
+    const f = fakeFc(SETS);
+    notes.start(f.fc);
+    f.handlers['match:character']({ quark: 'q0', rom: 'sfiii3nr1', char: 'Yang' });
+    assert.equal(f.toasts.length, 0);
+});
+
 test('matchups: the card when they pick a character shows once, and only with a note or 3+ sets', () => {
     const f = fakeFc(SETS);
+    f.stored.matchupToast = true;                                  // the switch in Settings → Match screens
     const api = notes.start(f.fc);
     f.handlers['match:character']({ quark: 'q1', rom: 'sfiii3nr1', char: 'Yang' });
     assert.equal(f.toasts.length, 1);                              // 3 sets vs Yang

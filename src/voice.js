@@ -513,7 +513,7 @@ function pillHtml() {
 }
 function renderPill() {
     document.querySelectorAll('.channelToolbar .channelActions').forEach(a => {
-        let p = a.querySelector(':scope > .fcvPill');
+        let p = a.querySelector('.fcvPill');
         if (!sess || sess.kind === 'wait') { if (p) p.remove(); return; }
         if (!p) {
             p = document.createElement('div');
@@ -527,7 +527,7 @@ function renderPill() {
                 else if (b.dataset.v === 'mute') toggleMute();
                 else if (b.dataset.v === 'leave') end('left', false);
             });
-            a.insertBefore(p, a.firstChild);
+            fc.ui.header.place(a, p, 'voice');
         }
         p.classList.toggle('muted', !!sess.muted);
         p.classList.toggle('bad', sess.kind === 'bad');
@@ -593,9 +593,9 @@ function setBlocked(name, on) {
 }
 
 const CSS = `
-.channelActions > .fcvPill { display: inline-flex; align-items: center; height: 32px; padding: 0 4px 0 8px; margin-right: 8px; border-radius: var(--fc-r1, 8px);
+.fcvPill { display: inline-flex; align-items: center; height: 32px; padding: 0 4px 0 8px; margin-right: 8px; border-radius: var(--fc-r1, 8px);
     background: var(--fc-btn); color: #fff; font: 600 13px/1 var(--fc-font); user-select: none; box-shadow: inset 0 0 0 1px rgba(35,165,90,.45); transition: box-shadow .12s; }
-.channelActions > .fcvPill { text-transform: none; letter-spacing: 0; }
+.fcvPill { text-transform: none; letter-spacing: 0; }
 .fcvDev label > span, .fcvMeter > span, .fcvBlocked > span:first-child { font-size: 14px; font-weight: 500; color: var(--fc-head); }
 .fcvPill .ic { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; margin-right: 6px; background: rgba(35,165,90,.25); color: var(--fc-success); }
 .fcvPill .ic .fc-ic { width: 13px; height: 13px; }

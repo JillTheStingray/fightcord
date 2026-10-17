@@ -375,7 +375,7 @@ function refreshSessionPill() {
     const sets = sessionSets();
     const r = recordOf(sets);
     document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
-        let pill = actions.querySelector(':scope > .fcmsPill');
+        let pill = actions.querySelector('.fcmsPill');
         if (!cfg.enabled || !cfg.session || !sets.length) { if (pill) pill.remove(); return; }
         if (!pill) {
             pill = document.createElement('div');
@@ -383,13 +383,13 @@ function refreshSessionPill() {
             pill.title = T("Tonight's sets");
             pill.addEventListener('mousedown', (e) => e.stopPropagation());
             pill.addEventListener('click', (e) => { e.stopPropagation(); toggleSessionCard(pill); });
-            actions.insertBefore(pill, actions.firstChild);
+            fc.ui.header.place(actions, pill, 'session');
         }
         const st = streakOf(sets);
         const hot = st.kind === 'won' && st.n >= 2;
         const txt = fc.fmt.wl(r) + (hot ? String(st.n) : '');
         if (pill.textContent !== txt) pill.innerHTML = fc.ui.ic('trophy') + E(fc.fmt.wl(r)) + (hot ? `<span class="fcmsHot" title="${E(T('{n} WIN STREAK', { n: st.n }))}">${fc.ui.ic('flame', 'fill')}${st.n}</span>` : '');
-        pill.classList.toggle('fcms-joined', !!actions.querySelector(':scope > .fcglPill'));
+        pill.classList.toggle('fcms-joined', !!actions.querySelector('.fcglPill'));
     });
 }
 

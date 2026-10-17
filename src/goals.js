@@ -160,22 +160,22 @@ function overall() {
 function refreshPill() {
     const o = cfg.pill ? overall() : null;
     document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
-        let pill = actions.querySelector(':scope > .fcglPill');
+        let pill = actions.querySelector('.fcglPill');
         if (!o) { if (pill) pill.remove(); return; }
         if (!pill) {
             pill = document.createElement('div');
             pill.className = 'fcglPill';
             pill.addEventListener('mousedown', (e) => e.stopPropagation());
             pill.addEventListener('click', (e) => { e.stopPropagation(); togglePop(pill); });
-            const after = actions.querySelector(':scope > .fcmsPill');
-            if (after) after.insertAdjacentElement('afterend', pill); else actions.insertBefore(pill, actions.firstChild);
+            fc.ui.header.place(actions, pill, 'goals');
         }
         const html = hudHtml();
         if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; pill.title = T('{n} of {total} goals done', { n: o.done, total: o.total }); }
         pulse(pill);
         // joined to tonight's record (match-screens.js) as one strip
-        const rec = actions.querySelector(':scope > .fcmsPill');
+        const rec = actions.querySelector('.fcmsPill');
         if (rec) rec.classList.add('fcms-joined');
+        pill.classList.toggle('fcgl-joined', !!rec);
     });
 }
 
@@ -205,18 +205,21 @@ function pulse(pill) {
     });
 }
 
-function listHtml(small) {
-    const rs = results();
-    if (!rs.length) return '';
+function listHtml(small, max) {
+    const all = results();
+    if (!all.length) return '';
+    const rs = max ? all.slice(0, max) : all;
+    const more = all.length - rs.length;
     return rs.map(({ g, r }) => `<div class="fcglRow${r.done ? ' done' : ''}">${fc.ui.ring(r.frac, { size: small ? 30 : 36, stroke: 4, color: r.done ? 'var(--fc-success)' : 'var(--fc-accent)', label: r.done ? '✓' : Math.round(r.frac * 100) + '%' })}` +
-        `<div class="tx"><b>${E(r.text)}</b><span>${E(T(SCOPES[g.scope]))} · ${E(r.detail)}</span></div></div>`).join('');
+        `<div class="tx"><b>${E(r.text)}</b><span>${E(T(SCOPES[g.scope]))} · ${E(r.detail)}</span></div></div>`).join('') +
+        (more > 0 ? `<div class="fcglMore">${E(T('+{n} more', { n: more }))}</div>` : '');
 }
 
 // for the profile popout
 function summaryHtml() {
     const o = overall();
     if (!o) return '';
-    return `<div class="fcglSum"><span>${E(T('Goals'))}</span>${listHtml(true)}</div>`;
+    return `<div class="fcglSum"><span>${E(T('Goals'))}</span>${listHtml(true, 3)}</div>`;      // the top 3 (2.13)
 }
 
 let pop = null;
@@ -298,6 +301,7 @@ function wire(el) {
 }
 
 const CSS = `
+.fcglMore { margin-top: 4px; font-size: 12px; color: var(--fc-muted); }
 .fcglPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px 0 6px; margin-right: 8px; border-radius: var(--fc-r1);
     background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; }
 .fcglPill:hover { background: var(--fc-btn-h); }
@@ -313,7 +317,7 @@ const CSS = `
 html.fc-still .fcglBars > i { animation: none !important; }
 .fcglNum { font-variant-numeric: tabular-nums; }
 /* the HUD: tonight's record and the goals as one joined strip */
-.channelActions > .fcmsPill + .fcglPill { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.08); }
+.fcglPill.fcgl-joined { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.08); }
 
 .fcglPop .h { margin-bottom: 6px; font-size: 16px; font-weight: 700; color: var(--fc-head); }
 .fcglPop .f { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--fc-divider); }
@@ -338,7 +342,9 @@ html.fc-still .fcglBars > i { animation: none !important; }
 
 function start(f) {
     fc = f;
-    store = fc.config('goals', { goals: [], notify: true, pill: true, summary: true, done: {}, summarized: 0 });
+    store = fc.config('goals', { goals: [], notify: true, pill: true, summary: false, done: {}, summarized: 0 });
+    // 2.13: the "Last session" pop-up is off by default; switch it off once for anyone still on the old default
+    if (!store.data.v) { store.data.v = 2; if (store.data.summary === true) store.data.summary = false; store.save(); }
     cfg = store.data;
     if (!Array.isArray(cfg.goals)) cfg.goals = [];
     if (!cfg.done || typeof cfg.done !== 'object') cfg.done = {};

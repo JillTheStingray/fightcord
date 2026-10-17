@@ -329,32 +329,28 @@ function close() {
 
 function refreshPills() {
     document.querySelectorAll('.channelToolbar .channelActions').forEach(actions => {
-        let pill = actions.querySelector(':scope > .fdPill');
+        let pill = actions.querySelector('.fdPill');
         const c = cfg.enabled ? fc.app.channelOf(actions) : null;
         if (!c) { if (pill) pill.remove(); return; }
         const ch = c.id || c.name;
         if (!pill) {
             pill = document.createElement('div');
-            pill.className = 'fdPill';
+            pill.className = 'fdPill fc-hbtn';
             pill.title = T('What’s happening in this channel');
             pill.addEventListener('mousedown', (e) => e.stopPropagation());
             pill.addEventListener('click', (e) => { e.stopPropagation(); if (panel && panelCh === pill.dataset.ch) close(); else open(pill.dataset.ch); });
-            actions.insertBefore(pill, actions.firstChild);
+            fc.ui.header.place(actions, pill, 'feed');
         }
         pill.dataset.ch = ch;
         const n = panel && panelCh === ch ? 0 : unread(ch);
-        const html = fc.ui.icon('bell') + '<span>' + E(T('Feed')) + '</span>' + (n ? fc.ui.badge(n) : '');
+        // an icon in the header row (2.13): the bell, with a dot for what's new
+        const html = fc.ui.icon('bell') + (n ? '<span class="fc-hdot">' + (n > 9 ? '9+' : n) + '</span>' : '');
         if (pill.__html !== html) { pill.__html = html; pill.innerHTML = html; }
     });
 }
 
 const CSS = `
-.fdPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px; margin-right: 8px; border-radius: var(--fc-r1);
-    background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; }
-.fdPill:hover { background: var(--fc-btn-h); }
-.fdPill span { text-transform: none; }
-.fdPill .fc-ic { width: 16px; height: 16px; margin-right: 6px; }
-.fdPill .fc-badge { margin-left: 6px; }
+.fdPill { user-select: none; }
 #fdPanel { position: fixed; top: 56px; right: 12px; bottom: 12px; width: 360px; z-index: calc(var(--fc-z-page) + 5); display: flex; flex-direction: column;
     border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3);
     font: 14px/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; }
