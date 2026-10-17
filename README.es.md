@@ -11,6 +11,11 @@ tu PC.
 > Fightcord es un mod hecho por fans que funciona solo en tu computadora. **No** está hecho por
 > Fightcade ni por Discord, ni está afiliado a ellos ni avalado por ellos.
 
+> **🤖 Vibe-coded.** Todo aquí (el mod, el instalador, la web, este README) se hace describiéndole lo
+> que debe hacer a un asistente de programación con IA (Claude Code), que escribe el código. Todo se
+> revisa con pruebas automáticas y se usa en Fightcade antes de cada versión, y el código es abierto,
+> así que puedes leer cada línea.
+
 ## Descarga
 
 Descarga **`FightcordSetup.exe`** de la [última versión](https://github.com/JillTheStingray/fightcord/releases/latest),
@@ -89,6 +94,16 @@ de bienvenida corta te guía con el resto.
 | ![Un desafío recibido con la ficha del rival: ELO, probabilidades, cara a cara](docs/screenshots/scout.png) | ![Metas de entrenamiento junto al récord de la noche](docs/screenshots/goals.png) |
 | ![Historial de rango y ELO](docs/screenshots/progress.png) | ![Análisis de partidas](docs/screenshots/analytics.png) |
 
+**Lobbies privados** (nuevo en 2.14)
+- Tu propio **lobby solo con invitación, como un servidor de Discord**: el **+** debajo de tus canales
+  de juego crea uno o te une a uno con un código de invitación. Solo entra quien tenga el código y Fightcord.
+- Un **chat que guarda el historial**, una **lista de miembros** (en línea, ausente, en una partida, en voz)
+  con **Desafiar** (Fightcord los lleva a los dos al canal del juego del lobby) y una **sala de voz** para hasta 8.
+- El dueño puede renombrar el lobby, cambiar el juego, crear un código de invitación nuevo o quitar a
+  alguien (todos los demás reciben una clave nueva, así que esa persona no puede leer nada nuevo).
+
+![Un lobby privado: canales y la sala de voz a la izquierda, el chat y la lista de miembros](docs/screenshots/lobby.png)
+
 **Social**
 - **Lista de amigos** con avisos de conexión / partida y un botón Ver, más **notas y etiquetas de
   jugadores**.
@@ -134,6 +149,9 @@ Fightcord no tiene servidor ni recolecta datos. Solo se comunica con:
 | Actualizaciones | este repositorio de GitHub | una vez al día |
 | Estado en Discord | la app de Discord en tu PC | mientras el estado en Discord está activado |
 | Overlay de OBS | una página en `127.0.0.1` que solo esta PC puede abrir | mientras el overlay está activado (Configuración → Modo streamer) |
+| "Quién tiene Fightcord" | relays Nostr públicos y gratuitos (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | mientras Fightcade está abierto, salvo que desactives "Mostrar que uso Fightcord": tu nombre de Fightcade, con hash, y si el chat de voz está activado, cada pocos minutos; los relays lo reenvían en vivo y no lo guardan |
+| Chat de voz | los mismos relays para el apretón de manos cifrado, luego directo a la PC de tu rival (STUN: Google / Cloudflare para encontrar la ruta) | solo durante un set, solo cuando ambos se unieron |
+| Lobbies privados | relays Nostr públicos y gratuitos (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | para los lobbies en los que estás, mientras Fightcade está abierto: mensajes, entradas y señales de "en línea", cifrados con una clave que solo existe en el código de invitación. Los relays guardan los mensajes cifrados para que veas lo que te perdiste, pero no pueden leerlos. La sala de voz va directo entre las PC de los jugadores, como el chat de voz |
 
 La configuración, las notas, los amigos y el historial de partidas quedan en la carpeta de Fightcord
 en tu PC (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Configuración → Copia de
