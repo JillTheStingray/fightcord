@@ -5,6 +5,10 @@
  *   - NEW line: a red "NEW" divider where you left off when you come back to a channel
  *   - Hover actions: Reply, Copy, Translate, Profile on any message
  *   - Link previews: YouTube / Twitch / X / imgur / Fightcade links get an embed card
+ *   - Images, GIFs and clips (2.15): picture / video links from trusted hosts show inline (a message
+ *     that's only the link shows only the picture); click one to see it full size. Fightcord's
+ *     uploads (uploads.js) go to catbox.moe, so other Fightcord players see them; everyone else
+ *     sees the link.
  *   - Jump to present: a bar to get back down when you've scrolled up
  *   - Polish: Discord timestamps, rank-coloured names, slide-in, time dividers, compact
  *     system messages
@@ -27,6 +31,7 @@ const DEFAULTS = {
     hoverActions: true,
     linkPreviews: true,
     imagePreviews: true,
+    blurMedia: false,      // images and clips blurred until clicked (2.15)
     jumpBar: true,
     discordTime: true,     // "10:16 PM" instead of "at 22:16"
     hour12: true,
@@ -339,7 +344,7 @@ function act(what, line) {
 const HOSTS = [
     'youtube.com', 'youtu.be', 'twitch.tv', 'x.com', 'twitter.com', 'imgur.com', 'fightcade.com',
     'streamable.com', 'reddit.com', 'redd.it', 'twimg.com', 'tenor.com', 'giphy.com',
-    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com'
+    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com', 'catbox.moe', 'klipy.com'
 ];
 const allowed = (host) => HOSTS.some(h => host === h || host.endsWith('.' + h));
 // Preview IMAGES load from your connection too, and a trusted page's og:image can point
@@ -353,6 +358,7 @@ function imageAllowed(url) {
     } catch (e) { return false; }
 }
 const IMG_EXT = /\.(png|jpe?g|gif|webp)(\?.*)?$/i;
+const VID_EXT = /\.(mp4|webm|mov)(\?.*)?$/i;
 
 function http(url, redirects) {
     let https = null;
@@ -387,6 +393,16 @@ function decode(s) {
     });
 }
 
+// a page's looping video (Tenor / Giphy put the GIF's small mp4 here)
+function ogVideo(html) {
+    for (const p of ['twitter:player:stream', 'og:video:secure_url', 'og:video:url', 'og:video']) {
+        const m = html.match(new RegExp('<meta[^>]+(?:property|name)=["\']' + p + '["\'][^>]*content=["\']([^"\']*)', 'i')) ||
+                  html.match(new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']' + p + '["\']', 'i'));
+        if (m && /^https:\/\/.+\.mp4(\?|$)/i.test(decode(m[1]))) return decode(m[1]);
+    }
+    return '';
+}
+
 function ogTags(html) {
     const get = (p) => {
         const m = html.match(new RegExp('<meta[^>]+(?:property|name)=["\']' + p + '["\'][^>]*content=["\']([^"\']*)', 'i')) ||
@@ -407,7 +423,27 @@ function youtubeId(u) {
 async function buildPreview(raw) {
     const u = new URL(raw);
     const host = u.hostname.replace(/^www\./, '');
-    if (IMG_EXT.test(u.pathname)) return { kind: 'image', url: raw };
+    // tenor.com / giphy.com links are pages even when they end in .gif (share links): read the page
+    const gifPage = /^(tenor|giphy)\.com$/.test(host);
+    if (IMG_EXT.test(u.pathname) && !gifPage) return { kind: 'image', url: raw };
+    // klipy.com/gifs/<slug>: its page is behind Cloudflare, so ask KLIPY's API (Fightcord's app key, uploads.js)
+    if (host === 'klipy.com') {
+        let up = null;
+        try { up = require(require('path').join(__dirname, 'uploads.js')); } catch (e) { return null; }
+        const k = up.klipySlug(raw);
+        if (!k) return null;
+        const json = JSON.parse(await http(up.KLIPY + '/' + k.type + '/items?slugs=' + encodeURIComponent(k.slug)));
+        const it = up.parseKlipy(json, k.type)[0];
+        return it ? { kind: 'gifv', url: it.src, still: it.still, page: raw } : null;
+    }
+    // giphy.com/gifs/<name>-<id> (or /media/<id>/…): the files have fixed addresses, no page to read
+    if (host === 'giphy.com') {
+        const m = u.pathname.match(/^\/(?:gifs|stickers|embed)\/(?:[\w-]*-)?([A-Za-z0-9]{8,})\/?$/) || u.pathname.match(/^\/media\/([A-Za-z0-9]{8,})\//);
+        if (!m) return null;
+        return { kind: 'gifv', url: 'https://media.giphy.com/media/' + m[1] + '/giphy.mp4', still: 'https://media.giphy.com/media/' + m[1] + '/giphy_s.gif', page: raw };
+    }
+    if (VID_EXT.test(u.pathname)) return { kind: 'clip', url: raw };
+    if (/(^|\.)imgur\.com$/.test(host) && /\.gifv$/i.test(u.pathname)) return { kind: 'clip', url: raw.replace(/\.gifv(\?.*)?$/i, '.mp4') };
     // replay links hand off to fcade:// (opens in Fightcade) -- nothing to fetch
     if (host === 'replay.fightcade.com') {
         const parts = u.pathname.split('/');
@@ -434,13 +470,22 @@ async function buildPreview(raw) {
         const j = JSON.parse(await http('https://api.streamable.com/oembed.json?url=' + encodeURIComponent(raw)));
         return { kind: 'video', color: '#0f90fa', site: 'Streamable', title: j.title, url: raw, image: j.thumbnail_url };
     }
-    const og = ogTags(await http(raw));
+    const html = await http(raw);
+    const og = ogTags(html);
     if (/(^|\.)twitch\.tv$/.test(host) && /^twitch$/i.test(og.title)) {
         // channel pages are a JS app with generic tags; the live preview image is public
         const login = u.pathname.split('/')[1];
         if (!login || host.indexOf('clips.') === 0) return null;
         return { kind: 'video', color: '#9146ff', site: 'Twitch', title: T('{name} on Twitch', { name: login }), url: raw,
                  image: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_' + encodeURIComponent(login.toLowerCase()) + '-440x248.jpg' };
+    }
+    // a Tenor / Giphy page is the GIF itself: its small looping mp4 if it has one, else the .gif
+    if (gifPage) {
+        const vid = ogVideo(html);
+        const gif = og.image && /\.(gif|webp)(\?|$)/i.test(og.image) ? new URL(og.image, raw).href : '';
+        if (vid && imageAllowed(vid)) return { kind: 'gifv', url: vid, still: gif && imageAllowed(gif) ? gif : '', page: raw };
+        if (gif && imageAllowed(gif)) return { kind: 'image', url: gif, page: raw };
+        return null;
     }
     // app shells whose tags only ever say their own name aren't worth a card
     if (!og.title && !og.image) return null;
@@ -480,10 +525,22 @@ function renderPreview(line, p) {
     if (old) old.remove();
     const div = document.createElement('div');
     div.className = 'fcxEmbed';
-    if (p.kind === 'image') {
-        if (!cfg.imagePreviews) return;
+    if (p.kind === 'image' || p.kind === 'clip' || p.kind === 'gifv') {
+        if (!cfg.imagePreviews || !imageAllowed(p.url)) return;
         div.classList.add('fcxImage');
-        div.innerHTML = `<a href="${E(p.url)}" target="_blank" rel="noopener noreferrer"><img src="${E(p.url)}"></a>`;
+        if (cfg.blurMedia) div.classList.add('fcxBlur');
+        div.dataset.view = p.url;
+        div.dataset.link = p.page || p.url;
+        div.dataset.kind = p.kind;
+        if (p.still) div.dataset.still = p.still;
+        div.innerHTML = (p.kind === 'clip'
+            ? `<video src="${E(p.url)}" preload="metadata" muted loop playsinline controls></video>`
+            : p.kind === 'gifv'
+                ? `<video class="fcxGifv" src="${E(p.url)}" autoplay muted loop playsinline${p.still ? ` poster="${E(p.still)}"` : ''}></video>`
+                : `<img src="${E(p.url)}" alt="" loading="lazy">`) +
+            (cfg.blurMedia ? `<span class="fcxShow">${E(T('Show'))}</span>` : '') + favStar(p.page || p.url);
+        // only the link in the message: show only the picture
+        if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
     } else {
         div.style.borderLeftColor = p.color;
         const img = p.image && cfg.imagePreviews && imageAllowed(p.image)
@@ -495,8 +552,64 @@ function renderPreview(line, p) {
             ${p.desc ? `<div class="fcxDesc">${E(p.desc)}</div>` : ''}
             ${img}`;
     }
-    div.querySelectorAll('img').forEach(i => { i.onerror = () => (p.kind === 'image' ? div.remove() : i.parentNode.remove()); });
+    div.querySelectorAll('img, video').forEach(i => { i.onerror = () => { if (p.kind === 'image' || p.kind === 'clip') { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove(); }; });
     bc.appendChild(div);
+}
+
+// the star that keeps a GIF / picture in your favorites (uploads.js has them)
+function favStar(link) {
+    const up = fc.modules.get('uploads');
+    if (!up || !up.isFav) return '';
+    const on = up.isFav(link);
+    return `<span class="fcxFav${on ? ' on' : ''}" title="${E(T(on ? 'Remove from favorites' : 'Add to favorites'))}">${fc.ui.icon('star', on ? 'fill' : '')}</span>`;
+}
+function favItem(m) { return { link: m.dataset.link, src: m.dataset.view, kind: m.dataset.kind || 'image', still: m.dataset.still || '' }; }
+function refreshStars() {
+    document.querySelectorAll('.fcxImage').forEach(m => {
+        const s = m.querySelector('.fcxFav');
+        const html = favStar(m.dataset.link);
+        if (s) s.outerHTML = html || '';
+        else if (html) m.insertAdjacentHTML('beforeend', html);
+    });
+}
+
+// click a picture: unblur it, or see it full size (Esc / click outside closes)
+let viewer = null;
+function openViewer(src, link) {
+    closeViewer();
+    const clip = VID_EXT.test(new URL(src).pathname);
+    const el = document.createElement('div');
+    el.id = 'fcxView';
+    el.innerHTML = `<div class="fcxViewIn">${clip ? `<video src="${E(src)}" controls autoplay loop playsinline></video>` : `<img src="${E(src)}" alt="">`}` +
+        `<div class="fcxViewBar"><a href="${E(link)}" target="_blank" rel="noopener noreferrer">${E(T('Open in browser'))}</a><span data-act="copy">${E(T('Copy link'))}</span></div></div>`;
+    el.addEventListener('mousedown', (e) => { e.stopPropagation(); if (e.target === el) closeViewer(); });
+    el.addEventListener('click', (e) => {
+        if (e.target.closest('[data-act="copy"]')) { fc.ui.copy(link); e.target.textContent = T('Copied'); }
+    });
+    document.body.appendChild(el);
+    viewer = { el, unlayer: fc.ui.layer(() => closeViewer()) };
+}
+function closeViewer() {
+    if (!viewer) return;
+    viewer.unlayer();
+    viewer.el.remove();
+    viewer = null;
+}
+function onMediaClick(e) {
+    const m = e.target.closest && e.target.closest('.fcxImage');
+    const star = m && e.target.closest('.fcxFav');
+    if (star) {
+        e.preventDefault();
+        e.stopPropagation();
+        const up = fc.modules.get('uploads');
+        if (up && up.toggleFav) up.toggleFav(favItem(m));
+        return;
+    }
+    if (!m || e.target.tagName === 'VIDEO' && !e.target.classList.contains('fcxGifv') && !m.classList.contains('fcxBlur')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (m.classList.contains('fcxBlur')) { m.classList.remove('fcxBlur'); const s = m.querySelector('.fcxShow'); if (s) s.remove(); return; }
+    openViewer(m.dataset.view, m.dataset.link);
 }
 
 const URL_RE = /https?:\/\/[^\s<>"'`]+[^\s<>"'`.,;:!?)\]]/i;
@@ -635,9 +748,28 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxEmbed .fcxVideo::after { content: ''; position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
     margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(0,0,0,.6)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E") center / 26px no-repeat; }
-.fcxEmbed.fcxImage { padding: 0; background: none; border: 0; max-width: 400px; }
-.fcxEmbed.fcxImage img { width: auto !important; height: auto !important; max-width: 400px; max-height: 300px;
-    border-radius: 8px; display: block; cursor: pointer; }
+.fcxEmbed.fcxImage { position: relative; display: inline-block; padding: 0; background: none; border: 0; max-width: 400px; overflow: hidden; border-radius: 8px; line-height: 0; }
+.fcxEmbed.fcxImage img, .fcxEmbed.fcxImage video { width: auto !important; height: auto !important; max-width: 400px; max-height: 300px;
+    border-radius: 8px; display: block; cursor: zoom-in; background: rgba(0,0,0,.2); }
+.fcxEmbed.fcxImage video { cursor: default; }
+.fcxEmbed.fcxImage video.fcxGifv { cursor: zoom-in; }
+.fcxEmbed.fcxBlur img, .fcxEmbed.fcxBlur video { filter: blur(24px); transform: scale(1.06); cursor: pointer; }
+.fcxEmbed .fcxShow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 14px; border-radius: 16px; cursor: pointer;
+    background: rgba(0,0,0,.65); color: #fff; font: 600 13px/1.2 var(--fc-font); }
+.fcxEmbed .fcxFav { position: absolute; top: 6px; right: 6px; display: none; padding: 5px; border-radius: 50%; cursor: pointer; line-height: 0;
+    background: rgba(0,0,0,.6); color: #fff; }
+.fcxEmbed.fcxImage:hover .fcxFav { display: block; }
+.fcxEmbed .fcxFav.on { color: var(--fc-warning); }
+.fcxEmbed .fcxFav:hover { background: rgba(0,0,0,.8); }
+.fcxEmbed .fcxFav .fc-ic { width: 16px; height: 16px; }
+.line.fcxOnlyMedia .blocksContainer > :not(.fcxEmbed):not(.fcTr) { display: none !important; }
+#fcxView { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal, 100010); display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.85); animation: fcIn var(--fc-med, .2s) ease both; }
+#fcxView .fcxViewIn { display: flex; flex-direction: column; align-items: flex-start; max-width: 90vw; }
+#fcxView img, #fcxView video { max-width: 90vw; max-height: 82vh; border-radius: 6px; display: block; box-shadow: 0 8px 40px rgba(0,0,0,.6); }
+#fcxView .fcxViewBar { display: flex; margin-top: 8px; font: 500 14px/1.2 var(--fc-font); }
+#fcxView .fcxViewBar a, #fcxView .fcxViewBar span { margin-right: 16px; color: rgba(255,255,255,.75) !important; cursor: pointer; text-decoration: none; }
+#fcxView .fcxViewBar a:hover, #fcxView .fcxViewBar span:hover { color: #fff !important; text-decoration: underline; }
 
 #fcxJump { position: fixed; z-index: 99990; display: none; align-items: center; justify-content: space-between;
     height: 34px; padding: 0 12px; box-sizing: border-box; border-radius: 8px 8px 0 0;
@@ -716,8 +848,9 @@ function sweep() {
 }
 
 function onSetting(key) {
-    if (!cfg.linkPreviews || !cfg.imagePreviews) {
+    if (!cfg.linkPreviews || !cfg.imagePreviews || key === 'blurMedia') {
         document.querySelectorAll('.fcxEmbed').forEach(n => n.remove());
+        document.querySelectorAll('.line.fcxOnlyMedia').forEach(l => l.classList.remove('fcxOnlyMedia'));
         document.querySelectorAll('.line[data-fcx-url]').forEach(l => { delete l.dataset.fcxUrl; });
     }
     if (!cfg.newLine) clearNew();
@@ -738,6 +871,9 @@ function start(f) {
     listen(document, 'mouseover', onMouseOver, true);
     listen(document, 'scroll', (e) => { if (e.target && e.target.classList && e.target.classList.contains('chatContent')) { hideBar(); updateJump(); } }, true);
     // sending a message = you've caught up
+    listen(document, 'click', onMediaClick, true);
+    fc.on('gifs:changed', () => refreshStars());
+    fc.own(() => closeViewer());
     listen(window, 'keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.closest && e.target.closest('.chatInput') && e.target.value) clearNew(); }, true);
     listen(window, 'focus', () => setTimeout(sweep, 50));
     listen(window, 'blur', () => setTimeout(sweep, 50));
@@ -747,6 +883,7 @@ function start(f) {
         hideBar();
         if (jump) { jump.remove(); jump = null; }
         document.querySelectorAll('.fcxEmbed').forEach(n => n.remove());
+        document.querySelectorAll('.line.fcxOnlyMedia').forEach(l => l.classList.remove('fcxOnlyMedia'));
         clearNew();
         window.__fcChatExtrasLoaded = false;
     });
@@ -763,7 +900,8 @@ function start(f) {
             opt('newLine', 'NEW line', 'Red divider where you left off'),
             opt('hoverActions', 'Hover actions', 'Reply · Copy · Translate · Profile'),
             opt('linkPreviews', 'Link previews', 'YouTube, Twitch, X, imgur, Fightcade… (only well-known sites are ever fetched)'),
-            opt('imagePreviews', 'Image previews', 'Pictures inside previews', (d) => d.linkPreviews),
+            opt('imagePreviews', 'Images, GIFs and clips', 'Pictures and videos from trusted sites (catbox, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
+            opt('blurMedia', 'Blur them until clicked', 'Click a blurred picture to show it', (d) => d.linkPreviews && d.imagePreviews),
             opt('jumpBar', 'Jump to present', 'A bar when you scroll up'),
             opt('discordTime', 'Discord timestamps', '"10:16 PM" instead of "at 22:16"'),
             opt('hour12', '12-hour clock', 'Off = 22:16', (d) => d.discordTime),
@@ -781,6 +919,7 @@ function start(f) {
 const api = {
     _noticeSummary: (n) => noticeSummary(n),
     _buildPreview: (u) => buildPreview(u),
+    _viewer: (src, link) => openViewer(src, link || src),
     _allowed: allowed,
     _sweep: () => sweep(),
     get _config() { return cfg; }

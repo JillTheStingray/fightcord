@@ -235,7 +235,8 @@ const CSS = `
 .evRow .tx { flex: 1; min-width: 0; }
 .evRow b { display: block; color: var(--fc-head); font-size: 13.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .evRow span { font-size: 12px; color: var(--fc-muted); }
-.evPop { width: 340px; max-height: 420px; overflow-y: auto; }
+.evPop { width: 340px; }
+.evPop .fc-pb { max-height: 360px; overflow-y: auto; }
 `;
 
 /* ------------------------------------------------------------------ module */
@@ -255,9 +256,9 @@ function start(f) {
     fc.cmd('events', 'Upcoming events you get reminded about', (arg, ctx) => {
         const box = document.createElement('div');
         box.className = 'evPop';
-        box.innerHTML = `<div class="evList">${listHtml(12)}</div>`;
+        box.innerHTML = fc.ui.popHead({ icon: 'clock', title: T('Upcoming events') }) + `<div class="fc-pb"><div class="evList">${listHtml(12)}</div></div>`;
         const r = ctx && ctx.input ? ctx.input.getBoundingClientRect() : null;
-        fc.ui.popover(r || document.body, box, { side: 'top' });
+        fc.ui.popover(r || document.body, box, { side: 'top', cls: 'fc-pop-card' });
     });
     fc.settings.block({
         id: 'events', section: 'search', title: 'Event reminders', hint: '— Fightcade tournaments · /events', store, order: 30,

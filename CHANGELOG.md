@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.15.0
+
+- **Pictures, GIFs and clips in the chat** (Fightcord players see them).
+  - **Sending:** paste a picture into the message box, drop one on the chat, or click the new **+**.
+    You see it first; **Upload** sends it. It goes to catbox.moe (free, no account) and its link is the
+    message, so Fightcord players see the picture and everyone else sees the link. Photos are redrawn
+    first, which removes hidden details like location. Up to 200 MB, GIFs stay animated.
+  - **Seeing:** pictures, GIFs and clips from trusted sites (catbox, imgur, KLIPY, Tenor, Giphy, Discord)
+    show in the chat; a message that's only the link shows only the picture. KLIPY, Tenor and Giphy
+    links play as small looping videos, like on Discord. Click one to see it full size. Settings → Chat can
+    blur them until clicked.
+  - **The GIF button** in the message box: search GIFs (KLIPY, the GIF service Discord uses, with Tenor
+    as a fallback), or pick one of your favorites (hover a GIF or picture in the chat and click its ★
+    to keep it). One click sends it.
+- **The profile popout** (your avatar, bottom-left) is rebuilt on the same card parts as the scout card,
+  with an Online / Away switch, and closes with Esc.
+- **Quick settings**, in the profile popout and the ⋯ menu: the Looks, voice chat, streamer mode,
+  music (with volume) and a new **Do not disturb** (only challenges and @mentions pop up).
+- **Tonight** (your record in the header): a chart of the night, your best win and your toughest
+  opponent.
+- **One look for every pop-up:** Find a match, goals, Tonight, notes and the events list share the same
+  title row with a close button, and the same footer.
+- Fixed: with a chat font style on, links you sent turned into fancy letters and stopped working. Links
+  now always go out exactly as typed.
+
 ## 2.14.0
 
 - **Private lobbies, like a Discord server** (Fightcord players only). The **+** under your game

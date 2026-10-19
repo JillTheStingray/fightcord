@@ -29,7 +29,7 @@ const DEFAULTS = {
     enabled: true,
     gameIcons: true,       // game artwork in the rail icons (initials otherwise)
     chatArt: false,        // keep Fightcade's game artwork faintly behind the chat
-    cleanNames: true,      // hide Cerberus' extras on the chat name line (thumbs, dot, ping)
+    cleanNames: true,      // the chat name line without the scout badge
     chatSize: 18,          // chat text px; Discord's default is 16, 18 matches a zoomed Discord
     preset: 'dark',        // dark | amoled | classic | neon | crt | strike | tokyo | custom
     accent: '#5865f2',     // Discord blurple
@@ -455,11 +455,7 @@ html.dc-layout .chatContent .endgameMessageWrapper .wrapUpWrapper.won { color: v
 html.dc-layout .chatContent .endgameMessageWrapper .wrapUpWrapper.lost { color: var(--dc-red); }
 
 /* ============================== cleaner name line ============================== */
-/* name, flag, rank, time -- like Discord. Hidden, not removed: Cerberus keeps working. */
-html.dc-layout.dc-clean-names .chatContent .message.chat header .cerb-chat-trigger,
-html.dc-layout.dc-clean-names .chatContent .message.chat header .cerberus-injected-status,
-html.dc-layout.dc-clean-names .chatContent .message.chat header .cerberus-injected-pingbar,
-html.dc-layout.dc-clean-names .chatContent .message.chat header .cerberus-injected-pingtext,
+/* name, flag, rank, time -- like Discord */
 html.dc-layout.dc-clean-names .chatContent .message.chat header .fcScoutBadge { display: none; }
 html.dc-layout.dc-clean-names .chatContent .message.chat header .author .flagWrapper { margin-left: 6px; }
 
@@ -518,11 +514,6 @@ html.dc-layout .usersListWrapper .usersIgnoredTitle > span:first-of-type {
 html.dc-layout .usersListWrapper .usersOnlineTitle > span:first-of-type::before,
 html.dc-layout .usersListWrapper .usersAwayTitle > span:first-of-type::before,
 html.dc-layout .usersListWrapper .usersIgnoredTitle > span:first-of-type::before { content: '— '; }
-html.dc-layout #cerbPlayerSearchContainer { padding: 0 8px; height: auto; background: none; }
-html.dc-layout #cerbPlayerSearchInput {
-    background: var(--dc-bg3); border: 1px solid var(--dc-divider); border-radius: 8px; height: 30px; color: var(--dc-text);
-    padding: 0 8px; font-size: 14px; box-shadow: none; width: 100%; box-sizing: border-box;
-}
 html.dc-layout .usersListWrapper .userItem {
     display: flex; align-items: center; height: 42px; min-height: 42px; padding: 0 8px; margin: 0 8px 2px;
     border-radius: 4px; background: none; border: 0; box-sizing: border-box;
@@ -921,7 +912,7 @@ function blockHtml() {
         ${sel('chatSize', 'Chat text size', [14, 15, 16, 17, 18, 20, 22].map(n => [n, n + 'px']), N_('Discord’s default is 16'))}
         ${sw('gameIcons', 'Game artwork icons', 'In the left rail')}
         ${sw('chatArt', 'Artwork behind chat', 'Fightcade’s game picture, faded')}
-        ${sw('cleanNames', 'Cleaner name line', 'Hide thumbs-up / dot / ping next to names')}
+        ${sw('cleanNames', 'Cleaner name line', 'Hide the 🔍 scout badge next to names')}
         <div class="fc-set-title" style="margin-top:16px">${E(T('Theme editor'))} <small>— ${E(T('pick colours to make your own (switches to Custom)'))}</small></div>
         <div class="fc-field"><span class="fc-field-text"><b>${E(T('Colours'))}</b></span><span class="dcColors">${[['bg', N_('Background')], ['panel', N_('Panels')], ['dark', N_('Darkest')], ['text', N_('Text')]].map(([k, l]) =>
             `<label><input type="color" class="fc-input fc-color" data-c="${k}" value="${E(c[k] || '#000000')}"><span>${E(T(l))}</span></label>`).join('')}</span></div>

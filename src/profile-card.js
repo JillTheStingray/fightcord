@@ -3,8 +3,11 @@
  *
  * Click your own avatar (bottom-left) and instead of Fightcade's small Online / Away menu
  * you get a Discord-style profile card: tonight's session, your all-time record, main game,
- * friends online, the Online / Away switch and quick links. The status rows and Log out
+ * goals, friends online, the Online / Away switch and quick links. The status buttons and Log out
  * click Fightcade's own buttons, so nothing about how they work changes.
+ *
+ * Quick settings (2.15): the Look, voice chat, streamer mode, music and Do not disturb, without
+ * opening Settings. The same block opens from the channel header's ⋯ menu.
  */
 'use strict';
 
@@ -12,9 +15,10 @@ let fc = null;
 const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
+const N_ = (s) => s;
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
-const avatar = (name) => fc.data.avatarUrl(name, (fc.app.user(name)[1] || {}).gravatar, 160);
+const store = (id) => fc.config(id, {});
 
 /* --------------------------------------------------------------------- data */
 
@@ -35,40 +39,124 @@ function data() {
     return { me, status, tonight: tonight.length, tRec: fc.data.recordOf(tonight), tStreak: fc.data.streakOf(tonight), tally, st, main, friends };
 }
 
+/* ----------------------------------------------------------- quick settings */
+
+// what the switches do, and whether each is on (null = not available here)
+const QUICK = [
+    { id: 'voice', icon: 'mic', label: N_('Voice chat'), on: () => { const v = mod('voice'); return v && v.enabled ? v.enabled() : null; },
+        set: (on) => { const s = store('voice'); s.data.enabled = on; s.save(); fc.emit('voice:changed', { on }); fc.settings.refresh('voice'); } },
+    { id: 'streamer', icon: 'eye', label: N_('Streamer mode'), on: () => { const s = mod('streamer'); return s && s.active ? !!s.active() : null; },
+        set: (on) => { const s = mod('streamer'); if (s && s.set) s.set(on); } },
+    { id: 'music', icon: 'music', label: N_('Music'), on: () => { const m = mod('music'); return m && m._config && m._config.track ? !!m._config.enabled : null; },
+        set: (on) => { const m = mod('music'); if (!m || !m._config) return; m._config.enabled = on; store('music').save(); if (m._tick) m._tick(); fc.settings.refresh('music'); } },
+    { id: 'dnd', icon: 'ban', label: N_('Do not disturb'), on: () => fc.ui.dnd(), set: (on) => fc.ui.dnd(on) }
+];
+
+function currentLook() {
+    const th = mod('discord-theme');
+    if (!th || !th.looks) return '';
+    const looks = th.looks(), d = store('discord-theme').data;
+    return Object.keys(looks).find(k => looks[k].preset === d.preset && String(looks[k].accent).toLowerCase() === String(d.accent || '').toLowerCase()) || '';
+}
+
+function quickHtml() {
+    const th = mod('discord-theme');
+    const looks = th && th.looks ? th.looks() : {};
+    const cur = currentLook();
+    const sw = Object.keys(looks).map(k => {
+        const c = looks[k].sw || ['#111', '#222', '#5865f2'];
+        return `<span class="qsLook${k === cur ? ' on' : ''}" data-qs-look="${E(k)}" title="${E(T(looks[k].name))}" style="background:linear-gradient(135deg,${c[0]} 0 45%,${c[1]} 45% 70%,${c[2]} 70%)"></span>`;
+    }).join('');
+    const toggles = QUICK.map(q => {
+        const on = q.on();
+        if (on == null) return '';
+        return `<span class="qsTg${on ? ' on' : ''}${q.id === 'dnd' ? ' dnd' : ''}" data-qs="${q.id}" role="switch" aria-checked="${on}">${fc.ui.icon(q.icon)}<span>${E(T(q.label))}</span><i></i></span>`;
+    }).join('');
+    const m = mod('music');
+    const vol = m && m._config && m._config.track && m._config.enabled
+        ? `<label class="qsVol">${fc.ui.icon('music')}<input type="range" min="0" max="100" value="${Math.round((+m._config.volume || 0) * 100)}" data-qs-vol title="${E(T('Music volume'))}"></label>` : '';
+    return `<div class="qs">${sw ? `<div class="qsLooks">${sw}</div>` : ''}<div class="qsTgs">${toggles}</div>${vol}</div>`;
+}
+
+function onQuick(e, redraw) {
+    const look = e.target.closest('[data-qs-look]');
+    if (look) {
+        const th = mod('discord-theme');
+        if (th && th.applyLook) th.applyLook(look.dataset.qsLook, true);
+        fc.settings.refresh('discord-theme');
+        setTimeout(redraw, 60);
+        return true;
+    }
+    const tg = e.target.closest('[data-qs]');
+    if (tg) {
+        const q = QUICK.find(x => x.id === tg.dataset.qs);
+        if (q) { q.set(!q.on()); setTimeout(redraw, 60); }
+        return true;
+    }
+    return false;
+}
+function onQuickInput(e) {
+    if (!e.target.matches || !e.target.matches('[data-qs-vol]')) return;
+    const m = mod('music');
+    if (!m || !m._config) return;
+    m._config.volume = Math.max(0, Math.min(1, +e.target.value / 100));
+    store('music').save();
+    if (m._tick) m._tick();
+}
+
+// the same block from the channel header's ⋯ menu
+let qsPop = null;
+function openQuick(anchor) {
+    if (qsPop) { qsPop.close(); return; }
+    const box = document.createElement('div');
+    const draw = () => { box.innerHTML = fc.ui.popHead({ icon: 'bolt', title: T('Quick settings') }) + `<div class="fc-pb">${quickHtml()}</div>` +
+        fc.ui.popFoot('', fc.ui.btn('All settings', { kind: 'sec', size: 'sm', icon: 'gear', act: 'qs-all' })); };
+    draw();
+    box.addEventListener('click', (e) => {
+        if (onQuick(e, draw)) return;
+        if (e.target.closest('[data-act="qs-all"]')) { if (qsPop) qsPop.close(); const st = mod('fightcord'); if (st && st.open) st.open(); }
+    });
+    box.addEventListener('input', onQuickInput);
+    const at = anchor || document.querySelector('.channelToolbar [data-hdr-core="more"]') || { x: window.innerWidth - 300, y: 60 };
+    const me = qsPop = fc.ui.popover(at, box, { width: 280, cls: 'fc-pop-card fcQs', onClose: () => { if (qsPop === me) qsPop = null; } });
+}
+
 /* --------------------------------------------------------------------- card */
 
 function cardHtml() {
     const d = data();
     const t = d.tally;
-    const statusText = E(T({ live: 'In a match', away: 'Away', on: 'Online' }[d.status]));
+    const dnd = fc.ui.dnd();
+    const st = d.status === 'live' ? 'playing' : d.status === 'away' ? 'away' : dnd ? 'dnd' : 'on';
+    const statusText = T({ playing: 'In a match', away: 'Away', dnd: 'Do not disturb', on: 'Online' }[st]);
     const art = d.main && d.main.rom ? fc.data.artUrl(d.main.rom, 'https://web.fightcade.com/') : '';
-    return `<div class="pcBanner"${art ? ` style="background-image:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45)),url(&quot;${E(art)}&quot;),var(--fc-brand)"` : ''}></div>
-        <div class="pcAva ${d.status}"><img src="${E(avatar(d.me))}" alt="" onerror="this.style.visibility='hidden'"><i></i></div>
-        <div class="pcBody">
-            <div class="pcName">${E(d.me || T('You'))}</div>
-            <div class="pcStatus ${d.status}">${statusText}</div>
-            <div class="pcGrid">
-                <div class="pcBox"><span>${E(T('Tonight'))}</span><b>${d.tonight ? d.tRec.w + '–' + d.tRec.l : '—'}</b>
-                    <small>${d.tStreak.n >= 2 && d.tStreak.kind === 'won' ? fc.ui.ic('flame', 'fill') : ''}${E(d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : d.tonight ? T.plural(d.tonight, '{n} set', '{n} sets') : T('no sets yet'))}</small></div>
-                <div class="pcBox"><span>${E(T('All time'))}</span><b>${t ? t.w + '–' + t.l : '—'}</b>
-                    <small>${E(t && t.rate != null ? Math.round(t.rate * 100) + '% · ' + T.plural(t.n, '{n} set', '{n} sets') : T('play a set first'))}</small></div>
-                <div class="pcBox"><span>${E(T('Best streak'))}</span><b>${d.st && d.st.bestW ? d.st.bestW + 'W' : '—'}</b><small>${E(T('longest run of wins'))}</small></div>
-                <div class="pcBox main"><span>${E(T('Main game'))}</span><b title="${E(d.main ? d.main.name : '')}">${E(d.main ? d.main.name : '—')}</b>
-                    <small>${d.main ? E(T.plural(d.main.n, '{n} set', '{n} sets')) : ''}</small></div>
-            </div>
-            ${(() => { const g = mod('goals'); return g && g.summaryHtml ? g.summaryHtml() : ''; })()}
-            ${d.friends.length ? `<div class="pcFriends"><span>${E(T('Friends online'))}</span><div>${d.friends.slice(0, 6).map(n =>
-                `<img src="${E(avatar(n))}" title="${E(n)}" alt="" onerror="this.style.visibility='hidden'">`).join('')}${d.friends.length > 6 ? `<em>+${d.friends.length - 6}</em>` : ''}</div></div>` : ''}
-            <div class="pcSep"></div>
-            <div class="pcRow ${d.status !== 'away' ? 'on' : ''}" data-pc="online"><i class="dot on"></i>${E(T('Online'))}</div>
-            <div class="pcRow ${d.status === 'away' ? 'on' : ''}" data-pc="away"><i class="dot away"></i>${E(T('Away'))}</div>
-            <div class="pcSep"></div>
-            <div class="pcBtns">
-                ${fc.ui.btn('Stats', { kind: 'sec', size: 'sm', icon: 'chart', attrs: 'data-pc="stats"' })}${fc.ui.btn('Friends', { kind: 'sec', size: 'sm', icon: 'users', attrs: 'data-pc="friends"' })}${fc.ui.btn('Settings', { kind: 'sec', size: 'sm', icon: 'gear', attrs: 'data-pc="settings"' })}
-            </div>
-            <div class="pcRow danger" data-pc="logout">${fc.ui.ic('logout')}${E(T('Log out'))}</div>
-        </div>`;
+    const banner = art ? `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45)),url(&quot;${E(art)}&quot;) center 30%/cover,var(--fc-brand)`
+        : 'linear-gradient(120deg,var(--fc-accent),#8b5cf6 60%,#22e3f2)';
+    const streak = d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : '';
+    const stats = fc.ui.stats([
+        { label: 'Tonight', value: d.tonight ? E(d.tRec.w + '–' + d.tRec.l) : '—',
+            sub: (d.tStreak.n >= 2 && d.tStreak.kind === 'won' ? fc.ui.ic('flame', 'fill') : '') + E(streak || (d.tonight ? T.plural(d.tonight, '{n} set', '{n} sets') : T('no sets yet'))) },
+        { label: 'All time', value: t ? E(t.w + '–' + t.l) : '—', sub: E(t && t.rate != null ? Math.round(t.rate * 100) + '% · ' + T.plural(t.n, '{n} set', '{n} sets') : T('play a set first')) },
+        { label: 'Best streak', value: d.st && d.st.bestW ? E(d.st.bestW + 'W') : '—', sub: E(T('longest run of wins')) },
+        { label: 'Main game', value: E(d.main ? d.main.name : '—'), sub: d.main ? E(T.plural(d.main.n, '{n} set', '{n} sets')) : '', title: d.main ? d.main.name : '' }
+    ]);
+    const g = mod('goals');
+    return fc.ui.cardHead({
+        name: d.me || T('You'), banner,
+        avatar: fc.ui.avatar(d.me, { size: 72, status: st, ring: 'var(--fc-s0)' }),
+        meta: `<span class="pcSt ${st}">${E(statusText)}</span>`
+    }) + `<div class="pcBody">${stats}
+        ${g && g.summaryHtml ? g.summaryHtml() : ''}
+        ${d.friends.length ? `<div class="pcSec"><div class="fc-card-h">${E(T('Friends online'))}</div><div class="pcFriends">${d.friends.slice(0, 6).map(n =>
+            `<img src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(n)}" alt="" onerror="this.style.visibility='hidden'">`).join('')}${d.friends.length > 6 ? `<em>+${d.friends.length - 6}</em>` : ''}</div></div>` : ''}
+        <div class="pcSec"><div class="fc-card-h">${E(T('Quick settings'))}</div>${quickHtml()}</div>
+        <div class="pcFoot">
+            <span class="pcSeg"><span class="${d.status !== 'away' ? 'on' : ''}" data-pc="online"><i class="dot on"></i>${E(T('Online'))}</span><span class="${d.status === 'away' ? 'on' : ''}" data-pc="away"><i class="dot away"></i>${E(T('Away'))}</span></span>
+            ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'chart', title: 'Stats', attrs: 'data-pc="stats"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'users', title: 'Friends', attrs: 'data-pc="friends"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', title: 'Settings', attrs: 'data-pc="settings"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'logout', title: 'Log out', cls: 'pcOut', attrs: 'data-pc="logout"' })}
+        </div></div>`;
 }
+
+function redraw() { const c = document.getElementById('pcCard'); if (c) c.innerHTML = cardHtml(); }
 
 function closeFc() {
     const r = fc.app.root();
@@ -81,6 +169,7 @@ function closeFc() {
 
 function onClick(e) {
     e.stopPropagation();
+    if (onQuick(e, redraw)) return;
     const b = e.target.closest('[data-pc]');
     const a = b && b.dataset.pc;
     if (!a) return;
@@ -89,7 +178,7 @@ function onClick(e) {
         const opts = fcMenu ? fcMenu.querySelectorAll('.optionWrapper') : [];
         const el = opts[a === 'online' ? 0 : 1];
         if (el) el.click();
-        setTimeout(() => { const c = document.getElementById('pcCard'); if (c) c.innerHTML = cardHtml(); }, 120);
+        setTimeout(redraw, 120);
         return;
     }
     if (a === 'logout') {
@@ -103,6 +192,7 @@ function onClick(e) {
     if (m && m.open) m.open();
 }
 
+let unlayer = null;
 function show() {
     document.documentElement.classList.add('fcpc-on');
     let c = document.getElementById('pcCard');
@@ -110,6 +200,7 @@ function show() {
         c = document.createElement('div');
         c.id = 'pcCard';
         c.addEventListener('click', onClick);
+        c.addEventListener('input', onQuickInput);
         c.addEventListener('mousedown', (e) => e.stopPropagation());
         document.body.appendChild(c);
     }
@@ -117,11 +208,13 @@ function show() {
     const rail = document.querySelector('.mainToolbarWrapper .mainToolbar');
     c.style.left = ((rail ? rail.getBoundingClientRect().right : 72) + 10) + 'px';
     setTimeout(() => c.classList.add('in'), 16);
+    if (!unlayer) unlayer = fc.ui.layer(() => closeFc());
 }
 
 function hide() {
     const c = document.getElementById('pcCard');
     if (c) c.remove();
+    if (unlayer) { unlayer(); unlayer = null; }
 }
 
 // follow Fightcade's own open / closed state of the status menu
@@ -133,45 +226,59 @@ function poll() {
 
 const CSS = `
 html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; pointer-events: none !important; }
-#pcCard { position: fixed; bottom: 12px; z-index: 100005; width: 320px; overflow: hidden; border-radius: 12px;
-    background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 16px 40px rgba(0,0,0,.6); opacity: 0; transform: translateY(10px) scale(.98);
-    transition: opacity .15s ease, transform .18s cubic-bezier(.2,.9,.3,1.2); }
+#pcCard { position: fixed; bottom: 12px; z-index: calc(var(--fc-z-pop) + 4); width: 320px; max-height: calc(100vh - 24px); overflow-x: hidden; overflow-y: auto;
+    border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
+    box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); opacity: 0; transform: translateY(10px) scale(.98);
+    transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
 #pcCard.in { opacity: 1; transform: none; }
-#pcCard .pcBanner { height: 72px; background: linear-gradient(120deg, var(--fc-accent), #8b5cf6 60%, #22e3f2);
-    background-size: cover; background-position: center 30%; image-rendering: pixelated; }
-#pcCard .pcAva { position: absolute; top: 30px; left: 14px; width: 84px; height: 84px; border-radius: 50%; padding: 6px; box-sizing: border-box;
-    background: var(--fc-s0); }
-#pcCard .pcAva img { width: 72px; height: 72px; border-radius: 50%; display: block; background: var(--fc-s1); }
-#pcCard .pcAva i { position: absolute; right: 3px; bottom: 3px; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box;
-    border: 4px solid var(--fc-s0); background: #23a55a; }
-#pcCard .pcAva.away i { background: #f0b232; } #pcCard .pcAva.live i { background: #f23f43; }
-#pcCard .pcBody { padding: 48px 14px 12px; }
-#pcCard .pcName { font-size: 20px; font-weight: 800; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#pcCard .pcStatus { font-size: 13px; color: #23a55a; }
-#pcCard .pcStatus.away { color: #f0b232; } #pcCard .pcStatus.live { color: #f23f43; }
-#pcCard .pcGrid { display: flex; flex-wrap: wrap; margin: 10px -4px 0; }
-#pcCard .pcBox { flex: 1 1 40%; margin: 4px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.05); min-width: 0; }
-#pcCard .pcBox span { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
-#pcCard .pcBox b { display: block; margin-top: 2px; font-size: 18px; font-weight: 800; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#pcCard .pcBox.main b { font-size: 13px; line-height: 22px; }
-#pcCard .pcBox small { display: block; font-size: 11px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#pcCard .pcFriends { margin-top: 10px; }
-#pcCard .pcFriends span { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
-#pcCard .pcFriends div { display: flex; align-items: center; margin-top: 6px; }
+#pcCard .fc-ch-banner { height: 64px; image-rendering: pixelated; }
+#pcCard .fc-ch-body { padding-top: 44px; }
+#pcCard .fc-ch-av { top: -44px; }
+.fc-avatar > .st.dnd { background: var(--fc-danger); }
+#pcCard .pcSt { font-weight: 600; color: var(--fc-success); }
+#pcCard .pcSt.away { color: var(--fc-warning); } #pcCard .pcSt.playing, #pcCard .pcSt.dnd { color: var(--fc-danger); }
+#pcCard .pcBody { padding: 0 16px 12px; }
+#pcCard .fc-stat > small .fc-ic { margin-right: 3px; color: var(--fc-warning); }
+#pcCard .pcSec { margin-top: 10px; }
+#pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: 11px; }
+#pcCard .fcglSum { margin-top: 6px; }
+#pcCard .pcFriends { display: flex; align-items: center; }
 #pcCard .pcFriends img { width: 28px; height: 28px; margin-right: -6px; border-radius: 50%; box-shadow: 0 0 0 3px var(--fc-s0); background: var(--fc-s1); }
 #pcCard .pcFriends em { margin-left: 12px; font-style: normal; font-size: 12px; color: var(--fc-muted); }
-#pcCard .pcSep { height: 1px; margin: 10px 0 6px; background: var(--fc-divider); }
-#pcCard .pcRow { display: flex; align-items: center; height: 32px; padding: 0 8px; border-radius: 4px; cursor: pointer; font-weight: 500; }
-#pcCard .pcRow:hover { background: var(--fc-accent); color: #fff; }
-#pcCard .pcRow.on { font-weight: 700; color: var(--fc-head); }
-#pcCard .pcRow.on::after { content: ''; width: 14px; height: 14px; margin-left: auto; background: currentColor; -webkit-mask: var(--fc-i-check) center / contain no-repeat; }
-#pcCard .pcRow .dot { width: 10px; height: 10px; margin-right: 10px; border-radius: 50%; }
-#pcCard .pcRow .dot.on { background: #23a55a; } #pcCard .pcRow .dot.away { background: #f0b232; }
-#pcCard .pcRow.danger { margin-top: 4px; color: #f23f43; }
-#pcCard .pcRow.danger:hover { background: #f23f43; color: #fff; }
-#pcCard .pcBtns { display: flex; margin: 2px -3px 0; }
-#pcCard .pcBtns > .fc-btn { flex: 1; margin: 3px; height: 32px; }
+#pcCard .pcFoot { display: flex; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--fc-divider); }
+#pcCard .pcFoot > .fc-btn { margin-left: 2px; }
+#pcCard .pcFoot > .pcOut:hover { background: var(--fc-danger); color: #fff; }
+#pcCard .pcSeg { display: flex; flex: 1; margin-right: 6px; padding: 2px; border-radius: var(--fc-r2); background: var(--fc-s1); }
+#pcCard .pcSeg > span { display: flex; align-items: center; justify-content: center; flex: 1; height: 26px; border-radius: 6px; cursor: pointer;
+    font-size: 12.5px; font-weight: 600; color: var(--fc-muted); }
+#pcCard .pcSeg > span:hover { color: var(--fc-text); }
+#pcCard .pcSeg > span.on { background: var(--fc-s3); color: var(--fc-head); }
+#pcCard .pcSeg .dot { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+#pcCard .pcSeg .dot.on { background: var(--fc-success); } #pcCard .pcSeg .dot.away { background: var(--fc-warning); }
+
+/* quick settings (also in the ⋯ menu pop-up) */
+.qsLooks { display: flex; margin-bottom: 8px; }
+.qsLook { width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+    transition: transform var(--fc-fast); }
+.qsLook:hover { transform: scale(1.1); }
+.qsLook.on { box-shadow: 0 0 0 2px var(--fc-s0), 0 0 0 4px var(--fc-accent); }
+.qsTgs { display: flex; flex-wrap: wrap; margin: 0 -3px; }
+.qsTg + .qsTg { margin-top: 0; }
+.qsTg { display: flex; align-items: center; flex: 1 1 100%; min-width: 0; box-sizing: border-box; margin: 3px; padding: 6px 8px;
+    border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--fc-text); user-select: none; }
+.qsTg:hover { background: var(--fc-s3); }
+.qsTg > .fc-ic { width: 15px; height: 15px; flex: none; margin-right: 6px; color: var(--fc-muted); }
+.qsTg > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.qsTg > i { position: relative; flex: none; width: 24px; height: 14px; margin-left: 6px; border-radius: 7px; background: var(--fc-s4); transition: background var(--fc-fast); }
+.qsTg > i::after { content: ''; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; transition: left var(--fc-fast); }
+.qsTg.on > i { background: var(--fc-success); }
+.qsTg.on > i::after { left: 12px; }
+.qsTg.on > .fc-ic { color: var(--fc-success); }
+.qsTg.dnd.on > i { background: var(--fc-danger); }
+.qsTg.dnd.on > .fc-ic { color: var(--fc-danger); }
+.qsVol { display: flex; align-items: center; margin-top: 6px; padding: 0 4px; color: var(--fc-muted); }
+.qsVol .fc-ic { width: 14px; height: 14px; flex: none; margin-right: 8px; }
+.qsVol input { flex: 1; min-width: 0; }
 `;
 
 /* -------------------------------------------------------------------- module */
@@ -181,12 +288,14 @@ function start(f) {
     window.__fcProfileLoaded = true;
     fc.ui.style('pcStyle', CSS);
     document.documentElement.classList.add('fcpc-on');       // the card replaces Fightcade's small menu
-    fc.own(() => { fc.ui.style('pcStyle', null); hide(); document.documentElement.classList.remove('fcpc-on'); window.__fcProfileLoaded = false; });
+    fc.own(() => { fc.ui.style('pcStyle', null); hide(); if (qsPop) qsPop.close(); document.documentElement.classList.remove('fcpc-on'); window.__fcProfileLoaded = false; });
     fc.tick(poll, 150);
+    fc.on('dnd:changed', () => redraw());
+    fc.own(fc.ui.header.more({ id: 'quick-settings', label: N_('Quick settings'), icon: 'bolt', order: 90, fn: () => setTimeout(() => openQuick(), 0) }));
     return api;
 }
 
-const api = { _show: () => show(), _hide: () => hide(), _data: () => data() };
+const api = { _show: () => show(), _hide: () => hide(), _data: () => data(), openQuick: (a) => openQuick(a), _quick: () => QUICK.map(q => ({ id: q.id, on: q.on() })) };
 
 module.exports = { id: 'profile-card', name: 'Profile popout', start };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

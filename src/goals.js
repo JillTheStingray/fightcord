@@ -227,14 +227,16 @@ function togglePop(anchor) {
     if (pop) { pop.close(); return; }
     const box = document.createElement('div');
     box.className = 'fcglPop';
-    box.innerHTML = `<div class="h">${E(T('Your goals'))}</div>${listHtml()}<div class="f">${fc.ui.btn('Edit goals', { kind: 'sec', size: 'sm', icon: 'edit', act: 'edit' })}</div>`;
+    const o = overall();
+    box.innerHTML = fc.ui.popHead({ icon: 'target', title: T('Your goals'), sub: o ? E(T('{done} of {total} done', { done: o.done, total: o.total })) : '' }) +
+        `<div class="fc-pb">${listHtml()}</div>` + fc.ui.popFoot('', fc.ui.btn('Edit goals', { kind: 'sec', size: 'sm', icon: 'edit', act: 'edit' }));
     box.addEventListener('click', (e) => {
         if (!e.target.closest('[data-act="edit"]')) return;
         if (pop) pop.close();
         const st = fc.modules.get('fightcord');
         if (st && st.open) st.open('goals');
     });
-    const me = pop = fc.ui.popover(anchor, box, { width: 320, onClose: () => { if (pop === me) pop = null; } });
+    const me = pop = fc.ui.popover(anchor, box, { width: 320, cls: 'fc-pop-card', onClose: () => { if (pop === me) pop = null; } });
 }
 
 /* ----------------------------------------------------------------- settings */
@@ -319,8 +321,6 @@ html.fc-still .fcglBars > i { animation: none !important; }
 /* the HUD: tonight's record and the goals as one joined strip */
 .fcglPill.fcgl-joined { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.08); }
 
-.fcglPop .h { margin-bottom: 6px; font-size: 16px; font-weight: 700; color: var(--fc-head); }
-.fcglPop .f { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--fc-divider); }
 .fcglRow { display: flex; align-items: center; padding: 6px 0; }
 .fcglRow .fc-ring { flex: none; margin-right: 10px; }
 .fcglRow .tx { flex: 1; min-width: 0; }

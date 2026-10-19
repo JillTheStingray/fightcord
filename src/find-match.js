@@ -19,6 +19,7 @@ let store = null, cfg = null;          // find-match-config.json
 const T = (s, v) => fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : m));
 T.plural = (n, one, many, v) => T(n === 1 ? one : many, Object.assign({ n }, v));
 const E = (s) => fc.fmt.esc(s);
+const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
 const SHOW = 8;
 
@@ -131,7 +132,7 @@ function rowHtml(c) {
 function render(box) {
     const ctx = context();
     if (!ctx) {
-        box.innerHTML = `<div class="h">${E(T('Find a match'))}</div>${fc.ui.empty({ title: T('Open a game channel first.'), icon: 'target' })}`;
+        box.innerHTML = fc.ui.popHead({ icon: 'target', title: T('Find a match') }) + `<div class="fc-pb">${fc.ui.empty({ title: T('Open a game channel first.'), icon: 'target' })}</div>`;
         return;
     }
     const all = list(ctx);
@@ -141,10 +142,11 @@ function render(box) {
         win == null || win > 2 || !rankTxt ? T('any rank') : T('near your rank ({rank})', { rank: rankTxt }),
         T('up to {ms} ms', { ms: (+cfg.maxPing || 120) + widened * 60 })
     ].join(' · ');
-    box.innerHTML = `<div class="h">${E(T('Find a match'))}<small>${E(ctx.ch.name)}</small></div><div class="s">${E(sub)}</div>
-        ${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(rowHtml).join('')}</div>`
-            : `${fc.ui.empty({ title: T('Nobody fits right now.'), sub: T('Free players in this channel show up here.'), icon: 'target' })}${widened < 2 ? `<div class="fcfmWiden">${fc.ui.btn('Widen the search', { kind: 'sec', size: 'sm', icon: 'search', act: 'widen' })}</div>` : ''}`}
-        <div class="f"><span>${all.length > SHOW ? E(T('{n} more', { n: all.length - SHOW })) : ''}</span>${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'refresh', title: 'Refresh' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', act: 'settings', title: 'Settings' })}</div>`;
+    box.innerHTML = fc.ui.popHead({ icon: 'target', title: T('Find a match'), sub: E(sub) + ' · ' + E(shortName(ctx.ch.name)) }) +
+        `<div class="fc-pb">${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(rowHtml).join('')}</div>`
+            : `${fc.ui.empty({ title: T('Nobody fits right now.'), sub: T('Free players in this channel show up here.'), icon: 'target' })}${widened < 2 ? `<div class="fcfmWiden">${fc.ui.btn('Widen the search', { kind: 'sec', size: 'sm', icon: 'search', act: 'widen' })}</div>` : ''}`}</div>` +
+        fc.ui.popFoot(all.length > SHOW ? E(T('{n} more', { n: all.length - SHOW })) : '',
+            fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'refresh', title: 'Refresh' }) + fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', act: 'settings', title: 'Settings' }));
 }
 
 let pop = null;
@@ -155,7 +157,7 @@ function open(anchor) {
     box.className = 'fcfmPop';
     render(box);
     box.addEventListener('click', (e) => onClick(box, e));
-    const me = pop = fc.ui.popover(anchor || { x: window.innerWidth - 420, y: 60 }, box, { width: 400, onClose: () => { if (pop === me) pop = null; } });
+    const me = pop = fc.ui.popover(anchor || { x: window.innerWidth - 420, y: 60 }, box, { width: 400, cls: 'fc-pop-card', onClose: () => { if (pop === me) pop = null; } });
     // better odds once the leaderboard is in, better head-to-head once your sets are
     const ctx = context();
     const again = () => { if (pop === me && box.isConnected) render(box); };
@@ -213,9 +215,6 @@ const CSS = `
 .fcHdr .fcfmPill:hover { background: var(--fc-accent-h, var(--fc-accent)); filter: brightness(1.1); }
 .cbn-merged .fcHdr .fcfmPill { box-shadow: 0 2px 10px rgba(0,0,0,.35); }
 .fcfmPill svg { width: 16px; height: 16px; margin-right: 6px; }
-.fcfmPop .h { display: flex; align-items: baseline; font-size: 16px; font-weight: 700; color: var(--fc-head); }
-.fcfmPop .h small { flex: 1; min-width: 0; margin-left: 8px; font-size: 12px; font-weight: 500; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fcfmPop .s { margin: 2px 0 8px; font-size: 12px; color: var(--fc-muted); }
 .fcfmRow { display: flex; align-items: center; padding: 6px 4px; border-radius: 8px; }
 .fcfmRow:hover { background: rgba(255,255,255,.04); }
 .fcfmRow .fc-avatar { flex: none; margin-right: 10px; }
@@ -231,8 +230,6 @@ const CSS = `
 .fcfmOdds.good { color: var(--fc-success); } .fcfmOdds.bad { color: var(--fc-danger); }
 .fcfmRow .fc-btn { flex: none; margin-left: 8px; }
 .fcfmWiden { display: flex; justify-content: center; margin-top: 4px; }
-.fcfmPop .f { display: flex; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--fc-divider); font-size: 12px; color: var(--fc-muted); }
-.fcfmPop .f > span { flex: 1; }
 `;
 
 /* ------------------------------------------------------------------- module */

@@ -90,9 +90,9 @@ function editMatchup(rom, ch, rect) {
     const box = document.createElement('div');
     box.id = 'ntEdit';
     const r = matchupRecord(rom, ch), cur = matchup(rom, ch);
-    box.innerHTML = `<div class="h">${E(T('Matchup notes vs'))} <b>${E(ch)}</b>${r.w || r.l ? ` · ${E(fc.fmt.wl(r))}` : ''}</div>
-        <textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea>
-        <div class="f"><span class="fc-muted">${E(T('Shown when you face {char}', { char: ch }))}</span>${fc.ui.btn('Save', { size: 'sm', act: 'save' })}</div>`;
+    box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Matchup notes vs {char}', { char: ch }), sub: r.w || r.l ? E(T('Your record: {wl}', { wl: fc.fmt.wl(r) })) : '' }) +
+        `<div class="fc-pb"><textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea></div>` +
+        fc.ui.popFoot(E(T('Shown when you face {char}', { char: ch })), fc.ui.btn('Save', { size: 'sm', act: 'save' }));
     const save = () => { setMatchup(rom, ch, box.querySelector('textarea').value); closeEditor(); };
     box.addEventListener('keydown', (e) => {
         e.stopPropagation();
@@ -100,7 +100,7 @@ function editMatchup(rom, ch, rect) {
     }, true);
     box.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('[data-act="save"]')) save(); });
     const at = rect || { left: window.innerWidth / 2 - 160, right: window.innerWidth / 2 - 160, top: window.innerHeight / 3, bottom: window.innerHeight / 3, width: 0, height: 0 };
-    const me = editor = fc.ui.popover(at, box, { cls: 'ntPop', width: 320, onClose: () => { if (editor === me) editor = null; } });
+    const me = editor = fc.ui.popover(at, box, { cls: 'ntPop fc-pop-card', width: 320, onClose: () => { if (editor === me) editor = null; } });
     box.querySelector('textarea').focus();
 }
 
@@ -165,10 +165,10 @@ function edit(name, rect) {
     const draw = () => {
         const p = get(name);
         const on = new Set(p.tags.map(t => t.id));
-        box.innerHTML = `<div class="h">${E(T('Notes on'))} <b>${E(name)}</b></div>
-            <div class="tags">${cfg.tags.map(t => tagChip(t, ' pick' + (on.has(t.id) ? ' on' : ''))).join('')}</div>
-            <textarea class="fc-input" maxlength="500" placeholder="${E(T('Anything to remember about {name}…', { name }))}">${E(p.note)}</textarea>
-            <div class="f"><span class="fc-muted">${E(T('Only you can see this'))}</span>${fc.ui.btn('Save', { size: 'sm', act: 'save' })}</div>`;
+        box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Notes on {name}', { name }) }) +
+            `<div class="fc-pb"><div class="tags">${cfg.tags.map(t => tagChip(t, ' pick' + (on.has(t.id) ? ' on' : ''))).join('')}</div>
+            <textarea class="fc-input" maxlength="500" placeholder="${E(T('Anything to remember about {name}…', { name }))}">${E(p.note)}</textarea></div>` +
+            fc.ui.popFoot(E(T('Only you can see this')), fc.ui.btn('Save', { size: 'sm', act: 'save' }));
     };
     draw();
     const save = () => { set(name, { note: box.querySelector('textarea').value.trim() }); closeEditor(); };
@@ -189,7 +189,7 @@ function edit(name, rect) {
         if (e.target.closest('[data-act="save"]')) save();
     });
     const r = rect || { left: window.innerWidth / 2 - 160, right: window.innerWidth / 2 - 160, top: window.innerHeight / 3, bottom: window.innerHeight / 3, width: 0, height: 0 };
-    const me = editor = fc.ui.popover(r, box, { cls: 'ntPop', width: 320, onClose: () => { if (editor === me) editor = null; } });
+    const me = editor = fc.ui.popover(r, box, { cls: 'ntPop fc-pop-card', width: 320, onClose: () => { if (editor === me) editor = null; } });
     box.querySelector('textarea').focus();
 }
 
@@ -242,10 +242,7 @@ const CSS = `
 .ntDots { display: inline-flex; align-items: center; margin-left: 5px; vertical-align: middle; }
 .ntDots i { width: 7px; height: 7px; margin-right: 2px; border-radius: 50%; display: inline-block; }
 .ntDots i.n { background: transparent; box-shadow: inset 0 0 0 1.5px var(--fc-muted); }
-.fc-pop.ntPop { padding: 12px 14px; }
-#ntEdit .h { font-size: 14px; color: var(--fc-muted); }
-#ntEdit .h b { color: var(--fc-head); }
-#ntEdit .tags { display: flex; flex-wrap: wrap; margin: 8px -2px; }
+#ntEdit .tags { display: flex; flex-wrap: wrap; margin: 0 -2px 8px; }
 #ntEdit .ntChip.pick { cursor: pointer; opacity: .55; transition: opacity var(--fc-fast), box-shadow var(--fc-fast); }
 #ntEdit .ntChip.pick:hover { opacity: .85; }
 #ntEdit .ntChip.pick.on { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--c); }

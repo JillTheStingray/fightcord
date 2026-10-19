@@ -1808,6 +1808,20 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
   color: var(--fc-warning); background: rgba(240,178,50,.12); }
 .fc-warn > .fc-ic { width: 14px; height: 14px; flex: none; margin-right: 6px; }
 
+/* pop-up parts (ui.popHead / ui.popFoot), 2.15 */
+.fc-pop.fc-pop-card { padding: 0; }
+.fc-ph { display: flex; align-items: center; padding: 12px 8px 8px 16px; }
+.fc-ph > .fc-ic { width: 18px; height: 18px; flex: none; margin-right: 10px; color: var(--fc-accent); }
+.fc-ph .tt { flex: 1; min-width: 0; }
+.fc-ph .tt > b { display: block; font: 700 16px/1.25 var(--fc-font); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-ph .tt > span { display: block; margin-top: 1px; font-size: 12px; line-height: 1.35; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-ph > .fc-btn, .fc-ph > .fc-chip { flex: none; margin-left: 4px; }
+.fc-pb { padding: 0 12px 10px; }
+.fc-pf { display: flex; align-items: center; padding: 8px 12px 10px; border-top: 1px solid var(--fc-divider); }
+.fc-pf .l { flex: 1; min-width: 0; margin-right: 8px; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-pf .r { display: flex; align-items: center; flex: none; }
+.fc-pf .r > * + * { margin-left: 6px; }
+
 /* the channel header row (ui.header) */
 .channelActions.fcHdr-native > .testGame, .channelActions.fcHdr-native > .trainingGame { display: none !important; }
 .fcHdr { display: flex; align-items: center; }
@@ -1946,6 +1960,7 @@ const ui = {
         if (!hasDom()) return { close() {} };
         ensureStyle();
         const p = o || {};
+        if (coreStore && coreStore.data.dnd && !(p.actions || []).length && !p.urgent) return { close() {} };
         let host = document.getElementById('fcToasts');
         if (!host) { host = document.createElement('div'); host.id = 'fcToasts'; host.className = 'fc-toasts'; document.body.appendChild(host); }
         // the same toast again: bump it instead of stacking copies
@@ -2001,6 +2016,7 @@ const ui = {
         let closed = false;
         const outside = (e) => { if (!el.contains(e.target) && !(anchor instanceof Element && anchor.contains(e.target))) close(); };
         const unlayer = pushLayer(() => close());
+        el.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-act="pop-close"]')) { e.stopPropagation(); close(); } }, true);
         const close = () => {
             if (closed) return;
             closed = true;
@@ -2199,6 +2215,29 @@ const ui = {
     warn(text, title) {
         const t = Array.isArray(text) ? text.filter(Boolean).join(' · ') : text;
         return t ? `<div class="fc-warn"${title ? ` title="${fmt.esc(title)}"` : ''}>${ui.icon('warn')}<span>${fmt.esc(t)}</span></div>` : '';
+    },
+
+    // Pop-up parts (2.15), so every pop-up from the header looks the same:
+    //   fc.ui.popover(anchor, popHead({...}) + '<div class="fc-pb">…</div>' + popFoot(…), { cls: 'fc-pop-card' })
+    // the title row: icon, title (text), sub (HTML), extra (HTML before the close button), close (default on)
+    popHead(o) {
+        const p = o || {};
+        return `<div class="fc-ph">${p.icon ? ui.icon(p.icon) : ''}<div class="tt"><b>${fmt.esc(p.title || '')}</b>${p.sub ? `<span>${p.sub}</span>` : ''}</div>` +
+            (p.extra || '') + (p.close === false ? '' : ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'pop-close', title: 'Close (Esc)' })) + '</div>';
+    },
+    // the bottom row: a muted note (or a button) on the left, buttons on the right (both HTML)
+    popFoot(left, right) {
+        return `<div class="fc-pf"><div class="l">${left || ''}</div><div class="r">${right || ''}</div></div>`;
+    },
+
+    // Do not disturb (2.15): only toasts you can act on (challenges, mentions) come through
+    dnd(on) {
+        if (on === undefined) return !!(coreStore && coreStore.data.dnd);
+        if (!coreStore) return false;
+        coreStore.data.dnd = !!on;
+        coreStore.save();
+        emit('dnd:changed', { on: !!on });
+        return !!on;
     }
 };
 
@@ -2535,7 +2574,7 @@ function boot(fcade, opts) {
     bootInfo.at = now();
     bootInfo.version = o.version || readJson(path.join(DIR, 'fightcord.json'), {}).version || '';
     safeMode = !!o.safe;
-    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full', myElo: {}, lang: 'auto' });
+    coreStore = configFor(CORE)('fightcord-core', { animations: true, sfxVolume: 0.6, debugLog: false, profile: 'full', myElo: {}, lang: 'auto', dnd: false });
     // the language, before any module starts (the harness can force one: opts.lang)
     setLang(o.lang || pickLang(coreStore.data.lang));
     coreStore.on(applyCoreSettings);

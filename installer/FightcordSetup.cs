@@ -2,7 +2,7 @@
 //
 // Fightcade (a nativefier build) runs resources\app\inject\inject.js at startup.
 // Fightcord puts its own loader there and its plugins in inject\fightcord\.
-// Whatever was there before (the Cerberus "FC2 Injector" loader, inject\plugins\,
+// Whatever was there before (another mod's loader, inject\plugins\,
 // inject\config.json) is copied to resources\app\fightcord-backup\<time>\ first,
 // then removed; Uninstall can put it back.
 //
@@ -27,8 +27,8 @@ using System.Windows.Forms;
 
 [assembly: AssemblyTitle("Fightcord Setup")]
 [assembly: AssemblyProduct("Fightcord")]
-[assembly: AssemblyVersion("2.14.0.0")]
-[assembly: AssemblyFileVersion("2.14.0.0")]
+[assembly: AssemblyVersion("2.15.0.0")]
+[assembly: AssemblyFileVersion("2.15.0.0")]
 
 namespace Fightcord
 {
@@ -510,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "2.14.0";
+        const string Version = "2.15.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 
@@ -744,9 +744,10 @@ namespace Fightcord
             try { return File.ReadAllText(Path.Combine(Inject, "inject.js")).Contains(Marker); } catch { return false; }
         }
 
-        bool HasCerberus()
+        // another mod's loader in inject.js (not ours): a previous Fightcade mod
+        bool HasPreviousMod()
         {
-            return File.Exists(Path.Combine(OldPlugins, "cerberus.js")) || Directory.Exists(Path.Combine(OldPlugins, "cerberus"));
+            return File.Exists(Path.Combine(Inject, "inject.js")) && !OurLoader();
         }
 
         bool HasOldSetup()
@@ -801,7 +802,7 @@ namespace Fightcord
             lines.Add(new KeyValuePair<char, string>('y', L.T("Fightcade found.")));
             if (ours) lines.Add(new KeyValuePair<char, string>('y', v == Version ? L.F("Fightcord {0} is installed \u2014 up to date.", v) : L.F("Fightcord {0} is installed \u2014 this setup has {1}.", v, Version)));
             else lines.Add(new KeyValuePair<char, string>('i', L.T("Fightcord is not installed yet.")));
-            if (HasCerberus()) lines.Add(new KeyValuePair<char, string>('i', L.T("A previous Fightcade mod was found \u2014 it will be backed up and removed.")));
+            if (HasPreviousMod()) lines.Add(new KeyValuePair<char, string>('i', L.T("A previous Fightcade mod was found \u2014 it will be backed up and removed.")));
             else if (HasOldSetup()) lines.Add(new KeyValuePair<char, string>('i', L.T("An older plugin setup was found \u2014 it will be backed up and replaced.")));
             if (FightcadeRunning()) lines.Add(new KeyValuePair<char, string>('!', L.T("Fightcade is open \u2014 it has to be closed to install.")));
             status.SetLines(lines);
@@ -891,7 +892,7 @@ namespace Fightcord
             {
                 // Moved, not copied: one rename, no matter how deep node_modules goes
                 // (a file-by-file copy trips the 260-character path limit there).
-                bool cerb = HasCerberus();
+                bool prevMod = HasPreviousMod();
                 string bk = Path.Combine(BackupRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss"));
                 Directory.CreateDirectory(bk);
                 Log(L.F("Backing up the current setup to {0}", bk));
@@ -914,7 +915,7 @@ namespace Fightcord
                 string snaps = Path.Combine(was, "fc-snapshots"), snapsTo = Path.Combine(FcordDir, "fc-snapshots");
                 if (Directory.Exists(snaps) && !Directory.Exists(snapsTo)) { Directory.Move(snaps, snapsTo); Log("  fc-snapshots\\"); }
 
-                Log(L.T(cerb ? "The previous mod and its loader are out (kept in the backup)" : "The old loader is out (kept in the backup)"));
+                Log(L.T(prevMod ? "The previous mod and its loader are out (kept in the backup)" : "The old loader is out (kept in the backup)"));
             }
 
             Log(L.F("Installing Fightcord {0}", Version));

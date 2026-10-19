@@ -376,7 +376,7 @@ function onChipClick(e) {
 
 function ensureChipBar(wrapper) {
     if (wrapper.querySelector('.fcm-chips')) return;
-    const anchor = wrapper.querySelector('#cerbPlayerSearchContainer') || wrapper.querySelector('.usersOnlineTitle');
+    const anchor = wrapper.querySelector('.usersOnlineTitle');
     if (!anchor || !anchor.parentNode) return;
     const bar = document.createElement('div');
     bar.className = 'fcm-chips';
@@ -407,7 +407,6 @@ ${P} .userItem.fcm-row .fcScoutBadge { display: none !important; }
 ${P} .userItem.fcm-row:hover .fcScoutBadge { display: inline !important; }
 ${P} .userItem.fcm-row .nameAndGame .playerName {
     display: inline-block !important; max-width: calc(100% - 64px) !important; vertical-align: bottom !important; }
-${P} .userItem.fcm-row .cerb-rank-badge { order: 4 !important; margin: 0 0 0 6px !important; font-size: 12px !important; }
 ${P} .fcm-sub { display: block; font-size: 12px; line-height: 16px; color: var(--fc-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
 ${P} .fcm-flag { display: inline-block; width: 16px; height: 11px; margin-right: 5px; vertical-align: -1px;

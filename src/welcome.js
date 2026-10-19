@@ -90,6 +90,10 @@ const NEWS = [
     ] },
     { v: '2.14', title: 'Fightcord 2.14', items: [
         ['lock', N_('Private lobbies'), N_('Your own invite-only lobby, like a Discord server: a chat that keeps its history, a member list with Challenge, and a voice room. The + under your game channels makes one.')]
+    ] },
+    { v: '2.15', title: 'Fightcord 2.15', items: [
+        ['share', N_('Pictures and GIFs in the chat'), N_('Paste or drop a picture, or click the + in the message box. Fightcord players see it; star GIFs and send them again from the GIF button.')],
+        ['bolt', N_('Quick settings and Do not disturb'), N_('Click your avatar: a new profile card with your Look, voice, streamer mode, music and Do not disturb in one place.')]
     ] }
 ];
 

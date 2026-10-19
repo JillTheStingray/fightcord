@@ -409,26 +409,62 @@ function toggleSessionCard(anchor) {
         const score = (s.mine != null && s.theirs != null) ? s.mine + '–' + s.theirs : '—';
         return `<tr><td>${mark}</td><td class="o">${E(s.opp || '?')}</td><td class="s">${score}</td><td class="t">${fmtClock(s.at)}</td></tr>`;
     }).join('');
-    box.innerHTML = `
-        <div class="h">${E(T('Tonight'))} <span>— ${r.w}W · ${r.l}L${r.d ? ' · ' + r.d + 'D' : ''}${r.unknown ? ' · ' + E(T('{n} unknown', { n: r.unknown })) : ''}</span></div>
-        ${st.n >= 2 ? `<div class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${st.kind === 'won' ? fc.ui.ic('flame', 'fill') + E(T('{n} win streak', { n: st.n })) : E(T('{n} losses in a row', { n: st.n }))}</div>` : ''}
-        <table>${rows}</table>
-        <div class="f">${fc.ui.btn('Clear', { kind: 'ghost', size: 'sm', act: 'clear', title: 'Start a fresh session (the history is kept)' })}` +
-            `${sets.length ? fc.ui.btn('Share', { kind: 'ghost', size: 'sm', icon: 'share', act: 'share' }) : ''}` +
-            `${fc.ui.btn('All stats', { kind: 'sec', size: 'sm', icon: 'chart', act: 'all' })}</div>
-        <div class="n">${E(T('History kept · {n} sets', { n: fc.fmt.num(H().all().length) }))}</div>`;
+    const streak = st.n >= 2 ? `<span class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${st.kind === 'won' ? fc.ui.ic('flame', 'fill') + E(T('{n} win streak', { n: st.n })) : E(T('{n} losses in a row', { n: st.n }))}</span>` : '';
+    const nightly = nightHtml(sessionSets());
+    box.innerHTML = fc.ui.popHead({ icon: 'trophy', title: T('Tonight'), extra: streak,
+        sub: E(r.w + 'W · ' + r.l + 'L' + (r.d ? ' · ' + r.d + 'D' : '') + (r.unknown ? ' · ' + T('{n} unknown', { n: r.unknown }) : '')) }) +
+        `<div class="fc-pb">${nightly}<table>${rows}</table></div>` +
+        fc.ui.popFoot('',
+            fc.ui.btn('Clear', { kind: 'ghost', size: 'sm', act: 'clear', title: 'Start a fresh session (the history is kept)' }) +
+            (sets.length ? fc.ui.btn('Share', { kind: 'ghost', size: 'sm', icon: 'share', act: 'share' }) : '') +
+            fc.ui.btn('All stats', { kind: 'sec', size: 'sm', icon: 'chart', act: 'all', title: T('History kept · {n} sets', { n: fc.fmt.num(H().all().length) }) }));
     box.addEventListener('click', (e) => {
         const a = e.target.closest('[data-act]');
         if (!a) return;
         e.stopPropagation();
         const act = a.getAttribute('data-act');
+        if (act === 'pop-close') return;
         closeSessionCard();
         const stats = fc.modules.get('stats');
         if (act === 'share' && stats && stats.share) stats.share();
         else if (act === 'all' && stats && stats.open) stats.open();
         else if (act === 'clear') { cfg.sessionClearedAt = Date.now(); store.save(); refreshSessionPill(); }
     });
-    const me = sessionPop = fc.ui.popover(anchor, box, { cls: 'fcmsPop', width: 320, onClose: () => { if (sessionPop === me) sessionPop = null; } });
+    const me = sessionPop = fc.ui.popover(anchor, box, { cls: 'fcmsPop fc-pop-card', width: 340, onClose: () => { if (sessionPop === me) sessionPop = null; } });
+}
+
+// the night at a glance (2.15): a line of your wins minus losses, the best win and the toughest opponent
+function nightStats(sets) {
+    const known = sets.filter(s => s.result === 'won' || s.result === 'lost');
+    let run = 0;
+    const points = [[0, 0]].concat(known.map((s, i) => [i + 1, run += s.result === 'won' ? 1 : -1]));
+    const strength = (s) => (s.oppElo || 0) * 10 + (s.oppRank || 0);
+    const wins = known.filter(s => s.result === 'won' && s.opp);
+    const best = wins.length ? wins.reduce((a, b) => (strength(b) > strength(a) ? b : a)) : null;
+    const per = new Map();
+    known.forEach(s => {
+        if (!s.opp) return;
+        const k = s.opp.toLowerCase();
+        const o = per.get(k) || { opp: s.opp, w: 0, l: 0 };
+        if (s.result === 'won') o.w++; else o.l++;
+        per.set(k, o);
+    });
+    const losers = [...per.values()].filter(o => o.l > 0).sort((a, b) => (b.l - b.w) - (a.l - a.w) || b.l - a.l);
+    return { points, best, toughest: losers.length && losers[0].l > losers[0].w ? losers[0] : null, n: known.length };
+}
+function nightHtml(sets) {
+    const ns = nightStats(sets);
+    if (ns.n < 3) return '';
+    const last = ns.points[ns.points.length - 1][1];
+    const span = Math.max(1, ...ns.points.map(p => Math.abs(p[1])));        // 0 in the middle
+    const chart = fc.ui.chart.line([{ points: ns.points, area: true, color: last >= 0 ? 'var(--fc-success)' : 'var(--fc-danger)' }], { w: 312, h: 64, pad: 6, grid: 2, yMin: -span, yMax: span, dots: ns.n <= 20 });
+    const items = [];
+    if (ns.best) {
+        const sub = [ns.best.oppRank ? T('Rank {rank}', { rank: fc.data.rankLetter(ns.best.oppRank) }) : '', ns.best.oppElo ? fc.fmt.num(ns.best.oppElo) + ' ELO' : ''].filter(Boolean).join(' · ');
+        items.push({ label: T('Best win'), value: E(ns.best.opp), sub: E(sub), tone: 'up' });
+    }
+    if (ns.toughest) items.push({ label: T('Toughest'), value: E(ns.toughest.opp), sub: E(ns.toughest.w + '–' + ns.toughest.l), tone: 'down' });
+    return `<div class="fcmsNight">${chart}</div>${items.length ? fc.ui.stats(items) : ''}`;
 }
 
 /* ----------------------------------------------------------------- results */
@@ -772,23 +808,22 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring { animation: n
 .fcmsPill.fcms-joined { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .fcmsPill .fcmsHot { display: inline-flex; align-items: center; margin-left: 8px; color: #ff8a3d; font-weight: 800; }
 .fcmsPill .fcmsHot .fc-ic { width: 14px; height: 14px; margin-right: 2px; }
-.fc-pop.fcmsPop { padding: 14px 16px 10px; max-height: 70vh; }
-#fcmsSession .h { font-size: 16px; font-weight: 700; color: var(--fc-head); }
-#fcmsSession .h span { font-weight: 500; color: var(--fc-muted); font-size: 14px; }
-#fcmsSession .st { display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+.fc-pop.fcmsPop { max-height: 70vh; }
+#fcmsSession .st { display: inline-flex; align-items: center; margin-right: 4px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+#fcmsSession .st .fc-ic { margin-right: 3px; }
+#fcmsSession .fcmsNight { margin: 2px 0 0; padding: 6px 4px 2px; border-radius: var(--fc-r2); background: var(--fc-s1); line-height: 0; }
+#fcmsSession .fcmsNight .fc-chart { width: 100%; height: auto; }
+#fcmsSession .fc-stats { margin-top: 8px; }
 #fcmsSession .st.hot { background: #ffd166; color: #3a2400; }
 #fcmsSession .st.cold { background: rgba(242,63,67,.15); color: var(--fc-danger); }
-#fcmsSession table { width: 100%; margin-top: 10px; border-collapse: collapse; table-layout: fixed; }
+#fcmsSession table { width: 100%; margin-top: 4px; border-collapse: collapse; table-layout: fixed; }
 #fcmsSession td { padding: 4px 0; font-size: 13px; }
 #fcmsSession td:first-child { width: 20px; }
 #fcmsSession td.o { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
 #fcmsSession td.s { width: 44px; text-align: right; color: var(--fc-head); }
 #fcmsSession td.t { width: 70px; text-align: right; color: var(--fc-muted); font-size: 12px; }
 #fcmsSession b.w { color: var(--fc-success); } #fcmsSession b.l { color: var(--fc-danger); } #fcmsSession b.u { color: #80848e; }
-#fcmsSession .f { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--fc-divider); }
-#fcmsSession .f > .fc-btn { margin-left: 6px; }
-#fcmsSession .f > .fc-btn:first-child { margin: 0 auto 0 0; }
-#fcmsSession .n { margin-top: 6px; font-size: 11px; color: var(--fc-faint); text-align: right; }
+
 `;
 
 /* -------------------------------------------------------------------- module */
@@ -866,5 +901,5 @@ const api = {
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start };
+module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start, nightStats };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

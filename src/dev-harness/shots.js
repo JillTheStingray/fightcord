@@ -150,6 +150,47 @@ const SCENES = [
     // private lobbies: made-up members and chat (the harness has no relays)
     { name: 'lobby', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ more: [{ id: 'demo1', name: 'Parry Club', seeds: ['0'], epoch: 0, lastRead: 0 }] }); await sleep(1500);` },
     { name: 'lobby-voice', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ voice: true }); await sleep(1500);` },
+    // 2.15 pop-ups: the profile popout with quick settings, Tonight, quick settings from the ⋯ menu, notes
+    { name: 'pop-profile', snap: CHANNEL, run: `fightcord.modules.get('profile-card')._show(); await sleep(900);` },
+    { name: 'pop-tonight', snap: CHANNEL, run: `document.querySelector('.fcmsPill').click(); await sleep(900);` },
+    { name: 'pop-quick', snap: CHANNEL, run: `fightcord.modules.get('profile-card').openQuick(); await sleep(900);` },
+    { name: 'pop-notes', snap: CHANNEL, run: `const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x))[4]; fightcord.modules.get('notes').edit(n); await sleep(800);` },
+    // pictures in chat: a message that's only a GIF link, and the upload card for a pasted picture
+    { name: 'chat-media', snap: CHANNEL, wait: 9000, run: `
+        const lines = [...fightcord.app.channelElement().querySelectorAll('.messageWrapper.chat .line')];
+        const ln = lines[lines.length - 1];
+        const bc = ln.querySelector('.blocksContainer');
+        [...bc.childNodes].forEach(n => { if (!(n.classList && n.classList.contains('fcxEmbed'))) n.remove(); });
+        const sp = document.createElement('span'); sp.className = 'regular'; sp.textContent = 'https://giphy.com/gifs/street-fighter-ryu-3o7TKSjRrfIPjeiVyM'; bc.appendChild(sp);
+        delete ln.dataset.fcxUrl;
+        fightcord.modules.get('chat-extras')._sweep();
+        await sleep(4000);
+        const cw = fightcord.app.channelElement(); cw.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
+        await sleep(500);` },
+    { name: 'upload-card', snap: CHANNEL, run: `
+        const c = document.createElement('canvas'); c.width = 640; c.height = 360;
+        const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 640, 360); gr.addColorStop(0, '#5865f2'); gr.addColorStop(1, '#eb459e');
+        g.fillStyle = gr; g.fillRect(0, 0, 640, 360); g.fillStyle = '#fff'; g.font = 'bold 96px sans-serif'; g.textAlign = 'center'; g.fillText('GG 3-2', 320, 210);
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        fightcord.modules.get('uploads').offer(new File([blob], 'shot.png', { type: 'image/png' }), fightcord.app.chatInput());
+        await sleep(900);` },
+    { name: 'gif-favs', snap: CHANNEL, run: `
+        const up = fightcord.modules.get('uploads');
+        ['3o7TKSjRrfIPjeiVyM', 'l0HlNQ03J5JxX6lva', '3o6Zt481isNVuQI1l6', 'xT9IgG50Fb7Mi0prBC'].forEach((id, i) => up.toggleFav({ link: 'https://giphy.com/gifs/fight-' + id, src: 'https://media.giphy.com/media/' + id + '/giphy.mp4', kind: 'gifv' }));
+        document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
+        const btn = fightcord.app.channelElement().querySelector('.fcupGifBtn');
+        up.openPicker(btn, fightcord.app.chatInput());
+        await sleep(3500);` },
+    { name: 'gif-search', snap: CHANNEL, run: `
+        const data = atob('eyJ1bml2ZXJzYWwiOnsic2VhcmNoIjp7InEiOnsicmVzdWx0cyI6W3siaXRlbXVybCI6Imh0dHBzOi8vdGVub3IuY29tL3ZpZXcvcnl1LXN0cmVldC1maWdodGVyLXBpeGVscy1zcHJpdGUtYXR0YWNrLWdpZi0xNzAxNTE3MCIsImgxX3RpdGxlIjoiUnl1IFN0cmVldCBGaWdodGVyIiwibWVkaWFfZm9ybWF0cyI6eyJ0aW55bXA0Ijp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tLzV3ZHNsSkJzYVZjQUFBUDEvcnl1LXN0cmVldC1maWdodGVyLm1wNCJ9LCJ0aW55Z2lmIjp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tLzV3ZHNsSkJzYVZjQUFBQU0vcnl1LXN0cmVldC1maWdodGVyLmdpZiJ9fX0seyJpdGVtdXJsIjoiaHR0cHM6Ly90ZW5vci5jb20vdmlldy9yeXUtc3RyZWV0LWZpZ2h0ZXItYW5pbWUtaGFkb3VrZW4tZ2lmLTI0NzkwMjA5IiwiaDFfdGl0bGUiOiJSeXUgU3RyZWV0IEZpZ2h0ZXIgQW5pbWUiLCJtZWRpYV9mb3JtYXRzIjp7InRpbnltcDQiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vWmdGTnVEZExkaklBQUFQMS9yeXUtc3RyZWV0LWZpZ2h0ZXItYW5pbWUubXA0In0sInRpbnlnaWYiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vWmdGTnVEZExkaklBQUFBTS9yeXUtc3RyZWV0LWZpZ2h0ZXItYW5pbWUuZ2lmIn19fSx7Iml0ZW11cmwiOiJodHRwczovL3Rlbm9yLmNvbS92aWV3L3N1cGVyLXN0cmVldC1maWdodGVyLWlpLS0tc2hvcnQtaW50cm8tc2YyLWdpZi0xNjIzNjk4ODU4MjIwODU2NDg5NiIsImgxX3RpdGxlIjoiU3VwZXIgU3RyZWV0IEZpZ2h0ZXIgSWkgLSBTaG9ydCBJbnRybyBTZjIiLCJtZWRpYV9mb3JtYXRzIjp7InRpbnltcDQiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vNFZWZkZwaWRicUFBQUFQMS9zdXBlci1zdHJlZXQtZmlnaHRlci1paS0tLXNob3J0LWludHJvLXNmMi5tcDQifSwidGlueWdpZiI6eyJ1cmwiOiJodHRwczovL21lZGlhLnRlbm9yLmNvbS80VlZmRnBpZGJxQUFBQUFNL3N1cGVyLXN0cmVldC1maWdodGVyLWlpLS0tc2hvcnQtaW50cm8tc2YyLmdpZiJ9fX0seyJpdGVtdXJsIjoiaHR0cHM6Ly90ZW5vci5jb20vdmlldy9yeXUtc3RyZWV0LWZpZ2h0ZXItaGFkb3VrZW4tc2hpbmt1dS1maXJlLWJhbGwtZ2lmLTQ5ODY3MzUiLCJoMV90aXRsZSI6IlJ5dSBDaGFyZ2luZyBVcCBUaGF0IFNoaW5rdXUiLCJtZWRpYV9mb3JtYXRzIjp7InRpbnltcDQiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vYlJaa1I4ZjFuSkFBQUFQMS9yeXUtc3RyZWV0LWZpZ2h0ZXIubXA0In0sInRpbnlnaWYiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vYlJaa1I4ZjFuSkFBQUFBTS9yeXUtc3RyZWV0LWZpZ2h0ZXIuZ2lmIn19fSx7Iml0ZW11cmwiOiJodHRwczovL3Rlbm9yLmNvbS92aWV3L3J5dS1oYWRvdWtlbi1zdHJlZXQtZmlnaHRlci1wb3dlci1naWYtOTM1Mjc4NyIsImgxX3RpdGxlIjoiUnl1IEhhZG91a2VuIiwibWVkaWFfZm9ybWF0cyI6eyJ0aW55bXA0Ijp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL2hRQTZqazJGeHdRQUFBUDEvcnl1LWhhZG91a2VuLm1wNCJ9LCJ0aW55Z2lmIjp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL2hRQTZqazJGeHdRQUFBQU0vcnl1LWhhZG91a2VuLmdpZiJ9fX0seyJpdGVtdXJsIjoiaHR0cHM6Ly90ZW5vci5jb20vdmlldy9yeXUtaGFkb3VrZW4tdHJhbnNwYXJlbnQtZ2lmLWdpZi02ODgxNjYwMTQ4NDU0OTg1ODYxIiwiaDFfdGl0bGUiOiJSeXUgSGFkb3VrZW4gU3RpY2tlciIsIm1lZGlhX2Zvcm1hdHMiOnsidGlueW1wNCI6eyJ1cmwiOiJodHRwczovL21lZGlhLnRlbm9yLmNvbS9YNENSY2NXZkVJVUFBQVAxL3J5dS1oYWRvdWtlbi5tcDQifSwidGlueWdpZiI6eyJ1cmwiOiJodHRwczovL21lZGlhLnRlbm9yLmNvbS9YNENSY2NXZkVJVUFBQUFNL3J5dS1oYWRvdWtlbi5naWYifX19LHsiaXRlbXVybCI6Imh0dHBzOi8vdGVub3IuY29tL3ZpZXcva2l0a2F0LWhhZG91a2VuLWZyaWVuZHpvbmVkLXJ5dS1naWYtOTE4MzA3ODg0MzI5NTc3MzE3OCIsImgxX3RpdGxlIjoiS2l0a2F0IEhhZG91a2VuIiwibWVkaWFfZm9ybWF0cyI6eyJ0aW55bXA0Ijp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL2YzRFpqYzhNc2ZvQUFBUDEva2l0a2F0LWhhZG91a2VuLm1wNCJ9LCJ0aW55Z2lmIjp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL2YzRFpqYzhNc2ZvQUFBQU0va2l0a2F0LWhhZG91a2VuLmdpZiJ9fX0seyJpdGVtdXJsIjoiaHR0cHM6Ly90ZW5vci5jb20vdmlldy9yeGQtcmFkaWFudC1ibG9ja2NoYWluLXJhZGlhbnQtZ2lmLTE3NTkxMDU3MDM2MTc4MzExMzIxIiwiaDFfdGl0bGUiOiJSeGQgUmFkaWFudCBCbG9ja2NoYWluIiwibWVkaWFfZm9ybWF0cyI6eyJ0aW55bXA0Ijp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tLzlCXzlMRWtMU0prQUFBUDEvcnhkLXJhZGlhbnQtYmxvY2tjaGFpbi5tcDQifSwidGlueWdpZiI6eyJ1cmwiOiJodHRwczovL21lZGlhLnRlbm9yLmNvbS85Ql85TEVrTFNKa0FBQUFNL3J4ZC1yYWRpYW50LWJsb2NrY2hhaW4uZ2lmIn19fSx7Iml0ZW11cmwiOiJodHRwczovL3Rlbm9yLmNvbS92aWV3L2tlbi1tYXN0ZXJzLXN0cmVldC1maWdodGVyLWtlbi1jYXBjb20tZ2lmLTU1MDg2NjUiLCJoMV90aXRsZSI6IktlbiBNYXN0ZXJzIFN0cmVldCBGaWdodGVyIiwibWVkaWFfZm9ybWF0cyI6eyJ0aW55bXA0Ijp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL204aGpQaXZtVWdvQUFBUDEva2VuLW1hc3RlcnMtc3RyZWV0LWZpZ2h0ZXIubXA0In0sInRpbnlnaWYiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vbThoalBpdm1VZ29BQUFBTS9rZW4tbWFzdGVycy1zdHJlZXQtZmlnaHRlci5naWYifX19LHsiaXRlbXVybCI6Imh0dHBzOi8vdGVub3IuY29tL3ZpZXcvc3VwZXItbmludGVuZG8tc3RyZWV0LWZpZ2h0ZXItMi1zdHJlZXQtZmlnaHRlci1paS1yeXUtaGFkb2tlbi1naWYtMjQzNTk1ODkiLCJoMV90aXRsZSI6IlN1cGVyIE5pbnRlbmRvIFN0cmVldCBGaWdodGVyIDIiLCJtZWRpYV9mb3JtYXRzIjp7InRpbnltcDQiOnsidXJsIjoiaHR0cHM6Ly9tZWRpYS50ZW5vci5jb20vVFVFUlktVGtEOThBQUFQMS9zdXBlci1uaW50ZW5kby1zdHJlZXQtZmlnaHRlci0yLm1wNCJ9LCJ0aW55Z2lmIjp7InVybCI6Imh0dHBzOi8vbWVkaWEudGVub3IuY29tL1RVRVJZLVRrRDk4QUFBQU0vc3VwZXItbmludGVuZG8tc3RyZWV0LWZpZ2h0ZXItMi5naWYifX19XX19fX0=');
+        window.__fcupGet = async () => '<html><script type="text/x-cache">' + data + '</' + 'script></html>';
+        const up = fightcord.modules.get('uploads');
+        up.toggleFav({ link: 'https://giphy.com/gifs/fight-3o7TKSjRrfIPjeiVyM', src: 'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.mp4', kind: 'gifv' });
+        document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
+        up.openPicker(fightcord.app.channelElement().querySelector('.fcupGifBtn'), fightcord.app.chatInput());
+        await sleep(300);
+        const s = document.querySelector('.fcupSearch'); s.value = 'ryu hadouken'; s.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(4500);` },
     { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 

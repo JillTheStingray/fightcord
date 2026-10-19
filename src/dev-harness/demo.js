@@ -57,13 +57,12 @@
         // who's who
         doc.querySelectorAll('.playerName').forEach(el => add(el.getAttribute('title') || el.textContent));
         doc.querySelectorAll('.author').forEach(el => add([...el.childNodes].filter(c => c.nodeType === 3).map(c => c.textContent).join('')));
-        doc.querySelectorAll('[data-current-user], [data-cerberus-user]').forEach(el => { add(el.getAttribute('data-current-user')); add(el.getAttribute('data-cerberus-user')); });
+        doc.querySelectorAll('[data-current-user]').forEach(el => add(el.getAttribute('data-current-user')));
         let myId = '';
         doc.querySelectorAll('.userIdWrapper .userName, .userName').forEach(el => { myId = myId || el.textContent.trim(); add(el.textContent); });
         if (myId && meFake) map.set(myId, meFake);
         originals = [...map.keys()];
-        // Cerberus' floating buttons were in the capture; Fightcord users don't have Cerberus
-        doc.querySelectorAll('.cerb-fabs-container, .cerb-fab-btn, .cerb-rank-badge, .fcScoutBadge').forEach(n => n.remove());
+        doc.querySelectorAll('.fcScoutBadge').forEach(n => n.remove());
 
         // chat lines -> banter (before names, so mentions inside lines go too)
         let li = 0;

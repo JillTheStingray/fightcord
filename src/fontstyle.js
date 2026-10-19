@@ -322,13 +322,18 @@ function styleSegment(text, style) {
 }
 
 // Keep Fightcade features working: slash commands are never touched.
+// links travel exactly as typed: a styled or decorated link doesn't open (2.15)
+const LINK_SPLIT = /(https?:\/\/\S+)/;
 function styleMessage(text, style) {
     if (!text) return text;
     if (text.startsWith('/')) return text;            // never mangle FC commands
-
-    const segs = !config || config.inlineMarkup ? tokenizeMarkup(text) : [{ text, style: null }];
-    const out = segs.map(s => styleSegment(s.text, s.style || style)).join('');
-    return decorate(out);
+    const parts = text.split(LINK_SPLIT);
+    const out = parts.map((part, i) => {
+        if (i % 2) return part;                       // a link
+        const segs = !config || config.inlineMarkup ? tokenizeMarkup(part) : [{ text: part, style: null }];
+        return segs.map(s => styleSegment(s.text, s.style || style)).join('');
+    }).join('');
+    return parts.length > 1 ? out : decorate(out);
 }
 
 /* --------------------------------------------------------- incoming (A5) */
@@ -363,7 +368,7 @@ function unstyle(text) {
 
 /* --------------------------------------------------------------- chat hook */
 
-const nativeValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+const nativeValueSetter = typeof window !== 'undefined' ? Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set : null;
 
 function setInputValue(el, value) {
     nativeValueSetter.call(el, value);
@@ -667,4 +672,6 @@ const api = {
 };
 
 module.exports = { id: 'fontstyle', name: 'Chat font styles', start };
+// the tests: what goes out for a text in a style (with a given config)
+module.exports._styleMessage = (text, style, conf) => { const keep = config; config = conf || keep; try { return styleMessage(text, style); } finally { config = keep; } };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));
