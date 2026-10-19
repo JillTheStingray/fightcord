@@ -387,7 +387,15 @@ function getPage(url, redirects) {
 }
 
 // a per-install id for KLIPY's searches (they ask for one; random, nothing about you)
-const klipyUser = () => { if (!cfg.klipyId) { cfg.klipyId = require('crypto').randomBytes(8).toString('hex'); store.save(); } return cfg.klipyId; };
+function klipyUser() {
+    if (!cfg.klipyId) {
+        let id = '';
+        try { id = require('crypto').randomBytes(8).toString('hex'); } catch (e) { for (let i = 0; i < 16; i++) id += Math.floor(Math.random() * 16).toString(16); }
+        cfg.klipyId = id;
+        store.save();
+    }
+    return cfg.klipyId;
+}
 
 const searchCache = new Map();          // search -> { at, source, results }
 // -> { source: 'klipy' | 'tenor', results }. KLIPY first; Tenor's page if KLIPY fails

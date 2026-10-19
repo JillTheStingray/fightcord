@@ -1525,6 +1525,20 @@ const api = {
     kick: (id, pk) => kick(id, pk),
     code: (id) => { const lb = lobbyById(id), L = rooms.get(id); return lb && L ? encodeCode(lb.seeds[lb.epoch], L.room.owner || lb.owner) : ''; },
     inVoice: () => (vr ? vr.id : ''),
+    // who's in your lobbies: lower-case name -> the lobbies' names (for the member list)
+    mates() {
+        const out = new Map();
+        rooms.forEach(L => {
+            if (L.lb.removed || L.lb.closed) return;
+            L.room.active().forEach(m => {
+                if (m.pk === L.pk || !m.n) return;
+                const k = lc(m.n);
+                if (!out.has(k)) out.set(k, []);
+                if (out.get(k).indexOf(L.lb.name) < 0) out.get(k).push(L.lb.name);
+            });
+        });
+        return out;
+    },
     joinVoice: (id) => voiceJoin(id),
     leaveVoice: () => voiceLeave(),
     _voicePeers: () => (vr ? [...vr.peers].map(([pk, p]) => ({ pk, state: p.state })) : []),

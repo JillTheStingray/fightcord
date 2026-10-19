@@ -271,3 +271,15 @@ test('the voice room: everyone gets one line to everyone else (fake WebRTC)', as
         delete global.RTCPeerConnection;
     }
 });
+
+test('lobby mates: everyone in your lobbies but you, with the lobbies they share with you', () => {
+    const c = client('Me', Relay());
+    try {
+        const id = c.mod._demo({ open: false, people: [['Ann', 'a1'], ['Bob', 'b1']], live: [] });
+        const m = c.mod.mates();
+        assert.deepEqual([...m.keys()].sort(), ['ann', 'bob']);
+        assert.deepEqual(m.get('ann'), ['Friday Night Fights']);
+        assert.ok(!m.has('me'), 'not you');
+        assert.ok(id);
+    } finally { c.stop(); }
+});

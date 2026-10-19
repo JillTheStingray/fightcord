@@ -191,6 +191,83 @@ const SCENES = [
         await sleep(300);
         const s = document.querySelector('.fcupSearch'); s.value = 'ryu hadouken'; s.dispatchEvent(new Event('input', { bubbles: true }));
         await sleep(4500);` },
+    // the website: a GIF in the chat and the GIF picker with KLIPY results
+    { name: 'site-gifs', snap: CHANNEL, wait: 9000, run: `
+        const lines = [...fightcord.app.channelElement().querySelectorAll('.messageWrapper.chat .line')];
+        const ln = lines[lines.length - 1];
+        const bc = ln.querySelector('.blocksContainer');
+        [...bc.childNodes].forEach(n => { if (!(n.classList && n.classList.contains('fcxEmbed'))) n.remove(); });
+        const sp = document.createElement('span'); sp.className = 'regular'; sp.textContent = 'https://static.klipy.com/ii/4e7bea9f7a3371424e6c16ebc93252fe/4b/32/O9HFXrmoebzGM3.gif'; bc.appendChild(sp);
+        delete ln.dataset.fcxUrl;
+        fightcord.modules.get('chat-extras')._sweep();
+        await sleep(3000);
+        const cw = fightcord.app.channelElement(); cw.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
+        const data = atob('eyJyZXN1bHQiOnRydWUsImRhdGEiOnsiZGF0YSI6W3sic2x1ZyI6InN0cmVldC1maWdodGVyLXVwcGVyY3V0LS1rR2V6cGhyNlciLCJ0aXRsZSI6IlN0cmVldCBGaWdodGVyOiBLZW4ncyBVcHBlcmN1dCBvbiBSeXUiLCJmaWxlIjp7InNtIjp7Im1wNCI6eyJ1cmwiOiJodHRwczovL3N0YXRpYy5rbGlweS5jb20vaWkvNGU3YmVhOWY3YTMzNzE0MjRlNmMxNmViYzkzMjUyZmUvNGIvMzIvQUUzWHp5Z2xzMzB2VUoxLm1wNCJ9LCJqcGciOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlLzRiLzMyLzgxQXduOTVIaW1RWTl4V0JHaS5qcGcifX19fSx7InNsdWciOiJ6YW5naWVmLXphbmdpZWYtYXBwcm92ZXMtLWtHZXpwaHI2VyIsInRpdGxlIjoiWmFuZ2llZiBBcHByb3ZlcyIsImZpbGUiOnsic20iOnsibXA0Ijp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS85OC9hZi84YVBMUk9Td0tHZURGazlYcS5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS85OC9hZi85SDJ3R2tZRjZnQmRyTS5qcGcifX19fSx7InNsdWciOiJzdHJlZXQtZmlnaHRlci1rZW4tbWFzdGVycy1wcm9wYWdhbmRhLS1rR2V6cGhyNlciLCJ0aXRsZSI6IlN0cmVldCBGaWdodGVyIEtlbiBNYXN0ZXJzIFByb3BhZ2FuZGEiLCJmaWxlIjp7InNtIjp7Im1wNCI6eyJ1cmwiOiJodHRwczovL3N0YXRpYy5rbGlweS5jb20vaWkvNDQ5MzMyNTAwOGQzNGI3YmY4Y2Q2ODEzY2Q1YzE2MTkvOGQvYTAvZm1KWkIxdklMT1hLd2NQLm1wNCJ9LCJqcGciOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzQ0OTMzMjUwMDhkMzRiN2JmOGNkNjgxM2NkNWMxNjE5LzhkL2EwL0pvRG5pVVdNcFZxRlpRVk0uanBnIn19fX0seyJzbHVnIjoidHdlbHZlLXN0cmVldC1maWdodGVyLTEtLWtHZXpwaHI2VyIsInRpdGxlIjoiVHdlbHZlIFN0cmVldCBGaWdodGVyIiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzQ0OTMzMjUwMDhkMzRiN2JmOGNkNjgxM2NkNWMxNjE5Lzg0L2JlL2gzblU3b0YyRU5JMzNaOE1hRy5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80NDkzMzI1MDA4ZDM0YjdiZjhjZDY4MTNjZDVjMTYxOS84NC9iZS9TN2xscUtVWEpwOThyc2FVb2NSOS5qcGcifX19fSx7InNsdWciOiJzdHJlZXQtZmlnaHRlci1paS1ndWlsZS13aW5zLXNmMi0ta0dlenBocjZXIiwidGl0bGUiOiJTdHJlZXQgRmlnaHRlciBJaSAtIEd1aWxlIFdpbnMgU2YyIiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzQ0OTMzMjUwMDhkMzRiN2JmOGNkNjgxM2NkNWMxNjE5LzA3LzhmLzdZZE5MbnVkYW9DYUpNYy5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80NDkzMzI1MDA4ZDM0YjdiZjhjZDY4MTNjZDVjMTYxOS8wNy84Zi9uVzJyMXFTQmZEM21IYUpISWNaNi5qcGcifX19fSx7InNsdWciOiJkaGFsc2ltLXN0cmVldC1maWdodGVyLS1rR2V6cGhyNlciLCJ0aXRsZSI6IkRoYWxzaW0gU3RyZWV0IEZpZ2h0ZXIgVmljdG9yeSBEYW5jZSIsImZpbGUiOnsic20iOnsibXA0Ijp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS9hZi9hNS9GcGhNb2M3ZEcxVURyeFh1Ui5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS9hZi9hNS9LZW1PMFVtdk9wMlguanBnIn19fX0seyJzbHVnIjoic2FnYXQtc2FrdXJhLS1rR2V6cGhyNlciLCJ0aXRsZSI6IlNhZ2F0IHZzLiBTYWt1cmE6IFN0cmVldCBGaWdodGVyIEFscGhhIEJhdHRsZSIsImZpbGUiOnsic20iOnsibXA0Ijp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS84MS8zYi96NmhYa0g1aURrQm5wS1o5amlZVy5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS84MS8zYi9mTFB5S3FPRHlpcG1Ec3lyM0QuanBnIn19fX0seyJzbHVnIjoic3RyZWV0LWZpZ2h0ZXItY2h1bi1saS0xLS1rR2V6cGhyNlciLCJ0aXRsZSI6IlN0cmVldCBGaWdodGVyIENodW4gTGkgRmFuYXJ0IGluIFJhaW4iLCJmaWxlIjp7InNtIjp7Im1wNCI6eyJ1cmwiOiJodHRwczovL3N0YXRpYy5rbGlweS5jb20vaWkvNGU3YmVhOWY3YTMzNzE0MjRlNmMxNmViYzkzMjUyZmUvZGQvOGEvRjhnbHVlWVVvT2t6Lm1wNCJ9LCJqcGciOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlL2RkLzhhLzNEM0w5MjhyY0VObDFoLmpwZyJ9fX19LHsic2x1ZyI6ImZpZ2h0LXRocm93LTEtLWtHZXpwaHI2VyIsInRpdGxlIjoiUGl4ZWwgQXJ0IEZpZ2h0IFRocm93IiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlLzJlLzc0L3RLNGNjZ1hBSjJkZFJ3TFZ3QzMubXA0In0sImpwZyI6eyJ1cmwiOiJodHRwczovL3N0YXRpYy5rbGlweS5jb20vaWkvNGU3YmVhOWY3YTMzNzE0MjRlNmMxNmViYzkzMjUyZmUvMmUvNzQvVDF5R2pZSFBtSU5JLmpwZyJ9fX19LHsic2x1ZyI6ImNhbW15LXNmNi0ta0dlenBocjZXIiwidGl0bGUiOiJDYW1teSBTRjYgRHluYW1pYyBTdHJldGNoIiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlL2FjLzM0L3pSUWptcXB4UHlDYXJWY0RISjVQLm1wNCJ9LCJqcGciOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlL2FjLzM0L0Y5WjZiYVFjMlVXcU0uanBnIn19fX0seyJzbHVnIjoia2VuLWtlbi1tYXN0ZXJzLTMtLWtHZXpwaHI2VyIsInRpdGxlIjoiS2VuIE1hc3RlcnM6IFN0cmVldCBGaWdodGVyIEFscGhhIFBvd2VyIiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlL2RkLzM0L1MyeHA4Tm96aWN0QU5VZy5tcDQifSwianBnIjp7InVybCI6Imh0dHBzOi8vc3RhdGljLmtsaXB5LmNvbS9paS80ZTdiZWE5ZjdhMzM3MTQyNGU2YzE2ZWJjOTMyNTJmZS9kZC8zNC9aSkNsYU1pQUQ4OUhrd080ZWQuanBnIn19fX0seyJzbHVnIjoicnl1LWN5Y2xvcHMtMi0ta0dlenBocjZXIiwidGl0bGUiOiJSeXUgYW5kIEN5Y2xvcHM6IEZyb20gQmF0dGxlIHRvIEJyb3RoZXJob29kIiwiZmlsZSI6eyJzbSI6eyJtcDQiOnsidXJsIjoiaHR0cHM6Ly9zdGF0aWMua2xpcHkuY29tL2lpLzRlN2JlYTlmN2EzMzcxNDI0ZTZjMTZlYmM5MzI1MmZlL2EyL2U5LzFMakJlajlpRGNUZWNJMG4ubXA0In0sImpwZyI6eyJ1cmwiOiJodHRwczovL3N0YXRpYy5rbGlweS5jb20vaWkvNGU3YmVhOWY3YTMzNzE0MjRlNmMxNmViYzkzMjUyZmUvYTIvZTkvZWh1SkVrQ1RJWXZrSXJiSjZwLmpwZyJ9fX19XX19');
+        window.__fcupGet = async () => data;
+        const up = fightcord.modules.get('uploads');
+        document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());
+        up.openPicker(cw.querySelector('.fcupGifBtn'), fightcord.app.chatInput());
+        await sleep(300);
+        const s = document.querySelector('.fcupSearch'); s.value = 'street fighter'; s.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(5000);` },
+    // the VS the moment a set is agreed: you accept (the challenge card calls this), or they accept yours
+    { name: 'vs-accept-mine', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        const opp = others[6], ms = fightcord.modules.get('match-screens'), before = ms._vsShown();
+        fightcord.app.root().acceptChallenge(fightcord.app.activeChannelId(), fightcord.app.users()[opp], 'demo1', 3);
+        await sleep(900);
+        if (ms._vsShown() !== before + 1) throw new Error('no VS screen right after the accept');` },
+    { name: 'vs-accept-theirs', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        const opp = others[6], ms = fightcord.modules.get('match-screens'), before = ms._vsShown();
+        fightcord.app.root().connectionCallbacks.onChallengeAccept({ name: opp, id: opp }, fightcord.app.activeChannelId(), 'demo2');
+        await sleep(900);
+        if (ms._vsShown() !== before + 1) throw new Error('no VS screen right after the accept');` },
+    // 2.16 member list: a lobby group, a folded rank group, the ⚔ on the row you point at; and the search
+    { name: 'members', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        fightcord.modules.get('lobbies')._demo({ people: [[others[10], 'k1'], [others[15], 'k2'], [others[22], 'k3']], open: false, live: [] });
+        const ml = fightcord.modules.get('member-list');
+        ml._config.folded = { 'rank-B': true };
+        await sleep(2500);
+        const st = document.createElement('style'); st.textContent = 'html body .usersListWrapper .userItem.fc-hov > .fcm-qc { display: inline-flex !important; } html body .usersListWrapper .userItem.fc-hov { background: var(--fc-hover, rgba(255,255,255,.05)) !important; }'; document.head.appendChild(st);
+        const row = [...document.querySelectorAll('.usersOnlineList .userItem')].find(r => r.querySelector('.fcm-qc') && r.offsetHeight > 20 && !r.classList.contains('fcm-playing')); if (row) row.classList.add('fc-hov');
+        const bh = document.querySelector('.usersOnlineList .fcm-gh.folded'); if (bh) bh.scrollIntoView({ block: 'center' });
+        await sleep(500);` },
+    { name: 'members-search', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        fightcord.modules.get('lobbies')._demo({ people: [[others[10], 'k1'], [others[15], 'k2'], [others[22], 'k3']], open: false, live: [] });
+        const ml = fightcord.modules.get('member-list');
+        await sleep(1500);
+        ml.search('kid');
+        await sleep(1500);` },
+    // 2.17 settings: the Changed settings page, NEW badges on settings that came with an update
+    { name: 'settings-changed', snap: CHANNEL, run: `
+        const set = (id, k, v) => { const st = fightcord.config(id); st.data[k] = v; st.save(); };
+        set('member-list', 'side', 'right'); set('chat-extras', 'blurMedia', true); set('find-match', 'maxPing', 150); set('hover-cards', 'delay', 600);
+        fightcord.modules.get('fightcord').open('changed');
+        await sleep(1200);` },
+    { name: 'settings-new', snap: CHANNEL, run: `
+        fightcord.settings.initSeen();
+        const seen = fightcord.config('fightcord-core').data.seenSettings;
+        Object.keys(seen).filter(k => /uploads/.test(k)).forEach(k => delete seen[k]);
+        fightcord.settings.refresh();
+        fightcord.modules.get('fightcord').open('chat');
+        await sleep(600);
+        const b = document.querySelector('[data-fc-block="uploads"]'); if (b) b.scrollIntoView({ block: 'center' });
+        await sleep(800);` },
+    // 2.18 profiles: yours in the popout, someone else's on the scout card, the editor
+    { name: 'profile-mine', snap: CHANNEL, run: `
+        fightcord.modules.get('presence').setProfile({ s: 'Grinding 3rd Strike tonight, FT5s welcome', a: 'Yun main from the Netherlands. Working on my parry timing, always up for long sets.', b: fightcord.app.activeGameId() });
+        fightcord.modules.get('profile-card')._show(); await sleep(1200);` },
+    { name: 'profile-scout', snap: CHANNEL, run: `
+        const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x) && !fightcord.app.playing(x))[5];
+        fightcord.modules.get('presence')._profile(n, { s: 'Looking for Urien players to lab with', a: 'Urien main, 4 years on 3rd Strike. EU, wired.', b: fightcord.app.activeGameId(), bd: ['sets500', 'streak10', 'top100'] });
+        fightcord.modules.get('scout').openCard(n, { left: 420, right: 420, top: 90, bottom: 90, width: 0, height: 0 });
+        await sleep(1500);` },
+    { name: 'profile-edit', snap: CHANNEL, run: `
+        fightcord.modules.get('presence').setProfile({ s: 'Grinding 3rd Strike tonight, FT5s welcome', a: 'Yun main from the Netherlands. Working on my parry timing, always up for long sets.', b: fightcord.app.activeGameId() });
+        fightcord.modules.get('profile-card')._edit(); await sleep(900);` },
     { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 

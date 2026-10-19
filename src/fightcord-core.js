@@ -495,7 +495,7 @@ function watchFor(owner) {
         if (!mo && hasDom()) {            // no <body> yet
             const retry = setInterval(() => { ensureObserver(); if (mo) clearInterval(retry); }, 200);
         }
-        setTimeout(() => { if (watchers.has(w) && (!w.selector || document.querySelector(w.selector))) w.fn(); }, 0);
+        setTimeout(() => { if (watchers.has(w) && (!w.selector || (hasDom() && document.querySelector(w.selector)))) w.fn(); }, 0);
         return own(owner, () => { if (watchers.delete(w) && w.sync) syncWatchers--; });
     };
 }
@@ -564,6 +564,7 @@ function configFor(owner) {
                 else writeJsonAsync(file, store.data);
             },
             set(k, v) { store.data[k] = v; store.save(); },
+            defaults() { return JSON.parse(JSON.stringify(defs)); },
             patch(obj) { Object.assign(store.data, obj || {}); store.save(); },
             reset() {
                 Object.keys(store.data).forEach(k => { delete store.data[k]; });
@@ -918,6 +919,13 @@ function settingsFor(owner) {
             return own(owner, () => { b.els.forEach(el => el.remove()); blocks.delete(def.id); });
         },
         refresh: refreshBlocks,
+        // 2.17: what differs from the defaults, putting one setting back, "New" since you last looked
+        changed: () => changedFields(),
+        resetField: (block, key) => resetField(block, key),
+        valueText: (f, v) => valueText(f, v),
+        newIn: (section) => newIn(section),
+        markSeen: (section) => markSeen(section),
+        initSeen: () => initSeen(),
         sections: () => [...sections.values()].sort((a, b) => a.order - b.order),
         blocks: (section) => [...blocks.values()].filter(b => !section || b.section === section).sort((a, b) => a.order - b.order),
         // the settings screen (fightcord.js) mounts blocks here
@@ -965,10 +973,83 @@ function refreshBlocks(id) {
     });
 }
 
-function fieldHtml(f, d) {
+/* ------------------------------------------------- changed + new settings (2.17) */
+
+const VALUE_TYPES = ['switch', 'select', 'slider', 'text', 'number', 'color'];
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const hasDefaults = (b) => !!(b && b.store && typeof b.store.defaults === 'function');
+
+// fields of a block that differ from its defaults
+function changedIn(b, defs) {
+    if (!hasDefaults(b) || b.owner.dead) return [];
+    const d = defs || b.store.defaults();
+    return (b.fields || []).filter(f => f.key && VALUE_TYPES.indexOf(f.type) >= 0 && (f.key in d) && !sameValue(b.store.data[f.key], d[f.key]));
+}
+// every changed setting: [{ block, section, title, key, label, text }] in the settings' own order
+function changedFields() {
+    const order = (id) => { const sec = sections.get(id); return sec ? sec.order : 999; };
+    const out = [];
+    [...blocks.values()].sort((a, b) => order(a.section) - order(b.section) || a.order - b.order).forEach(b => {
+        changedIn(b).forEach(f => out.push({ block: b.id, section: b.section, title: b.title || b.id, key: f.key, label: f.label || f.key, text: valueText(f, b.store.data[f.key]) }));
+    });
+    return out;
+}
+// a value as the settings screen would show it
+function valueText(f, v) {
+    if (f.type === 'switch') return tr(v ? 'On' : 'Off');
+    if (f.type === 'select') { const o = (f.options || []).find(x => String(x[0]) === String(v)); return o ? tr(o[1]) : String(v); }
+    if (f.type === 'slider') return Math.round((+v || 0) * (f.scale || 1)) + (f.unit || '');
+    return v == null || v === '' ? '—' : String(v);
+}
+function resetField(blockId, key) {
+    const b = blocks.get(blockId);
+    const f = b && (b.fields || []).find(x => x.key === key);
+    if (!f || !hasDefaults(b)) return false;
+    const d = b.store.defaults();
+    if (!(key in d)) return false;
+    b.store.data[key] = d[key];
+    b.store.save();
+    if (f.onChange) guard(b.owner, f.onChange, 'setting ' + key)(b.store.data[key], b.store.data);
+    refreshBlocks(b.id);
+    emit('settings:changed', { block: blockId, key });
+    return true;
+}
+
+// "New": every setting you've had is remembered (fightcord-core-config.json seenSettings); one that
+// shows up in an update is new until you've left its section. The very first time, nothing is new.
+const seenKeysOf = (b) => ['b:' + b.id].concat((b.fields || []).filter(f => f.key).map(f => 'f:' + b.id + '.' + f.key));
+function seenMap() { return coreStore && coreStore.data.seenSettings; }
+function initSeen() {
+    if (!coreStore || coreStore.data.seenSettings) return;
+    const m = {};
+    blocks.forEach(b => { if (!b.owner.dead) seenKeysOf(b).forEach(k => { m[k] = 1; }); });
+    coreStore.data.seenSettings = m;
+    coreStore.save();
+}
+const isNewKey = (k) => { const m = seenMap(); return !!(m && !m[k]); };
+function newIn(section) {
+    let n = 0;
+    blocks.forEach(b => {
+        if (b.owner.dead || b.section !== section) return;
+        if (isNewKey('b:' + b.id)) { n++; return; }
+        (b.fields || []).forEach(f => { if (f.key && isNewKey('f:' + b.id + '.' + f.key)) n++; });
+    });
+    return n;
+}
+function markSeen(section) {
+    const m = seenMap();
+    if (!m) return;
+    let any = false;
+    blocks.forEach(b => { if (!b.owner.dead && b.section === section) seenKeysOf(b).forEach(k => { if (!m[k]) { m[k] = 1; any = true; } }); });
+    if (!any) return;
+    coreStore.save();
+    blocks.forEach(b => { if (b.section === section) refreshBlocks(b.id); });
+}
+
+function fieldHtml(f, d, isNew) {
     const E = fmt.esc;
     const v = f.key ? d[f.key] : undefined;
-    const text = `<span class="fc-field-text"><b>${E(tr(f.label || ''))}</b>${f.hint ? `<small>${E(tr(f.hint))}</small>` : ''}</span>`;
+    const text = `<span class="fc-field-text"><b>${E(tr(f.label || ''))}${isNew ? ` <span class="fc-new">${E(tr('New'))}</span>` : ''}</b>${f.hint ? `<small>${E(tr(f.hint))}</small>` : ''}</span>`;
     const k = f.key ? ` data-key="${E(f.key)}"` : '';
     switch (f.type) {
         case 'switch':
@@ -996,9 +1077,12 @@ function fieldHtml(f, d) {
 
 function fieldsHtml(b) {
     const d = (b.store && b.store.data) || {};
+    const newBlock = isNewKey('b:' + b.id);
+    const changed = changedIn(b);
     return `<div class="fc-set-title">${b.store && b.reset !== false ? ui.btn('Reset', { kind: 'ghost', size: 'sm', act: 'fc-reset', cls: 'fc-set-reset', title: 'Put this block back to its defaults' }) : ''}` +
-        `${fmt.esc(tr(b.title || ''))}${b.hint ? ` <small>${fmt.esc(tr(b.hint))}</small>` : ''}</div>` +
-        (b.fields || []).map((f, i) => `<div class="fc-set-row" data-i="${i}"${f.show && !f.show(d) ? ' hidden' : ''}>${fieldHtml(f, d)}</div>`).join('');
+        `${fmt.esc(tr(b.title || ''))}${newBlock ? ` <span class="fc-new">${fmt.esc(tr('New'))}</span>` : ''}${b.hint ? ` <small>${fmt.esc(tr(b.hint))}</small>` : ''}</div>` +
+        (b.fields || []).map((f, i) => `<div class="fc-set-row${changed.indexOf(f) >= 0 ? ' fc-changed' : ''}" data-i="${i}"${f.show && !f.show(d) ? ' hidden' : ''}>` +
+            `${fieldHtml(f, d, !newBlock && f.key && isNewKey('f:' + b.id + '.' + f.key))}</div>`).join('');
 }
 
 function fieldFor(b, el) {
@@ -1047,13 +1131,32 @@ function wireFields(root, b) {
     });
 }
 
+// the "New" pill on a block's title or a field's label, added / taken away in place
+function newPill(host, want, before) {
+    if (!host) return;
+    const p = host.querySelector(':scope > .fc-new');
+    if (want && !p) {
+        const sp = document.createElement('span');
+        sp.className = 'fc-new';
+        sp.textContent = tr('New');
+        host.insertBefore(sp, before || null);
+    } else if (!want && p) p.remove();
+}
+
 function patchFields(root, b) {
     const d = (b.store && b.store.data) || {};
+    const changed = changedIn(b);
+    const newBlock = isNewKey('b:' + b.id);
+    const title = root.querySelector(':scope > .fc-set-title');
+    newPill(title, newBlock, title && title.querySelector(':scope > small'));
     (b.fields || []).forEach((f, i) => {
         const row = root.querySelector(':scope > .fc-set-row[data-i="' + i + '"]');
         if (!row) return;
         const hide = !!(f.show && !f.show(d));
         if (row.hidden !== hide) row.hidden = hide;
+        const ch = changed.indexOf(f) >= 0;
+        if (row.classList.contains('fc-changed') !== ch) row.classList.toggle('fc-changed', ch);
+        if (f.key) newPill(row.querySelector('.fc-field-text > b'), !newBlock && isNewKey('f:' + b.id + '.' + f.key));
         if (f.type === 'html') { const h = row.querySelector('.fc-field-html'); const html = typeof f.html === 'function' ? f.html(d) : (f.html || ''); if (h && h.innerHTML !== html) h.innerHTML = html; return; }
         if (!f.key) return;
         const input = row.querySelector('input, select');
@@ -1703,6 +1806,10 @@ label.fc-field { cursor: pointer; }
 .fc-field-text { flex: 1; min-width: 0; margin-right: 12px; }
 .fc-field-text b { display: block; font: 500 14px/1.3 var(--fc-font); color: var(--fc-text); }
 .fc-field-text small { display: block; margin-top: 2px; font: 12px/1.35 var(--fc-font); color: var(--fc-muted); }
+.fc-new { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; vertical-align: 1px;
+  font: 800 10px/16px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--fc-danger); }
+.fc-set-row.fc-changed .fc-field-text > b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; border-radius: 50%;
+  vertical-align: 2px; background: var(--fc-accent); }
 .fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r1); background: var(--fc-s1); font: 12px/1.45 var(--fc-font); color: var(--fc-muted); }
 
 .fc-avatar { position: relative; display: inline-block; flex: none; width: var(--sz, 32px); height: var(--sz, 32px); vertical-align: middle; }
@@ -2602,6 +2709,8 @@ module.exports.isCore = true;
 module.exports.CORE_API = CORE_API;
 // for the tests (plain Node, no page)
 module.exports._test = {
+    settingsApi: () => settingsFor(CORE),
+    valueText: (f, v) => valueText(f, v),
     fmt, data, history, emu, api, apiState, modules, makeOwner, fault, guard, emit, eventsFor, configFor, tickFor, runTasks, tasks,
     exportAll, importAll, flushStores, inChain, installChallengeHook, hooksFor, diag, diagText, ui, elo, recordElo, boot, tr, setLang, pickLang, N_,
     setDir(d) { DIR = d; historyCache = null; emuAt = 0; stores.clear(); },

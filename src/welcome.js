@@ -94,6 +94,11 @@ const NEWS = [
     { v: '2.15', title: 'Fightcord 2.15', items: [
         ['share', N_('Pictures and GIFs in the chat'), N_('Paste or drop a picture, or click the + in the message box. Fightcord players see it; star GIFs and send them again from the GIF button.')],
         ['bolt', N_('Quick settings and Do not disturb'), N_('Click your avatar: a new profile card with your Look, voice, streamer mode, music and Do not disturb in one place.')]
+    ] },
+    { v: '2.16', title: 'Fightcord 2.16', items: [
+        ['user', N_('Your profile'), N_('A status, About me, banner and badges that Fightcord players see on your cards. Click your avatar → Edit profile.')],
+        ['users', N_('A smarter member list'), N_('Search, fold groups, a ⚔ to challenge the player you point at, and your lobby mates in their own group.')],
+        ['gear', N_('Settings you can share'), N_('See every setting you changed, spot new ones, and share your setup with a code.')]
     ] }
 ];
 

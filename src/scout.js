@@ -227,6 +227,7 @@ function sectionsHtml(name, data) {
 }
 
 function renderCard(card, name, data) {
+    card.__name = name;
     const info = fc.app.userInfo(name);
     const st = stateOf(info);
     const me = fc.app.isMe(name);
@@ -241,8 +242,11 @@ function renderCard(card, name, data) {
     // one meta line: flag · state · ping
     const meta = (info && info.country ? fc.ui.flag(info.country, info.countryName || '') : '') +
         `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}</span>`;
-    card.innerHTML = fc.ui.cardHead({ name, banner: fc.data.hashColor(name), avatar: fc.ui.avatar(name, { size: 72, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, close: true }) +
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.data.hashColor(name);
+    const prof = pr && pr.profileHtml ? pr.profileHtml(name) : '';
+    card.innerHTML = fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 72, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, close: true }) +
         `<div class="fcsc-body">
+            ${prof}
             ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
             <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
             ${!me ? `<div class="fcsc-acts">
@@ -267,6 +271,13 @@ function onCardClick(e, card, name) {
         const items = [];
         if (nt) items.push({ label: T('Notes & tags'), icon: 'note', fn: () => nt.edit(name, { left: r.left, bottom: r.top + 60, top: r.top, right: r.right }) });
         if (st && st.open) items.push({ label: T('Head-to-head'), icon: 'chart', fn: () => { closeCard(); st.open({ opp: name }); } });
+        // their shared profile: hide it (or show it again) on your side
+        const prs = mod('presence');
+        if (prs && prs.hideProfile && !fc.app.isMe(name) && (prs.profile(name) || prs.isHidden(name))) {
+            const hid = prs.isHidden(name);
+            items.push({ label: T(hid ? 'Show their profile' : 'Hide their profile'), icon: hid ? 'eye' : 'ban',
+                fn: () => { prs.hideProfile(name, !hid); if (pop && card.isConnected) renderCard(card, name, card.__data || null); } });
+        }
         if (fr && fr.isFriend) { const on = fr.isFriend(name); items.push({ label: T(on ? 'Remove friend' : 'Add friend'), icon: 'star', fn: () => { fr.toggle(name); renderCard(card, name, card.__data || null); } }); }
         if (items.length) fc.ui.menu(b, items, { side: 'bottom' });
     }
@@ -408,6 +419,8 @@ function onChallenge(ctx) {
 
 function start(f) {
     fc = f;
+    // a profile arriving while the card is open
+    fc.on('presence:profile', () => { const card = document.getElementById('fcScoutCard'); if (card && card.__name) renderCard(card, card.__name, card.__data || null); });
     cfg = fc.config('scout', DEFAULTS).data;
     window.__fcScoutLoaded = true;           // for plugins not on the core yet
     fc.ui.style('fcscStyle', CSS);

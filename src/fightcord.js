@@ -50,7 +50,7 @@ const BUILTIN = [
     ['members', N_('Member list & friends'), 'users', 30], ['search', N_('Search tab'), 'search', 40],
     ['challenges', N_('Scout & challenges'), 'sword', 50], ['match', N_('Match screens'), 'trophy', 60], ['music', N_('Music'), 'music', 70],
     ['rpc', N_('Discord status'), 'link', 80],
-    ['updates', N_('Updates'), 'download', 900], ['backup', N_('Backup & restore'), 'copy', 910], ['diagnostics', N_('Diagnostics'), 'bug', 920], ['about', N_('About'), 'info', 930]
+    ['updates', N_('Updates'), 'download', 900], ['changed', N_('Changed settings'), 'edit', 905], ['backup', N_('Backup & restore'), 'copy', 910], ['diagnostics', N_('Diagnostics'), 'bug', 920], ['about', N_('About'), 'info', 930]
 ];
 const APP_FROM = 900;
 
@@ -90,6 +90,121 @@ let current = 'home';
 function toggle(label, hint, checked, attrs) {
     return `<label class="fc-field"><span class="fc-field-text"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span>` +
         `<input type="checkbox" class="fc-switch-in" ${attrs || ''} ${checked ? 'checked' : ''}><i class="fc-switch"></i></label>`;
+}
+
+/* ---------------------------------------------------------- setup codes (2.17) */
+
+// what a setup code carries: the look and the layout, never anything personal
+const SETUP_IDS = ['discord-theme', 'backgrounds', 'emu-skin', 'rank-icons', 'channel-banner', 'chat-extras', 'member-list', 'login-screen',
+    'fontstyle', 'match-screens', 'hover-cards', 'challenge-card', 'find-match', 'scout', 'discover'];
+const SETUP_SKIP = /^(_v|bgFile|written|originals|lastUser|sessionClearedAt|macros|folded|noticeOpen|playingOpen|filter|sort|on|secret|klipyId|favorites|blocked|lobbies|track|seenSettings|myElo)$/;
+const SETUP_KEEP_ON = ['fightcord.js', 'fightcord-core.js', 'updater.js'];
+// a value small and plain enough to pass on: no file paths, no pictures, no long text
+function setupSafe(v, depth) {
+    if (v === null || typeof v === 'number' || typeof v === 'boolean') return true;
+    if (typeof v === 'string') return v.length <= 300 && !/^data:/i.test(v) && !/^[a-z]:[\\/]|^[\\/]|\\/i.test(v);
+    if ((depth || 0) > 2) return false;
+    if (Array.isArray(v)) return v.length <= 50 && v.every(x => setupSafe(x, (depth || 0) + 1));
+    if (typeof v === 'object') return Object.keys(v).length <= 50 && Object.keys(v).every(k => setupSafe(v[k], (depth || 0) + 1));
+    return false;
+}
+// configs ({ id: data }) + the modules that are off -> what the code holds
+function setupPayload(configs, off) {
+    const cfg = {};
+    SETUP_IDS.forEach(id => {
+        const d = configs[id];
+        if (!d || typeof d !== 'object') return;
+        const out = {};
+        Object.keys(d).forEach(k => { if (!SETUP_SKIP.test(k) && setupSafe(d[k])) out[k] = d[k]; });
+        if (Object.keys(out).length) cfg[id] = out;
+    });
+    return { v: 1, cfg, off: (off || []).filter(x => typeof x === 'string' && /^[a-z0-9-]+\.js$/.test(x) && SETUP_KEEP_ON.indexOf(x) < 0) };
+}
+function encodeSetup(p) { return 'FCSETUP1:' + require('zlib').deflateRawSync(Buffer.from(JSON.stringify(p), 'utf8')).toString('base64'); }
+// a pasted code -> a clean payload (checked again: a code can come from anyone), or null
+function decodeSetup(text) {
+    const m = String(text || '').trim().match(/^FCSETUP1:([A-Za-z0-9+/=]+)$/);
+    if (!m) return null;
+    let p;
+    try { p = JSON.parse(require('zlib').inflateRawSync(Buffer.from(m[1], 'base64')).toString('utf8')); } catch (e) { return null; }
+    if (!p || p.v !== 1 || typeof p.cfg !== 'object' || !p.cfg) return null;
+    return setupPayload(p.cfg, Array.isArray(p.off) ? p.off : []);
+}
+// what applying it would change: [{ id, keys: [...] }] and the module switches
+function setupDiff(p, current, off) {
+    const out = [];
+    Object.keys(p.cfg).forEach(id => {
+        const cur = current[id] || {};
+        const keys = Object.keys(p.cfg[id]).filter(k => JSON.stringify(cur[k]) !== JSON.stringify(p.cfg[id][k]));
+        if (keys.length) out.push({ id, keys });
+    });
+    const was = new Set(off || []), will = new Set(p.off);
+    return { cfg: out, turnOff: [...will].filter(x => !was.has(x)), turnOn: [...was].filter(x => !will.has(x) && SETUP_KEEP_ON.indexOf(x) < 0) };
+}
+
+// as saved right now (exportAll writes any pending saves first)
+function readCfgs() {
+    const files = (fc.config.exportAll() || {}).files || {};
+    const o = {};
+    SETUP_IDS.forEach(id => { const d = files[id + '-config.json']; if (d) o[id] = d; });
+    return o;
+}
+
+function copySetup() {
+    try {
+        const code = encodeSetup(setupPayload(readCfgs(), manifest().off || []));
+        fc.ui.copy(code);
+        note('setup', T('Copied your setup code ({n} characters). Send it to a friend; they paste it in “Use a setup code”.', { n: code.length }));
+    } catch (e) { note('setup', T('Couldn’t make the code: {error}', { error: e.message })); }
+}
+
+const MOD_LABEL = (file) => { const p = PLUGINS.find(x => x[0] === file); return p ? T(p[1]) : file; };
+function useSetup() {
+    let parsed = null;
+    const body = `<div class="fcordSetup"><textarea class="fc-input" placeholder="FCSETUP1:…" spellcheck="false"></textarea><div class="fcordSetupWhat"></div></div>`;
+    const m = fc.ui.modal({
+        title: T('Use a setup code'), body, width: 520,
+        actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Apply'), fn: () => {
+            if (!parsed) return false;
+            applySetup(parsed);
+        } }]
+    });
+    const ta = m.body.querySelector('textarea'), what = m.body.querySelector('.fcordSetupWhat');
+    ta.addEventListener('keydown', (e) => e.stopPropagation());
+    ta.addEventListener('input', () => {
+        parsed = decodeSetup(ta.value);
+        if (!ta.value.trim()) { what.innerHTML = ''; return; }
+        if (!parsed) { what.innerHTML = `<div class="bad">${ET('That isn’t a Fightcord setup code.')}</div>`; return; }
+        const d = setupDiff(parsed, readCfgs(), manifest().off || []);
+        const th = parsed.cfg['discord-theme'];
+        const presets = (fc.modules.get('discord-theme') || {}).PRESETS || {};
+        const look = th && th.preset ? T(presets[th.preset] || th.preset) : '';
+        const areas = d.cfg.map(x => { const b = fc.settings.blocks().find(bb => bb.id === x.id); return T(b ? b.title : x.id); });
+        const n = d.cfg.reduce((t, x) => t + x.keys.length, 0);
+        what.innerHTML = !n && !d.turnOff.length && !d.turnOn.length ? `<div>${ET('You already have this setup.')}</div>`
+            : (look ? `<div><b>${ET('Theme')}:</b> ${E(look)}</div>` : '') +
+              (n ? `<div>${ET('{n} settings in: {areas}', { n, areas: areas.join(', ') })}</div>` : '') +
+              (d.turnOff.length ? `<div>${ET('Turns off: {list}', { list: d.turnOff.map(MOD_LABEL).join(', ') })}</div>` : '') +
+              (d.turnOn.length ? `<div>${ET('Turns on: {list}', { list: d.turnOn.map(MOD_LABEL).join(', ') })}</div>` : '') +
+              `<small>${ET('Your notes, friends, history, lobbies and account stay as they are.')}</small>`;
+    });
+    setTimeout(() => ta.focus(), 30);
+}
+function applySetup(p) {
+    try {
+        Object.keys(p.cfg).forEach(id => fc.config(id, {}).patch(p.cfg[id]));
+        const m = manifest();
+        const before = JSON.stringify((m.off || []).slice().sort());
+        m.off = p.off.slice();
+        const modules = before !== JSON.stringify(m.off.slice().sort());
+        if (modules) writeJson(MANIFEST, m);
+        fc.settings.refresh();
+        fc.emit('config:restored', { files: Object.keys(p.cfg).length });
+        note('setup', T('Setup applied. Restart Fightcade so every module picks it up.'));
+        fc.ui.toast(T('Setup applied'), { icon: 'check', kind: 'success', sub: T('Restart Fightcade so every module picks it up.'),
+            actions: [{ label: T('Restart now'), fn: () => restartFightcade() }] });
+        refreshProfiles();
+    } catch (e) { note('setup', T('Couldn’t apply it: {error}', { error: e.message })); }
 }
 
 function hero(sub) {
@@ -145,7 +260,21 @@ function paneHtml(id) {
             <div class="fcordBtns">${fc.ui.btn('Back up my settings', { icon: 'download', act: 'backup' })}
                 ${fc.ui.btn('Restore from a file…', { kind: 'sec', icon: 'refresh', act: 'restore' })}
                 <input type="file" class="fcordRestoreFile" accept=".json,application/json" style="display:none"></div>
-            <div class="fcordNote" data-note="backup"></div>`;
+            <div class="fcordNote" data-note="backup"></div>
+            <h3>${ET('Share your setup')}</h3>
+            <p class="lead">${ET('A code with your look and layout (theme, background, emulator bar, member list, chat options…) that a friend can paste to get the same Fightcord. Never your notes, friends, history, lobbies or account.')}</p>
+            <div class="fcordBtns">${fc.ui.btn('Copy my setup code', { icon: 'copy', act: 'setup-copy' })}${fc.ui.btn('Use a setup code…', { kind: 'sec', icon: 'download', act: 'setup-use' })}</div>
+            <div class="fcordNote" data-note="setup"></div>`;
+    }
+    if (id === 'changed') {
+        const list = fc.settings.changed();
+        const secName = (sid) => { const sc = fc.settings.sections().find(x => x.id === sid); return sc ? T(sc.label) : sid; };
+        return `<h2>${ET('Changed settings')}</h2>
+            <p class="lead">${ET('Everything you changed from Fightcord’s defaults, in one place. Reset puts one setting back.')}</p>` +
+            (list.length ? `<div class="fc-set fcordChanged">${list.map(c => `<div class="fcordChg">
+                <div class="t"><span class="where" data-go="${E(c.section)}">${E(secName(c.section))} › ${ET(c.title)}</span><b>${ET(c.label)}</b></div>
+                <span class="v">${E(c.text)}</span>${fc.ui.btn('Reset', { kind: 'ghost', size: 'sm', act: 'reset-field', attrs: `data-block="${E(c.block)}" data-key="${E(c.key)}"` })}</div>`).join('')}</div>`
+                : fc.ui.empty({ icon: 'check', title: 'Everything is on its defaults', sub: 'Settings you change show up here.' }));
     }
     if (id === 'diagnostics') return diagnosticsHtml();
     if (id === 'about') {
@@ -214,7 +343,7 @@ function syncNav(m) {
     if (sig === navSig) return;
     navSig = sig;
     const group = (title, list) => list.length ? `<div class="sec">${title}</div>` + list.map(s =>
-        `<div class="item" data-sec="${E(s.id)}">${fc.ui.icon(s.icon)}<span>${ET(s.label)}</span></div>`).join('') : '';
+        `<div class="item" data-sec="${E(s.id)}">${fc.ui.icon(s.icon)}<span>${ET(s.label)}</span><i class="nb"></i></div>`).join('') : '';
     m.querySelector('.fcordNav').innerHTML = group(ET('Fightcord settings'), secs.filter(s => s.order < APP_FROM)) + '<div class="sep"></div>' + group(ET('App'), secs.filter(s => s.order >= APP_FROM));
     const content = m.querySelector('.fcordContent');
     secs.forEach(s => {
@@ -228,8 +357,24 @@ function syncNav(m) {
     });
 }
 
+// NEW on a section with settings you haven't seen yet; how many settings you changed
+function refreshBadges(m) {
+    fc.settings.initSeen();
+    const changed = fc.settings.changed().length;
+    m.querySelectorAll('.fcordNav .item').forEach(i => {
+        const b = i.querySelector('.nb');
+        if (!b) return;
+        const sec = i.dataset.sec;
+        const html = sec === 'changed' ? (changed ? String(changed) : '') : fc.settings.newIn(sec) ? ET('New') : '';
+        b.className = 'nb' + (html ? (sec === 'changed' ? ' n' : ' new') : '');
+        if (b.textContent !== html) b.textContent = html;
+    });
+}
+
 function show(sec) {
     const m = ensureModal();
+    fc.settings.initSeen();
+    if (current && sec && sec !== current) fc.settings.markSeen(current);     // leaving it: what was new isn't any more
     current = sec || current;
     const search = m.querySelector('.fcordSearch input');
     if (search.value) { search.value = ''; }
@@ -240,13 +385,14 @@ function show(sec) {
         if (on) {
             p.querySelector('.fcordHead').innerHTML = paneHtml(current);
             fc.settings.mount(p, current);
-            const empty = !p.querySelector('.fcBlock') && !BUILTIN.some(b => b[0] === current && ['home', 'rpc', 'updates', 'backup', 'diagnostics', 'about'].includes(b[0]));
+            const empty = !p.querySelector('.fcBlock') && !BUILTIN.some(b => b[0] === current && ['home', 'rpc', 'updates', 'changed', 'backup', 'diagnostics', 'about'].includes(b[0]));
             let em = p.querySelector(':scope > .fc-empty');
             if (empty && !em) p.insertAdjacentHTML('beforeend', fc.ui.empty({ icon: 'gear', title: 'Nothing to set here', sub: 'The modules for this section are switched off (My Fightcord → Modules).' }));
             else if (!empty && em) em.remove();
         }
     });
     m.querySelector('.fcordContent').scrollTop = 0;
+    refreshBadges(m);
 }
 
 let unlayer = null;
@@ -258,6 +404,7 @@ function open(sec) {
 }
 function close() {
     const m = document.getElementById('fcordModal');
+    if (m && m.classList.contains('open') && current) fc.settings.markSeen(current);
     if (m) m.classList.remove('open');
     if (unlayer) { unlayer(); unlayer = null; }
 }
@@ -329,6 +476,8 @@ function onModalClick(e) {
     if (item) { show(item.dataset.sec); return; }
     const hit = e.target.closest('[data-hit]');
     if (hit) { const res = document.querySelector('#fcordModal .fcordResults'); goToHit(res.__hits[+hit.dataset.hit]); return; }
+    const go = e.target.closest('[data-go]');
+    if (go) { show(go.dataset.go); return; }
     const prof = e.target.closest('[data-profile]');
     if (prof) { setProfile(prof.dataset.profile); return; }
     const a = e.target.closest('[data-act]');
@@ -339,6 +488,9 @@ function onModalClick(e) {
     else if (act === 'repo') openExternal('https://github.com/' + REPO);
     else if (act === 'folder') openExternal(DIR);
     else if (act === 'backup') backup();
+    else if (act === 'setup-copy') copySetup();
+    else if (act === 'setup-use') useSetup();
+    else if (act === 'reset-field') { fc.settings.resetField(a.dataset.block, a.dataset.key); show('changed'); }
     else if (act === 'restore') document.querySelector('#fcordModal .fcordRestoreFile').click();
     else if (act === 'copydiag') note('diag', T(fc.ui.copy(fc.diagText()) ? 'Copied — paste it in a bug report.' : 'Couldn’t copy.'));
 }
@@ -559,6 +711,22 @@ const CSS = `
 #fcordModal .fcordSide .item .fc-ic { width: 16px; height: 16px; margin-right: 10px; opacity: .8; }
 #fcordModal .fcordSide .item:hover { background: var(--fc-hover); color: var(--fc-text); }
 #fcordModal .fcordSide .item.on { background: var(--fc-s4); color: var(--fc-head); }
+#fcordModal .fcordSide .item > span { flex: 1; min-width: 0; }
+#fcordModal .fcordSide .item .nb { display: none; flex: none; margin-left: 6px; padding: 0 6px; border-radius: 8px; font: 800 10px/16px var(--fc-font); font-style: normal; letter-spacing: .04em; text-transform: uppercase; }
+#fcordModal .fcordSide .item .nb.new { display: inline-block; background: var(--fc-danger); color: #fff; }
+#fcordModal .fcordSide .item .nb.n { display: inline-block; background: var(--fc-accent); color: #fff; }
+#fcordModal .fcordChanged { padding: 4px 16px; }
+#fcordModal .fcordChg { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--fc-divider); }
+#fcordModal .fcordChg:last-child { border-bottom: 0; }
+#fcordModal .fcordChg .t { flex: 1; min-width: 0; }
+#fcordModal .fcordChg .where { display: block; font-size: 12px; color: var(--fc-muted); cursor: pointer; }
+#fcordModal .fcordChg .where:hover { color: var(--fc-link); text-decoration: underline; }
+#fcordModal .fcordChg b { display: block; font: 500 15px/1.3 var(--fc-font); color: var(--fc-text); }
+#fcordModal .fcordChg .v { flex: none; max-width: 200px; margin: 0 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; color: var(--fc-head); }
+.fcordSetup textarea { width: 100%; height: 90px; box-sizing: border-box; padding: 8px 10px; resize: none; font: 12px/1.4 Consolas, monospace; }
+.fcordSetupWhat { margin-top: 10px; font-size: 13px; line-height: 1.5; color: var(--fc-text); }
+.fcordSetupWhat .bad { color: var(--fc-danger); }
+.fcordSetupWhat small { display: block; margin-top: 6px; color: var(--fc-muted); }
 #fcordModal .fcordSide .sep { height: 1px; margin: 8px 10px; background: var(--fc-divider); }
 #fcordModal .fcordSide .ver { padding: 6px 10px; font-size: 12px; color: var(--fc-muted); }
 #fcordModal .fcordMain { flex: 1 1 800px; display: flex; min-width: 0; }
@@ -695,5 +863,7 @@ const api = {
     _search: (q) => runSearch(q)
 };
 
-module.exports = { id: 'fightcord', name: 'Fightcord settings & updates', essential: true, start };
+// (the tests)
+module.exports._setup = { setupPayload, encodeSetup, decodeSetup, setupDiff, setupSafe, SETUP_IDS };
+module.exports = Object.assign(module.exports, { id: 'fightcord', name: 'Fightcord settings & updates', essential: true, start });
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

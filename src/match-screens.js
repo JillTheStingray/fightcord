@@ -844,6 +844,13 @@ function start(f) {
 
     document.addEventListener('click', onAcceptClick, true);
     fc.own(() => document.removeEventListener('click', onAcceptClick, true));
+    // The VS the moment a set is agreed (2.16), not when the emulator's match shows up:
+    //   you accept: Fightcade's root.acceptChallenge (its own button AND Fightcord's challenge card)
+    //   they accept yours: Fightcade's onChallengeAccept callback, before the chat row is drawn
+    const nameOf = (u) => String((u && (u.name || u.id)) || u || '').trim();
+    const accepted = (who) => { const n = nameOf(who); if (n && !fc.app.isMe(n) && !fc.app.inMatch(fc.app.me())) vsOnce(n); };
+    fc.hooks.method(() => fc.app.root(), 'acceptChallenge', { before(channel, user) { accepted(user); } });
+    ['connectionCallbacks', 'genericCallbacks'].forEach(k => fc.hooks.method(() => { const r = fc.app.root(); return r && r[k]; }, 'onChallengeAccept', { before(user) { accepted(user); } }));
     fc.watch(() => { scanAccepted(); refreshSessionPill(); });
     fc.tick(poll, 500, { whileHidden: true });
     fc.on('set:recorded', refreshSessionPill);

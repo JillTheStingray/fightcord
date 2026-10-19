@@ -8,6 +8,8 @@
  *
  * Quick settings (2.15): the Look, voice chat, streamer mode, music and Do not disturb, without
  * opening Settings. The same block opens from the channel header's ⋯ menu.
+ * Your profile (2.18): a status line, About me, a banner game and your badges, which Fightcord
+ * players see on your hover and scout cards (presence.js shares it). Edit it from here.
  */
 'use strict';
 
@@ -141,11 +143,18 @@ function cardHtml() {
         { label: 'Main game', value: E(d.main ? d.main.name : '—'), sub: d.main ? E(T.plural(d.main.n, '{n} set', '{n} sets')) : '', title: d.main ? d.main.name : '' }
     ]);
     const g = mod('goals');
+    const pr = mod('presence');
+    const mine = pr && pr.myProfile ? pr.myProfile() : null;
+    const myBanner = pr && pr.bannerFor ? pr.bannerFor(d.me) : '';
+    const shared = pr && pr.sharing ? pr.sharing() : false;
+    const profBits = mine && (mine.s || mine.a || (mine.bd || []).length) ? pr.profileHtml(d.me) : '';
     return fc.ui.cardHead({
-        name: d.me || T('You'), banner,
+        name: d.me || T('You'), banner: myBanner || banner,
         avatar: fc.ui.avatar(d.me, { size: 72, status: st, ring: 'var(--fc-s0)' }),
         meta: `<span class="pcSt ${st}">${E(statusText)}</span>`
-    }) + `<div class="pcBody">${stats}
+    }) + `<div class="pcBody">${profBits || (pr ? `<div class="pcSetStatus" data-pc="profile">${fc.ui.ic('chat')}${E(T('Set a status'))}</div>` : '')}
+        ${pr ? `<div class="pcProfRow"><span class="pcShare${shared ? ' on' : ''}">${E(shared ? T('Fightcord players see this') : T('Only you see this'))}</span>${fc.ui.btn('Edit profile', { kind: 'sec', size: 'sm', icon: 'edit', attrs: 'data-pc="profile"' })}</div>` : ''}
+        ${stats}
         ${g && g.summaryHtml ? g.summaryHtml() : ''}
         ${d.friends.length ? `<div class="pcSec"><div class="fc-card-h">${E(T('Friends online'))}</div><div class="pcFriends">${d.friends.slice(0, 6).map(n =>
             `<img src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(n)}" alt="" onerror="this.style.visibility='hidden'">`).join('')}${d.friends.length > 6 ? `<em>+${d.friends.length - 6}</em>` : ''}</div></div>` : ''}
@@ -154,6 +163,45 @@ function cardHtml() {
             <span class="pcSeg"><span class="${d.status !== 'away' ? 'on' : ''}" data-pc="online"><i class="dot on"></i>${E(T('Online'))}</span><span class="${d.status === 'away' ? 'on' : ''}" data-pc="away"><i class="dot away"></i>${E(T('Away'))}</span></span>
             ${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'chart', title: 'Stats', attrs: 'data-pc="stats"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'users', title: 'Friends', attrs: 'data-pc="friends"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', title: 'Settings', attrs: 'data-pc="settings"' })}${fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'logout', title: 'Log out', cls: 'pcOut', attrs: 'data-pc="logout"' })}
         </div></div>`;
+}
+
+// the profile editor: status, About me, banner game (+ the badges you'd show)
+function editProfile() {
+    const pr = mod('presence');
+    if (!pr || !pr.rawProfile) return;
+    const cur = pr.rawProfile();
+    // games to pick a banner from: your channels and what you've played most
+    const games = new Map();
+    fc.app.joinedChannels().forEach(c => { if (c.gameid) games.set(c.gameid, shortName(c.name || c.id)); });
+    const counts = new Map();
+    fc.history.all().forEach(x => { if (x.rom) counts.set(x.rom, (counts.get(x.rom) || 0) + 1); });
+    [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).forEach(([rom]) => {
+        if (!games.has(rom)) { const s = fc.history.all().find(x => x.rom === rom); games.set(rom, shortName((s && (s.channel || s.game)) || rom)); }
+    });
+    const opts = '<option value="">' + E(T('My main game')) + '</option>' + [...games.entries()].map(([rom, n]) =>
+        `<option value="${E(rom)}"${rom === cur.b ? ' selected' : ''}>${E(n)}</option>`).join('');
+    const mine = pr.myProfile();
+    const body = `<div class="pcEdit">
+        <label><span>${E(T('Status'))}</span><input class="fc-input" data-f="s" maxlength="80" placeholder="${E(T('Grinding 3rd Strike, FT5s welcome'))}" value="${E(cur.s)}"></label>
+        <label><span>${E(T('About me'))}</span><textarea class="fc-input" data-f="a" maxlength="190" placeholder="${E(T('Mains, where you play from, what you’re working on…'))}">${E(cur.a)}</textarea><small class="cnt"></small></label>
+        <label><span>${E(T('Banner'))}</span><select class="fc-select" data-f="b">${opts}</select></label>
+        ${(mine.bd || []).length ? `<div class="pcEditBadges"><span>${E(T('Your badges'))}</span>${pr.badgesHtml(mine, true)}</div>` : ''}
+        <p class="fc-note">${E(pr.sharing() ? T('Fightcord players see your profile on your hover and scout cards. Turn it off in Settings → Voice chat → Share my profile.')
+            : T('Sharing is off, so only you see this (Settings → Voice chat → Share my profile).'))}</p></div>`;
+    const m = fc.ui.modal({
+        title: T('Edit profile'), body, width: 460,
+        actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Save'), fn: (b) => {
+            pr.setProfile({ s: b.querySelector('[data-f="s"]').value, a: b.querySelector('[data-f="a"]').value, b: b.querySelector('[data-f="b"]').value });
+            fc.ui.toast(T('Profile saved'), { icon: 'check', kind: 'success' });
+        } }]
+    });
+    m.el.addEventListener('keydown', (e) => e.stopPropagation());
+    m.el.addEventListener('keypress', (e) => e.stopPropagation());
+    const ta = m.body.querySelector('textarea'), cnt = m.body.querySelector('.cnt');
+    const count = () => { cnt.textContent = (190 - ta.value.length) + ''; };
+    ta.addEventListener('input', count);
+    count();
+    setTimeout(() => { const i = m.body.querySelector('input'); if (i) i.focus(); }, 30);
 }
 
 function redraw() { const c = document.getElementById('pcCard'); if (c) c.innerHTML = cardHtml(); }
@@ -181,6 +229,7 @@ function onClick(e) {
         setTimeout(redraw, 120);
         return;
     }
+    if (a === 'profile') { closeFc(); setTimeout(editProfile, 0); return; }
     if (a === 'logout') {
         const lo = fcMenu && fcMenu.querySelector('.logOutWrapper .button');
         closeFc();
@@ -238,6 +287,20 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 #pcCard .pcSt { font-weight: 600; color: var(--fc-success); }
 #pcCard .pcSt.away { color: var(--fc-warning); } #pcCard .pcSt.playing, #pcCard .pcSt.dnd { color: var(--fc-danger); }
 #pcCard .pcBody { padding: 0 16px 12px; }
+#pcCard .fcProf { margin-top: 10px; }
+#pcCard .pcSetStatus { display: flex; align-items: center; margin-top: 10px; padding: 6px 9px; border-radius: var(--fc-r2); border: 1px dashed var(--fc-divider);
+    color: var(--fc-muted); font-size: 13px; cursor: pointer; }
+#pcCard .pcSetStatus:hover { color: var(--fc-text); border-color: var(--fc-muted); }
+#pcCard .pcSetStatus .fc-ic { width: 13px; height: 13px; margin-right: 7px; }
+#pcCard .pcProfRow { display: flex; align-items: center; margin-top: 8px; }
+#pcCard .pcShare { flex: 1; font-size: 11.5px; color: var(--fc-muted); }
+#pcCard .pcShare.on { color: var(--fc-success); }
+.pcEdit label { display: block; margin-bottom: 12px; position: relative; }
+.pcEdit label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdit .fc-input, .pcEdit .fc-select { width: 100%; box-sizing: border-box; }
+.pcEdit textarea { height: 70px; padding: 8px 10px; resize: none; line-height: 1.4; }
+.pcEdit .cnt { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: var(--fc-muted); }
+.pcEditBadges > span { display: block; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
 #pcCard .fc-stat > small .fc-ic { margin-right: 3px; color: var(--fc-warning); }
 #pcCard .pcSec { margin-top: 10px; }
 #pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: 11px; }
@@ -291,11 +354,12 @@ function start(f) {
     fc.own(() => { fc.ui.style('pcStyle', null); hide(); if (qsPop) qsPop.close(); document.documentElement.classList.remove('fcpc-on'); window.__fcProfileLoaded = false; });
     fc.tick(poll, 150);
     fc.on('dnd:changed', () => redraw());
+    fc.on('presence:profile', (ev) => { if (ev && ev.me) redraw(); });
     fc.own(fc.ui.header.more({ id: 'quick-settings', label: N_('Quick settings'), icon: 'bolt', order: 90, fn: () => setTimeout(() => openQuick(), 0) }));
     return api;
 }
 
-const api = { _show: () => show(), _hide: () => hide(), _data: () => data(), openQuick: (a) => openQuick(a), _quick: () => QUICK.map(q => ({ id: q.id, on: q.on() })) };
+const api = { _edit: () => editProfile(), _show: () => show(), _hide: () => hide(), _data: () => data(), openQuick: (a) => openQuick(a), _quick: () => QUICK.map(q => ({ id: q.id, on: q.on() })) };
 
 module.exports = { id: 'profile-card', name: 'Profile popout', start };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

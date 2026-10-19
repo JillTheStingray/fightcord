@@ -9,6 +9,8 @@
  *   - calm by default (2.9): on the left of the chat, one line per player (details in the hover
  *     card), and Fightcade's Playing list folded away until you open it
  *   - ⚔ 3–1 on players you've recently played, #12 on the game's leaderboard
+ *   - 2.16: a search box, groups that fold from their heading (remembered), a ⚔ button on hover
+ *     that challenges (Shift+click: the FT you played them at last), and "From your lobbies"
  *
  * Local only. Rows are regrouped with CSS `order` and marked with classes -- Fightcade's
  * own elements are never moved, and nothing here reacts to clicks on a player row
@@ -31,8 +33,23 @@ const DEFAULTS = {
     sort: 'name',         // name | ping | top
     side: 'left',         // left | right of the chat
     details: false,       // the 'country · ms · Wi-Fi' line under each name
-    playingOpen: false    // Fightcade's Playing (live matches) list unfolded
+    playingOpen: false,   // Fightcade's Playing (live matches) list unfolded
+    folded: {},           // group key -> folded (2.16)
+    quickChallenge: true  // the ⚔ button on a row you hover (2.16)
 };
+
+/* ------------------------------------------------------------- pure parts */
+
+// every word of the search somewhere in the name (any case)
+function matchesSearch(name, q) {
+    const n = String(name || '').toLowerCase();
+    return String(q || '').toLowerCase().split(/\s+/).filter(Boolean).every(w => n.indexOf(w) >= 0);
+}
+// a group's number -> the key its folded state is kept under
+const GROUP_KEYS = { '-3': 'playing', '-2': 'friends', '-1': 'lobbies' };
+const groupKey = (gi, ranks) => GROUP_KEYS[gi] || 'rank-' + ((ranks || RANKS)[gi] || '?');
+// can the ⚔ button challenge this row?
+const canQuick = (o) => !!(o && o.name && !o.me && !o.away && !o.playing);
 
 const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
@@ -132,7 +149,8 @@ function afterName(nag, cls, anchorSel) {
     return el;
 }
 
-function renderRow(item, info) {
+function renderRow(item, info, where) {
+    const w = where || {};
     item.classList.add('fcm-row');
     if (item.dataset.fcmRank !== info.rank) item.dataset.fcmRank = info.rank;
 
@@ -147,8 +165,10 @@ function renderRow(item, info) {
     const live = cfg.activity ? liveLine(info) : '';
     const pr = mod('presence');
     const pres = pr && pr.mark ? pr.mark(info.name) : '';
+    const quick = cfg.quickChallenge && canQuick({ name: info.name, me: fc.app.isMe(info.name), away: !!w.away, playing: !!info.playing });
+    const mate = (w.mate || []).join(', ');
     const sig = [info.country, info.flagCss, info.ping, info.net, info.top, cfg.bars ? 1 : 0, gameTxt, friend ? 'F' : '', noteDots, live, pres,
-        vs ? vs.w + '-' + vs.l + '-' + vs.sets : ''].join('|');
+        vs ? vs.w + '-' + vs.l + '-' + vs.sets : '', quick ? 'Q' : '', mate].join('|');
     if (item.dataset.fcmSig === sig && item.querySelector(':scope > .fcm-bars, .fcm-sub')) return;
     item.dataset.fcmSig = sig;
 
@@ -194,6 +214,10 @@ function renderRow(item, info) {
         if (pres) { const pm = afterName(nag, 'fcm-pres'); if (pm.innerHTML !== pres) pm.innerHTML = pres; }
         else { const pm = nag.querySelector(':scope > .fcm-pres'); if (pm) pm.remove(); }
 
+        // 🔒 a mate from your private lobbies
+        if (mate) { const lb = afterName(nag, 'fcm-lb'); lb.innerHTML = fc.ui.ic('lock'); lb.title = T('In your lobby: {lobbies}', { lobbies: mate }); }
+        else { const lb = nag.querySelector(':scope > .fcm-lb'); if (lb) lb.remove(); }
+
         // notes: coloured dots for the player's tags
         if (noteDots) { const nd = afterName(nag, 'fcm-nt', ':scope > .fcm-fr'); if (nd.innerHTML !== noteDots) nd.innerHTML = noteDots; }
         else { const nd = nag.querySelector(':scope > .fcm-nt'); if (nd) nd.remove(); }
@@ -217,6 +241,24 @@ function renderRow(item, info) {
         } else { const t = nag.querySelector(':scope > .fcm-vs'); if (t) t.remove(); }
     }
 
+    // ⚔ on hover: challenge without opening Fightcade's menu
+    let qc = item.querySelector(':scope > .fcm-qc');
+    if (quick) {
+        if (!qc) {
+            qc = document.createElement('span');
+            qc.className = 'fcm-qc';
+            qc.innerHTML = fc.ui.ic('sword');
+            // ours alone: Fightcade's row menu opens on mousedown
+            ['mousedown', 'mouseup'].forEach(ev => qc.addEventListener(ev, (e) => { e.stopPropagation(); e.preventDefault(); }, true));
+            qc.addEventListener('click', onQuickChallenge, true);
+            item.appendChild(qc);
+        }
+        qc.dataset.who = info.name;
+        const sc = mod('scout');
+        const ft = sc && sc.knownFt ? sc.knownFt(info.name.toLowerCase()) : null;
+        qc.title = T('Challenge {name}', { name: info.name }) + (typeof ft === 'number' ? '\n' + T('Shift+click: {ft} straight away', { ft: ft ? 'FT' + ft : T('casual') }) : '');
+    } else if (qc) qc.remove();
+
     // signal bars
     let bars = item.querySelector(':scope > .fcm-bars');
     if (cfg.bars) {
@@ -224,6 +266,18 @@ function renderRow(item, info) {
         bars.className = 'fcm-bars ' + pingLevel(info.ping);
         bars.title = (info.ping != null && !isNaN(info.ping) ? info.ping + ' ms' : T('ping unknown')) + (info.net ? ' · ' + info.net : '');
     } else if (bars) bars.remove();
+}
+
+function onQuickChallenge(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const name = e.currentTarget.dataset.who;
+    const ms = mod('match-screens'), sc = mod('scout');
+    if (!name || !ms || !ms.challenge) { fc.ui.toast(T('Match screens are off'), { kind: 'warning', icon: 'sword' }); return; }
+    const ft = e.shiftKey && sc && sc.knownFt ? sc.knownFt(name.toLowerCase()) : null;
+    // no FT: Fightcade asks for it, like its own Challenge
+    const st = ms.challenge(name, typeof ft === 'number' ? ft : undefined);
+    if (!st.ok) fc.ui.toast(st.why || T('Couldn’t challenge'), { kind: 'warning', icon: 'sword' });
 }
 
 /* ----------------------------------------------------------------- activity */
@@ -247,7 +301,10 @@ function liveLine(info) {
         (watch ? `<span class="w" data-watch="${E(watch)}" title="${E(T('Watch this match'))}">${fc.ui.ic('eye')}${E(T('Watch'))}</span>` : '');
 }
 
+let searchQ = '';                // the member search (not saved)
+
 function hiddenByFilter(info) {
+    if (searchQ && !matchesSearch(info.name, searchQ)) return true;
     const f = cfg.filter;
     if (f.ranks.length && !f.ranks.includes(info.rank)) return true;
     if (f.lowPing && !(info.ping != null && info.ping < 100)) return true;
@@ -264,21 +321,25 @@ function sortKey(info, idx) {
     return [idx, 0];
 }
 
-function processList(list, grouped) {
+function processList(list, grouped, away) {
     const items = [...list.children].filter(el => el.classList.contains('userItem'));
     const board = boardFor(listRom(list));
     const fr = mod('friends');
+    const lbm = mod('lobbies');
+    const mates = cfg.activity && lbm && lbm.mates ? lbm.mates() : null;
     const rows = items.map((item, idx) => {
         const info = rowInfo(item, board);
-        renderRow(item, info);
+        const mate = mates ? mates.get(info.name.toLowerCase()) : null;
+        renderRow(item, info, { away, mate });
         const hide = hiddenByFilter(info);
         if (item.classList.contains('fcm-hidden') !== hide) item.classList.toggle('fcm-hidden', hide);
         const visible = !hide && item.style.display !== 'none';
-        // activity sections: Playing now (-2), Friends (-1), then the rank groups
+        // activity sections: Playing now (-3), Friends (-2), From your lobbies (-1), then the rank groups
         let group = grouped ? RANKS.indexOf(info.rank) : 0;
         if (grouped && cfg.activity) {
-            if (info.playing) group = -2;
-            else if (fr && fr.isFriend && fr.isFriend(info.name)) group = -1;
+            if (info.playing) group = -3;
+            else if (fr && fr.isFriend && fr.isFriend(info.name)) group = -2;
+            else if (mate) group = -1;
         }
         return { item, info, idx, visible, group };
     });
@@ -289,9 +350,11 @@ function processList(list, grouped) {
     const byGroup = new Map();
     rows.forEach(r => { if (!byGroup.has(r.group)) byGroup.set(r.group, []); byGroup.get(r.group).push(r); });
     byGroup.forEach((g, gi) => {
-        if (gi === -2) g.sort((a, b) => String(a.info.playing.quarkId).localeCompare(String(b.info.playing.quarkId)) || a.idx - b.idx);
+        if (gi === -3) g.sort((a, b) => String(a.info.playing.quarkId).localeCompare(String(b.info.playing.quarkId)) || a.idx - b.idx);
         else g.sort((a, b) => { const ka = sortKey(a.info, a.idx), kb = sortKey(b.info, b.idx); return ka[0] - kb[0] || ka[1] - kb[1]; });
         const count = g.filter(r => r.visible).length;
+        const key = groupKey(gi);
+        const folded = grouped && !searchQ && !!cfg.folded[key];       // a search shows everything it finds
         let firstDone = false;
         g.forEach((r, pos) => {
             const order = String(gi * 10000 + pos);
@@ -299,16 +362,44 @@ function processList(list, grouped) {
             const first = grouped && r.visible && !firstDone;
             if (first) firstDone = true;
             if (r.item.classList.contains('fcm-first') !== first) r.item.classList.toggle('fcm-first', first);
-            const label = gi === -2 ? T('Playing now') : gi === -1 ? T('Friends') : RANKS[gi] === '?' ? T('Unranked') : T('Rank {rank}', { rank: RANKS[gi] });
-            const head = first ? label + ' — ' + count : '';
+            const fold = folded && r.visible && !first;
+            if (r.item.classList.contains('fcm-fold') !== fold) r.item.classList.toggle('fcm-fold', fold);
+            const fh = folded && first;
+            if (r.item.classList.contains('fcm-folded-head') !== fh) r.item.classList.toggle('fcm-folded-head', fh);
+            let gh = r.item.querySelector(':scope > .fcm-gh');
             if (first) {
-                if (r.item.dataset.fcmHead !== head) r.item.dataset.fcmHead = head;
+                const label = gi === -3 ? T('Playing now') : gi === -2 ? T('Friends') : gi === -1 ? T('From your lobbies')
+                    : RANKS[gi] === '?' ? T('Unranked') : T('Rank {rank}', { rank: RANKS[gi] });
                 // the group's picture: Fightcade's rank badge, or an icon
-                const pic = gi === -2 ? fc.ui.iconUrl('swords', false, '#949ba4') : gi === -1 ? fc.ui.iconUrl('star', true, '#f0b232') : 'url("' + fc.data.rankImg(RANKS[gi]) + '")';
-                if (r.item.style.getPropertyValue('--fcm-hi') !== pic) r.item.style.setProperty('--fcm-hi', pic);
-            } else if (r.item.dataset.fcmHead) { delete r.item.dataset.fcmHead; r.item.style.removeProperty('--fcm-hi'); }
+                const pic = gi === -3 ? fc.ui.iconUrl('swords', false, '#949ba4') : gi === -2 ? fc.ui.iconUrl('star', true, '#f0b232')
+                    : gi === -1 ? fc.ui.iconUrl('lock', false, '#949ba4') : 'url("' + fc.data.rankImg(RANKS[gi]) + '")';
+                if (!gh) {
+                    gh = document.createElement('span');
+                    gh.className = 'fcm-gh';
+                    // a real element (not ::before): it can be clicked without Fightcade's row menu
+                    ['mousedown', 'mouseup'].forEach(ev => gh.addEventListener(ev, (e) => { e.stopPropagation(); e.preventDefault(); }, true));
+                    gh.addEventListener('click', onGroupClick, true);
+                    r.item.appendChild(gh);
+                }
+                const html = `<i>${fc.ui.ic('chevronDown')}</i><span>${E(label)} — ${count}</span>`;
+                if (gh.__html !== html) { gh.__html = html; gh.innerHTML = html; }
+                gh.dataset.key = key;
+                gh.title = folded ? T('Show this group') : T('Fold this group');
+                gh.classList.toggle('folded', folded);
+                if (gh.style.getPropertyValue('--fcm-hi') !== pic) gh.style.setProperty('--fcm-hi', pic);
+            } else if (gh) gh.remove();
         });
     });
+}
+
+function onGroupClick(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    const key = e.currentTarget.dataset.key;
+    if (!key) return;
+    if (cfg.folded[key]) delete cfg.folded[key]; else cfg.folded[key] = true;
+    store.save();
+    sweep();
 }
 
 /* ------------------------------------------------------------- chips + sort */
@@ -337,7 +428,13 @@ function chipBarHtml() {
 
 function refreshChipBars() {
     const html = chipBarHtml();
-    document.querySelectorAll('.fcm-chips').forEach(b => { if (b.innerHTML !== html) b.innerHTML = html; });
+    document.querySelectorAll('.fcm-chips > .fcm-cbx').forEach(b => { if (b.innerHTML !== html) b.innerHTML = html; });
+}
+
+function setSearch(q) {
+    searchQ = String(q || '').trim();
+    document.querySelectorAll('.fcm-search').forEach(i => { if (i.value !== q) i.value = q; });
+    sweep();
 }
 
 let filterPop = null;
@@ -375,14 +472,22 @@ function onChipClick(e) {
 }
 
 function ensureChipBar(wrapper) {
-    if (wrapper.querySelector('.fcm-chips')) return;
+    const old = wrapper.querySelector('.fcm-chips');
+    if (old && old.querySelector('.fcm-search')) return;
+    if (old) old.remove();                                // from before 2.16
     const anchor = wrapper.querySelector('.usersOnlineTitle');
     if (!anchor || !anchor.parentNode) return;
     const bar = document.createElement('div');
     bar.className = 'fcm-chips';
-    bar.innerHTML = chipBarHtml();
-    bar.addEventListener('click', onChipClick);
+    bar.innerHTML = `<input class="fcm-search" type="text" spellcheck="false" placeholder="${E(T('Search members'))}" value="${E(searchQ)}"><span class="fcm-cbx">${chipBarHtml()}</span>`;
+    bar.addEventListener('click', (e) => { if (!e.target.closest('.fcm-search')) onChipClick(e); });
     bar.addEventListener('mousedown', (e) => e.stopPropagation());
+    const input = bar.querySelector('.fcm-search');
+    input.addEventListener('input', () => setSearch(input.value));
+    // Fightcade's chat shortcuts stay out; Esc clears the search
+    input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape' && input.value) { e.preventDefault(); setSearch(''); } });
+    input.addEventListener('keypress', (e) => e.stopPropagation());
+    input.addEventListener('keyup', (e) => { if (e.key === 'Escape') e.stopPropagation(); });
     anchor.insertAdjacentElement('afterend', bar);
 }
 
@@ -396,10 +501,26 @@ ${P} .fcm-list.fcm-grouped { display: flex !important; flex-direction: column !i
 ${P} .fcm-list { display: flex !important; flex-direction: column !important; }
 ${P} .userItem.fcm-hidden { display: none !important; }
 ${P} .userItem.fcm-row.fcm-first { margin-top: 36px !important; }
-${P} .userItem.fcm-row.fcm-first::before {
-    content: attr(data-fcm-head); position: absolute; left: 6px; top: -31px; pointer-events: none; white-space: nowrap;
-    font: 500 14px/26px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
-    padding-left: 32px; background: var(--fcm-hi) no-repeat left center / 26px 26px; }
+${P} .userItem.fcm-row { position: relative !important; }
+${P} .userItem .fcm-gh { position: absolute; left: 6px; top: -31px; display: flex; align-items: center; height: 26px; padding-left: 32px; white-space: nowrap;
+    cursor: pointer; user-select: none; font: 500 14px/26px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
+    background: var(--fcm-hi) no-repeat left center / 26px 26px; pointer-events: auto; visibility: visible !important; }
+${P} .userItem .fcm-gh:hover { color: var(--fc-head); }
+${P} .userItem .fcm-gh i { display: inline-flex; order: 2; margin-left: 4px; opacity: .7; transition: transform var(--fc-fast); }
+${P} .userItem .fcm-gh i .fc-ic { width: 12px; height: 12px; }
+${P} .userItem .fcm-gh.folded i { transform: rotate(-90deg); }
+${P} .userItem.fcm-fold { display: none !important; }
+/* (out-ranks the compact layout's fixed row height) */
+${P} .usersOnlineList .userItem.fcm-row.fcm-folded-head:not(.fcm-playing) { height: 0 !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+    overflow: visible !important; pointer-events: none !important; background: none !important; box-shadow: none !important; }
+${P} .userItem.fcm-folded-head > :not(.fcm-gh) { visibility: hidden !important; }
+${P} .userItem > .fcm-qc { order: 4; flex: none; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; margin-left: 6px;
+    border-radius: 6px; background: var(--fc-success); color: #fff; cursor: pointer; }
+${P} .userItem > .fcm-qc .fc-ic { width: 14px; height: 14px; }
+${P} .userItem > .fcm-qc:hover { filter: brightness(1.1); }
+${P} .userItem.fcm-row:hover > .fcm-qc { display: inline-flex; }
+${P} .userItem .nameAndGame > .fcm-lb { display: inline-flex !important; margin-left: 5px !important; color: var(--fc-muted) !important; vertical-align: -1px !important; }
+${P} .userItem .nameAndGame > .fcm-lb .fc-ic { width: 12px; height: 12px; }
 ${P} .userItem.fcm-row .flagWrapper,
 ${P} .userItem.fcm-row .rankWrapper,
 ${P} .userItem.fcm-row .pingWrapper { display: none !important; }
@@ -441,7 +562,12 @@ ${P} .fcm-bars i { width: 3px; margin-left: 2px; border-radius: 1px; background:
 ${P} .fcm-bars i:nth-child(1) { height: 5px; } ${P} .fcm-bars i:nth-child(2) { height: 8px; } ${P} .fcm-bars i:nth-child(3) { height: 12px; }
 ${P} .fcm-bars.good { color: var(--fc-success); } ${P} .fcm-bars.ok { color: var(--fc-warning); } ${P} .fcm-bars.bad { color: #f23f43; } ${P} .fcm-bars.unk { color: #80848e; }
 ${P} .fcm-bars.good i, ${P} .fcm-bars.ok i:nth-child(-n+2), ${P} .fcm-bars.bad i:nth-child(1) { opacity: 1; }
-${P} .fcm-chips { display: flex; flex-wrap: nowrap; align-items: center; padding: 6px 8px 2px; }
+${P} .fcm-chips { display: flex; flex-wrap: wrap; align-items: center; padding: 6px 8px 2px; }
+${P} .fcm-chips > .fcm-cbx { display: flex; align-items: center; flex: 1 1 100%; }
+${P} .fcm-search { flex: 1 1 100%; height: 28px; margin: 0 0 6px; padding: 0 10px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none;
+    background: var(--fc-input); color: var(--fc-text); font: 13px/28px var(--fc-font); }
+${P} .fcm-search::placeholder { color: var(--fc-muted); }
+${P} .fcm-search:focus { box-shadow: 0 0 0 1px var(--fc-accent); }
 ${P} .fcm-fbtn { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 12px; cursor: pointer; user-select: none;
     font: 600 12px/24px var(--fc-font); background: var(--fc-btn); color: var(--fc-text); }
 ${P} .fcm-fbtn:hover { background: var(--fc-btn-h); }
@@ -521,7 +647,7 @@ function sweep() {
         ensureChipBar(w);
         ensurePlayingFold(w);
         w.querySelectorAll('.usersOnlineList').forEach(l => { l.classList.toggle('fcm-colors', cfg.rankColors); processList(l, cfg.group); });
-        w.querySelectorAll('.usersAwayList').forEach(l => { l.classList.toggle('fcm-colors', cfg.rankColors); processList(l, false); });
+        w.querySelectorAll('.usersAwayList').forEach(l => { l.classList.toggle('fcm-colors', cfg.rankColors); processList(l, false, true); });
     });
 }
 
@@ -529,11 +655,11 @@ function teardown() {
     document.documentElement.classList.remove('fcm-left', 'fcm-compact');
     document.querySelectorAll('.fcm-pl-open').forEach(n => n.classList.remove('fcm-pl-open'));
     if (filterPop) filterPop.close();
-    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live, .fcm-pres').forEach(n => n.remove());
+    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live, .fcm-pres, .fcm-gh, .fcm-qc, .fcm-lb').forEach(n => n.remove());
     document.querySelectorAll('.fcm-playing').forEach(n => n.classList.remove('fcm-playing'));
     document.querySelectorAll('.fcm-list').forEach(l => l.classList.remove('fcm-list', 'fcm-grouped', 'fcm-colors'));
     document.querySelectorAll('.fcm-row').forEach(r => {
-        r.classList.remove('fcm-row', 'fcm-hidden', 'fcm-first');
+        r.classList.remove('fcm-row', 'fcm-hidden', 'fcm-first', 'fcm-fold', 'fcm-folded-head');
         r.style.removeProperty('order');
         ['fcmRank', 'fcmSig', 'fcmHead'].forEach(k => delete r.dataset[k]);
     });
@@ -577,6 +703,7 @@ function start(f) {
     fc.on('presence:changed', sweep);
     fc.on('ranks:changed', () => { fc.ui.style('fcmStyle', css()); sweep(); });     // rank icons: new colours
     fc.on('notes:changed', sweep);
+    fc.on('lobbies:changed', sweep);
 
     const opt = (key, label, hint, show) => ({ key, type: 'switch', label, hint, show, onChange: () => redo(key) });
     const on = (d) => d.enabled;
@@ -588,7 +715,8 @@ function start(f) {
                 options: [['left', N_('Left')], ['right', N_('Right')]], onChange: () => redo('side') },
             opt('details', N_('Details under names'), N_('Country, ping and Wi-Fi on a second line (they’re always in the hover card)'), on),
             opt('group', N_('Group by rank'), N_('Like Discord roles'), on),
-            opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch) and Friends at the top'), on),
+            opt('activity', N_('Activity sections'), N_('Playing now (with vs + Watch), Friends and your lobby mates at the top'), on),
+            opt('quickChallenge', N_('Challenge button on hover'), N_('A ⚔ on the player you point at; Shift+click sends the FT you played them at last'), on),
             opt('rankColors', N_('Rank-coloured names'), N_('Each name in its rank’s colour'), on),
             opt('bars', N_('Signal bars'), N_('Instead of the ping number'), on),
             opt('played', N_('Played before'), N_('Your record with people you recently played'), on),
@@ -601,10 +729,11 @@ function start(f) {
 
 const api = {
     continentOf,
+    search: (q) => setSearch(q),
     _setOpponents: (m) => { opponents = m; sweep(); },
     _teardown: () => teardown(),
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'member-list', name: 'Member list', start };
+module.exports = { id: 'member-list', name: 'Member list', start, matchesSearch, groupKey, canQuick };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

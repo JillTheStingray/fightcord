@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.16.0
+
+- **Profiles other Fightcord players can see.** Click your avatar → **Edit profile**: a status line, an
+  About me and a banner game. Your **badges** come from your own history (100/500/1,000 sets, 5/10/20 wins
+  in a row, a top 100 or top 10 spot). Fightcord players see them on your hover and scout cards, and you
+  see theirs. Settings → Voice chat has **Share my profile**, **Show my badges** and **Show other players’
+  profiles**; any scout card's ⋯ has **Hide their profile**.
+- **Member list:**
+  - **Search** at the top: type a name, Esc clears it.
+  - **Fold a group** by clicking its heading (Rank B — 11); remembered.
+  - **A ⚔ on the player you point at** challenges them (Fightcade asks the FT); **Shift+click** sends the
+    FT you played them at last.
+  - **From your lobbies:** members of your private lobbies who are in the channel get their own group.
+- **Settings:**
+  - **Changed settings** (under App): every setting you changed from the defaults, each with its own Reset.
+  - **New** badges on settings that arrive in an update, until you've seen them.
+  - **Share your setup** (Backup & restore): a code with your look and layout for a friend to paste. Never
+    your notes, friends, history, lobbies or account.
+- Fixed: the VS screen sometimes showed up after the match had started (accepting from the challenge card,
+  or the other player accepting yours). It now shows the moment the set is agreed.
+
 ## 2.15.0
 
 - **Pictures, GIFs and clips in the chat** (Fightcord players see them).

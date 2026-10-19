@@ -58,9 +58,11 @@ function cardHtml(name, chanHint) {
         '<span>' + E([(u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '', conn].filter(Boolean).join(' · ')) + '</span>';
     const vsLine = !playLine && vs && (vs.w || vs.l || vs.played)
         ? `<div class="hcVs"><span>${E(T('You vs {name}', { name }))}</span><b class="${vs.w > vs.l ? 'up' : vs.w < vs.l ? 'down' : ''}">${vs.w}–${vs.l}</b>${vs.played ? `<small>${E(T('{n} sets', { n: vs.played }))}</small>` : ''}</div>` : '';
-    return fc.ui.cardHead({ name, banner: fc.data.hashColor(name), avatar: fc.ui.avatar(name, { size: 64, status: status === 'live' ? 'playing' : status, ring: 'var(--fc-s0)' }), marks, meta }) +
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.data.hashColor(name);
+    const prof = pr && pr.profileHtml ? pr.profileHtml(name, { about: false }) : '';
+    return fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 64, status: status === 'live' ? 'playing' : status, ring: 'var(--fc-s0)' }), marks, meta }) +
         `<div class="hcBody">
-            ${playLine}${vsLine}
+            ${prof}${playLine}${vsLine}
             ${notes ? `<div class="hcNotes">${notes}</div>` : ''}
             ${isMe ? '' : `<div class="hcBtns">
                 ${cst ? fc.ui.btn('Challenge', { size: 'sm', icon: 'sword', cls: 'hcGo', disabled: !cst.ok, title: cst.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(cst.why), attrs: 'data-hc="challenge"' }) : ''}
@@ -100,6 +102,13 @@ function show(row) {
     setTimeout(() => card.classList.add('in'), 16);
     opened.push(name);
     if (opened.length > 50) opened.shift();
+}
+
+function refreshOpen() {
+    const card = document.getElementById('hcCard');
+    if (!card || !current || card.dataset.name !== current) return;
+    const html = cardHtml(current, card.dataset.chan);
+    if (card.__html !== html) { card.__html = html; card.innerHTML = html; }
 }
 
 function hide() {
@@ -210,6 +219,7 @@ const CSS = `
 
 function start(f) {
     fc = f;
+    fc.on('presence:profile', () => refreshOpen());
     store = fc.config('hover-cards', { enabled: true, delay: 350 });
     cfg = store.data;
     window.__fcHoverLoaded = true;
