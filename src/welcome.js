@@ -99,6 +99,11 @@ const NEWS = [
         ['user', N_('Your profile'), N_('A status, About me, banner and badges that Fightcord players see on your cards. Click your avatar → Edit profile.')],
         ['users', N_('A smarter member list'), N_('Search, fold groups, a ⚔ to challenge the player you point at, and your lobby mates in their own group.')],
         ['gear', N_('Settings you can share'), N_('See every setting you changed, spot new ones, and share your setup with a code.')]
+    ] },
+    { v: '2.17', title: 'Fightcord 2.17', items: [
+        ['music', N_('Audio in the chat'), N_('Paste, drop or click + with an mp3, ogg, wav or other audio file: Fightcord players get a player right in the chat.')],
+        ['play', N_('Videos play like videos'), N_('mp4, webm and mov files play with sound and stop at the end, and no longer end up in your GIF favorites.')],
+        ['refresh', N_('Uploads that get through'), N_('When catbox.moe has trouble, Fightcord tries again and then sends through uguu.se (those files last 3 hours).')]
     ] }
 ];
 

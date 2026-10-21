@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.17.0
+
+- **Audio files in the chat** for Fightcord players: paste, drop or click + with an mp3, ogg, wav, m4a, flac,
+  aac or opus file. It shows as a player with the file's name, play / pause and a bar to jump around; one
+  plays at a time.
+- **Videos are videos, not GIFs:** mp4, webm and mov files now play like a video (sound on, no endless loop)
+  and can't be starred as a favorite GIF. Videos starred before are taken out of your GIF favorites.
+  imgur's .gifv links really are GIFs, so they loop and can be starred.
+- **Uploads when catbox.moe has trouble:** Fightcord tries again by itself, checks that catbox really kept
+  the file (it was handing out links to empty files), and if catbox stays down it sends the file through
+  **uguu.se** instead. Files sent that way disappear after 3 hours, and a note tells you so.
+- Fixed: folding "Playing now" in the member list left an empty red box.
+
 ## 2.16.0
 
 - **Profiles other Fightcord players can see.** Click your avatar → **Edit profile**: a status line, an

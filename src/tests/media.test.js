@@ -90,10 +90,10 @@ test('upload: an error answer is an error, cancelling stops it', async () => {
     await assert.rejects(job.promise, /cancelled/);
 });
 
-test('previews: catbox pictures and clips, imgur gifv as a clip; unknown hosts never fetched', async () => {
+test('previews: catbox pictures and clips, imgur gifv as a GIF; unknown hosts never fetched', async () => {
     assert.deepEqual(await cx._buildPreview('https://files.catbox.moe/ab12cd.png'), { kind: 'image', url: 'https://files.catbox.moe/ab12cd.png' });
     assert.deepEqual(await cx._buildPreview('https://files.catbox.moe/ab12cd.mp4'), { kind: 'clip', url: 'https://files.catbox.moe/ab12cd.mp4' });
-    assert.deepEqual(await cx._buildPreview('https://i.imgur.com/AbCd123.gifv'), { kind: 'clip', url: 'https://i.imgur.com/AbCd123.mp4' });
+    assert.deepEqual(await cx._buildPreview('https://i.imgur.com/AbCd123.gifv'), { kind: 'gifv', url: 'https://i.imgur.com/AbCd123.mp4', page: 'https://i.imgur.com/AbCd123.gifv' });
     assert.equal(cx._allowed('files.catbox.moe'), true);
     assert.equal(cx._allowed('catbox.moe.evil.com'), false);
     assert.equal(cx._allowed('grabify.link'), false);
@@ -204,4 +204,77 @@ test('KLIPY: its links, its answers, search through it first', async () => {
     assert.equal(r.results[0].link, 'https://klipy.com/gifs/happy-1');
     assert.ok(got[0].indexOf('/gifs/search?page=1&per_page=40&q=happy%20cat&customer_id=') > 0, got[0]);
     assert.equal(got.length, 1, 'no Tenor when KLIPY answers');
+});
+
+test('audio files: which can go (by type or by name), their name after the #', async () => {
+    assert.equal(up.typeOf({ type: 'audio/mpeg', name: 'a.mp3' }), 'audio/mpeg');
+    assert.equal(up.typeOf({ type: '', name: 'Ken Theme.FLAC' }), 'audio/flac', 'Windows hands some files over with no type');
+    assert.equal(up.typeOf({ type: 'application/octet-stream', name: 'x.exe' }), '');
+    assert.equal(up.checkFile({ type: 'audio/x-m4a', name: 'a.m4a', size: 10 }), '');
+    assert.match(up.checkFile({ type: '', name: 'notes.txt', size: 10 }), /Only pictures, GIFs, clips and audio/);
+    assert.equal(up.audioTag('Ken Theme (remix).mp3'), '#Ken%20Theme%20%28remix%29');
+    assert.equal(up.audioTag('.mp3'), '');
+    const link = 'https://files.catbox.moe/ab12cd.mp3' + up.audioTag('Ken Theme (remix).mp3');
+    assert.deepEqual(await cx._buildPreview(link), { kind: 'audio', url: 'https://files.catbox.moe/ab12cd.mp3', name: 'Ken Theme (remix).mp3' });
+    assert.deepEqual(await cx._buildPreview('https://cdn.discordapp.com/attachments/1/2/round_1.ogg'), { kind: 'audio', url: 'https://cdn.discordapp.com/attachments/1/2/round_1.ogg', name: 'round_1.ogg' });
+});
+
+// a fake HEAD request: answers with that content-length (the file catbox kept)
+function fakeHead(len, status) {
+    return (url, o, cb) => { const req = new EventEmitter(); req.end = () => setTimeout(() => cb({ statusCode: status || 200, headers: { 'content-length': String(len) }, resume() {} }), 2); req.destroy = () => {}; return req; };
+}
+const okHead = (url, o, cb) => fakeHead(1)(url, o, cb);
+
+test('catbox busy (200 with nothing, or a 5xx): a clear message, tried again, then given up', async () => {
+    await assert.rejects(up.upload(Buffer.from('x'), 'image/png', null, { request: fakeRequest(200, '').request }).promise, (e) => e.busy && /busy or down/.test(e.message));
+    await assert.rejects(up.upload(Buffer.from('x'), 'image/png', null, { request: fakeRequest(503, '<html>').request }).promise, (e) => e.busy);
+    const notBusy = await up.upload(Buffer.from('x'), 'image/png', null, { request: fakeRequest(412, 'No file!').request }).promise.catch(e => e);
+    assert.equal(notBusy.busy, undefined);
+    // two busy answers, then a link
+    const answers = [[200, ''], [502, ''], [200, 'https://files.catbox.moe/ok1234.webm']];
+    let calls = 0, retries = 0;
+    const flaky = (url, o, cb) => { const [s, a] = answers[calls++]; return fakeRequest(s, a).request(url, o, cb); };
+    const got = await up.uploadRetry(Buffer.from('x'), 'audio/webm', null, { request: flaky, waits: [5, 5], head: okHead, onRetry: () => retries++ }).promise;
+    assert.deepEqual(got, { url: 'https://files.catbox.moe/ok1234.webm', host: 'catbox' });
+    assert.equal(calls, 3);
+    assert.equal(retries, 2);
+    // always busy: gives up after the waits run out; a real error isn't retried
+    calls = 0;
+    await assert.rejects(up.uploadRetry(Buffer.from('x'), 'audio/webm', null, { request: (u, o, cb) => { calls++; return fakeRequest(200, '').request(u, o, cb); }, waits: [5, 5], head: okHead, fallback: false }).promise, /busy/);
+    assert.equal(calls, 3);
+    calls = 0;
+    await assert.rejects(up.uploadRetry(Buffer.from('x'), 'audio/webm', null, { request: (u, o, cb) => { calls++; return fakeRequest(412, 'No file!').request(u, o, cb); }, waits: [5, 5], head: okHead }).promise, /No file/);
+    assert.equal(calls, 1);
+    // cancel while waiting to try again
+    const job = up.uploadRetry(Buffer.from('x'), 'audio/webm', null, { request: fakeRequest(200, '').request, waits: [500], head: okHead, fallback: false });
+    setTimeout(() => job.cancel(), 40);
+    await assert.rejects(job.promise, /cancelled/);
+});
+
+test('catbox hands out a link but kept nothing: tried again, never sent', async () => {
+    let calls = 0;
+    const req = (u, o, cb) => { calls++; return fakeRequest(200, 'https://files.catbox.moe/empty1.webm').request(u, o, cb); };
+    await assert.rejects(up.uploadRetry(Buffer.from('abc'), 'audio/webm', null, { request: req, head: fakeHead(0), waits: [5, 5], fallback: false }).promise, (e) => e.busy && /didn.t keep the file/.test(e.message));
+    assert.equal(calls, 3);
+    assert.equal(await up.uploadRetry(Buffer.from('abc'), 'audio/webm', null, { request: req, head: fakeHead(3), waits: [5] }).promise.then(g => g.url), 'https://files.catbox.moe/empty1.webm', 'the right size: fine');
+    assert.equal(await up.stored('https://files.catbox.moe/x.png', 3, { head: () => { throw new Error('offline'); } }), null, 'can not tell: the link goes out');
+});
+
+test('catbox keeps failing: the file goes to uguu.se instead (its own field, its JSON answer)', async () => {
+    assert.equal(up.uguuUrl('{"success":true,"files":[{"url":"https://h.uguu.se/AbCd1234.png"}]}'), 'https://h.uguu.se/AbCd1234.png');
+    assert.equal(up.uguuUrl('{"success":true,"files":[{"url":"https://evil.example/x.png"}]}'), null);
+    assert.equal(up.uguuUrl('{"success":false}'), null);
+    assert.equal(up.uguuUrl('<html>'), null);
+    const seen = [], steps = [];
+    const req = (url, o, cb) => {
+        seen.push(url);
+        return /uguu/.test(url) ? fakeRequest(200, '{"success":true,"files":[{"url":"https://h.uguu.se/Zx9.webm"}]}').request(url, o, cb) : fakeRequest(200, '').request(url, o, cb);
+    };
+    const got = await up.uploadRetry(Buffer.from('abc'), 'audio/mpeg', null, { request: (u, o, cb) => { const r = req(u, o, cb); const w = r.write; r.write = (c) => { steps.push(String(c)); return w(c); }; return r; }, head: fakeHead(3), waits: [5, 5], onRetry: (n, h) => steps.push('retry ' + n + ' ' + h) }).promise;
+    assert.deepEqual(got, { url: 'https://h.uguu.se/Zx9.webm', host: 'uguu' });
+    assert.deepEqual(seen, ['https://catbox.moe/user/api.php', 'https://catbox.moe/user/api.php', 'https://catbox.moe/user/api.php', 'https://uguu.se/upload']);
+    assert.ok(steps.some(x => x === 'retry 3 uguu.se'));
+    assert.ok(steps.join('').includes('name="files[]"; filename="fightcord.mp3"'), 'uguu wants files[]');
+    // both down: one clear message
+    await assert.rejects(up.uploadRetry(Buffer.from('abc'), 'image/png', null, { request: fakeRequest(200, '').request, head: okHead, waits: [5] }).promise, /both having trouble/);
 });

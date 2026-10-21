@@ -62,8 +62,8 @@ walks you through the rest.
   in Discover.
 - Private lobbies, like a Discord server: invite-only, with a chat that keeps its history, a member
   list with Challenge, and a voice room for up to 8.
-- Pictures, GIFs and clips in the chat for Fightcord players: paste, drop or click +, favorite GIFs
-  and send them again from the GIF button.
+- Pictures, GIFs, clips and audio files in the chat for Fightcord players: paste, drop or click +,
+  favorite GIFs and send them again from the GIF button.
 - Profiles for Fightcord players (status, About me, banner, badges), a member list with search,
   folding groups and a one-click challenge, and setup codes to share your look.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
@@ -153,7 +153,7 @@ Fightcord has no server and no analytics. It only talks to:
 | OBS overlay | a page at `127.0.0.1` that only this PC can open | while the overlay is on (Settings → Streamer mode) |
 | "Who has Fightcord" | free public Nostr relays (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | while Fightcade runs, unless you turn off "Show that I use Fightcord": your Fightcade name, hashed, and whether voice chat is on, every few minutes; relays forward it live and don't store it; with "Share my profile" on (the default), also your status, About me, banner game and badges when another Fightcord player asks for them |
 | Private lobbies | free public Nostr relays (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | for the lobbies you're in, while Fightcade runs: messages, joins and "online" signals, encrypted with a key that only exists in the invite code. The relays keep the encrypted messages so you see what you missed; they can't read them. The voice room goes directly between players' PCs, like voice chat |
-| Pictures in chat | sending: `catbox.moe`; showing: catbox, imgur, KLIPY, Tenor, Giphy, Discord; GIF search: `api.klipy.com` (`tenor.com` if KLIPY can't answer) | what you type in the GIF button's search box goes to KLIPY (or Tenor) after you stop typing, with a random per-install id KLIPY asks for; a picture is uploaded only when you click Upload (public to anyone with its link); pictures from those sites load when they show up in the chat (or when you click them, with "Blur them until clicked") |
+| Pictures in chat | sending: `catbox.moe`, or `uguu.se` when catbox is down (files there are deleted after 3 hours); showing: catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; GIF search: `api.klipy.com` (`tenor.com` if KLIPY can't answer) | what you type in the GIF button's search box goes to KLIPY (or Tenor) after you stop typing, with a random per-install id KLIPY asks for; a picture or audio file is uploaded only when you click Upload (public to anyone with its link); pictures from those sites load when they show up in the chat (or when you click them, with "Blur them until clicked") |
 | Voice chat | the same relays for the encrypted handshake, then directly your opponent's PC (STUN: Google / Cloudflare to find a route) | only during a set, only when you both joined |
 
 Settings, notes, friends and match history stay in Fightcord's folder on your PC

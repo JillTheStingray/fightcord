@@ -111,7 +111,7 @@ de boas-vindas curta te guia pelo resto.
   qualquer evento em que você tocar o sininho), com um botão para abrir o canal.
 - **Status no Discord:** mostra seu jogo, oponente e o tempo de partida no seu perfil do Discord.
 - **Lobbies privados**, como um servidor do Discord: só com convite, com um chat que guarda o histórico, lista de membros com Desafiar e uma sala de voz para até 8.
-- **Imagens, GIFs e clipes no chat** para quem usa o Fightcord: cole, solte ou clique no +, favorite GIFs e envie de novo pelo botão GIF.
+- **Imagens, GIFs, clipes e áudios no chat** para quem usa o Fightcord: cole, solte ou clique no +, favorite GIFs e envie de novo pelo botão GIF.
 - **Perfis** para quem usa o Fightcord (status, Sobre mim, banner, emblemas), uma lista de membros com busca, grupos que recolhem e desafio com um clique, e códigos para compartilhar sua configuração.
 - **Música** no lobby (traga sua própria faixa; nenhuma vem incluída).
 
@@ -152,7 +152,7 @@ O Fightcord não tem servidor nem coleta de dados. Ele só conversa com:
 | "Quem tem o Fightcord" | relays Nostr públicos e gratuitos (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | enquanto o Fightcade está aberto, a menos que você desligue "Mostrar que eu uso o Fightcord": seu nome no Fightcade, com hash, e se o chat de voz está ligado, a cada poucos minutos; os relays repassam ao vivo e não guardam; com "Compartilhar meu perfil" ligado (o padrão), também seu status, Sobre mim, jogo do banner e emblemas quando outro jogador com Fightcord pedir |
 | Chat de voz | os mesmos relays para o aperto de mão criptografado, depois direto o PC do seu oponente (STUN: Google / Cloudflare para achar o caminho) | só durante um set, só quando os dois entraram |
 | Lobbies privados | relays Nostr públicos e gratuitos (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | para os lobbies em que você está, enquanto o Fightcade está aberto: mensagens, entradas e sinais de "online", criptografados com uma chave que só existe no código de convite. Os relays guardam as mensagens criptografadas para você ver o que perdeu, mas não conseguem lê-las. A sala de voz vai direto entre os PCs dos jogadores, como o chat de voz |
-| Imagens no chat | envio: `catbox.moe`; exibição: catbox, imgur, KLIPY, Tenor, Giphy, Discord; busca de GIFs: `api.klipy.com` (`tenor.com` se o KLIPY não responder) | o que você digita na busca do botão GIF vai para o KLIPY (ou o Tenor) quando você para de digitar, com um id aleatório desta instalação que o KLIPY pede; uma imagem só é enviada quando você clica em Enviar (pública para quem tiver o link); imagens desses sites carregam quando aparecem no chat (ou quando você clica nelas, com "Desfocar até clicar") |
+| Imagens no chat | envio: `catbox.moe`, ou `uguu.se` quando o catbox está fora do ar (lá os arquivos são apagados depois de 3 horas); exibição: catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; busca de GIFs: `api.klipy.com` (`tenor.com` se o KLIPY não responder) | o que você digita na busca do botão GIF vai para o KLIPY (ou o Tenor) quando você para de digitar, com um id aleatório desta instalação que o KLIPY pede; uma imagem só é enviada quando você clica em Enviar (pública para quem tiver o link); imagens desses sites carregam quando aparecem no chat (ou quando você clica nelas, com "Desfocar até clicar") |
 
 Configurações, notas, amigos e histórico de partidas ficam na pasta do Fightcord no seu PC
 (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Configurações → Backup e restauração

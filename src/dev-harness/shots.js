@@ -268,6 +268,59 @@ const SCENES = [
     { name: 'profile-edit', snap: CHANNEL, run: `
         fightcord.modules.get('presence').setProfile({ s: 'Grinding 3rd Strike tonight, FT5s welcome', a: 'Yun main from the Netherlands. Working on my parry timing, always up for long sets.', b: fightcord.app.activeGameId() });
         fightcord.modules.get('profile-card')._edit(); await sleep(900);` },
+    // the website: someone's profile on their scout card; the member list with search, a lobby group, folded groups and the ⚔
+    { name: 'site-profiles', snap: CHANNEL, run: `
+        const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x) && !fightcord.app.playing(x))[5];
+        fightcord.modules.get('presence')._profile(n, { s: 'Looking for Urien players to lab with', a: 'Urien main, 4 years on 3rd Strike. Always up for long sets.', b: fightcord.app.activeGameId(), bd: ['sets500', 'streak10', 'top100'] });
+        fightcord.modules.get('scout').openCard(n, { left: 420, right: 420, top: 90, bottom: 90, width: 0, height: 0 });
+        await sleep(1500);` },
+    { name: 'site-members', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        fightcord.modules.get('lobbies')._demo({ people: [[others[10], 'k1'], [others[15], 'k2'], [others[22], 'k3']], open: false, live: [] });
+        fightcord.modules.get('member-list')._config.folded = { playing: true, 'rank-A': true };
+        await sleep(2500);
+        const st = document.createElement('style'); st.textContent = 'html body .usersListWrapper .userItem.fc-hov > .fcm-qc { display: inline-flex !important; } html body .usersListWrapper .userItem.fc-hov { background: var(--fc-hover, rgba(255,255,255,.05)) !important; }'; document.head.appendChild(st);
+        document.querySelectorAll('.usersOnlineList, .usersOnlineList *').forEach(el => { if (el.scrollTop) el.scrollTop = 0; });
+        await sleep(300);
+        // the ⚔ on the second row on screen (rows are reordered with CSS, so go by position)
+        const rows = [...document.querySelectorAll('.usersOnlineList .userItem')].filter(r => r.querySelector('.fcm-qc') && r.offsetHeight > 20 && !r.classList.contains('fcm-playing'))
+            .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+        if (rows[1]) rows[1].classList.add('fc-hov');
+        await sleep(300);` },
+    // 2.17: an audio file (playing) and a video clip (a real player, no star) in the chat
+    { name: 'chat-audio', snap: CHANNEL, run: `
+        const cx = fightcord.modules.get('chat-extras'), up = fightcord.modules.get('uploads');
+        // made-up sounds: a few tones as a wav, and a 2 s coloured clip recorded from a canvas
+        const sr = 22050, oc = new OfflineAudioContext(1, sr * 6, sr);
+        [220, 330, 262, 392].forEach((f, i) => { const o = oc.createOscillator(), g = oc.createGain(); o.frequency.value = f; o.connect(g); g.connect(oc.destination);
+            g.gain.setValueAtTime(0, i * 1.5); g.gain.linearRampToValueAtTime(0.4, i * 1.5 + 0.05); g.gain.linearRampToValueAtTime(0, i * 1.5 + 1.4); o.start(i * 1.5); o.stop(i * 1.5 + 1.45); });
+        const buf = await oc.startRendering(), pcm = buf.getChannelData(0);
+        const wav = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+        const str = (o, s) => [...s].forEach((c, i) => wav.setUint8(o + i, c.charCodeAt(0)));
+        str(0, 'RIFF'); wav.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVEfmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+        wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); str(36, 'data'); wav.setUint32(40, pcm.length * 2, true);
+        pcm.forEach((v, i) => wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, v)) * 32767, true));
+        const au = URL.createObjectURL(new Blob([wav.buffer], { type: 'audio/wav' }));
+        const cv = document.createElement('canvas'); cv.width = 480; cv.height = 270; const g2 = cv.getContext('2d');
+        const mr = new MediaRecorder(cv.captureStream(30), { mimeType: 'video/webm' }), parts = [];
+        mr.ondataavailable = (e) => parts.push(e.data);
+        let k = 0; const draw = setInterval(() => { g2.fillStyle = 'hsl(' + (k * 6 % 360) + ',60%,35%)'; g2.fillRect(0, 0, 480, 270); g2.fillStyle = '#fff'; g2.font = 'bold 40px sans-serif'; g2.fillText('Round 2', 150, 150); k++; }, 33);
+        mr.start(); await sleep(2000); mr.stop(); await sleep(300); clearInterval(draw);
+        const vid = URL.createObjectURL(new Blob(parts, { type: 'video/webm' }));
+        const lines = [...fightcord.app.channelElement().querySelectorAll('.messageWrapper.chat .line')].slice(-2);
+        const put = (ln, text, p) => { const bc = ln.querySelector('.blocksContainer');
+            [...bc.childNodes].forEach(n => { if (!(n.classList && n.classList.contains('fcTr'))) n.remove(); });
+            const sp = document.createElement('span'); sp.className = 'regular'; sp.textContent = text; bc.appendChild(sp);
+            ln.dataset.fcxUrl = text; cx._render(ln, p); };
+        put(lines[0], 'https://files.catbox.moe/k3n9td.mp3#Training%20mode%20loop', { kind: 'audio', url: au, name: 'Training mode loop.mp3' });
+        put(lines[1], 'https://files.catbox.moe/r2clip.mp4', { kind: 'clip', url: vid });
+        await sleep(800);
+        lines[0].querySelector('.fcxPlay').click();
+        await sleep(2300);
+        const cw = fightcord.app.channelElement(); cw.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
+        lines[1].querySelector('.fcxEmbed').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        if (lines[1].querySelector('.fcxFav')) throw new Error('a clip got a favorite star');
+        await sleep(300);` },
     { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 

@@ -25,23 +25,53 @@ const E = (s) => fc.fmt.esc(s);
 
 const API = 'https://catbox.moe/user/api.php';
 const MAX = 200 * 1024 * 1024;
-const TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+const TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+    'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a',
+    'audio/flac': 'flac', 'audio/x-flac': 'flac', 'audio/aac': 'aac', 'audio/opus': 'opus', 'audio/webm': 'webm' };
+// files Windows hands over without a type (or an odd one): go by the name
+const BY_EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
+    mp3: 'audio/mpeg', ogg: 'audio/ogg', oga: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4', flac: 'audio/flac', aac: 'audio/aac', opus: 'audio/opus' };
 
 /* ---------------------------------------------------------------- pure parts */
 
+// a file -> the type it goes as ('' = not one we send)
+function typeOf(f) {
+    if (!f) return '';
+    if (TYPES[f.type]) return f.type;
+    const ext = (String(f.name || '').match(/\.([a-z0-9]{2,5})$/i) || [])[1];
+    return (ext && BY_EXT[ext.toLowerCase()]) || '';
+}
+const isAudio = (type) => /^audio\//.test(type || '');
 // a file -> '' if it can go, else why not
 function checkFile(f) {
     if (!f) return T('Nothing to upload');
-    if (!TYPES[f.type]) return T('Only pictures, GIFs and clips (png, jpg, gif, webp, mp4, webm, mov)');
+    if (!typeOf(f)) return T('Only pictures, GIFs, clips and audio (png, jpg, gif, webp, mp4, webm, mov, mp3, ogg, wav, m4a, flac)');
     if (!(f.size > 0)) return T('That file is empty');
     if (f.size > MAX) return T('Too big: up to {mb} MB', { mb: MAX / 1048576 });
     return '';
+}
+// an audio file's name rides along after the link's # (catbox renames files), so the chat can show it
+function audioTag(name) {
+    const base = String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[\u0000-\u001f#]/g, '').trim().slice(0, 60);
+    return base ? '#' + encodeURIComponent(base).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase()) : '';
 }
 // what catbox answers -> the link, or null (it answers errors as plain text too)
 function catboxUrl(text) {
     const t = String(text || '').trim();
     return /^https:\/\/files\.catbox\.moe\/[A-Za-z0-9_-]+\.[A-Za-z0-9]{2,5}$/.test(t) ? t : null;
 }
+// what uguu.se answers ({ success, files: [{ url }] }) -> the link, or null
+function uguuUrl(text) {
+    let j = null;
+    try { j = JSON.parse(String(text || '')); } catch (e) { return null; }
+    const u = j && j.success && Array.isArray(j.files) && j.files[0] && j.files[0].url;
+    return /^https:\/\/([a-z0-9-]+\.)?uguu\.se\/[A-Za-z0-9_-]+\.[A-Za-z0-9]{2,5}$/.test(u || '') ? u : null;
+}
+// where files go: catbox (kept), then uguu.se when catbox is down (kept 3 hours)
+const HOSTS = {
+    catbox: { name: 'catbox.moe', api: API, field: 'fileToUpload', fields: { reqtype: 'fileupload' }, parse: catboxUrl },
+    uguu: { name: 'uguu.se', api: 'https://uguu.se/upload', field: 'files[]', fields: {}, parse: uguuUrl }
+};
 // what's typed + the link (the link last, so the picture follows the words)
 function joinText(cur, url) {
     const c = String(cur || '').trim();
@@ -51,7 +81,7 @@ function joinText(cur, url) {
 function multipart(boundary, fields, file) {
     const parts = [];
     Object.keys(fields).forEach(k => parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${fields[k]}\r\n`)));
-    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="fileToUpload"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`));
+    parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${file.field || 'fileToUpload'}"; filename="${file.name}"\r\nContent-Type: ${file.type}\r\n\r\n`));
     parts.push(file.data);
     parts.push(Buffer.from(`\r\n--${boundary}--\r\n`));
     return Buffer.concat(parts);
@@ -135,28 +165,31 @@ const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.ma
 
 /* ------------------------------------------------------------------ uploading */
 
-// -> { promise, cancel }. opts.request: https.request (the tests pass a fake)
+// -> { promise, cancel }. opts.host: 'catbox' (default) | 'uguu'; opts.request: https.request (the tests pass a fake)
 function upload(data, type, onProgress, opts) {
     const o = opts || {};
+    const host = HOSTS[o.host] || HOSTS.catbox;
     const request = o.request || require('https').request;
     const boundary = '----fightcord' + Math.random().toString(16).slice(2);
     const name = 'fightcord.' + (TYPES[type] || 'bin');
-    const body = multipart(boundary, { reqtype: 'fileupload' }, { name, type, data });
+    const body = multipart(boundary, host.fields, { name, type, data, field: host.field });
     let req = null, cancelled = false;
     const promise = new Promise((resolve, reject) => {
-        req = request(o.url || API, { method: 'POST', timeout: 120000,
+        req = request(o.url || host.api, { method: 'POST', timeout: 120000,
             headers: { 'Content-Type': 'multipart/form-data; boundary=' + boundary, 'Content-Length': body.length, 'User-Agent': 'Fightcord' } }, (res) => {
             let text = '';
             res.setEncoding('utf8');
             res.on('data', (c) => { text += c; if (text.length > 4096) req.destroy(); });
             res.on('end', () => {
-                const url = catboxUrl(text);
-                if (res.statusCode === 200 && url) resolve(url);
-                else reject(new Error(text.trim().slice(0, 120) || 'HTTP ' + res.statusCode));
+                const url = host.parse(text);
+                if (res.statusCode === 200 && url) return resolve(url);
+                // when catbox is overloaded it answers 200 with nothing (or a 5xx): worth another try
+                if (!text.trim() || res.statusCode >= 500 || res.statusCode === 429 || (res.statusCode === 200 && host !== HOSTS.catbox)) return reject(busyError(host));
+                reject(new Error(text.trim().slice(0, 120) || 'HTTP ' + res.statusCode));
             });
         });
         req.on('timeout', () => req.destroy(new Error('timed out')));
-        req.on('error', (e) => reject(cancelled ? new Error('cancelled') : e));
+        req.on('error', (e) => reject(cancelled ? new Error('cancelled') : /ECONNRESET|socket hang up/i.test(e.code + ' ' + e.message) ? busyError(host) : e));
         // in pieces, so the bar moves
         let off = 0;
         const CH = 64 * 1024;
@@ -173,10 +206,70 @@ function upload(data, type, onProgress, opts) {
     });
     return { promise, cancel() { cancelled = true; if (req) req.destroy(new Error('cancelled')); } };
 }
+function busyError(host) {
+    const e = new Error(T('{host} didn’t take the file: it’s busy or down right now', { host: (host || HOSTS.catbox).name }));
+    e.busy = true;
+    return e;
+}
+// a link the host handed out -> does it really hold the file? (when it's in trouble it keeps 0 bytes)
+// true / false, or null when it can't tell (then the link goes out as before)
+function stored(url, size, opts) {
+    const o = opts || {};
+    return new Promise((resolve) => {
+        let req;
+        try {
+            req = (o.head || require('https').request)(url, { method: 'HEAD', timeout: 8000, headers: { 'User-Agent': 'Fightcord' } }, (res) => {
+                res.resume();
+                const len = res.headers && res.headers['content-length'];
+                resolve(res.statusCode === 200 && len != null ? +len === size : res.statusCode === 404 ? false : null);
+            });
+        } catch (e) { resolve(null); return; }
+        req.on('timeout', () => req.destroy());
+        req.on('error', () => resolve(null));
+        req.end();
+    });
+}
+function lostError(host) {
+    const e = new Error(T('{host} didn’t keep the file: it’s having trouble right now', { host: (host || HOSTS.catbox).name }));
+    e.busy = true;
+    return e;
+}
+// upload to catbox, trying again (after 2 s, then 6 s) while it's busy; still busy -> uguu.se once
+// -> { promise (resolves { url, host }), cancel }. opts.onRetry(n, hostName)
+function uploadRetry(data, type, onProgress, opts) {
+    const o = opts || {}, waits = o.waits || [2000, 6000];
+    let job = null, timer = 0, wake = null, cancelled = false;
+    const once = async (hostKey) => {
+        job = upload(data, type, onProgress, Object.assign({}, o, { host: hostKey }));
+        const url = await job.promise;
+        if (await stored(url, data.length, o) === false) throw lostError(HOSTS[hostKey]);
+        return { url, host: hostKey };
+    };
+    const promise = (async () => {
+        for (let i = 0; ; i++) {
+            if (cancelled) throw new Error('cancelled');
+            try { return await once('catbox'); }
+            catch (e) {
+                if (cancelled) throw new Error('cancelled');
+                if (!e.busy) throw e;
+                if (i >= waits.length) {
+                    if (o.fallback === false) throw e;
+                    if (o.onRetry) o.onRetry(i + 1, HOSTS.uguu.name);
+                    try { return await once('uguu'); }
+                    catch (e2) { throw cancelled ? new Error('cancelled') : e2.busy ? Object.assign(new Error(T('catbox.moe and uguu.se are both having trouble right now. Try again later.')), { busy: true }) : e2; }
+                }
+                if (o.onRetry) o.onRetry(i + 1, HOSTS.catbox.name);
+                await new Promise(r => { wake = r; timer = setTimeout(r, waits[i]); });
+            }
+        }
+    })();
+    return { promise, cancel() { cancelled = true; clearTimeout(timer); if (wake) wake(); if (job) job.cancel(); } };
+}
 
 // photos lose their hidden details (EXIF: location, camera) by being redrawn; GIFs / clips go as they are
 async function prepare(file) {
-    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || typeof createImageBitmap !== 'function') return { data: Buffer.from(await file.arrayBuffer()), type: file.type };
+    const type = typeOf(file);
+    if (!/^image\/(png|jpeg|webp)$/.test(type) || typeof createImageBitmap !== 'function') return { data: Buffer.from(await file.arrayBuffer()), type };
     try {
         const bmp = await createImageBitmap(file);
         const c = document.createElement('canvas');
@@ -212,12 +305,15 @@ function offer(file, input) {
     if (why) { fc.ui.toast(why, { kind: 'warning', icon: 'warn' }); return; }
     closeCard();
     const url = URL.createObjectURL(file);
-    const clip = /^video\//.test(file.type);
+    const type = typeOf(file);
+    const clip = /^video\//.test(type), audio = isAudio(type);
     const box = document.createElement('div');
     box.className = 'fcupCard';
-    box.innerHTML = fc.ui.popHead({ icon: 'share', title: T('Send to the chat'), sub: E(fmtSize(file.size) + ' · ' + (TYPES[file.type] || '').toUpperCase()) }) +
-        `<div class="fc-pb"><div class="fcupPrev">${clip ? `<video src="${E(url)}" muted autoplay loop playsinline></video>` : `<img src="${E(url)}" alt="">`}</div>` +
-        `<div class="fcupBar"><i></i></div><div class="fcupNote">${E(T('Fightcord players see it in the chat; others see a link. It goes to catbox.moe: public to anyone with the link.'))}</div></div>` +
+    const prev = audio ? `<div class="fcupAudio">${fc.ui.icon('music')}<b>${E(file.name || T('Audio'))}</b><audio src="${E(url)}" controls preload="metadata"></audio></div>`
+        : clip ? `<video src="${E(url)}" muted autoplay loop playsinline></video>` : `<img src="${E(url)}" alt="">`;
+    box.innerHTML = fc.ui.popHead({ icon: 'share', title: T('Send to the chat'), sub: E(fmtSize(file.size) + ' · ' + (TYPES[type] || '').toUpperCase()) }) +
+        `<div class="fc-pb"><div class="fcupPrev${audio ? ' au' : ''}">${prev}</div>` +
+        `<div class="fcupBar"><i></i></div><div class="fcupNote">${E(T('Fightcord players see it in the chat; others see a link. It goes to catbox.moe (or uguu.se when catbox is down): public to anyone with the link.'))}</div></div>` +
         fc.ui.popFoot(E(T('Enter to send · Esc to cancel')), fc.ui.btn('Cancel', { kind: 'ghost', size: 'sm', act: 'up-cancel' }) + fc.ui.btn('Upload', { kind: 'brand', size: 'sm', icon: 'share', act: 'up-go' }));
     box.addEventListener('click', (e) => {
         if (e.target.closest('[data-act="up-cancel"]')) closeCard();
@@ -238,8 +334,11 @@ async function go() {
     try {
         const p = await prepare(c.file);
         if (card !== c) return;
-        c.job = upload(p.data, p.type, (f) => { if (bar) bar.style.width = Math.round(f * 100) + '%'; });
-        const link = await c.job.promise;
+        c.job = uploadRetry(p.data, p.type, (f) => { if (bar) bar.style.width = Math.round(f * 100) + '%'; },
+            { onRetry: (n, host) => { if (btn) btn.lastChild.textContent = host === HOSTS.uguu.name ? T('Trying uguu.se…') : T('Trying again…'); } });
+        const got = await c.job.promise;
+        const link = got.url + (isAudio(p.type) ? audioTag(c.file.name) : '');
+        if (got.host === 'uguu') fc.ui.toast(T('Sent through uguu.se: catbox.moe is down'), { icon: 'share', sub: T('This one disappears after 3 hours.') });
         if (card !== c) return;
         c.job = null;
         closeCard();
@@ -267,7 +366,7 @@ function send(input, link) {
 function fileFrom(list) {
     const files = [...(list || [])].map(it => (it && typeof it.getAsFile === 'function' ? (it.kind === 'file' ? it.getAsFile() : null) : it))
         .filter(f => f && typeof f.size === 'number' && typeof f.type === 'string');
-    return files.find(f => TYPES[f.type]) || files[0] || null;
+    return files.find(f => typeOf(f)) || files[0] || null;
 }
 
 function onPaste(e) {
@@ -297,7 +396,7 @@ function showDrop(area) {
     if (!dropEl) {
         dropEl = document.createElement('div');
         dropEl.id = 'fcupDrop';
-        dropEl.innerHTML = `<div>${fc.ui.icon('share')}<b>${E(T('Drop to send to the chat'))}</b><span>${E(T('Pictures, GIFs and clips · Fightcord players see them'))}</span></div>`;
+        dropEl.innerHTML = `<div>${fc.ui.icon('share')}<b>${E(T('Drop to send to the chat'))}</b><span>${E(T('Pictures, GIFs, clips and audio · Fightcord players see them'))}</span></div>`;
         document.body.appendChild(dropEl);
     }
     const r = area.getBoundingClientRect();
@@ -339,27 +438,34 @@ function ensureButtons() {
         const left = input.offsetLeft + 10;
         if (btn.style.left !== left + 'px') btn.style.left = left + 'px';
         if (parseFloat(getComputedStyle(input).paddingLeft) < 44) input.style.setProperty('padding-left', '48px', 'important');
-        // the GIF button: left of the emoji (and font style) buttons
-        let gif = wrap.querySelector('.fcupGifBtn');
-        if (!cfg.gifButton) { if (gif) gif.remove(); return; }
-        if (!gif) {
-            gif = document.createElement('div');
-            gif.className = 'fcupGifBtn';
-            gif.textContent = 'GIF';
-            gif.title = T('Your favorite GIFs');
-            gif.addEventListener('mousedown', (e) => e.stopPropagation());
-            gif.addEventListener('click', (e) => { e.stopPropagation(); openPicker(gif, wrap.querySelector('input.input')); });
-            wrap.appendChild(gif);
-        }
-        // left of whichever of the emoji / font style buttons sits furthest left (where they really are)
+        // the GIF button: left of the emoji (and font style) buttons, whichever of those sits
+        // furthest left (where they really are)
         const wr = wrap.getBoundingClientRect();
         const lefts = [...wrap.querySelectorAll('.emojiBtn, .fontStyleBtn')].map(b => b.getBoundingClientRect()).filter(r => r.width).map(r => r.left);
-        const right = Math.round(lefts.length ? wr.right - Math.min(...lefts) + 6 : 12);
-        if (gif.style.right !== right + 'px') gif.style.right = right + 'px';
-        const need = right + gif.offsetWidth + 8;
-        if (parseFloat(getComputedStyle(input).paddingRight) < need) input.style.setProperty('padding-right', need + 'px', 'important');
+        let right = Math.round(lefts.length ? wr.right - Math.min(...lefts) + 6 : 12);
+        const place = (cls, on, make) => {
+            let el = wrap.querySelector('.' + cls);
+            if (!on) { if (el) el.remove(); return; }
+            if (!el) {
+                el = make();
+                el.className = cls;
+                el.addEventListener('mousedown', (e) => e.stopPropagation());
+                wrap.appendChild(el);
+            }
+            if (el.style.right !== right + 'px') el.style.right = right + 'px';
+            right += el.offsetWidth + 8;
+        };
+        place('fcupGifBtn', cfg.gifButton, () => {
+            const gif = document.createElement('div');
+            gif.textContent = 'GIF';
+            gif.title = T('Your favorite GIFs');
+            gif.addEventListener('click', (e) => { e.stopPropagation(); openPicker(gif, wrap.querySelector('input.input')); });
+            return gif;
+        });
+        if (parseFloat(getComputedStyle(input).paddingRight) < right) input.style.setProperty('padding-right', right + 'px', 'important');
     });
 }
+
 /* ------------------------------------------------------------- GIF search */
 
 function getPage(url, redirects) {
@@ -433,9 +539,9 @@ function klipyShared(link, q) {
 /* ---------------------------------------------------------------- favorites */
 
 const isFav = (link) => !!link && cfg.favorites.some(f => f.link === link);
-// item: { link (what gets sent), src (what shows), kind: 'image' | 'gifv' | 'clip', still }
+// item: { link (what gets sent), src (what shows), kind: 'image' | 'gifv', still } (videos and audio aren't GIFs: no favorites)
 function toggleFav(item) {
-    if (!item || !item.link || !item.src) return false;
+    if (!item || !item.link || !item.src || (item.kind && item.kind !== 'image' && item.kind !== 'gifv')) return false;
     const on = !isFav(item.link);
     cfg.favorites = cfg.favorites.filter(f => f.link !== item.link);
     if (on) cfg.favorites.unshift({ link: item.link, src: item.src, kind: item.kind || 'image', still: item.still || '', name: nameOf(item.link), at: Date.now() });
@@ -448,7 +554,7 @@ function toggleFav(item) {
 
 // one tile: a favourite or a search result (i = its place in the picker's list)
 function favHtml(f, i) {
-    const media = f.kind === 'gifv' || f.kind === 'clip'
+    const media = f.kind === 'gifv'
         ? `<video src="${E(f.src)}" autoplay muted loop playsinline${f.still ? ` poster="${E(f.still)}"` : ''}></video>`
         : `<img src="${E(f.src)}" alt="" loading="lazy">`;
     const on = isFav(f.link);
@@ -511,7 +617,7 @@ function openPicker(btn, input) {
 function pick(input) {
     const f = document.createElement('input');
     f.type = 'file';
-    f.accept = Object.keys(TYPES).join(',');
+    f.accept = Object.keys(TYPES).concat(Object.keys(BY_EXT).map(x => '.' + x)).join(',');
     f.addEventListener('change', () => { if (f.files && f.files[0]) offer(f.files[0], input); });
     f.click();
 }
@@ -539,6 +645,11 @@ const CSS = `
 .fcupFav:hover .star { display: block; }
 .fcupFav .star .fc-ic { width: 16px; height: 16px; }
 .fcupBtn .fc-ic { width: 16px; height: 16px; stroke-width: 3; }
+.fcupPrev.au { height: auto; padding: 14px; }
+.fcupAudio { display: flex; flex-direction: column; align-items: center; width: 100%; line-height: 1.3; text-align: center; color: var(--fc-text); }
+.fcupAudio > .fc-ic { width: 32px; height: 32px; margin-bottom: 6px; color: var(--fc-accent); }
+.fcupAudio b { max-width: 100%; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.fcupAudio audio { width: 100%; height: 36px; }
 .fcupPrev { display: flex; align-items: center; justify-content: center; height: 200px; padding: 8px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s1); line-height: 0; }
 .fcupPrev img, .fcupPrev video { max-width: 100%; max-height: 184px; border-radius: 6px; object-fit: contain; }
 .fcupBar { height: 4px; margin-top: 8px; border-radius: 2px; background: var(--fc-s4); overflow: hidden; visibility: hidden; }
@@ -558,6 +669,8 @@ function start(f) {
     store = fc.config('uploads', { enabled: true, gifButton: true, favorites: [] });
     cfg = store.data;
     if (!Array.isArray(cfg.favorites)) cfg.favorites = [];
+    // (before 2.17 a video could be starred like a GIF)
+    if (cfg.favorites.some(f => f && f.kind === 'clip')) { cfg.favorites = cfg.favorites.filter(f => f && f.kind !== 'clip'); store.save(); }
     setTimeout(() => fc.emit('gifs:changed', {}), 0);           // stars on the GIFs already in the chat
     fc.ui.style('fcupStyle', CSS);
     const listen = (t, ev, fn, cap) => { t.addEventListener(ev, fn, cap); fc.own(() => t.removeEventListener(ev, fn, cap)); };
@@ -578,12 +691,12 @@ function start(f) {
         fc.ui.style('fcupStyle', null);
     });
     fc.settings.block({
-        id: 'uploads', section: 'chat', title: 'Pictures in chat', hint: '— send pictures, GIFs and clips (Fightcord players see them)', store, order: 12,
+        id: 'uploads', section: 'chat', title: 'Pictures in chat', hint: '— send pictures, GIFs, clips and audio (Fightcord players see them)', store, order: 12,
         fields: [
-            { key: 'enabled', type: 'switch', label: 'Send pictures, GIFs and clips', hint: 'Paste one into the message box, drop it on the chat, or click the +',
+            { key: 'enabled', type: 'switch', label: 'Send pictures, GIFs, clips and audio', hint: 'Paste one into the message box, drop it on the chat, or click the +',
                 onChange: () => ensureButtons() },
             { key: 'gifButton', type: 'switch', label: 'GIF button with your favorites', hint: 'Star a GIF or picture in the chat to keep it; the GIF button sends it again', onChange: () => ensureButtons() },
-            { type: 'note', label: 'Fightcade’s chat only carries text, so a picture goes to catbox.moe (free, no account) and its link is sent. Fightcord players see the picture; others see the link. Anyone with the link can open it, and catbox keeps it. Photos are redrawn first, which removes hidden details like location.' }
+            { type: 'note', label: 'Fightcade’s chat only carries text, so a file goes to catbox.moe (free, no account) and its link is sent; when catbox is down it goes to uguu.se instead, which deletes it after 3 hours. Fightcord players see the picture or hear the audio; others see the link. Anyone with the link can open it. Photos are redrawn first, which removes hidden details like location.' }
         ]
     });
     return api;
@@ -599,5 +712,5 @@ const api = {
     _card: () => card
 };
 
-module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
+module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, uploadRetry, stored, uguuUrl, typeOf, audioTag, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

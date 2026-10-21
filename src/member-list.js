@@ -510,8 +510,9 @@ ${P} .userItem .fcm-gh i { display: inline-flex; order: 2; margin-left: 4px; opa
 ${P} .userItem .fcm-gh i .fc-ic { width: 12px; height: 12px; }
 ${P} .userItem .fcm-gh.folded i { transform: rotate(-90deg); }
 ${P} .userItem.fcm-fold { display: none !important; }
-/* (out-ranks the compact layout's fixed row height) */
-${P} .usersOnlineList .userItem.fcm-row.fcm-folded-head:not(.fcm-playing) { height: 0 !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
+/* (out-ranks the compact layout's fixed row height; the second selector covers a folded "Playing now") */
+${P} .usersOnlineList .userItem.fcm-row.fcm-folded-head:not(.fcm-playing),
+${P} .usersOnlineList .userItem.fcm-row.fcm-folded-head.fcm-playing { height: 0 !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important;
     overflow: visible !important; pointer-events: none !important; background: none !important; box-shadow: none !important; }
 ${P} .userItem.fcm-folded-head > :not(.fcm-gh) { visibility: hidden !important; }
 ${P} .userItem > .fcm-qc { order: 4; flex: none; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; margin-left: 6px;

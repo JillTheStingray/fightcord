@@ -344,14 +344,16 @@ function act(what, line) {
 const HOSTS = [
     'youtube.com', 'youtu.be', 'twitch.tv', 'x.com', 'twitter.com', 'imgur.com', 'fightcade.com',
     'streamable.com', 'reddit.com', 'redd.it', 'twimg.com', 'tenor.com', 'giphy.com',
-    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com', 'catbox.moe', 'klipy.com'
+    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com', 'catbox.moe', 'klipy.com', 'uguu.se'
 ];
 const allowed = (host) => HOSTS.some(h => host === h || host.endsWith('.' + h));
 // Preview IMAGES load from your connection too, and a trusted page's og:image can point
 // anywhere -- so only these image servers (the allowed sites' own CDNs).
 const IMG_HOSTS = HOSTS.concat(['ytimg.com', 'jtvnw.net', 'redditmedia.com', 'githubassets.com',
     'githubusercontent.com', 'discordapp.net', 'streamablevideo.com']);
+let imageAllowedHook = null;           // (_render, the dev harness)
 function imageAllowed(url) {
+    if (imageAllowedHook && imageAllowedHook(url)) return true;
     try {
         const u = new URL(url);
         return u.protocol === 'https:' && IMG_HOSTS.some(h => u.hostname === h || u.hostname.endsWith('.' + h));
@@ -359,6 +361,16 @@ function imageAllowed(url) {
 }
 const IMG_EXT = /\.(png|jpe?g|gif|webp)(\?.*)?$/i;
 const VID_EXT = /\.(mp4|webm|mov)(\?.*)?$/i;
+const AUD_EXT = /\.(mp3|ogg|oga|wav|m4a|flac|opus|aac)$/i;
+// an audio file's name: what the sender's Fightcord put after the # (catbox renames files), else the file's own
+function audioName(u) {
+    const ext = (u.pathname.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '';
+    let n = '';
+    try { n = decodeURIComponent((u.hash || '').slice(1)); } catch (e) { /* bad escape */ }
+    n = n.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 60);
+    if (!n) { try { n = decodeURIComponent(u.pathname.split('/').pop()).replace(/\.[a-z0-9]{2,5}$/i, ''); } catch (e) { n = 'audio'; } }
+    return n + (ext ? '.' + ext.toLowerCase() : '');
+}
 
 function http(url, redirects) {
     let https = null;
@@ -426,6 +438,8 @@ async function buildPreview(raw) {
     // tenor.com / giphy.com links are pages even when they end in .gif (share links): read the page
     const gifPage = /^(tenor|giphy)\.com$/.test(host);
     if (IMG_EXT.test(u.pathname) && !gifPage) return { kind: 'image', url: raw };
+    // audio files: fixed addresses, nothing to fetch
+    if (AUD_EXT.test(u.pathname)) return { kind: 'audio', url: raw.split('#')[0], name: audioName(u) };
     // klipy.com/gifs/<slug>: its page is behind Cloudflare, so ask KLIPY's API (Fightcord's app key, uploads.js)
     if (host === 'klipy.com') {
         let up = null;
@@ -443,7 +457,7 @@ async function buildPreview(raw) {
         return { kind: 'gifv', url: 'https://media.giphy.com/media/' + m[1] + '/giphy.mp4', still: 'https://media.giphy.com/media/' + m[1] + '/giphy_s.gif', page: raw };
     }
     if (VID_EXT.test(u.pathname)) return { kind: 'clip', url: raw };
-    if (/(^|\.)imgur\.com$/.test(host) && /\.gifv$/i.test(u.pathname)) return { kind: 'clip', url: raw.replace(/\.gifv(\?.*)?$/i, '.mp4') };
+    if (/(^|\.)imgur\.com$/.test(host) && /\.gifv$/i.test(u.pathname)) return { kind: 'gifv', url: raw.replace(/\.gifv(\?.*)?$/i, '.mp4'), page: raw };
     // replay links hand off to fcade:// (opens in Fightcade) -- nothing to fetch
     if (host === 'replay.fightcade.com') {
         const parts = u.pathname.split('/');
@@ -534,12 +548,20 @@ function renderPreview(line, p) {
         div.dataset.kind = p.kind;
         if (p.still) div.dataset.still = p.still;
         div.innerHTML = (p.kind === 'clip'
-            ? `<video src="${E(p.url)}" preload="metadata" muted loop playsinline controls></video>`
+            ? `<video src="${E(p.url)}" preload="metadata" playsinline controls></video>`
             : p.kind === 'gifv'
                 ? `<video class="fcxGifv" src="${E(p.url)}" autoplay muted loop playsinline${p.still ? ` poster="${E(p.still)}"` : ''}></video>`
                 : `<img src="${E(p.url)}" alt="" loading="lazy">`) +
-            (cfg.blurMedia ? `<span class="fcxShow">${E(T('Show'))}</span>` : '') + favStar(p.page || p.url);
+            (cfg.blurMedia ? `<span class="fcxShow">${E(T('Show'))}</span>` : '') + (p.kind === 'clip' ? '' : favStar(p.page || p.url));
         // only the link in the message: show only the picture
+        if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
+    } else if (p.kind === 'audio') {
+        if (!cfg.imagePreviews || !imageAllowed(p.url)) return;
+        div.classList.add('fcxAudio');
+        div.innerHTML = `<div class="fcxAuTop">${fc.ui.icon('music')}<a href="${E(p.url)}" target="_blank" rel="noopener noreferrer" title="${E(p.name)}">${E(p.name)}</a></div>` +
+            `<div class="fcxAuCtl"><span class="fcxPlay" title="${E(T('Play'))}">${fc.ui.icon('play', 'fill')}</span><span class="fcxTime">0:00 / -:--</span>` +
+            `<div class="fcxSeek"><i></i></div></div><audio src="${E(p.url)}" preload="metadata"></audio>`;
+        wirePlayer(div);
         if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
     } else {
         div.style.borderLeftColor = p.color;
@@ -552,7 +574,7 @@ function renderPreview(line, p) {
             ${p.desc ? `<div class="fcxDesc">${E(p.desc)}</div>` : ''}
             ${img}`;
     }
-    div.querySelectorAll('img, video').forEach(i => { i.onerror = () => { if (p.kind === 'image' || p.kind === 'clip') { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove(); }; });
+    div.querySelectorAll('img, video, audio').forEach(i => { i.onerror = () => { if (/^(image|clip|audio)$/.test(p.kind)) { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove(); }; });
     bc.appendChild(div);
 }
 
@@ -565,12 +587,44 @@ function favStar(link) {
 }
 function favItem(m) { return { link: m.dataset.link, src: m.dataset.view, kind: m.dataset.kind || 'image', still: m.dataset.still || '' }; }
 function refreshStars() {
-    document.querySelectorAll('.fcxImage').forEach(m => {
+    document.querySelectorAll('.fcxImage:not([data-kind="clip"])').forEach(m => {
         const s = m.querySelector('.fcxFav');
         const html = favStar(m.dataset.link);
         if (s) s.outerHTML = html || '';
         else if (html) m.insertAdjacentHTML('beforeend', html);
     });
+}
+
+// the audio players: one plays at a time
+const clockOf = (s) => (isFinite(s) && s >= 0 ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '-:--');
+function wirePlayer(div) {
+    const a = div.querySelector('audio');
+    const draw = () => {
+        const d = isFinite(a.duration) && a.duration > 0 ? a.duration : 0, playing = !a.paused;
+        div.querySelector('.fcxTime').textContent = clockOf(a.currentTime) + ' / ' + (d ? clockOf(d) : '-:--');
+        div.querySelector('.fcxSeek > i').style.width = (d ? Math.min(1, a.currentTime / d) * 100 : 0) + '%';
+        div.querySelector('.fcxPlay').innerHTML = fc.ui.icon(playing ? 'pause' : 'play', 'fill');
+        div.classList.toggle('playing', playing);
+    };
+    ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause'].forEach(ev => a.addEventListener(ev, draw));
+    a.addEventListener('ended', () => { a.currentTime = 0; draw(); });
+    a.addEventListener('play', () => document.querySelectorAll('.fcxAudio audio').forEach(o => { if (o !== a) o.pause(); }));
+    a.__fcxDraw = draw;
+}
+function onPlayerClick(e) {
+    const div = e.target.closest('.fcxAudio');
+    if (!div || e.target.closest('a')) return;
+    const a = div.querySelector('audio');
+    if (!a) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target.closest('.fcxPlay')) { if (a.paused) a.play().catch(err => fc.log('audio', err && err.message)); else a.pause(); return; }
+    const track = e.target.closest('.fcxSeek');
+    if (!track || !(isFinite(a.duration) && a.duration > 0)) return;
+    const r = track.getBoundingClientRect();
+    a.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * a.duration;
+    if (a.paused) a.play().catch(() => {});
+    if (a.__fcxDraw) a.__fcxDraw();
 }
 
 // click a picture: unblur it, or see it full size (Esc / click outside closes)
@@ -596,6 +650,7 @@ function closeViewer() {
     viewer = null;
 }
 function onMediaClick(e) {
+    if (e.target.closest && e.target.closest('.fcxAudio')) { onPlayerClick(e); return; }
     const m = e.target.closest && e.target.closest('.fcxImage');
     const star = m && e.target.closest('.fcxFav');
     if (star) {
@@ -763,6 +818,20 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxEmbed .fcxFav:hover { background: rgba(0,0,0,.8); }
 .fcxEmbed .fcxFav .fc-ic { width: 16px; height: 16px; }
 .line.fcxOnlyMedia .blocksContainer > :not(.fcxEmbed):not(.fcTr) { display: none !important; }
+/* audio files */
+.fcxEmbed.fcxAudio { border-left: 0; line-height: 1.3; user-select: none; }
+.fcxEmbed.fcxAudio { width: 400px; max-width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; }
+.fcxAuTop { display: flex; align-items: center; min-width: 0; margin-bottom: 10px; }
+.fcxAuTop > .fc-ic { flex: none; width: 28px; height: 28px; margin-right: 10px; color: var(--fc-accent); }
+.fcxAuTop a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #00a8fc !important; }
+.fcxAuCtl { display: flex; align-items: center; }
+.fcxEmbed .fcxPlay { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+    background: var(--fc-accent); color: #fff; }
+.fcxEmbed .fcxPlay:hover { filter: brightness(1.12); }
+.fcxEmbed .fcxPlay .fc-ic { width: 14px; height: 14px; }
+.fcxAuCtl .fcxTime { flex: none; margin: 0 12px; font-size: 12px; color: var(--fc-muted); font-variant-numeric: tabular-nums; }
+.fcxSeek { flex: 1; height: 6px; border-radius: 3px; cursor: pointer; background: rgba(255,255,255,.12); overflow: hidden; }
+.fcxSeek > i { display: block; width: 0; height: 100%; background: var(--fc-accent); }
 #fcxView { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal, 100010); display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,.85); animation: fcIn var(--fc-med, .2s) ease both; }
 #fcxView .fcxViewIn { display: flex; flex-direction: column; align-items: flex-start; max-width: 90vw; }
@@ -882,6 +951,7 @@ function start(f) {
         fc.ui.style('fcxStyle', null);
         hideBar();
         if (jump) { jump.remove(); jump = null; }
+        document.querySelectorAll('.fcxEmbed audio').forEach(a => a.pause());
         document.querySelectorAll('.fcxEmbed').forEach(n => n.remove());
         document.querySelectorAll('.line.fcxOnlyMedia').forEach(l => l.classList.remove('fcxOnlyMedia'));
         clearNew();
@@ -900,7 +970,7 @@ function start(f) {
             opt('newLine', 'NEW line', 'Red divider where you left off'),
             opt('hoverActions', 'Hover actions', 'Reply · Copy · Translate · Profile'),
             opt('linkPreviews', 'Link previews', 'YouTube, Twitch, X, imgur, Fightcade… (only well-known sites are ever fetched)'),
-            opt('imagePreviews', 'Images, GIFs and clips', 'Pictures and videos from trusted sites (catbox, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
+            opt('imagePreviews', 'Images, GIFs, clips and audio', 'Pictures, videos and audio from trusted sites (catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
             opt('blurMedia', 'Blur them until clicked', 'Click a blurred picture to show it', (d) => d.linkPreviews && d.imagePreviews),
             opt('jumpBar', 'Jump to present', 'A bar when you scroll up'),
             opt('discordTime', 'Discord timestamps', '"10:16 PM" instead of "at 22:16"'),
@@ -919,6 +989,8 @@ function start(f) {
 const api = {
     _noticeSummary: (n) => noticeSummary(n),
     _buildPreview: (u) => buildPreview(u),
+    // the dev harness: show a preview for a made-up file (blob: URLs only there)
+    _render(line, p) { try { imageAllowedHook = (u) => /^blob:/.test(u); renderPreview(line, p); } finally { imageAllowedHook = null; } },
     _viewer: (src, link) => openViewer(src, link || src),
     _allowed: allowed,
     _sweep: () => sweep(),
