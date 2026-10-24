@@ -321,6 +321,59 @@ const SCENES = [
         lines[1].querySelector('.fcxEmbed').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
         if (lines[1].querySelector('.fcxFav')) throw new Error('a clip got a favorite star');
         await sleep(300);` },
+    // 2.18: Shift+Enter opens the taller box (the picture), then a check of the sending: one message per line,
+    // and a "stop spamming" answer keeps the rest
+    { name: 'multiline', snap: CHANNEL, run: `
+        const input = fightcord.app.chatInput();
+        fightcord.app.setChatText('Looking for long sets tonight:');
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+        const ml = fightcord.modules.get('chat-extras')._multi();
+        if (!ml) throw new Error('Shift+Enter did not open the taller box');
+        ml.ta.value += '3rd Strike, FT5 or FT10\\nEU, wired, any rank\\nPing me or just send a challenge';
+        ml.ta.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(500);` },
+    { name: 'multiline-send', snap: CHANNEL, run: `
+        const input = fightcord.app.chatInput(), cx = fightcord.modules.get('chat-extras');
+        // stand-in for Fightcade: Enter sends what's in the box; the third message gets "stop spamming"
+        const BR = String.fromCharCode(92) + 'n', NL = String.fromCharCode(10);
+        let sent = [], spamAt = 0;
+        input.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || e.shiftKey) return; sent.push(input.value);
+            if (sent.length === spamAt) { const sp = document.createElement('span'); sp.className = 'spam'; sp.textContent = 'Message not sent. Please stop spamming.';
+                fightcord.app.channelElement().querySelector('.chatContent .blocksContainer').appendChild(sp); }
+            fightcord.app.setChatText('', false); });
+        // a few lines: ONE message, the lines joined with Fightcade's \\n
+        cx.openMulti(['one', '', 'two', 'three'].join(NL));
+        if (input.style.visibility !== 'hidden') throw new Error('the one-line box should hide');
+        cx._multi().ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await sleep(700);
+        if (sent.length !== 1 || sent[0] !== ['one', '', 'two', 'three'].join(BR)) throw new Error('sent: ' + JSON.stringify(sent));
+        if (cx._multi()) throw new Error('the box should close after sending');
+        // past 500 characters: more than one message; "stop spamming" on the second keeps the rest
+        sent = []; spamAt = 2;
+        cx.openMulti(Array.from({ length: 70 }, (_, i) => 'line number ' + i).join(NL));
+        cx._multi().ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await sleep(2600);
+        if (sent.length !== 2) throw new Error('sent ' + sent.length);
+        const m = cx._multi();
+        if (!m || m.ta.value.split(NL)[0] !== sent[1].split(BR)[0]) throw new Error('the refused message should stay: ' + (m && m.ta.value.slice(0, 40)));
+        // Esc: back to one line, the lines kept with \\n
+        document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
+        await sleep(200);
+        if (cx._multi() || input.style.visibility === 'hidden') throw new Error('Esc did not close it');
+        if (input.value !== m.ta.value.split(NL).join(BR)) throw new Error('one-line text: ' + input.value.slice(0, 60));
+        // Shift+Enter in a one-line box holding a \\n: a real line in the tall box
+        fightcord.app.setChatText('a' + BR + 'b');
+        input.setSelectionRange(input.value.length, input.value.length);
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+        if (!cx._multi() || cx._multi().ta.value !== ['a', 'b', ''].join(NL)) throw new Error('reopen: ' + JSON.stringify(cx._multi() && cx._multi().ta.value));` },
+    // Fightcade's settings open: a click right of the panel must land on Fightcade's .settingsMask (that closes it)
+    { name: 'settings-mask', snap: '2026-09-27T16-41-30-settings-street-fighter-iii-3rd-strike-f', run: `
+        const sw = document.querySelector('.settingsWrapper'); sw.classList.add('active');
+        await sleep(600);
+        const desc = (el) => { const out = []; for (let n = el; n && n !== document.body && out.length < 6; n = n.parentElement) out.push(n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\\s+/).slice(0, 3).join('.') : '')); return out.join(' < '); };
+        const pts = [[1000, 400], [700, 300], [1200, 700], [900, 150], [1300, 60]];
+        const res = pts.map(([x, y]) => x + ',' + y + ': ' + desc(document.elementFromPoint(x, y)));
+        if (pts.some(([x, y]) => !document.elementFromPoint(x, y).closest('.settingsMask'))) throw new Error(String.fromCharCode(10) + res.join(String.fromCharCode(10)));` },
     { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 

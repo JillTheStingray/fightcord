@@ -639,6 +639,7 @@ const files = {
 // Fightcade's Vue root. The loader hands it over; plugins that start before #app
 // existed still get it once it's there.
 let FCADE = null;
+const chCache = { el: null, at: 0 };          // app.channelElement()
 
 const app = {
     root() {
@@ -734,11 +735,17 @@ const app = {
         return '';
     },
 
-    // the visible game channel's wrapper (search results reuse .channelWrapper: skip those)
+    // the visible game channel's wrapper (search results reuse .channelWrapper: skip those).
+    // Kept for a quarter second: finding it measures the page (offsetParent), and the background
+    // asks on every frame
     channelElement() {
         if (!hasDom()) return null;
+        const now = Date.now(), c = chCache;
+        if (now - c.at < 250 && (!c.el || (c.el.isConnected && c.el.style.display !== 'none'))) return c.el;
         const all = [...document.querySelectorAll('#app > .channelWrapper, .channelWrapper')].filter(cw => !cw.closest('.searchResultsGrid'));
-        return all.find(cw => cw.style.display !== 'none' && cw.offsetParent !== null) || null;
+        c.el = all.find(cw => cw.style.display !== 'none' && cw.offsetParent !== null) || null;
+        c.at = now;
+        return c.el;
     },
     // the channel an element sits in (by its header title)
     channelOf(el) {
@@ -1157,7 +1164,7 @@ function patchFields(root, b) {
         const ch = changed.indexOf(f) >= 0;
         if (row.classList.contains('fc-changed') !== ch) row.classList.toggle('fc-changed', ch);
         if (f.key) newPill(row.querySelector('.fc-field-text > b'), !newBlock && isNewKey('f:' + b.id + '.' + f.key));
-        if (f.type === 'html') { const h = row.querySelector('.fc-field-html'); const html = typeof f.html === 'function' ? f.html(d) : (f.html || ''); if (h && h.innerHTML !== html) h.innerHTML = html; return; }
+        if (f.type === 'html') { const h = row.querySelector('.fc-field-html'); const html = typeof f.html === 'function' ? f.html(d) : (f.html || ''); if (h) ui.setHtml(h, html); return; }
         if (!f.key) return;
         const input = row.querySelector('input, select');
         if (!input || input === document.activeElement) return;
@@ -1998,6 +2005,17 @@ const ui = {
         return st;
     },
     icon(name, cls) { return `<svg class="fc-ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.info}</svg>`; },
+    // el.innerHTML = html, only when it's different from what was put there last. (Comparing with
+    // el.innerHTML doesn't work: the browser writes it back its own way, so it always looks
+    // changed, and every rewrite wakes every fc.watch -- which rewrote it again, ~8 times a second)
+    setHtml(el, html) {
+        if (!el) return false;
+        const s = String(html);
+        if (el.__fcHtml === s && (el.childNodes.length || !s)) return false;
+        el.innerHTML = s;
+        el.__fcHtml = s;
+        return true;
+    },
     // an icon in a line of text, sized to the text ('fill' for a solid one: ic('star', 'fill'))
     ic(name, cls) { return ui.icon(name, 'inl' + (cls ? ' ' + cls : '')); },
     // an icon as a CSS url() (masks for ::before, or a one-colour picture: iconUrl('star', true, '#f0b232'))

@@ -104,6 +104,11 @@ const NEWS = [
         ['music', N_('Audio in the chat'), N_('Paste, drop or click + with an mp3, ogg, wav or other audio file: Fightcord players get a player right in the chat.')],
         ['play', N_('Videos play like videos'), N_('mp4, webm and mov files play with sound and stop at the end, and no longer end up in your GIF favorites.')],
         ['refresh', N_('Uploads that get through'), N_('When catbox.moe has trouble, Fightcord tries again and then sends through uguu.se (those files last 3 hours).')]
+    ] },
+    { v: '2.18', title: 'Fightcord 2.18', items: [
+        ['chat', N_('Messages with several lines'), N_('Shift+Enter in the message box opens a taller box. Enter sends it as one message with the lines kept, and everyone sees them.')],
+        ['bolt', N_('Smoother'), N_('Fightcord does a lot less work in the background now, so the lobby and the member list feel lighter.')],
+        ['check', N_('Small fixes'), N_('A bigger rank badge in the channel header, and clicking next to Fightcade’s settings closes them again.')]
     ] }
 ];
 

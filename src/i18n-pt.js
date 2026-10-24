@@ -1773,5 +1773,17 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "Videos play like videos": "Vídeos tocam como vídeos",
     "mp4, webm and mov files play with sound and stop at the end, and no longer end up in your GIF favorites.": "Arquivos mp4, webm e mov tocam com som e param no fim, e não vão mais parar nos seus GIFs favoritos.",
     "Uploads that get through": "Envios que chegam",
-    "When catbox.moe has trouble, Fightcord tries again and then sends through uguu.se (those files last 3 hours).": "Quando o catbox.moe tem problemas, o Fightcord tenta de novo e depois envia pelo uguu.se (esses arquivos duram 3 horas)."
+    "When catbox.moe has trouble, Fightcord tries again and then sends through uguu.se (those files last 3 hours).": "Quando o catbox.moe tem problemas, o Fightcord tenta de novo e depois envia pelo uguu.se (esses arquivos duram 3 horas).",
+    "Sending {n} of {total}…": "Enviando {n} de {total}…",
+    "Fightcade asked to slow down: Enter sends the rest": "O Fightcade pediu para ir mais devagar: Enter envia o resto",
+    "Messages with several lines": "Mensagens com várias linhas",
+    "Enter sends · Shift+Enter: new line · Esc: back to one line": "Enter envia · Shift+Enter: nova linha · Esc: volta para uma linha",
+    "Too long: up to about {n} characters at a time": "Longo demais: até uns {n} caracteres de cada vez",
+    "Shift+Enter (or pasting several lines) opens a taller box; Fightcade shows the lines as one message, for everyone": "Shift+Enter (ou colar várias linhas) abre uma caixa maior; o Fightcade mostra as linhas como uma só mensagem, para todo mundo",
+    "Fightcord 2.18": "Fightcord 2.18",
+    "Shift+Enter in the message box opens a taller box. Enter sends it as one message with the lines kept, and everyone sees them.": "Shift+Enter na caixa de mensagem abre uma caixa maior. Enter envia como uma só mensagem com as linhas mantidas, e todo mundo vê.",
+    "Smoother": "Mais leve",
+    "Fightcord does a lot less work in the background now, so the lobby and the member list feel lighter.": "O Fightcord agora faz muito menos trabalho em segundo plano, então o lobby e a lista de membros ficam mais leves.",
+    "Small fixes": "Pequenas correções",
+    "A bigger rank badge in the channel header, and clicking next to Fightcade’s settings closes them again.": "Um emblema de rank maior no topo do canal, e clicar ao lado das configurações do Fightcade volta a fechá-las."
 } };

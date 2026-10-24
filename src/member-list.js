@@ -203,7 +203,7 @@ function renderRow(item, info, where) {
                 }, true));
                 nag.appendChild(lv);
             }
-            if (lv.innerHTML !== live) lv.innerHTML = live;
+            fc.ui.setHtml(lv, live);
         } else if (lv) lv.remove();
 
         // ★ for friends, right after the name
@@ -211,7 +211,7 @@ function renderRow(item, info, where) {
         else { const s = nag.querySelector(':scope > .fcm-fr'); if (s) s.remove(); }
 
         // F (+ mic): has Fightcord (+ voice chat on)
-        if (pres) { const pm = afterName(nag, 'fcm-pres'); if (pm.innerHTML !== pres) pm.innerHTML = pres; }
+        if (pres) { const pm = afterName(nag, 'fcm-pres'); fc.ui.setHtml(pm, pres); }
         else { const pm = nag.querySelector(':scope > .fcm-pres'); if (pm) pm.remove(); }
 
         // 🔒 a mate from your private lobbies
@@ -219,7 +219,7 @@ function renderRow(item, info, where) {
         else { const lb = nag.querySelector(':scope > .fcm-lb'); if (lb) lb.remove(); }
 
         // notes: coloured dots for the player's tags
-        if (noteDots) { const nd = afterName(nag, 'fcm-nt', ':scope > .fcm-fr'); if (nd.innerHTML !== noteDots) nd.innerHTML = noteDots; }
+        if (noteDots) { const nd = afterName(nag, 'fcm-nt', ':scope > .fcm-fr'); fc.ui.setHtml(nd, noteDots); }
         else { const nd = nag.querySelector(':scope > .fcm-nt'); if (nd) nd.remove(); }
 
         // #12 on this game's leaderboard (top 300)
@@ -428,7 +428,7 @@ function chipBarHtml() {
 
 function refreshChipBars() {
     const html = chipBarHtml();
-    document.querySelectorAll('.fcm-chips > .fcm-cbx').forEach(b => { if (b.innerHTML !== html) b.innerHTML = html; });
+    document.querySelectorAll('.fcm-chips > .fcm-cbx').forEach(b => fc.ui.setHtml(b, html));
 }
 
 function setSearch(q) {

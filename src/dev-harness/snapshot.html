@@ -352,7 +352,8 @@
     const code = await fetch(src, { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
     if (!code) return;
     const module = { exports: {} };
-    new Function('module', 'exports', 'require', '__dirname', code)(module, module.exports, req, '.');
+    // (named, so a CPU profile shows which file the time went to: dev-harness/perf.js)
+    new Function('module', 'exports', 'require', '__dirname', code + '\n//# sourceURL=fc/' + src.replace('../', ''))(module, module.exports, req, '.');
     const file = src.replace('../', '');
     // through the core's module registry, like the real loader (falls back to a plain call)
     const fc = window.fightcord;
@@ -364,7 +365,7 @@
   const coreMod = { exports: {} };
   const coreCode = await fetch('../fightcord-core.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : null);
   if (coreCode) {
-    new Function('module', 'exports', 'require', '__dirname', coreCode)(coreMod, coreMod.exports, req, '.');
+    new Function('module', 'exports', 'require', '__dirname', coreCode + '\n//# sourceURL=fc/fightcord-core.js')(coreMod, coreMod.exports, req, '.');
     coreMod.exports.boot(FCADE, { version: 'harness', safe: q.get('safe') === '1', lang: q.get('lang') || 'en' });
     // ?lang=pt / es: the dictionary (Fightcade loads it with require; here it comes over fetch)
     const lang = q.get('lang');

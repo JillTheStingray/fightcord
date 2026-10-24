@@ -64,6 +64,7 @@ walks you through the rest.
   list with Challenge, and a voice room for up to 8.
 - Pictures, GIFs, clips and audio files in the chat for Fightcord players: paste, drop or click +,
   favorite GIFs and send them again from the GIF button.
+- Messages with several lines: Shift+Enter opens a taller message box, sent as one message everyone sees.
 - Profiles for Fightcord players (status, About me, banner, badges), a member list with search,
   folding groups and a one-click challenge, and setup codes to share your look.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and

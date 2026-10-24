@@ -112,6 +112,7 @@ de boas-vindas curta te guia pelo resto.
 - **Status no Discord:** mostra seu jogo, oponente e o tempo de partida no seu perfil do Discord.
 - **Lobbies privados**, como um servidor do Discord: só com convite, com um chat que guarda o histórico, lista de membros com Desafiar e uma sala de voz para até 8.
 - **Imagens, GIFs, clipes e áudios no chat** para quem usa o Fightcord: cole, solte ou clique no +, favorite GIFs e envie de novo pelo botão GIF.
+- **Mensagens com várias linhas:** Shift+Enter abre uma caixa de mensagem maior, enviada como uma só mensagem que todo mundo vê.
 - **Perfis** para quem usa o Fightcord (status, Sobre mim, banner, emblemas), uma lista de membros com busca, grupos que recolhem e desafio com um clique, e códigos para compartilhar sua configuração.
 - **Música** no lobby (traga sua própria faixa; nenhuma vem incluída).
 

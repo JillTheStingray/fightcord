@@ -278,3 +278,35 @@ test('catbox keeps failing: the file goes to uguu.se instead (its own field, its
     // both down: one clear message
     await assert.rejects(up.uploadRetry(Buffer.from('abc'), 'image/png', null, { request: fakeRequest(200, '').request, head: okHead, waits: [5] }).promise, /both having trouble/);
 });
+
+test('messages with several lines: one message per line, blank lines dropped, long ones split at a space', () => {
+    assert.deepEqual(cx.splitLines('gg\n\nrematch?\r\n  \nFT5 '), ['gg', 'rematch?', 'FT5']);
+    assert.deepEqual(cx.splitLines(''), []);
+    const long = ('word ').repeat(150).trim();                 // 749 characters
+    const parts = cx.splitLines(long);
+    assert.equal(parts.length, 2);
+    assert.ok(parts.every(p => p.length <= 500));
+    assert.equal(parts.join(' '), long, 'nothing lost at the cut');
+    assert.deepEqual(cx.splitLines('x'.repeat(1200)).map(p => p.length), [500, 500, 200], 'no space: a hard cut');
+});
+
+test('messages with several lines go as ONE message: lines joined with Fightcade\'s \\n (shown as a new line)', () => {
+    const BR = String.fromCharCode(92) + 'n';
+    assert.deepEqual(cx.packMessages('Looking for sets:\n3rd Strike FT5\n\nEU, wired\n\n'), ['Looking for sets:' + BR + '3rd Strike FT5' + BR + BR + 'EU, wired'], 'a blank line in the middle stays; not at the ends');
+    assert.deepEqual(cx.packMessages('\n\n  \n'), []);
+    // past 500 characters: as few messages as fit, each at most 500
+    const many = Array.from({ length: 60 }, (_, i) => 'line number ' + i).join('\n');
+    const msgs = cx.packMessages(many);
+    assert.ok(msgs.length === 2 && msgs.every(m => m.length <= 500), msgs.map(m => m.length).join(','));
+    assert.equal(msgs.join(BR).split(BR).length, 60, 'every line is there');
+    assert.ok(!msgs.some(m => m.startsWith(BR) || m.endsWith(BR)));
+});
+
+test('chat font styles keep Fightcade\'s \\n line break (and stop a link at it)', () => {
+    const BR = String.fromCharCode(92) + 'n';
+    const conf = { style: 'bold', plainMentions: false, inlineMarkup: true, decoration: 'none' };
+    const out = fs._styleMessage('hello' + BR + 'see https://x.com/a' + BR + 'next', 'bold', conf);
+    assert.equal(out.split(BR).length, 3, out);
+    assert.ok(out.includes('https://x.com/a' + BR), 'the link is untouched and ends at the line break');
+    assert.ok(!out.split(BR)[2].includes('next'), 'the text after it is still styled');
+});

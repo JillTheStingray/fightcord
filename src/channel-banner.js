@@ -98,11 +98,11 @@ function update(b, ch) {
     const s = statsFor(ch);
     const bits = [`<span class="on"><i></i>${E(T('{n} online', { n: s.online }))}</span>`];
     if (s.live) bits.push(`<span>${fc.ui.ic('swords')}${E(T.plural(s.live, '{n} live match', '{n} live matches'))}</span>`);
-    if (s.rank) bits.push(`<span>${E(T('your rank'))} ${fc.ui.tag(s.rank, '', 16)}</span>`);
+    if (s.rank) bits.push(`<span class="cbnRk">${E(T('your rank'))} ${fc.ui.tag(s.rank, '', 26)}</span>`);
     if (s.w + s.l) bits.push(`<span>${E(T('you'))} <b>${s.w}–${s.l}</b> (${Math.round(s.w / (s.w + s.l) * 100)}%)</span>`);
     const line = bits.join('<span class="dot">·</span>');
     const ln = b.querySelector('.cbnLine');
-    if (ln.innerHTML !== line) ln.innerHTML = line;
+    fc.ui.setHtml(ln, line);
     const fr = s.friends.slice(0, 5).map(n => `<img data-fr="${E(n)}" src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(T('{name} (friend) is here', { name: n }))}" alt="" onerror="this.style.visibility='hidden'">`).join('') +
         (s.friends.length > 5 ? `<span class="more">+${s.friends.length - 5}</span>` : '');
     const fb = b.querySelector('.cbnFriends');
@@ -177,6 +177,9 @@ const CSS = `
 .cbnLine .on { display: inline-flex; align-items: center; }
 .cbnLine .on i { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #23a55a; box-shadow: 0 0 8px #23a55a; }
 .cbnLine .dot { margin: 0 8px; opacity: .45; }
+/* your rank: big enough to read, without making the line taller */
+.cbnLine .cbnRk { display: inline-flex; align-items: center; }
+.cbnLine .cbnRk .fc-tag { margin: -6px 0 -6px 5px; }
 .cbnLine b { color: #fff; }
 .cbnRanked { display: inline-block; margin-left: 10px; padding: 1px 7px; border-radius: 4px; vertical-align: 3px; font-size: 10px; font-weight: 800;
     letter-spacing: .06em; color: #f0b232; background: rgba(240,178,50,.16); text-shadow: none; }

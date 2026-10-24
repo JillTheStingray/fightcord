@@ -136,3 +136,15 @@ test('changed settings: what differs from the defaults, and one put back', () =>
     assert.equal(api.resetField('zz-test', 'nope'), false);
     assert.ok(saved.length >= 1);
 });
+
+test('ui.setHtml writes only when the content really changed (no rewrite loop with the page watcher)', () => {
+    let writes = 0;
+    const el = { childNodes: [], set innerHTML(v) { writes++; this._h = v; this.childNodes = v ? [1] : []; }, get innerHTML() { return 'normalized:' + this._h; } };
+    assert.equal(ui.setHtml(el, '<b>664</b> online'), true);
+    assert.equal(ui.setHtml(el, '<b>664</b> online'), false, 'same content: untouched, even though el.innerHTML reads back differently');
+    assert.equal(ui.setHtml(el, '<b>665</b> online'), true);
+    assert.equal(writes, 2);
+    el.childNodes = [];                                  // someone else emptied it
+    assert.equal(ui.setHtml(el, '<b>665</b> online'), true, 'put back');
+    assert.equal(ui.setHtml(null, 'x'), false);
+});

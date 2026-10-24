@@ -1809,7 +1809,7 @@ function renderYours(content) {
         grid.querySelectorAll('.fcdTile').forEach((t, i) => {
             const sub = tileSub(list[i]);
             const el = t.querySelector('.fcdTileSub');
-            if (el.innerHTML !== sub) el.innerHTML = sub;
+            fc.ui.setHtml(el, sub);
         });
     }
     grid.querySelectorAll('.fcdTile').forEach((t, i) => applyArt(t.querySelector('.fcdTileArt'), list[i].rom));

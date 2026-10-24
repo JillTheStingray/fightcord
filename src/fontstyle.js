@@ -323,17 +323,18 @@ function styleSegment(text, style) {
 
 // Keep Fightcade features working: slash commands are never touched.
 // links travel exactly as typed: a styled or decorated link doesn't open (2.15)
-const LINK_SPLIT = /(https?:\/\/\S+)/;
+// and so does Fightcade's line break: a typed \n, which its chat shows as a new line (2.18)
+const LINK_SPLIT = /(https?:\/\/(?:(?!\\n)\S)+|\\n)/;
 function styleMessage(text, style) {
     if (!text) return text;
     if (text.startsWith('/')) return text;            // never mangle FC commands
     const parts = text.split(LINK_SPLIT);
     const out = parts.map((part, i) => {
-        if (i % 2) return part;                       // a link
+        if (i % 2) return part;                       // a link or a line break
         const segs = !config || config.inlineMarkup ? tokenizeMarkup(part) : [{ text: part, style: null }];
         return segs.map(s => styleSegment(s.text, s.style || style)).join('');
     }).join('');
-    return parts.length > 1 ? out : decorate(out);
+    return parts.some((p, i) => i % 2 && /^https?:/.test(p)) ? out : decorate(out);
 }
 
 /* --------------------------------------------------------- incoming (A5) */

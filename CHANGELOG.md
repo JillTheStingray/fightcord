@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.18.0
+
+- **Messages with several lines:** Shift+Enter in the message box (or pasting text with line breaks) opens a
+  taller box, like Discord's. Enter sends it as ONE message with the lines kept, for everyone, Fightcord or
+  not (Fightcade shows a typed `\n` as a new line; Fightcord fills those in for you). Esc goes back to the
+  one-line box. Settings → Chat → Chat extras → "Messages with several lines".
+- **Smoother:** the line under the channel name was being rewritten about 8 times a second, and every
+  rewrite made all of Fightcord look over the page again (the whole member list included). Fixed, along with
+  the background measuring the page on every frame. In our test channel Fightcord's own work dropped from
+  about a quarter of the main thread to about 6%, with the music visualizer on.
+- Your rank badge in the channel header is bigger.
+- Fixed: with Fightcade's settings (or notifications) open, clicking next to the panel didn't close it.
+- Fixed: chat font styles turned a typed `\n` into a styled letter.
+
 ## 2.17.0
 
 - **Audio files in the chat** for Fightcord players: paste, drop or click + with an mp3, ogg, wav, m4a, flac,

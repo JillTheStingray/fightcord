@@ -185,7 +185,8 @@ html.dc-layout .mainToolbarWrapper { position: relative; z-index: 30; }
 html.dc-layout .mainToolbarWrapper .mainToolbar {
     width: 72px; min-width: 72px; background: var(--dc-bg3); background-image: none;
 }
-html.dc-layout .settingsWrapper, html.dc-layout .notificationsWrapper { left: 72px; }
+/* (they're placed against the 72px rail now, not the window: without a width their click-outside layer is 0px wide) */
+html.dc-layout .settingsWrapper, html.dc-layout .notificationsWrapper { left: 72px; right: auto; width: calc(100vw - 72px); }
 html.dc-layout .mainToolbar .logo { width: 40px; height: 40px; margin: 12px auto 0; }
 html.dc-layout .mainToolbar .logo svg { width: 40px; height: 40px; }
 html.dc-layout .mainToolbar .channelsList { padding-top: 0; }

@@ -339,6 +339,7 @@ function drawPulse(x, w, h, k, alpha, bass, acc, cyan, violet) {
 
 // the one per-frame loop in Fightcord (only while the particles or the visualizer are showing)
 let lastDraw = 0, raf = 0, running = false;
+const target = { at: 0, cv: null, w: 0, h: 0, top: 0 };      // drawFrame's canvas and sizes
 const animated = () => cfg.style === 'particles' || cfg.style === 'visualizer';
 function drawFrame(now) {
     raf = 0;
@@ -351,11 +352,16 @@ function drawFrame(now) {
     viz.f = Math.min(4, Math.max(0.25, (now - (lastDraw || now - 33)) / 33.3));
     lastDraw = now;
     if (!active() || !animated() || paused()) return;
-    const chat = visibleChat();
-    const cv = chat && chat.querySelector(':scope > .fcbgLayer canvas');
-    if (!cv) return;
-    const w = chat.clientWidth, h = chat.clientHeight;
-    if (!w || !h) return;
+    // where to draw, and how big: looked up a few times a second, not on every frame (reading
+    // sizes makes the browser lay the page out again)
+    if (now - target.at > 250 || !target.cv || !target.cv.isConnected) {
+        const chat = visibleChat();
+        const inp = chat && chat.querySelector(':scope > .chatInput');
+        Object.assign(target, { at: now, cv: chat && chat.querySelector(':scope > .fcbgLayer canvas'), w: chat ? chat.clientWidth : 0, h: chat ? chat.clientHeight : 0,
+            top: inp && inp.offsetTop > 120 ? inp.offsetTop : 0 });
+    }
+    const { cv, w, h } = target;
+    if (!cv || !w || !h) return;
     const still = document.documentElement.classList.contains('fc-still');
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; parts.length = 0; viz.still = false; }
     else if (still && viz.still) return;                   // Animations off: one still frame
@@ -364,8 +370,7 @@ function drawFrame(now) {
     const x = cv.getContext('2d');
     if (cfg.style === 'visualizer') {
         // drawn above the message box, not behind it
-        const inp = chat.querySelector(':scope > .chatInput');
-        drawVisualizer(x, w, inp && inp.offsetTop > 120 ? inp.offsetTop : h, k);
+        drawVisualizer(x, w, target.top || h, k);
     }
     else { x.clearRect(0, 0, w, h); stepParticles(x, w, h, k, 0); }
     frames++;

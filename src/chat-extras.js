@@ -40,7 +40,8 @@ const DEFAULTS = {
     systemCards: true,     // challenge / match messages as compact pills and cards
     timeDividers: true,    // a divider when 20+ minutes pass between messages
     noticeFolded: true,    // Fightcade's channel notice (rules, links, events) as one line (2.13)
-    noticeOpen: {}         // channels where you opened it
+    noticeOpen: {},        // channels where you opened it
+    multiLine: true        // Shift+Enter: a taller box, each line sent as its own message (2.18)
 };
 
 const E = (s) => fc.fmt.esc(s);
@@ -64,8 +65,16 @@ function lineText(line) {
     const bc = line.querySelector('.blocksContainer');
     if (!bc) return '';
     let t = '';
+    // (a line break in a message is a <br>: a gap, so a link doesn't run into the next line)
+    const text = (n) => {
+        if (!n.querySelector || !n.querySelector('br')) return n.textContent;
+        const c = n.cloneNode(true);
+        c.querySelectorAll('br').forEach(b => b.replaceWith(' '));
+        return c.textContent;
+    };
     bc.childNodes.forEach(n => {
-        if (!(n.classList && (n.classList.contains('fcTr') || n.classList.contains('fcxEmbed')))) t += n.textContent;
+        if (n.nodeName === 'BR') t += ' ';
+        else if (!(n.classList && (n.classList.contains('fcTr') || n.classList.contains('fcxEmbed')))) t += text(n);
     });
     return t.replace(/\s+/g, ' ').trim();
 }
@@ -690,6 +699,166 @@ function previewLinks(chat) {
     }
 }
 
+/* ------------------------------------------------------- multi-line messages */
+
+// Fightcade's message box is one line, but its chat shows a typed \n as a new line (for everyone,
+// Fightcord or not). Shift+Enter, or pasting several lines, swaps in a taller box over it; Enter
+// sends the lines as ONE message joined with \n, through Fightcade's own box (so font styles and
+// :emoji: still apply). Only past Fightcade's 500 characters does it take more than one message
+// (a little apart; if Fightcade answers "stop spamming", what didn't go stays in the box).
+const ML_MAX = 500, ML_MSGS = 5, ML_GAP = 1100, BR = '\\n';
+
+// the box's text -> its lines (no trailing spaces, no blank lines at the start or end)
+function boxLines(text) {
+    const lines = String(text || '').replace(/\r/g, '').split('\n').map(l => l.replace(/\s+$/, ''));
+    while (lines.length && !lines[0].trim()) lines.shift();
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    return lines;
+}
+// the box's text -> the messages to send: the lines joined with \n, as few messages as fit in 500
+// characters (a line that's too long by itself is split at a space)
+function packMessages(text, max) {
+    const lim = max || ML_MAX, out = [];
+    let cur = null;
+    boxLines(text).forEach(line => {
+        const pieces = line.trim() ? splitLines(line, lim) : [''];
+        pieces.forEach(p => {
+            if (cur !== null && cur.length + BR.length + p.length <= lim) cur += BR + p;
+            else { if (cur !== null) out.push(cur); cur = p; }
+        });
+    });
+    if (cur !== null) out.push(cur);
+    // (a message doesn't start or end on an empty line)
+    return out.map(m => m.replace(/^(\\n)+|(\\n)+$/g, '')).filter(m => m.replace(/\\n/g, '').trim());
+}
+// a line that's too long for one message -> pieces cut at a space (blank lines dropped)
+function splitLines(text, max) {
+    const lim = max || ML_MAX, out = [];
+    String(text || '').replace(/\r/g, '').split('\n').forEach(raw => {
+        let line = raw.replace(/\s+$/, '');
+        if (!line.trim()) return;
+        while (line.length > lim) {
+            let cut = line.lastIndexOf(' ', lim);
+            if (cut < lim / 2) cut = lim;
+            out.push(line.slice(0, cut).replace(/\s+$/, ''));
+            line = line.slice(cut).replace(/^\s+/, '');
+        }
+        if (line) out.push(line);
+    });
+    return out;
+}
+
+let ml = null;                 // { wrap, input, ta, note, sending, unlayer }
+function openMulti(input, text, caret) {
+    if (ml) closeMulti(false);
+    const wrap = input.closest('.chatInput');
+    if (!wrap) return;
+    if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+    const cs = getComputedStyle(input);
+    const ta = document.createElement('textarea');
+    ta.className = 'fcxMulti';
+    ta.spellcheck = false;
+    ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'color', 'letterSpacing', 'paddingLeft', 'paddingRight', 'borderRadius', 'backgroundColor'].forEach(k => { ta.style[k] = cs[k]; });
+    if (!cs.backgroundColor || cs.backgroundColor === 'rgba(0, 0, 0, 0)') ta.style.backgroundColor = 'var(--fc-input, #383a40)';
+    const note = document.createElement('div');
+    note.className = 'fcxMultiNote';
+    note.textContent = T('Enter sends · Shift+Enter: new line · Esc: back to one line');
+    wrap.appendChild(ta);
+    wrap.appendChild(note);
+    input.style.visibility = 'hidden';
+    ml = { wrap, input, ta, note, sending: false };
+    ml.unlayer = fc.ui.layer(() => { if (ml && !ml.sending) closeMulti(true); });
+    ta.value = text;
+    ['mousedown', 'keypress', 'keyup'].forEach(ev => ta.addEventListener(ev, (e) => e.stopPropagation()));
+    ta.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!ml.sending) sendMulti(); }
+    });
+    ta.addEventListener('input', () => fitMulti());
+    fitMulti();
+    ta.focus();
+    const at = caret == null ? text.length : caret;
+    ta.setSelectionRange(at, at);
+}
+// grows upward from the box's bottom edge, up to about 10 lines (then it scrolls)
+function fitMulti() {
+    if (!ml) return;
+    const { input, ta, note, wrap } = ml;
+    const bottom = wrap.clientHeight - (input.offsetTop + input.offsetHeight);
+    Object.assign(ta.style, { left: input.offsetLeft + 'px', width: input.offsetWidth + 'px', bottom: bottom + 'px', height: 'auto' });
+    const line = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+    ta.style.height = Math.max(input.offsetHeight, Math.min(ta.scrollHeight, line * 10 + 24)) + 'px';
+    Object.assign(note.style, { left: (input.offsetLeft + 8) + 'px', bottom: (bottom + ta.offsetHeight + 4) + 'px' });
+}
+// keepText: what's in the tall box goes back to the one-line box (its lines joined with \n)
+function closeMulti(keepText) {
+    const m = ml;
+    if (!m) return;
+    ml = null;
+    m.unlayer();
+    const text = m.ta.value;
+    m.ta.remove();
+    m.note.remove();
+    m.input.style.visibility = '';
+    if (keepText && m.input.isConnected) fc.app.setChatText(boxLines(text).join(BR));
+    else if (m.input.isConnected) m.input.focus();
+}
+const spamCount = (wrap) => { const ch = wrap.closest('.channelWrapper') || document; return ch.querySelectorAll('.chatContent .spam').length; };
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+async function sendMulti() {
+    const m = ml;
+    const lines = packMessages(m.ta.value);          // (one message, unless it's past 500 characters)
+    if (!lines.length) return;
+    if (lines.length > ML_MSGS) { fc.ui.toast(T('Too long: up to about {n} characters at a time', { n: ML_MSGS * ML_MAX }), { kind: 'warning', icon: 'warn' }); return; }
+    m.sending = true;
+    m.ta.readOnly = true;
+    m.ta.classList.add('sending');
+    for (let i = 0; i < lines.length; i++) {
+        if (ml !== m || !m.input.isConnected) return;
+        if (lines.length > 1) m.note.textContent = T('Sending {n} of {total}…', { n: i + 1, total: lines.length });
+        const before = spamCount(m.wrap);
+        fc.app.setChatText(lines[i], false);
+        m.input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+        await wait(i < lines.length - 1 ? ML_GAP : 400);
+        if (ml !== m) return;
+        // Fightcade marks a refused line "Message not sent. Please stop spamming.": keep it and the rest
+        if (spamCount(m.wrap) > before) {
+            m.ta.value = lines.slice(i).map(x => x.split(BR).join('\n')).join('\n');
+            m.sending = false;
+            m.ta.readOnly = false;
+            m.ta.classList.remove('sending');
+            m.note.textContent = T('Fightcade asked to slow down: Enter sends the rest');
+            fitMulti();
+            m.ta.focus();
+            return;
+        }
+    }
+    closeMulti(false);
+}
+// Shift+Enter in Fightcade's box, or a paste with line breaks (the one-line box would squash them)
+function onMultiKey(e) {
+    if (!cfg.multiLine || e.key !== 'Enter' || !e.shiftKey || e.isComposing) return;
+    const input = e.target && e.target.closest && e.target.closest('.chatInput') && e.target.tagName === 'INPUT' ? e.target : null;
+    if (!input) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    // (a \n already typed in the one-line box becomes a real line here)
+    const at = input.selectionStart == null ? input.value.length : input.selectionStart;
+    const head = input.value.slice(0, at).split(BR).join('\n'), tail = input.value.slice(input.selectionEnd == null ? at : input.selectionEnd).split(BR).join('\n');
+    openMulti(input, head + '\n' + tail, head.length + 1);
+}
+function onMultiPaste(e) {
+    if (!cfg.multiLine || !e.clipboardData) return;
+    const input = e.target && e.target.closest && e.target.closest('.chatInput') && e.target.tagName === 'INPUT' ? e.target : null;
+    const text = e.clipboardData.getData('text/plain') || '';
+    if (!input || !/\S[^\n]*\r?\n[^\n]*\S/.test(text)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const a = input.selectionStart == null ? input.value.length : input.selectionStart, b = input.selectionEnd == null ? a : input.selectionEnd;
+    const t = text.replace(/\r/g, ''), head = input.value.slice(0, a).split(BR).join('\n') + t;
+    openMulti(input, head + input.value.slice(b).split(BR).join('\n'), head.length);
+}
+
 /* ---------------------------------------------------------- jump to present */
 
 let jump = null, jumpChat = null;
@@ -818,6 +987,12 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxEmbed .fcxFav:hover { background: rgba(0,0,0,.8); }
 .fcxEmbed .fcxFav .fc-ic { width: 16px; height: 16px; }
 .line.fcxOnlyMedia .blocksContainer > :not(.fcxEmbed):not(.fcTr) { display: none !important; }
+/* multi-line messages */
+.fcxMulti { position: absolute; z-index: 60; box-sizing: border-box; margin: 0; padding-top: 11px; padding-bottom: 11px; border: 0; outline: none; resize: none;
+    overflow-y: auto; white-space: pre-wrap; box-shadow: 0 0 0 1px var(--fc-accent), 0 -6px 18px rgba(0,0,0,.25); }
+.fcxMulti.sending { opacity: .6; }
+.fcxMultiNote { position: absolute; z-index: 60; padding: 2px 8px; border-radius: 4px; font: 500 12px/18px var(--fc-font); color: var(--fc-muted);
+    background: var(--fc-s1, rgba(0,0,0,.6)); pointer-events: none; white-space: nowrap; }
 /* audio files */
 .fcxEmbed.fcxAudio { border-left: 0; line-height: 1.3; user-select: none; }
 .fcxEmbed.fcxAudio { width: 400px; max-width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; }
@@ -941,6 +1116,9 @@ function start(f) {
     listen(document, 'scroll', (e) => { if (e.target && e.target.classList && e.target.classList.contains('chatContent')) { hideBar(); updateJump(); } }, true);
     // sending a message = you've caught up
     listen(document, 'click', onMediaClick, true);
+    listen(window, 'keydown', onMultiKey, true);
+    listen(document, 'paste', onMultiPaste, true);
+    listen(window, 'resize', () => fitMulti());
     fc.on('gifs:changed', () => refreshStars());
     fc.own(() => closeViewer());
     listen(window, 'keydown', (e) => { if (e.key === 'Enter' && e.target && e.target.closest && e.target.closest('.chatInput') && e.target.value) clearNew(); }, true);
@@ -949,6 +1127,7 @@ function start(f) {
     listen(window, 'resize', () => { hideBar(); updateJump(); });
     fc.own(() => {
         fc.ui.style('fcxStyle', null);
+        closeMulti(true);
         hideBar();
         if (jump) { jump.remove(); jump = null; }
         document.querySelectorAll('.fcxEmbed audio').forEach(a => a.pause());
@@ -972,6 +1151,7 @@ function start(f) {
             opt('linkPreviews', 'Link previews', 'YouTube, Twitch, X, imgur, Fightcade… (only well-known sites are ever fetched)'),
             opt('imagePreviews', 'Images, GIFs, clips and audio', 'Pictures, videos and audio from trusted sites (catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
             opt('blurMedia', 'Blur them until clicked', 'Click a blurred picture to show it', (d) => d.linkPreviews && d.imagePreviews),
+            opt('multiLine', 'Messages with several lines', 'Shift+Enter (or pasting several lines) opens a taller box; Fightcade shows the lines as one message, for everyone'),
             opt('jumpBar', 'Jump to present', 'A bar when you scroll up'),
             opt('discordTime', 'Discord timestamps', '"10:16 PM" instead of "at 22:16"'),
             opt('hour12', '12-hour clock', 'Off = 22:16', (d) => d.discordTime),
@@ -994,8 +1174,10 @@ const api = {
     _viewer: (src, link) => openViewer(src, link || src),
     _allowed: allowed,
     _sweep: () => sweep(),
+    _multi: () => ml,
+    openMulti: (text) => { const i = fc.app.chatInput(); if (i) openMulti(i, String(text || ''), null); },
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'chat-extras', name: 'Chat extras', start, noticeSummary };
+module.exports = { id: 'chat-extras', name: 'Chat extras', start, noticeSummary, splitLines, packMessages };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));
