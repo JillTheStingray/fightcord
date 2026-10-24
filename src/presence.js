@@ -43,14 +43,36 @@ function hashOf(name) {
     return h;
 }
 
-// the people heard from: hash -> { at, voice }
+// --- newcomers (2.19) ---
+// A fresh install says "I'm new" (nw = its day 1..7) for its first week: Fightcord players in its
+// channel get a welcome line in their chat (days 1-3, once each), and its cards show a badge.
+const DAY = 86400000, NEW_DAYS = 7, ANNOUNCE_DAYS = 3, ANNOUNCE_PER_HOUR = 3;
+// days since a fresh install: 1..7 in the first week, else 0 (0 also = not a fresh install)
+function newcomerDay(installedAt, now) {
+    if (!installedAt || !(now >= installedAt)) return 0;
+    const d = Math.floor((now - installedAt) / DAY) + 1;
+    return d <= NEW_DAYS ? d : 0;
+}
+const validNw = (nw) => { const n = Math.floor(+nw); return n >= 1 && n <= NEW_DAYS ? n : 0; };
+// a newcomer heard from -> 'announce' | 'wait' (not in the channel you're looking at, or enough for
+// this hour) | 'skip' (announced already, or past their first days)
+//   state: { announced: { hash: when }, recent: [when, ...] }   o: { h, nw, now, inChannel }
+function announceDecision(state, o) {
+    const nw = validNw(o && o.nw);
+    if (!nw || nw > ANNOUNCE_DAYS || !o.h || (state.announced || {})[o.h]) return 'skip';
+    if (!o.inChannel) return 'wait';
+    const recent = (state.recent || []).filter(t => o.now - t < 3600000);
+    return recent.length >= ANNOUNCE_PER_HOUR ? 'wait' : 'announce';
+}
+
+// the people heard from: hash -> { at, voice, pv, nw }
 function Book(ttl) {
     const m = new Map();
     return {
-        heard(h, voice, now, pv) {
+        heard(h, voice, now, pv, nw) {
             const old = m.get(h);
             const v = typeof pv === 'string' && /^[0-9a-f]{8}$/.test(pv) ? pv : '';
-            m.set(h, { at: now, voice: !!voice, pv: v });
+            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw) });
             if (m.size > 5000) m.delete(m.keys().next().value);
             return !old || old.voice !== !!voice || old.pv !== v || now - old.at > ttl;       // news?
         },
@@ -114,7 +136,7 @@ function badgesFrom(sets, bestSpot) {
 module.exports = {
     id: 'presence', name: 'Fightcord players',
     start: (f) => start(f),
-    hashOf, Book, react, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom
+    hashOf, Book, react, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom, newcomerDay, announceDecision
 };
 
 /* ================================================================== browser */
@@ -137,7 +159,15 @@ function send(t, extra) {
     const msg = named ? { t, h, voice: voiceOn() ? 1 : 0 } : { t };
     const pv = named && t !== 'bye' ? myPv() : '';
     if (pv) msg.pv = pv;
+    const nw = named && (t === 'hi' || t === 'here') ? myNewDay() : 0;
+    if (nw) msg.nw = nw;
     relays.send(Object.assign(msg, extra));
+}
+// this install's day 1..7 when it's new and you share that (else 0)
+function myNewDay() {
+    if (!cfg || !cfg.visible || cfg.shareNew === false) return 0;
+    const w = fc.modules.get('welcome');
+    return newcomerDay(w && w.installedAt ? w.installedAt() : 0, Date.now());
 }
 function say(t) { if (cfg.visible) send(t); }
 
@@ -153,7 +183,8 @@ function onMsg(m) {
     if (m && m.t === 'prof') { takeProfile(m, now); return; }
     const what = react(m, myHash());
     if (what === 'record' || what === 'record+reply') {
-        if (book.heard(m.h, m.voice, now, m.pv)) changed();
+        if (book.heard(m.h, m.voice, now, m.pv, m.nw)) changed();
+        if (m.nw) newcomer(m.h, m.nw);
         for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice }); }
     }
     if (what === 'forget' && book.gone(m.h)) changed();
@@ -183,6 +214,64 @@ function disconnect() {
     if (relays) { say('bye'); const r = relays; setTimeout(() => r.close(), 400); }
     relays = null;
     said = false;
+}
+
+/* ---------------------------------------------------------- newcomers (2.19) */
+
+// "X just got Fightcord!" in your chat, once per newcomer, when they're in the channel you're looking at
+const pendingNew = new Map();            // hash -> their day (heard, not announced yet)
+const announcedRecent = [];              // when the last announcements went out (the hourly cap)
+function newcomer(h, nw) {
+    if (!cfg.welcomeNew || !validNw(nw) || (cfg.announced || {})[h]) return;
+    pendingNew.set(h, validNw(nw));
+    if (pendingNew.size > 200) pendingNew.delete(pendingNew.keys().next().value);
+    announcePending();
+}
+// a hash -> the player's name, among the people Fightcade knows of
+function nameForHash(h) {
+    const users = fc.app.users();
+    for (const k of Object.keys(users)) if (hashOf(k) === h) return (users[k] && users[k].name) || k;
+    return '';
+}
+function announcePending() {
+    if (!pendingNew.size || !cfg || !cfg.welcomeNew) return;
+    const ch = fc.app.activeChannelId(), now = Date.now();
+    pendingNew.forEach((nw, h) => {
+        const name = nameForHash(h);
+        const u = name && fc.app.user(name)[1];
+        const inChannel = !!(ch && u && Array.isArray(u.channels) && u.channels.indexOf(ch) >= 0);
+        const d = announceDecision({ announced: cfg.announced, recent: announcedRecent }, { h, nw, now, inChannel });
+        if (d === 'skip') { pendingNew.delete(h); return; }
+        if (d !== 'announce') return;
+        pendingNew.delete(h);
+        cfg.announced = cfg.announced || {};
+        cfg.announced[h] = now;
+        Object.keys(cfg.announced).forEach(k => { if (now - cfg.announced[k] > 30 * DAY) delete cfg.announced[k]; });
+        store.save();
+        announcedRecent.push(now);
+        while (announcedRecent.length > 10) announcedRecent.shift();
+        welcomeLine(name, ch);
+    });
+}
+// Fightcade's own bot line in that channel's chat (only you see it); a toast if that isn't there
+function welcomeLine(name, ch) {
+    const text = '🎉 ' + T('{name} just got Fightcord! Say hi 👋', { name });
+    const r = fc.app.root();
+    const comp = r && typeof r.getChannelComponentById === 'function' ? r.getChannelComponentById(ch) : null;
+    const chat = comp && comp.$refs && comp.$refs.chat;
+    fc.emit('presence:newcomer', { name, channel: ch });
+    if (chat && typeof chat.addBotMessage === 'function') {
+        try { chat.addBotMessage(text); welcomeTexts.add(text); setTimeout(tagWelcomes, 60); return; } catch (e) { fc.log('newcomer line failed', e.message); }
+    }
+    fc.ui.toast(text, { icon: 'rocket' });
+}
+// Fightcade draws bot lines in muted grey: ours get a little colour (tagged by their text)
+const welcomeTexts = new Set();
+function tagWelcomes() {
+    if (!welcomeTexts.size || typeof document === 'undefined') return;
+    document.querySelectorAll('.chatContent .messageWrapper.bot:not(.fcNew)').forEach(w => {
+        if (welcomeTexts.has(w.textContent.trim())) w.classList.add('fcNew');
+    });
 }
 
 /* ------------------------------------------------------------- profiles (2.18) */
@@ -253,13 +342,29 @@ function badgesHtml(p, mine) {
     const tip = mine ? '' : ' · ' + T('from their Fightcord');
     return `<div class="fcBadges">${p.bd.map(id => `<span class="fcBadge ${BADGES[id].kind}" title="${E(T(BADGES[id].label) + tip)}">${fc.ui.ic(BADGES[id].icon, BADGES[id].kind === 'sets' ? '' : 'fill')}<span>${E(T(BADGES[id].label))}</span></span>`).join('')}</div>`;
 }
+// their first week with Fightcord: 1..7, else 0 (from their "I'm new", not their profile: older
+// Fightcords would turn down a profile with a badge they don't know)
+function newDayOf(name) {
+    if (!name || !cfg) return 0;
+    if (fc.app.isMe(name)) return myNewDay();
+    if (!cfg.showProfiles || isHidden(name)) return 0;
+    const e = book.get(hashOf(name), Date.now());
+    return e ? e.nw || 0 : 0;
+}
+function newbieHtml(name) {
+    if (!newDayOf(name)) return '';
+    const tip = T('New to Fightcord') + (fc.app.isMe(name) ? '' : ' · ' + T('from their Fightcord'));
+    return `<span class="fcBadge new" title="${E(tip)}">${fc.ui.ic('rocket', 'fill')}<span>${E(T('New to Fightcord'))}</span></span>`;
+}
 // the status line, About me and badges for a card (opts.about: show About me)
 function profileHtml(name, opts) {
-    const p = profile(name);
-    if (!p) return '';
+    const p = profile(name), nb = newbieHtml(name);
+    if (!p) return nb ? `<div class="fcProf"><div class="fcBadges">${nb}</div></div>` : '';
     const o = opts || {};
+    const badges = badgesHtml(p, fc.app.isMe(name));
     return `<div class="fcProf">${p.s ? `<div class="fcProfS">${fc.ui.ic('chat')}<span>${E(p.s)}</span></div>` : ''}` +
-        (o.about !== false && p.a ? `<div class="fcProfA"><b>${E(T('About me'))}</b>${E(p.a)}</div>` : '') + badgesHtml(p, fc.app.isMe(name)) + '</div>';
+        (o.about !== false && p.a ? `<div class="fcProfA"><b>${E(T('About me'))}</b>${E(p.a)}</div>` : '') +
+        (nb ? (badges ? badges.replace('<div class="fcBadges">', '<div class="fcBadges">' + nb) : `<div class="fcBadges">${nb}</div>`) : badges) + '</div>';
 }
 function setProfile(p) {
     const c = cleanProfile(p);
@@ -336,11 +441,19 @@ const CSS = `
 .fcBadge.sets .fc-ic { color: var(--fc-accent); }
 .fcBadge.streak .fc-ic { color: #ff8a3d; }
 .fcBadge.top .fc-ic { color: var(--fc-warning); }
+.fcBadge.new { background: linear-gradient(90deg, rgba(88,101,242,.35), rgba(235,69,158,.3)); }
+.fcBadge.new .fc-ic { color: #fff; }
+/* (beats the theme's plain system line: html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd)) */
+html body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd), html.dc-layout body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd) { margin: 8px 48px 4px 72px !important; padding: 6px 12px !important; border-radius: 6px !important;
+    background: linear-gradient(90deg, rgba(88,101,242,.22), rgba(235,69,158,.12)) !important; box-shadow: inset 3px 0 0 var(--fc-accent) !important; }
+html body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd) .regular, html.dc-layout body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd) .regular { color: var(--fc-head) !important; font-weight: 600 !important; }
+html body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd)::before, html.dc-layout body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd)::before { display: none !important; }
 `;
 
 function start(f) {
     fc = f;
-    store = fc.config('presence', { visible: true, shareProfile: true, showProfiles: true, showBadges: true, profile: { s: '', a: '', b: '' }, hiddenProfiles: [] });
+    store = fc.config('presence', { visible: true, shareProfile: true, showProfiles: true, showBadges: true, profile: { s: '', a: '', b: '' }, hiddenProfiles: [],
+        shareNew: true, welcomeNew: true, announced: {} });
     cfg = store.data;
     try { V = require(path.join(__dirname, 'voice.js')); } catch (e) { V = null; }
     fc.ui.style('fcPresStyle', CSS);
@@ -363,10 +476,21 @@ function start(f) {
             { key: 'showBadges', type: 'switch', label: 'Show my badges', hint: 'Sets played, win streaks and leaderboard spots, from your own history', show: (d) => d.visible && d.shareProfile,
                 onChange: () => { badgeCache.at = 0; if (said) say('here'); changed(); } },
             { key: 'showProfiles', type: 'switch', label: 'Show other players’ profiles', hint: 'Their status and badges on hover and scout cards' },
+            { key: 'shareNew', type: 'switch', label: 'Tell Fightcord players I’m new', hint: 'In your first week with Fightcord: a welcome line in their chat and a “New to Fightcord” badge on your card',
+                show: (d) => d.visible, onChange: () => { if (said) say('here'); changed(); } },
+            { key: 'welcomeNew', type: 'switch', label: 'Welcome new Fightcord players in the chat', hint: 'A line in your chat when someone in your channel just got Fightcord (only you see it)' },
             { type: 'note', label: 'Fightcord players find each other through the same free public relays as voice chat. Your name is sent hashed, and nothing is stored, but anyone listening who knows your name could tell you use Fightcord. A profile you share can be read by any Fightcord player.' }
         ]
     });
     if (crypto) connect();
+    // a newcomer heard while you were looking at another channel: when you open theirs
+    fc.tick(() => { announcePending(); tagWelcomes(); }, 4000);
+    // what Fightcord players see when someone new joins (with your name, only on your screen)
+    fc.cmd('newcomer', 'Preview the welcome line Fightcord players see for someone new', () => {
+        const ch = fc.app.activeChannelId();
+        if (ch) welcomeLine(fc.app.me() || 'You', ch);
+    });
+    fc.watch(tagWelcomes, { selector: '.chatContent .messageWrapper.bot' });
     return api;
 }
 
@@ -389,8 +513,9 @@ const api = {
     // the dev harness: pretend someone shared a profile
     _profile(name, p) { const c = cleanProfile(p), h = hashOf(name), pv = profileVersion(c); book.heard(h, false, Date.now(), pv); profiles.set(h, { pv, p: c }); changed(); },
     count: () => book.count(Date.now()),
-    // the dev harness: pretend we heard from someone
-    _heard(name, voice) { if (book.heard(hashOf(name), voice, Date.now())) changed(); },
+    // the dev harness: pretend we heard from someone (nw: a newcomer's day)
+    _heard(name, voice, nw) { const h = hashOf(name); if (book.heard(h, voice, Date.now(), '', nw)) changed(); if (nw) newcomer(h, nw); },
+    newDay: (n) => newDayOf(n),
     _connected: () => (relays ? relays.open() : 0),
     _pvOf: (n) => { const e = book.get(hashOf(n), Date.now()); return e ? e.pv : null; },
     _myPv: () => myPv()

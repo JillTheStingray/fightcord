@@ -112,3 +112,21 @@ test('install: a fake loader is never written', () => {
     assert.equal(fs.readFileSync(path.join(DIR, '..', 'inject.js'), 'utf8'), '/* Fightcord loader */ old');
     fs.rmSync(path.join(os.tmpdir(), 'fc-upd-test'), { recursive: true, force: true });
 });
+
+test('the release through GitHub\'s API: only this repository\'s asset links are used', () => {
+    const rel = { assets: [
+        { name: 'latest.json', url: 'https://api.github.com/repos/JillTheStingray/fightcord/releases/assets/123' },
+        { name: 'fightcord-9.9.9-update.zip', url: 'https://api.github.com/repos/JillTheStingray/fightcord/releases/assets/124' },
+        { name: 'evil.zip', url: 'https://api.github.com/repos/someone/else/releases/assets/1' },
+        { name: 'odd.zip', url: 'https://example.com/repos/JillTheStingray/fightcord/releases/assets/5' },
+        { name: 'bad.zip', url: 'https://api.github.com/repos/JillTheStingray/fightcord/releases/assets/12/../../x' },
+        null
+    ] };
+    assert.deepEqual(up.assetsOf(rel), {
+        'latest.json': 'https://api.github.com/repos/JillTheStingray/fightcord/releases/assets/123',
+        'fightcord-9.9.9-update.zip': 'https://api.github.com/repos/JillTheStingray/fightcord/releases/assets/124'
+    });
+    assert.deepEqual(up.assetsOf(null), {});
+    assert.deepEqual(up.assetsOf({ assets: 'x' }), {});
+    assert.equal(up.API_LATEST, 'https://api.github.com/repos/JillTheStingray/fightcord/releases/latest');
+});

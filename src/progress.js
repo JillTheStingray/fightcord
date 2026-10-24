@@ -147,28 +147,14 @@ function rankChanged(rom, from, to) {
     celebrate(F, T, gameName(rom));
 }
 
+// (the core's full-screen moment, the burst in the new rank's colours)
 function celebrate(F, T, game) {
-    const old = document.getElementById('prgOverlay');
-    if (old) old.remove();
-    const o = document.createElement('div');
-    o.id = 'prgOverlay';
-    let bits = '';
-    const cols = [fc.data.rankColor(T), '#fff3c4', '#ffffff', fc.data.rankColor(F)];
-    for (let i = 0; i < 40; i++) {
-        const a = (i / 40) * Math.PI * 2, d = 30 + Math.random() * 30;
-        bits += `<span class="bit" style="background:${cols[i % cols.length]};--x:${(Math.cos(a) * d).toFixed(1)}vmax;--y:${(Math.sin(a) * d).toFixed(1)}vmax;` +
-            `--r:${Math.round(Math.random() * 720)}deg;animation-delay:${(0.2 + Math.random() * 0.2).toFixed(2)}s"></span>`;
-    }
-    o.innerHTML = `<div class="glow" style="--c:${fc.data.rankColor(T)}"></div>${bits}
-        <div class="big">${fc.fmt.esc(fc.t('RANK UP!'))}</div>
-        <div class="ranks"><span class="r from" style="--c:${fc.data.rankColor(F)}">${fc.ui.tag(F)}</span><span class="arrow">→</span><span class="r to" style="--c:${fc.data.rankColor(T)}">${fc.ui.tag(T)}</span></div>
-        <div class="game">${fc.fmt.esc(game)}</div><div class="hint">${fc.fmt.esc(fc.t('click to close'))}</div>`;
-    o.addEventListener('mousedown', (e) => e.stopPropagation());
-    o.addEventListener('click', (e) => { e.stopPropagation(); o.classList.add('out'); setTimeout(() => o.remove(), 400); });
-    document.body.appendChild(o);
-    fc.sound.duck(true);
-    fc.sound.play('success');
-    setTimeout(() => { if (o.isConnected) { o.classList.add('out'); setTimeout(() => o.remove(), 400); } fc.sound.duck(false); }, 6000);
+    fc.ui.celebrate({
+        big: fc.t('RANK UP!'), glow: fc.data.rankColor(T), colors: [fc.data.rankColor(T), '#fff3c4', '#ffffff', fc.data.rankColor(F)],
+        mid: `<div class="prgUp"><span class="r from" style="--c:${fc.data.rankColor(F)}">${fc.ui.tag(F)}</span><span class="arrow">→</span>` +
+            `<span class="r to" style="--c:${fc.data.rankColor(T)}">${fc.ui.tag(T)}</span></div>`,
+        sub: game
+    });
 }
 
 /* --------------------------------------------------------------------- tab */
@@ -253,27 +239,12 @@ const CSS = `
 .prgRanks { display: flex; height: 28px; border-radius: var(--fc-r1); overflow: hidden; background: var(--fc-s1); }
 .prgRanks i { display: flex; align-items: center; justify-content: center; font: 800 12px var(--fc-font); font-style: normal; color: #111; min-width: 2px; }
 .prgAxis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--fc-muted); }
-#prgOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); display: flex; flex-direction: column; align-items: center;
-    justify-content: center; overflow: hidden; cursor: pointer; background: radial-gradient(ellipse at 50% 45%, #2a1d4a 0%, #0d0f1f 70%);
-    font-family: var(--fc-font); animation: fcIn .3s ease both; }
-#prgOverlay.out { opacity: 0; transition: opacity .4s ease; }
-#prgOverlay .glow { position: absolute; width: 70vmin; height: 70vmin; border-radius: 50%; background: radial-gradient(circle, var(--c), transparent 65%); opacity: .35;
-    animation: prgPulse 1.6s ease-in-out infinite alternate; }
-@keyframes prgPulse { to { transform: scale(1.15); opacity: .55; } }
-#prgOverlay .big { position: relative; font-size: 14vmin; font-weight: 900; font-style: italic; color: #fff; letter-spacing: -.02em;
-    text-shadow: 0 0 4vmin rgba(79,99,240,.8), 0 1vmin 0 #2b2f8a; animation: prgPunch .6s .1s cubic-bezier(.2,1.7,.4,1) both; }
-@keyframes prgPunch { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
-#prgOverlay .ranks { position: relative; display: flex; align-items: center; margin-top: 3vmin; animation: fcRise .5s .5s both; }
-#prgOverlay .r { width: 14vmin; height: 14vmin; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5vmin var(--c); }
-#prgOverlay .r .fc-tag { --sz: 14vmin; }
-#prgOverlay .r .fc-tag.nf { font-size: 9vmin; border-radius: 3vmin; }
-#prgOverlay .r.from { opacity: .45; transform: scale(.8); }
-#prgOverlay .arrow { margin: 0 4vmin; font-size: 7vmin; color: #fff; }
-#prgOverlay .game { position: relative; margin-top: 3vmin; font-size: 2.6vmin; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: rgba(255,255,255,.75); }
-#prgOverlay .hint { position: absolute; right: 2.4vmin; bottom: 2vmin; font-size: 1.6vmin; color: rgba(255,255,255,.35); }
-#prgOverlay .bit { position: absolute; left: 50%; top: 45%; width: 1.6vmin; height: 1.6vmin; border-radius: .3vmin;
-    animation: prgBurst 1.8s cubic-bezier(.1,.8,.3,1) both; }
-@keyframes prgBurst { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+#fcCeleb .prgUp { display: flex; align-items: center; }
+#fcCeleb .prgUp .r { width: 14vmin; height: 14vmin; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5vmin var(--c); }
+#fcCeleb .prgUp .r .fc-tag { --sz: 14vmin; }
+#fcCeleb .prgUp .r .fc-tag.nf { font-size: 9vmin; border-radius: 3vmin; }
+#fcCeleb .prgUp .r.from { opacity: .45; transform: scale(.8); }
+#fcCeleb .prgUp .arrow { margin: 0 4vmin; font-size: 7vmin; color: #fff; }
 `;
 
 /* ------------------------------------------------------------------- module */

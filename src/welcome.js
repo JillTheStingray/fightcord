@@ -109,6 +109,10 @@ const NEWS = [
         ['chat', N_('Messages with several lines'), N_('Shift+Enter in the message box opens a taller box. Enter sends it as one message with the lines kept, and everyone sees them.')],
         ['bolt', N_('Smoother'), N_('Fightcord does a lot less work in the background now, so the lobby and the member list feel lighter.')],
         ['check', N_('Small fixes'), N_('A bigger rank badge in the channel header, and clicking next to Fightcade’s settings closes them again.')]
+    ] },
+    { v: '2.19', title: 'Fightcord 2.19', items: [
+        ['rocket', N_('Welcome new players'), N_('When someone in your channel just got Fightcord, a line in your chat says hi, and their card shows “New to Fightcord” for a week.')],
+        ['refresh', N_('Updates work again'), N_('GitHub changed something that stopped Fightcord from updating itself. Fixed: from now on updates arrive on their own again.')]
     ] }
 ];
 
@@ -272,15 +276,32 @@ function onClick(e) {
     else if (act === 'back') { step = Math.max(0, step - 1); render(); }
     else if (act === 'next') { if (step < STEPS.length - 1) { step++; render(); } else finish(); }
     else if (act === 'skip') finish();
-    else if (act === 'tour') { finish(); setTimeout(startTour, 250); }
+    else if (act === 'tour') { finish(true); setTimeout(startTour, 250); }
 }
 
-function finish() {
+// touring: the thank-you waits until the tour is over
+function finish(touring) {
     cfg.firstRunDone = true;
     cfg.seen = maxSeen(cfg.seen, minor(version()));
     store.save();
     if (unlayer) { unlayer(); unlayer = null; }
     if (screen) { screen.remove(); screen = null; }
+    if (!touring) thankYou();
+}
+
+// a new install, once: "Thanks for downloading Fightcord!" (not for people who updated, or replaying the welcome)
+function thankYou() {
+    if (!cfg.installedAt || cfg.thanked || Date.now() - cfg.installedAt > 7 * 86400000) return;
+    cfg.thanked = true;
+    store.save();
+    const pr = mod('presence');
+    const n = pr && pr.count ? pr.count() : 0;
+    fc.ui.celebrate({
+        big: T('Thanks for downloading Fightcord!') + ' 💜', bigSize: '8vmin', ms: 9000,
+        colors: ['#5865f2', '#eb459e', '#ffffff', '#fee75c', '#57f287'],
+        sub: n ? T.plural(n, '{n} other Fightcord player is online right now', '{n} other Fightcord players are online right now') : T('Welcome to Fightcord!'),
+        note: T('Fightcord players in your channels will see you’re new this week.')
+    });
 }
 const maxSeen = (a, b) => (cmpVer(a, b) >= 0 ? a : b);
 
@@ -379,6 +400,7 @@ function closeTour() {
     tour.bubble.remove();
     window.removeEventListener('resize', place);
     tour = null;
+    thankYou();
 }
 
 /* ------------------------------------------------------------------- style */
@@ -464,14 +486,18 @@ function maybeShow() {
     if (!document.querySelector('.channelItemWrapper, .usersListWrapper')) return;
     decided = true;
     if (!cfg.firstRunDone && veteran()) { cfg.firstRunDone = true; store.save(); }
-    if (!cfg.firstRunDone) { setTimeout(() => openWelcome(0), 1200); return; }
+    if (!cfg.firstRunDone) {
+        if (!cfg.installedAt) { cfg.installedAt = Date.now(); store.save(); }
+        setTimeout(() => openWelcome(0), 1200);
+        return;
+    }
     const n = pendingNews(cfg.seen, version());
     if (n && cfg.news) setTimeout(() => openNews(n), 2000);
 }
 
 function start(f) {
     fc = f;
-    store = fc.config('welcome', { firstRunDone: false, seen: '', news: true });
+    store = fc.config('welcome', { firstRunDone: false, seen: '', news: true, installedAt: 0, thanked: false });
     cfg = store.data;
     fc.ui.style('wlcStyle', CSS);
     fc.own(() => { closeTour(); if (screen) { screen.remove(); screen = null; } if (unlayer) unlayer(); if (newsModal) newsModal.close(); fc.ui.style('wlcStyle', null); });
@@ -497,6 +523,9 @@ const api = {
     open: (at) => openWelcome(at),
     tour: () => startTour(),
     news: () => openNews(),
+    // when this Fightcord was freshly installed (0 = it wasn't, or it was before 2.19): presence.js says "I'm new"
+    installedAt: () => (cfg && cfg.installedAt) || 0,
+    _thankYou: () => { cfg.installedAt = cfg.installedAt || Date.now(); cfg.thanked = false; thankYou(); },
     _cmpVer: cmpVer,
     _pendingNews: pendingNews,
     _step: () => (screen ? STEPS[step] : ''),

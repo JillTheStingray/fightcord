@@ -1719,6 +1719,24 @@ html.fc-still *, html.fc-still *::before, html.fc-still *::after { animation-dur
 @keyframes fcRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fcSlide { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes fcSpin { to { transform: rotate(360deg); } }
+/* ui.celebrate: a full-screen moment with a burst of confetti (rank-ups, the thank-you for a new install) */
+#fcCeleb { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); display: flex; flex-direction: column; align-items: center;
+    justify-content: center; overflow: hidden; cursor: pointer; background: radial-gradient(ellipse at 50% 45%, #2a1d4a 0%, #0d0f1f 70%);
+    font-family: var(--fc-font); text-align: center; animation: fcIn .3s ease both; }
+#fcCeleb.out { opacity: 0; transition: opacity .4s ease; }
+#fcCeleb .glow { position: absolute; width: 70vmin; height: 70vmin; border-radius: 50%; background: radial-gradient(circle, var(--c), transparent 65%); opacity: .35;
+    animation: fcCelebPulse 1.6s ease-in-out infinite alternate; }
+@keyframes fcCelebPulse { to { transform: scale(1.15); opacity: .55; } }
+#fcCeleb .big { position: relative; max-width: 90vw; font-size: var(--big, 14vmin); line-height: 1.05; font-weight: 900; font-style: italic; color: #fff; letter-spacing: -.02em;
+    text-shadow: 0 0 4vmin rgba(79,99,240,.8), 0 1vmin 0 #2b2f8a; animation: fcCelebPunch .6s .1s cubic-bezier(.2,1.7,.4,1) both; }
+@keyframes fcCelebPunch { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
+#fcCeleb .mid { position: relative; margin-top: 3vmin; animation: fcRise .5s .5s both; }
+#fcCeleb .sub { position: relative; max-width: 80vw; margin-top: 3vmin; font-size: 2.6vmin; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: rgba(255,255,255,.75);
+    animation: fcRise .5s .7s both; }
+#fcCeleb .note { position: relative; max-width: 70vw; margin-top: 2vmin; font-size: 1.9vmin; color: rgba(255,255,255,.55); animation: fcRise .5s .9s both; }
+#fcCeleb .hint { position: absolute; right: 2.4vmin; bottom: 2vmin; font-size: 1.6vmin; color: rgba(255,255,255,.35); }
+#fcCeleb .bit { position: absolute; left: 50%; top: 45%; width: 1.6vmin; height: 1.6vmin; border-radius: .3vmin; animation: fcCelebBurst 1.8s cubic-bezier(.1,.8,.3,1) both; }
+@keyframes fcCelebBurst { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
 
 .fc-ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
 .fc-muted { color: var(--fc-muted); }
@@ -2079,6 +2097,45 @@ const ui = {
             `<circle class="fg" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${sw}" stroke-linecap="round" ` +
             `stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${(c * (1 - f)).toFixed(2)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>` +
             (p.label != null ? `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central">${fmt.esc(p.label)}</text>` : '') + '</svg>';
+    },
+
+    // a full-screen moment with confetti: fc.ui.celebrate({ big, mid (html), sub, note, colors, glow, bigSize, ms })
+    // Click (or ms, default 6 s) closes it. -> { close }
+    celebrate(o) {
+        if (!hasDom()) return { close() {} };
+        ensureStyle();
+        const p = o || {};
+        const old = document.getElementById('fcCeleb');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.id = 'fcCeleb';
+        const cols = p.colors && p.colors.length ? p.colors : ['#5865f2', '#eb459e', '#ffffff', '#fee75c'];
+        let bits = '';
+        for (let i = 0; i < 40; i++) {
+            const a = (i / 40) * Math.PI * 2, d = 30 + Math.random() * 30;
+            bits += `<span class="bit" style="background:${cols[i % cols.length]};--x:${(Math.cos(a) * d).toFixed(1)}vmax;--y:${(Math.sin(a) * d).toFixed(1)}vmax;` +
+                `--r:${Math.round(Math.random() * 720)}deg;animation-delay:${(0.2 + Math.random() * 0.2).toFixed(2)}s"></span>`;
+        }
+        el.innerHTML = `<div class="glow" style="--c:${fmt.esc(p.glow || cols[0])}"></div>${bits}` +
+            `<div class="big"${p.bigSize ? ` style="--big:${fmt.esc(p.bigSize)}"` : ''}>${fmt.esc(p.big || '')}</div>` +
+            (p.mid ? `<div class="mid">${p.mid}</div>` : '') + (p.sub ? `<div class="sub">${fmt.esc(p.sub)}</div>` : '') +
+            (p.note ? `<div class="note">${fmt.esc(p.note)}</div>` : '') + `<div class="hint">${fmt.esc(tr('click to close'))}</div>`;
+        let done = false, timer = 0;
+        const close = () => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            sound.duck(false);
+            el.classList.add('out');
+            setTimeout(() => el.remove(), 400);
+        };
+        el.addEventListener('mousedown', (e) => e.stopPropagation());
+        el.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+        document.body.appendChild(el);
+        sound.duck(true);
+        sound.play('success');
+        timer = setTimeout(close, p.ms || 6000);
+        return { close };
     },
 
     // fc.ui.toast('Saved', { sub, kind: 'success'|'danger'|'warning', icon, ms, actions: [{ label, fn, kind }], onClick })

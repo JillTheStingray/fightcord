@@ -270,7 +270,22 @@
   window.__spy.accepts = []; window.__spy.challengeCalls = []; window.__spy.cleared = [];
   FCADE.acceptChallenge = (channel, user, id, ranked) => window.__spy.accepts.push([channel, user && user.name, id, ranked]);
   FCADE.removeChallengeNotifications = (user, channel, id, why) => window.__spy.cleared.push([channel, id, why]);
-  FCADE.getChannelComponentById = (id) => ({ challengeUser: (u, ft) => window.__spy.challengeCalls.push([u && (u.name || u.id), ft, id]) });
+  window.__spy.bot = [];
+  FCADE.getChannelComponentById = (id) => ({
+    challengeUser: (u, ft) => window.__spy.challengeCalls.push([u && (u.name || u.id), ft, id]),
+    // like Fightcade's chat.addBotMessage: a bot line at the bottom of that channel's chat
+    $refs: { chat: { addBotMessage(text) {
+      window.__spy.bot.push([id, text]);
+      const cc = document.querySelector('.channelWrapper:not([style*="none"]) .chatContent') || document.querySelector('.chatContent');
+      if (!cc) return;
+      const w = document.createElement('div');
+      w.className = 'messageWrapper bot';
+      w.innerHTML = '<div class="message bot"><div class="line"><div class="blocksContainer"><div class="blocks"><span class="regular"></span></div></div></div></div>';
+      w.querySelector('.regular').textContent = text;
+      cc.appendChild(w);
+      cc.scrollTop = cc.scrollHeight;
+    } } }
+  });
   names.forEach((n, i) => { const u = users[n]; u.ping = [35, 70, 120, 190, 260, 55][i % 6]; u.wlan = i % 4 === 2; u.proxy = i % 7 === 5; });
   if (users[(q.get('me') || (DEMO ? 'TurtleTime' : 'Me'))]) users[(q.get('me') || (DEMO ? 'TurtleTime' : 'Me'))].country = { iso_code: 'nl', full_name: 'Netherlands' };
   const realFetch = window.fetch.bind(window);

@@ -98,14 +98,14 @@ const readState = (dir) => Object.assign({}, STATE_DEFAULTS, readJson(path.join(
 const writeState = (dir, st) => writeJson(path.join(dir, STATE_FILE), st);
 
 // GET with redirects (GitHub release downloads bounce to a CDN) -> Buffer
-function httpGet(url, timeout, hops) {
+function httpGet(url, timeout, hops, accept) {
     hops = hops || 0;
     return new Promise((resolve, reject) => {
         const mod = url.indexOf('http:') === 0 ? require('http') : require('https');
-        const req = mod.get(url, { headers: { 'User-Agent': 'Fightcord', Accept: '*/*' } }, (res) => {
+        const req = mod.get(url, { headers: { 'User-Agent': 'Fightcord', Accept: accept || '*/*' } }, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && hops < 6) {
                 res.resume();
-                resolve(httpGet(new URL(res.headers.location, url).href, timeout, hops + 1));
+                resolve(httpGet(new URL(res.headers.location, url).href, timeout, hops + 1, accept));
                 return;
             }
             if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
@@ -119,8 +119,33 @@ function httpGet(url, timeout, hops) {
     });
 }
 
+// github.com's own pages answer with more headers than Fightcade's Node 12 accepts ("Parse Error:
+// Header overflow", since October 2026), so the release is found through GitHub's API instead,
+// and its files come from the API's asset links (straight to the download CDN). The old address
+// is the fallback.
+const API_LATEST = 'https://api.github.com/repos/' + REPO + '/releases/latest';
+const ASSET_URL = new RegExp('^https://api\\.github\\.com/repos/' + REPO.replace('/', '\\/') + '/releases/assets/\\d+$');
+let assetUrls = {};                 // file name -> its API link, from the last fetchLatest()
+// a release from the API -> { 'latest.json': url, ... } (only this repository's asset links)
+function assetsOf(release) {
+    const out = {};
+    ((release && Array.isArray(release.assets)) ? release.assets : []).forEach(a => {
+        if (a && typeof a.name === 'string' && ASSET_URL.test(String(a.url || ''))) out[a.name] = a.url;
+    });
+    return out;
+}
 async function fetchLatest(timeout) {
-    return JSON.parse((await httpGet(LATEST_URL + '?t=' + Date.now(), timeout)).toString('utf8'));
+    try {
+        const rel = JSON.parse((await httpGet(API_LATEST, timeout, 0, 'application/vnd.github+json')).toString('utf8'));
+        const urls = assetsOf(rel);
+        if (!urls['latest.json']) throw new Error('the release has no latest.json');
+        const latest = JSON.parse((await httpGet(urls['latest.json'], timeout, 0, 'application/octet-stream')).toString('utf8'));
+        assetUrls = urls;
+        return latest;
+    } catch (e) {
+        try { return JSON.parse((await httpGet(LATEST_URL + '?t=' + Date.now(), timeout)).toString('utf8')); }
+        catch (e2) { throw e; }                     // (the API's reason is the useful one)
+    }
 }
 
 // latest.json -> verified {name: Buffer}
@@ -129,7 +154,8 @@ async function download(latest, timeout) {
     const url = /^https:\/\//.test(latest.zip) ? latest.zip
         : 'https://github.com/' + REPO + '/releases/download/v' + latest.version + '/' + latest.zip;
     if (url.indexOf('https://github.com/' + REPO + '/') !== 0) throw new Error('unexpected download address');
-    const buf = await httpGet(url, timeout);
+    const viaApi = !/^https:\/\//.test(latest.zip) && assetUrls[latest.zip];
+    const buf = viaApi ? await httpGet(viaApi, timeout, 0, 'application/octet-stream').catch(() => httpGet(url, timeout)) : await httpGet(url, timeout);
     const hash = require('crypto').createHash('sha256').update(buf).digest('hex');
     if (!latest.sha256 || hash !== String(latest.sha256).toLowerCase()) throw new Error('download didn’t match its checksum');
     return unzip(buf);
@@ -206,6 +232,6 @@ async function run(dir, opts) {
     return out;
 }
 
-const api = { REPO, LATEST_URL, newer, targetFor, staleModules, unzip, readState, writeState, fetchLatest, download, apply, run };
+const api = { REPO, LATEST_URL, API_LATEST, newer, targetFor, staleModules, unzip, readState, writeState, fetchLatest, download, apply, run, assetsOf };
 
 module.exports = Object.assign({ id: 'updater', name: 'Updater', start() { return api; } }, api);

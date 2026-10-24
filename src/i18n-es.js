@@ -1785,5 +1785,22 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "Smoother": "Más fluido",
     "Fightcord does a lot less work in the background now, so the lobby and the member list feel lighter.": "Fightcord ahora hace mucho menos trabajo en segundo plano, así que el lobby y la lista de miembros se sienten más ligeros.",
     "Small fixes": "Pequeños arreglos",
-    "A bigger rank badge in the channel header, and clicking next to Fightcade’s settings closes them again.": "Una insignia de rango más grande en la cabecera del canal, y hacer clic junto a la configuración de Fightcade vuelve a cerrarla."
+    "A bigger rank badge in the channel header, and clicking next to Fightcade’s settings closes them again.": "Una insignia de rango más grande en la cabecera del canal, y hacer clic junto a la configuración de Fightcade vuelve a cerrarla.",
+    "{name} just got Fightcord! Say hi 👋": "¡{name} acaba de instalar Fightcord! Salúdalo 👋",
+    "New to Fightcord": "Nuevo en Fightcord",
+    "Tell Fightcord players I’m new": "Decirles a los jugadores con Fightcord que soy nuevo",
+    "In your first week with Fightcord: a welcome line in their chat and a “New to Fightcord” badge on your card": "En tu primera semana con Fightcord: una línea de bienvenida en su chat y una insignia “Nuevo en Fightcord” en tu tarjeta",
+    "Welcome new Fightcord players in the chat": "Dar la bienvenida a nuevos jugadores con Fightcord en el chat",
+    "A line in your chat when someone in your channel just got Fightcord (only you see it)": "Una línea en tu chat cuando alguien en tu canal acaba de instalar Fightcord (solo tú la ves)",
+    "Thanks for downloading Fightcord!": "¡Gracias por descargar Fightcord!",
+    "Welcome to Fightcord!": "¡Bienvenido a Fightcord!",
+    "Fightcord players in your channels will see you’re new this week.": "Quienes usan Fightcord en tus canales verán que eres nuevo esta semana.",
+    "{n} other Fightcord player is online right now": "Hay {n} jugador más con Fightcord en línea ahora",
+    "{n} other Fightcord players are online right now": "Hay {n} jugadores más con Fightcord en línea ahora",
+    "Preview the welcome line Fightcord players see for someone new": "Ver la línea de bienvenida que ven quienes usan Fightcord para alguien nuevo",
+    "Fightcord 2.19": "Fightcord 2.19",
+    "Welcome new players": "Bienvenida a nuevos jugadores",
+    "When someone in your channel just got Fightcord, a line in your chat says hi, and their card shows “New to Fightcord” for a week.": "Cuando alguien en tu canal acaba de instalar Fightcord, una línea en tu chat lo saluda, y su tarjeta muestra “Nuevo en Fightcord” durante una semana.",
+    "Updates work again": "Las actualizaciones vuelven a funcionar",
+    "GitHub changed something that stopped Fightcord from updating itself. Fixed: from now on updates arrive on their own again.": "GitHub cambió algo que impedía que Fightcord se actualizara solo. Arreglado: a partir de ahora las actualizaciones vuelven a llegar solas."
 } };

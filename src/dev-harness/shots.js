@@ -374,6 +374,33 @@ const SCENES = [
         const pts = [[1000, 400], [700, 300], [1200, 700], [900, 150], [1300, 60]];
         const res = pts.map(([x, y]) => x + ',' + y + ': ' + desc(document.elementFromPoint(x, y)));
         if (pts.some(([x, y]) => !document.elementFromPoint(x, y).closest('.settingsMask'))) throw new Error(String.fromCharCode(10) + res.join(String.fromCharCode(10)));` },
+    // 2.19 newcomers: a Fightcord player in your channel installed it yesterday -> one welcome line (not twice,
+    // and not for someone on their 5th day), and a "New to Fightcord" badge on their card
+    { name: 'newcomer-card', snap: CHANNEL, run: `
+        const pr = fightcord.modules.get('presence'), ch = fightcord.app.activeChannelId();
+        const here = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && (fightcord.app.users()[n].channels || []).indexOf(ch) >= 0);
+        const nu = here[4], old = here[9];
+        pr._heard(nu, false, 2);
+        pr._heard(nu, false, 2);
+        pr._heard(old, false, 5);
+        await sleep(400);
+        if (__spy.bot.length !== 1) throw new Error('bot lines: ' + JSON.stringify(__spy.bot));
+        if (__spy.bot[0][0] !== ch || __spy.bot[0][1].indexOf(nu) < 0) throw new Error('wrong line: ' + JSON.stringify(__spy.bot[0]));
+        if (!document.querySelector('.chatContent .messageWrapper.bot.fcNew')) throw new Error('the line was not tagged');
+        if (pr.newDay(nu) !== 2 || pr.newDay(old) !== 5) throw new Error('days: ' + pr.newDay(nu) + ' ' + pr.newDay(old));
+        const cw = fightcord.app.channelElement(); cw.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
+        fightcord.modules.get('scout').openCard(nu, { left: 900, right: 900, top: 90, bottom: 90, width: 0, height: 0 });
+        await sleep(1200);
+        if (!document.querySelector('#fcScoutCard .fcBadge.new, .fcBadge.new')) throw new Error('no New to Fightcord badge on the card');` },
+    { name: 'thanks', snap: CHANNEL, run: `
+        fightcord.modules.get('presence')._heard('SomeoneElse1', false); fightcord.modules.get('presence')._heard('SomeoneElse2', true);
+        fightcord.modules.get('welcome')._thankYou();
+        await sleep(1600);
+        if (!document.getElementById('fcCeleb')) throw new Error('no thank-you');`, keepToasts: true },
+    { name: 'rank-up', snap: CHANNEL, run: `
+        fightcord.modules.get('progress')._celebrate('C', 'B', 'Street Fighter III 3rd Strike');
+        await sleep(1600);
+        if (!document.querySelector('#fcCeleb .prgUp .fc-tag')) throw new Error('no rank-up');`, keepToasts: true },
     { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
 ];
 

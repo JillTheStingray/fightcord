@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.19.0
+
+- **Stuck on an older Fightcord? Download the installer once.** Since late October, GitHub answers
+  Fightcade's built-in downloader with more header data than it accepts, so automatic updates stopped
+  working (the update check fails quietly). 2.19 asks GitHub's API instead, which works. Fightcord 2.18
+  and older can't get this fix by themselves: run FightcordSetup.exe once and updates work again.
+- **A welcome for new Fightcord players:** when someone installs Fightcord, Fightcord players in their
+  channel get a line in their own chat ("… just got Fightcord! Say hi 👋"), once per person and only
+  on their own screen; nothing is sent to Fightcade. Their cards show a **New to Fightcord** badge for
+  their first week. Settings → Voice chat → Fightcord players: "Tell Fightcord players I'm new" and
+  "Welcome new Fightcord players in the chat". `/newcomer` shows what it looks like.
+- **A thank-you** after the first-time setup of a new install.
+
 ## 2.18.0
 
 - **Messages with several lines:** Shift+Enter in the message box (or pasting text with line breaks) opens a
