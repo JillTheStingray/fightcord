@@ -193,6 +193,18 @@ const data = {
         return RANKS.indexOf(s) > 0 ? s : '';
     },
     rankNum(r) { return typeof r === 'number' ? (RANKS[r] ? r : 0) : Math.max(0, RANKS.indexOf(String(r || '').toUpperCase())); },
+    // how far an ELO is through its rank's band: { frac 0..1, next: the rank after (null at S) } or null
+    rankProgress(rank, elo) {
+        const r = data.rankNum(rank), b = ELO_BANDS[r];
+        if (!b || typeof elo !== 'number' || !(elo > 0)) return null;
+        return { frac: Math.max(0, Math.min(1, (elo - b[0]) / (b[1] - b[0]))), next: r < 6 ? r + 1 : null };
+    },
+    // the rank an ELO falls in (1-6), by the bands
+    rankOfElo(elo) {
+        if (typeof elo !== 'number' || !(elo > 0)) return 0;
+        for (let r = 6; r >= 1; r--) if (elo >= ELO_BANDS[r][0]) return r;
+        return 1;
+    },
     rankColor(r) { return RANK_COLOR[data.rankLetter(r)] || '#9aa4b2'; },
     // Fightcade's own pictures (rank badges, flags): same-origin inside Fightcade, its website elsewhere
     // (window.__fcStatic points the harness at local copies)

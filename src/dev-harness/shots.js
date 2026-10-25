@@ -133,6 +133,25 @@ const SCENES = [
         const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
         fightcord.modules.get('match-screens')._showVs(fightcord.app.me(), others[3]);
         await sleep(1400);` },
+    // 3.1 result screens: a win that crosses into the next rank (exact ELO), game by game; a loss with
+    // nothing from the emulator or Fightcade's ELO; a draw
+    { name: 'res-won', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        const G = (w, m, t) => ({ w, m, t });
+        fightcord.modules.get('match-screens')._showResult('won', 3, 1, others[3], 'Street Fighter III 3rd Strike', {
+            streak: '3 WIN STREAK', hot: true, myChar: 'Ken', oppChar: 'Chun-Li', elo: { start: 1588, end: 1607 },
+            games: [G(1, 'Ken', 'Yun'), G(0, 'Ken', 'Yun'), G(1, 'Ken', 'Chun-Li'), G(1, 'Ken', 'Chun-Li')],
+            lines: ["You're 4–2 vs " + others[3], 'Tonight 5–2'], rematch: { opp: others[3], ft: 3 } });
+        await sleep(2800);` },
+    { name: 'res-lost', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        fightcord.modules.get('match-screens')._showResult('lost', 1, 3, others[3], 'Street Fighter III 3rd Strike', {
+            streak: 'Streak of 3 ended', lines: ["You're 4–3 vs " + others[3], 'Tonight 5–3'], rematch: { opp: others[3], ft: 3 } });
+        await sleep(2800);` },
+    { name: 'res-draw', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        fightcord.modules.get('match-screens')._showResult('draw', 2, 2, others[3], 'Street Fighter III 3rd Strike', {});
+        await sleep(2400);` },
     { name: 'emulator', snap: CHANNEL, run: `
         const st = fightcord.config('emu-skin'); st.data.enabled = true; st.save();
         fightcord.modules.get('fightcord').open('appearance');

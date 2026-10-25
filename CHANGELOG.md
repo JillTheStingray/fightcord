@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.1.0
+
+- **New VS screen, arcade style:**
+  - Both players slide in on slanted name plates, and the VS slams in with sparks.
+  - **Character plates:** the characters picked, or what's usual (or last time) while the emulator hasn't
+    shown them yet.
+  - **Most-used characters:** your picks in this game, and theirs against you.
+  - **A stats face-off:** rank, ELO and head-to-head side by side, plus a bar with your chance to win
+    the set.
+- **New YOU WON / YOU LOST screens:**
+  - A metallic title, the score on big plates, and both characters.
+  - **Game by game:** a W or L for each game, with the characters (games that report their score, like
+    FBNeo ones).
+  - **Your ELO and rank:** with Fightcade's exact ELO (its supporters), the number counts up or down,
+    the rank bar slides, and RANK UP! shows when you cross into the next rank. Everyone else sees their
+    rank with an estimated position in it.
+- **New rank icons** for E, D, C, B, A, S and unknown, everywhere ranks show.
+
 ## 3.0.0
 
 - **On Fightcord 2.18 or older?** Those versions can't update themselves any more (a change on GitHub's

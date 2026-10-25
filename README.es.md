@@ -84,7 +84,7 @@ de bienvenida corta te guía con el resto.
   formato del set, rango, jugadores con los que nunca jugaste, o una lista de bloqueo.
 - **Buscar partida:** un botón muestra quién está libre ahora cerca de tu rango, con buen ping,
   nuevo para ti o parejo en el cara a cara, con tus probabilidades y un botón Desafiar.
-- **Pantallas de partida:** VS / ¡GANASTE! / ¡PERDISTE!, y el récord de la noche arriba del canal.
+- **Pantallas de partida, estilo arcade (3.1):** una pantalla de VS con los dos personajes, tus más usados y un cara a cara de rango, ELO, historial entre ustedes y tus probabilidades; ¡GANASTE! / ¡PERDISTE! con el set partida a partida y tu ELO y barra de rango moviéndose; el récord de la noche arriba del canal.
 - **Estadísticas:** tu historial, cara a cara, rachas y una tarjeta para compartir.
 - **Historial de rango y ELO:** un gráfico de tu rango en el tiempo para cada juego, con una
   celebración cuando subes.

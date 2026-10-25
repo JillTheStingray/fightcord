@@ -40,6 +40,7 @@ const DEFAULTS = {
 };
 
 const E = (s) => fc.fmt.esc(s);
+const N_ = (s) => s;          // translated where shown
 const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 
@@ -176,13 +177,72 @@ function pushEsc(fn) {
     return () => window.removeEventListener('keyup', h, true);
 }
 
-function playerHtml(p, side, ch) {
+/* --------------------------------------------------------- VS screen data */
+
+// the characters picked most in these sets: [[char, sets], ...] (top 3)
+function picksOf(sets, key) {
+    const n = new Map();
+    (sets || []).forEach(s => { const c = s && s[key]; if (c) n.set(c, (n.get(c) || 0) + 1); });
+    return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
+}
+
+// the "tale of the tape" under the players: { rows: [[label, mine, theirs, better: 1 | -1 | 0]], odds } (pure: data = fc.data)
+//   o: { myRank, oppRank (1-6), myElo, oppElo ({ elo, est } | null), vs: { w, l }, ft }
+function tapeOf(o, data) {
+    const d = data || fc.data;
+    const rows = [];
+    const L = (r) => d.rankLetter(r) || '—';
+    if (o.myRank || o.oppRank) rows.push([N_('Rank'), L(o.myRank), L(o.oppRank), Math.sign((o.myRank || 0) - (o.oppRank || 0))]);
+    if (o.myElo || o.oppElo) {
+        rows.push([N_('ELO'), o.myElo ? d.fmtElo(o.myElo) : '—', o.oppElo ? d.fmtElo(o.oppElo) : '—',
+            o.myElo && o.oppElo ? Math.sign(o.myElo.elo - o.oppElo.elo) : 0]);
+    }
+    const vs = o.vs || {};
+    if (vs.w || vs.l) rows.push([N_('Head to head'), String(vs.w || 0), String(vs.l || 0), Math.sign((vs.w || 0) - (vs.l || 0))]);
+    const ft = o.ft || 3;
+    const odds = o.myElo && o.oppElo ? Object.assign(d.winOdds(o.myElo.elo, o.oppElo.elo, ft), { est: !!(o.myElo.est || o.oppElo.est) }) : null;
+    return { rows, odds, ft };
+}
+
+// what the tape is made of, from what's on hand (the ranks shown on the badges)
+function faceoff(meName, oppName, rom) {
+    const me = card(meName), opp = card(oppName);
+    const board = rom ? fc.api.cachedBoard(rom) : null;
+    const myRank = fc.data.rankNum(me.rank), oppRank = fc.data.rankNum(opp.rank);
+    return {
+        myRank, oppRank,
+        myElo: fc.data.eloFor(meName, myRank, board, fc.elo.value(meName, rom)),
+        oppElo: fc.data.eloFor(oppName, oppRank, board, fc.elo.value(oppName, rom)),
+        vs: recordVs(oppName), ft: knownFt(oppName)
+    };
+}
+
+function tapeHtml(t, me, opp) {
+    if (!t.rows.length && !t.odds) return '';
+    const rows = t.rows.map(([k, a, b, better]) => `<div class="row"><span class="a${better > 0 ? ' up' : ''}">${E(a)}</span>` +
+        `<span class="k">${E(T(k))}</span><span class="b${better < 0 ? ' up' : ''}">${E(b)}</span></div>`).join('');
+    let odds = '';
+    if (t.odds) {
+        // never a flat 0% / 100%: these are odds (and often from estimates)
+        const p = Math.min(99, Math.max(1, Math.round(t.odds.set * 100)));
+        odds = `<div class="odds" style="--p:${(p / 100).toFixed(2)};--ca:${me.color};--cb:${opp.color}"><span class="pa">${p}%</span>` +
+            `<div class="bar"><i class="ma"></i><i class="mb"></i></div><span class="pb">${100 - p}%</span>` +
+            `<small>${E(T(t.odds.est ? 'Chance to win the set (FT{n}, estimated)' : 'Chance to win the set (FT{n})', { n: t.ft }))}</small></div>`;
+    }
+    return rows + odds;
+}
+
+/* ---------------------------------------------------------------- screens */
+
+function playerHtml(p, side, o) {
+    const picks = (o.picks || []).length ? `<div class="picks"><small>${E(o.picksLabel)}</small>${o.picks.map(([c, n]) => `<span>${E(c)}<i>${n}</i></span>`).join('')}</div>` : '';
     return `<div class="player ${side}">
-        <img class="avatar" src="${E(p.avatar)}">
-        <div class="pname">${E(p.name)}</div>
+        <div class="av"><img class="avatar" src="${E(p.avatar)}"></div>
+        <div class="plate"><span class="pname">${E(p.name)}</span></div>
         <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
-            `${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
-        ${ch ? `<div class="pchar">${E(ch)}</div>` : ''}
+            `${o.ping ? `<span class="ping">${E(o.ping + ' ms')}</span>` : ''}${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
+        ${o.char ? `<div class="cplate">${o.charNote ? `<small>${E(o.charNote)}</small>` : ''}<b>${E(o.char)}</b></div>` : ''}
+        ${picks}
     </div>`;
 }
 
@@ -193,18 +253,42 @@ function showVs(meName, oppName) {
     const me = card(meName), opp = card(oppName);
     const rom = gameRom();
     const ch = vsCharacters(meName, oppName);
-    const vs = recordVs(oppName), t = recordOf(sessionSets());
-    const lines = [];
-    if (vs.w || vs.l || vs.d) lines.push(T("You're {record} vs {name}", { record: fc.fmt.wl(vs), name: oppName }));
-    if (t.w || t.l || t.d) lines.push(T('Tonight {record}', { record: fc.fmt.wl(t) }));
+    const t = recordOf(sessionSets());
+    // most-used characters: yours in this game, theirs against you
+    const inGame = (s) => !rom || !s.rom || s.rom === rom;
+    const myPicks = picksOf(H().all().filter(inGame), 'myChar');
+    const oppPicks = picksOf(H().vs(oppName).filter(inGame), 'oppChar');
+    const myChar = ch.me || (myPicks[0] ? myPicks[0][0] : '');
+    const oppChar = ch.opp || (oppPicks[0] ? oppPicks[0][0] : '');
+    const u = fc.app.users()[oppName] || {};
+    const face = faceoff(meName, oppName, rom);
+    const sparks = Array.from({ length: 12 }, (x, i) => `<span class="spark" style="--a:${i * 30 + 8}deg;--d:${(26 + (i % 3) * 9)}vmin"></span>`).join('');
     openOverlay('vs', `
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="half l" style="--c:${me.color}"></div>
         <div class="half r" style="--c:${opp.color}"></div>
-        ${playerHtml(me, 'l', ch.me)}${playerHtml(opp, 'r', ch.opp ? (ch.live ? ch.opp : T('last time: {char}', { char: ch.opp })) : '')}
-        <div class="vsword">VS</div><div class="ring"></div>
-        <div class="game">${E(gameName())}${lines.length ? `<small>${lines.map(E).join('  ·  ')}</small>` : ''}</div>`, 3600);
+        ${playerHtml(me, 'l', { char: myChar, charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
+        ${playerHtml(opp, 'r', { char: oppChar, charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
+            picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0 })}
+        <div class="sparks">${sparks}</div><div class="vsword">VS</div><div class="ring"></div>
+        <div class="tape">${tapeHtml(tapeOf(face), me, opp)}</div>
+        <div class="game">${E(gameName())}${t.w || t.l || t.d ? `<small>${E(T('Tonight {record}', { record: fc.fmt.wl(t) }))}</small>` : ''}</div>`, 4600);
+    const o = document.getElementById('fcmsOverlay');
+    if (o) o.dataset.opp = oppName;
     play('vs');
+    // the scout can come back with exact ELO (Fightcade sends it for its supporters) while it's up:
+    // those replace the estimates (an estimate of its own could disagree with the badges shown)
+    const scout = fc.modules.get('scout');
+    if (scout && scout.scoutData) {
+        scout.scoutData(oppName).then(d => {
+            const ov = document.getElementById('fcmsOverlay');
+            if (!d || d.error || !ov || ov.dataset.opp !== oppName || ov.classList.contains('out')) return;
+            const exact = (e) => (e && !e.est ? e : null);
+            if (!exact(d.elo) && !exact(d.myElo)) return;
+            const fresh = Object.assign({}, face, { myElo: exact(d.myElo) || face.myElo, oppElo: exact(d.elo) || face.oppElo });
+            fc.ui.setHtml(ov.querySelector('.tape'), tapeHtml(tapeOf(fresh), me, opp));
+        }).catch(() => {});
+    }
 }
 
 // Rematch on the result screen (same opponent, same channel, same FT when known)
@@ -227,12 +311,68 @@ function wireRematch(rm) {
     });
 }
 
-// extras: { streak: "🔥 3 WIN STREAK" | "Streak of 3 ended", lines: ["You're 4–2 vs X", "Tonight 7–3"], rematch }
+// the set game by game: W / L plates, with the characters when they change
+function gamesHtml(games) {
+    if (!games || !games.length) return '';
+    let last = '';
+    return `<div class="games">${games.map((g, i) => {
+        const pair = g.m || g.t ? (g.m || '?') + ' vs ' + (g.t || '?') : '';
+        const show = pair && pair !== last;
+        last = pair || last;
+        return `<span class="g ${g.w ? 'w' : 'l'}" style="--i:${i}" title="${E(T('Game {n}', { n: i + 1 }) + (pair ? ' · ' + pair : ''))}"><b>${g.w ? 'W' : 'L'}</b>` +
+            `${show ? `<small>${E(pair)}</small>` : ''}</span>`;
+    }).join('')}</div>`;
+}
+
+// your ELO (counting from before to after when Fightcade sent both) and how far you are to the next rank
+//   -> { html, from, to } (from / to: the numbers to count between, or null)
+function eloPanel(ex) {
+    const e = ex.elo;
+    const rank = fc.data.rankNum(ex.rank);
+    if (e) {
+        const r0 = fc.data.rankOfElo(e.start), r1 = fc.data.rankOfElo(e.end);
+        const p0 = fc.data.rankProgress(r0, e.start), p1 = fc.data.rankProgress(r1, e.end);
+        const d = e.end - e.start, up = r1 > r0, down = r1 < r0;
+        const a = up ? 0 : p0 ? p0.frac : 0, b = p1 ? p1.frac : 0;
+        const next = p1 && p1.next ? T('{pct}% to {rank}', { pct: Math.round(b * 100), rank: fc.data.rankLetter(p1.next) }) : T('Top rank');
+        return { from: e.start, to: e.end, html: `<div class="elo${up ? ' rankup' : ''}${down ? ' rankdown' : ''}" style="--a:${a.toFixed(3)};--b:${b.toFixed(3)};--c:${fc.data.rankColor(r1)}">` +
+            `${fc.ui.tag(r1)}<div class="nums"><b class="n">${e.start.toLocaleString('en-US')}</b>` +
+            `${d ? `<span class="d ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</span>` : ''}<small>ELO</small>${up ? `<span class="burst">${E(T('RANK UP!'))}</span>` : ''}</div>` +
+            `<div class="bar"><i></i></div><span class="nx">${E(next)}</span></div>` };
+    }
+    // no exact ELO (most players): your rank, and where you sit in it from the leaderboard
+    if (!rank) return { html: '', from: null, to: null };
+    const est = fc.data.eloFor(fc.app.me(), rank, ex.rom ? fc.api.cachedBoard(ex.rom) : null);
+    const p = est ? fc.data.rankProgress(rank, est.elo) : null;
+    const b = p ? p.frac : 0;
+    const next = p && p.next ? T('about {pct}% to {rank}', { pct: Math.round(b * 100), rank: fc.data.rankLetter(p.next) }) : T('Top rank');
+    return { from: null, to: null, html: `<div class="elo est" style="--a:${b.toFixed(3)};--b:${b.toFixed(3)};--c:${fc.data.rankColor(rank)}">${fc.ui.tag(rank)}` +
+        (est ? `<div class="nums"><b class="n">${E(fc.data.fmtElo(est))}</b><small>${E(T('ELO, estimated'))}</small></div>` : '') +
+        `<div class="bar"><i></i></div><span class="nx">${E(next)}</span></div>` };
+}
+
+// the number climbing (or dropping) from before to after. Its text node changes, not the page's
+// elements, so nothing else in Fightcord wakes up for it
+function countUp(el, from, to, ms) {
+    if (!el || from == null || to == null || from === to) return;
+    if (document.documentElement.classList.contains('fc-still')) { el.firstChild.nodeValue = to.toLocaleString('en-US'); return; }
+    const t0 = performance.now() + 900;            // after the title lands
+    el.firstChild.nodeValue = from.toLocaleString('en-US');
+    const step = (t) => {
+        if (!el.isConnected) return;
+        const k = Math.max(0, Math.min(1, (t - t0) / ms));
+        const v = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
+        el.firstChild.nodeValue = v.toLocaleString('en-US');
+        if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+// extras: { streak, hot, lines: ["You're 4–2 vs X", "Tonight 7–3"], rematch, myChar, oppChar, games, elo: { start, end }, rank, rom }
 function showResult(kind, mine, theirs, oppName, game, extras) {
     if (!cfg.enabled || !cfg.result) return;
     const title = E(T({ won: 'YOU WON!', lost: 'YOU LOST!', draw: 'DRAW' }[kind]));
     const ex = extras || {};
-    const score = (mine != null && theirs != null) ? mine + ' – ' + theirs + ' ' : '';
     let bits = '';
     if (kind === 'won') {
         const colors = ['#ffd166', '#fff3c4', '#f0b232', '#ffffff', '#ff9f1c'];
@@ -243,17 +383,24 @@ function showResult(kind, mine, theirs, oppName, game, extras) {
         }
     }
     const rom = gameRom();
+    const me = card(fc.app.me() || T('You')), opp = oppName ? card(oppName) : null;
+    const known = mine != null && theirs != null;
+    const side = (p, ch, cls) => p ? `<div class="side ${cls}"><img class="avatar" src="${E(p.avatar)}"><b>${E(p.name)}</b>${ch ? `<small>${E(ch)}</small>` : ''}</div>` : '';
+    const ep = eloPanel(Object.assign({ rom }, ex, { rank: ex.rank || fc.data.rankNum(me.rank) }));
     openOverlay('res ' + kind, `
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="rays"></div>${bits}
-        <div class="big">${title}</div>
-        <div class="sub">${E(score)}${oppName ? 'vs ' + E(oppName) : ''}<small>${E(game || '')}</small>
-            ${ex.myChar && ex.oppChar ? `<span class="chars">${E(ex.myChar)} <i>vs</i> ${E(ex.oppChar)}</span>` : ''}
+        <div class="big"><span data-t="${title}">${title}</span>${kind === 'lost' ? '<svg class="crack" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 11 L14 9 L22 13 L31 7 L43 12 L52 8 L61 13 L70 9 L82 12 L90 8 L100 10"/></svg>' : ''}</div>
+        <div class="stack"><div class="board">${side(me, ex.myChar, 'l')}<div class="score">${known ? `<span class="n${mine > theirs ? ' w' : ''}">${mine}</span><i>–</i><span class="n${theirs > mine ? ' w' : ''}">${theirs}</span>` : '<i>vs</i>'}</div>${side(opp, ex.oppChar, 'r')}</div>
+        ${gamesHtml(ex.games)}
+        ${ep.html}
+        <div class="sub"><small>${E(game || '')}</small>
             ${ex.streak ? `<span class="streak ${kind === 'won' ? 'hot' : 'cold'}">${ex.hot ? fc.ui.ic('flame', 'fill') : ''}${E(ex.streak)}</span>` : ''}
             ${(ex.lines || []).length ? `<span class="extra">${ex.lines.map(E).join('  ·  ')}</span>` : ''}
             ${rematchHtml(ex.rematch)}
-        </div>`, ex.rematch && ex.rematch.opp ? 8000 : 4800);
+        </div></div>`, ex.rematch && ex.rematch.opp ? 8500 : 5600);
     wireRematch(ex.rematch);
+    countUp(document.querySelector('#fcmsOverlay .elo .n'), ep.from, ep.to, 1100);
     play(kind === 'won' ? 'win' : kind === 'lost' ? 'lose' : 'draw');
 }
 
@@ -269,16 +416,23 @@ const recordVs = (opp) => H().recordVs(opp);
 const sessionStart = (at) => fc.data.sessionStart(at || Date.now(), cfg.sessionClearedAt);
 
 // Characters per set, from the emulator's files: when the games-won total goes up, the
-// characters on screen played the game that just ended. c = { total, mine: {char: games}, theirs, lastMine, lastTheirs }
+// characters on screen played the game that just ended. c = { total, mine: {char: games}, theirs, lastMine, lastTheirs,
+// games: [{ w: 1 | 0, m: my char, t: theirs }] in order, sm / st: the scores last seen }
 function charStep(c, s) {
     if (!s) return c;
-    const total = (s.mine.score || 0) + (s.theirs.score || 0);
-    if (!c) c = { total, mine: {}, theirs: {}, lastMine: '', lastTheirs: '' };
+    const sm = s.mine.score || 0, st = s.theirs.score || 0, total = sm + st;
+    if (!c) c = { total, mine: {}, theirs: {}, lastMine: '', lastTheirs: '', games: [], sm, st };
     if (total > c.total) {
         const n = total - c.total;
         if (s.mine.char) c.mine[s.mine.char] = (c.mine[s.mine.char] || 0) + n;
         if (s.theirs.char) c.theirs[s.theirs.char] = (c.theirs[s.theirs.char] || 0) + n;
+        // game by game (two at once, between polls: yours first, the order isn't known)
+        const add = (w, k) => { for (let i = 0; i < k && c.games.length < 99; i++) c.games.push({ w, m: s.mine.char || '', t: s.theirs.char || '' }); };
+        add(1, Math.max(0, sm - c.sm));
+        add(0, Math.max(0, st - c.st));
     }
+    c.sm = Math.max(c.sm, sm);
+    c.st = Math.max(c.st, st);
     c.total = Math.max(c.total, total);
     if (s.mine.char) c.lastMine = s.mine.char;
     if (s.theirs.char) c.lastTheirs = s.theirs.char;
@@ -305,10 +459,7 @@ function recordSet(set) {
 // the lines under the score, built AFTER the set was recorded
 function extrasFor(kind, opp, before, elo) {
     const ex = { lines: [] };
-    if (elo) {
-        const d = elo.end - elo.start;
-        ex.lines.push('ELO ' + elo.end.toLocaleString('en-US') + (d ? ' (' + (d > 0 ? '+' : '−') + Math.abs(d) + ')' : ''));
-    }
+    if (elo && elo.start > 0 && elo.end > 0) ex.elo = { start: elo.start, end: elo.end };
     const st = streakOf(H().all());
     if (kind === 'won' && st.kind === 'won' && st.n >= 2) { ex.streak = T('{n} WIN STREAK', { n: st.n }); ex.hot = true; }
     else if (kind === 'lost' && before.kind === 'won' && before.n >= 2) ex.streak = T('Streak of {n} ended', { n: before.n });
@@ -539,6 +690,8 @@ async function resolveResult(m) {
         }
         const myChar = m.chars ? fc.data.mainChar(m.chars.mine, m.chars.lastMine) : '';
         const oppChar = m.chars ? fc.data.mainChar(m.chars.theirs, m.chars.lastTheirs) : '';
+        // the games one by one, when the emulator showed every one of them
+        const games = m.chars && m.chars.games && mine != null && m.chars.games.length === mine + theirs ? m.chars.games.slice() : [];
         const before = streakOf(H().all());
         const ft = knownFt(m.opp);
         // your exact ELO before / after, when Fightcade sent it for this match (supporters)
@@ -548,10 +701,11 @@ async function resolveResult(m) {
             mine: mine == null ? null : mine, theirs: theirs == null ? null : theirs, quark: m.quark, ft: ft == null ? undefined : ft,
             startedAt: m.at, durSec: Math.round((Date.now() - m.at) / 1000),
             oppRank: m.oppRank || undefined, myRank: m.myRank || undefined, ping: m.ping == null ? undefined : m.ping, oppElo: m.oppElo || undefined,
-            eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined, myChar: myChar || undefined, oppChar: oppChar || undefined });
+            eloStart: elo ? elo.start : undefined, eloEnd: elo ? elo.end : undefined, myChar: myChar || undefined, oppChar: oppChar || undefined,
+            games: games.length ? games : undefined });
         fc.emit('match:end', { quark: m.quark, opp: m.opp, result: v || null, mine, theirs });
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
-            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar })), 60000);
+            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar, games, rank: m.myRank, rom: m.rom })), 60000);
     };
     // 1. Fightcade's own end-of-match message (up to ~8 s)
     for (let i = 0; i < 16; i++) {
@@ -699,108 +853,199 @@ const CSS = `
 @keyframes fcms-out { from { opacity: 1; } to { opacity: 0; } }
 #fcmsOverlay .shake { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 
-/* ---------- VS ---------- */
+/* ---------- VS (3.1: arcade) ---------- */
 #fcmsOverlay.vs { background: #0b0a0d; }
-/* 2.10: the game's art behind everything, the halves in the players' rank colours over it */
+/* the game's art behind everything, the slanted halves in the players' rank colours over it */
 #fcmsOverlay .art { position: absolute; left: -4%; top: -4%; right: -4%; bottom: -4%; background-size: cover; background-position: center;
-    image-rendering: pixelated; filter: saturate(1.2) brightness(.55); animation: fcms-art 4s ease-out both; }
+    image-rendering: pixelated; filter: saturate(1.2) brightness(.5); animation: fcms-art 4.6s ease-out both; }
 @keyframes fcms-art { from { transform: scale(1.12); } to { transform: scale(1); } }
-#fcmsOverlay.vs .half { position: absolute; top: 0; bottom: 0; width: 60%; }
-#fcmsOverlay.vs .half.l { background: linear-gradient(90deg, var(--c) 0%, var(--c) 40%, transparent 100%); opacity: .82; }
-#fcmsOverlay.vs .half.r { background: linear-gradient(270deg, var(--c) 0%, var(--c) 40%, transparent 100%); opacity: .82; }
-#fcmsOverlay .pchar { display: inline-block; margin-top: 1.8vmin; padding: .5vmin 2vmin; border-radius: 1vmin; background: rgba(0,0,0,.45);
-    color: #fff; font-size: 3vmin; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; box-shadow: inset 0 0 0 .25vmin rgba(255,255,255,.25); }
-#fcmsOverlay.vs .ring { position: absolute; left: 50%; top: 50%; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; border-radius: 50%;
-    border: 1vmin solid #fff; opacity: 0; pointer-events: none; animation: fcms-ring .7s .95s ease-out both; }
-@keyframes fcms-ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.2); } }
-#fcmsOverlay .game small { display: block; margin-top: 1.4vmin; font-size: 2.2vmin; letter-spacing: .08em; text-transform: none; color: rgba(255,255,255,.9); }
-#fcmsOverlay.res .art { filter: saturate(1.1) brightness(.28) blur(.4vmin); }
-#fcmsOverlay .sub .chars { display: block; margin-top: 1.2vmin; font-size: 3vmin; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-#fcmsOverlay .sub .chars i { font-style: italic; opacity: .6; margin: 0 .8vmin; }
-html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring { animation: none !important; }
-#fcmsOverlay.vs .half.l { left: -10%; transform: skewX(-12deg); animation: fcms-left .55s cubic-bezier(.2,.9,.2,1) both; }
-#fcmsOverlay.vs .half.r { right: -10%; transform: skewX(-12deg); animation: fcms-right .55s cubic-bezier(.2,.9,.2,1) both; }
-@keyframes fcms-left { from { transform: translateX(-100%) skewX(-12deg); } to { transform: translateX(0) skewX(-12deg); } }
-@keyframes fcms-right { from { transform: translateX(100%) skewX(-12deg); } to { transform: translateX(0) skewX(-12deg); } }
+#fcmsOverlay.vs .half { position: absolute; top: -10%; bottom: -10%; width: 62%; opacity: .86; }
+#fcmsOverlay.vs .half.l { left: -12%; background: linear-gradient(90deg, var(--c) 0%, var(--c) 45%, transparent 100%); transform: skewX(-14deg);
+    animation: fcms-left .5s cubic-bezier(.2,.9,.2,1) both; }
+#fcmsOverlay.vs .half.r { right: -12%; background: linear-gradient(270deg, var(--c) 0%, var(--c) 45%, transparent 100%); transform: skewX(-14deg);
+    animation: fcms-right .5s cubic-bezier(.2,.9,.2,1) both; }
 #fcmsOverlay.vs .half::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.65)); }
-#fcmsOverlay.vs .player { position: absolute; top: 50%; width: 40%; text-align: center; transform: translateY(-50%);
-    animation: fcms-pop .5s .35s cubic-bezier(.2,1.4,.4,1) both; }
-#fcmsOverlay.vs .player.l { left: 5%; }
-#fcmsOverlay.vs .player.r { right: 5%; }
-@keyframes fcms-pop { from { opacity: 0; transform: translateY(-50%) scale(.6); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
-#fcmsOverlay .avatar { width: 30vmin; height: 30vmin; border-radius: 50%; border: .9vmin solid #fff; object-fit: cover;
-    box-shadow: 0 1vmin 5vmin rgba(0,0,0,.6); background: #222; display: block; margin: 0 auto; }
-#fcmsOverlay .pname { margin-top: 3vmin; color: #fff; font-weight: 900; font-size: 7vmin; line-height: 1;
-    letter-spacing: -.02em; text-transform: uppercase; text-shadow: 0 .6vmin 0 rgba(0,0,0,.55), 0 0 4vmin rgba(0,0,0,.6);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#fcmsOverlay .pmeta { margin-top: 1.6vmin; color: rgba(255,255,255,.85); font-size: 2.6vmin; font-weight: 600; }
-#fcmsOverlay .pmeta > img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; vertical-align: -.3vmin; margin-right: 1vmin; }
-#fcmsOverlay .rank { display: inline-flex; align-items: center; margin-left: 1.2vmin; }
-#fcmsOverlay .rank .fc-tag { --sz: 4.6vmin; }
-#fcmsOverlay .vsword { position: absolute; left: 50%; top: 50%; font-weight: 900; font-style: italic; font-size: 24vmin;
-    line-height: 1; color: #fff; transform: translate(-50%,-50%);
-    text-shadow: 0 0 3vmin #fff, 0 0 8vmin #f0b232, 0 1vmin 0 #b3261e;
-    animation: fcms-slam .45s .75s cubic-bezier(.3,1.6,.5,1) both; }
-@keyframes fcms-slam { from { opacity: 0; transform: translate(-50%,-50%) scale(3.2) rotate(-8deg); }
-                       to { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0); } }
-#fcmsOverlay .flash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #fff; opacity: 0; pointer-events: none;
-    animation: fcms-flash .5s .95s ease-out both; }
-@keyframes fcms-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
-#fcmsOverlay.vs .shake { animation: fcms-shake .4s .95s linear both; }
-@keyframes fcms-shake { 0%,100% { transform: translate(0,0); } 20% { transform: translate(-1.2vmin,.8vmin); }
-    40% { transform: translate(1vmin,-.8vmin); } 60% { transform: translate(-.8vmin,-.4vmin); } 80% { transform: translate(.6vmin,.6vmin); } }
-#fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 7vmin; text-align: center; color: rgba(255,255,255,.8);
-    font-size: 2.6vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase;
-    animation: fcms-in .5s 1.1s both; }
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 2px, transparent 2px 6px), linear-gradient(180deg, rgba(0,0,0,0) 25%, rgba(0,0,0,.7)); }
+@keyframes fcms-left { from { transform: translateX(calc(-100% * var(--fc-move, 1))) skewX(-14deg); } to { transform: translateX(0) skewX(-14deg); } }
+@keyframes fcms-right { from { transform: translateX(calc(100% * var(--fc-move, 1))) skewX(-14deg); } to { transform: translateX(0) skewX(-14deg); } }
 
-/* ---------- results ---------- */
-#fcmsOverlay.res .rays { position: absolute; left: 50%; top: 45%; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
+#fcmsOverlay.vs .player { position: absolute; top: 5vh; width: 40%; display: flex; flex-direction: column; align-items: center; text-align: center; }
+#fcmsOverlay.vs .player.l { left: 4%; animation: fcms-inl .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
+#fcmsOverlay.vs .player.r { right: 4%; animation: fcms-inr .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
+@keyframes fcms-inl { from { opacity: 0; transform: translateX(calc(-30vw * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+@keyframes fcms-inr { from { opacity: 0; transform: translateX(calc(30vw * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+#fcmsOverlay .av { overflow: hidden; padding: .9vmin; background: #fff; transform: skewX(-8deg); box-shadow: 0 1.4vmin 5vmin rgba(0,0,0,.6), 1.2vmin 1.2vmin 0 rgba(0,0,0,.35); }
+#fcmsOverlay .av .avatar { display: block; width: 21vmin; height: 21vmin; object-fit: cover; background: #222; transform: skewX(8deg) scale(1.1); }
+#fcmsOverlay .plate { position: relative; margin-top: 2.6vmin; max-width: 100%; padding: .4vmin 4vmin; background: #0b0a0d; transform: skewX(-14deg);
+    box-shadow: inset 0 -.6vmin 0 rgba(255,255,255,.12), 1vmin 1vmin 0 rgba(0,0,0,.45); }
+#fcmsOverlay .player.l .plate { border-left: 1.4vmin solid #fff; }
+#fcmsOverlay .player.r .plate { border-right: 1.4vmin solid #fff; }
+#fcmsOverlay .pname { display: block; transform: skewX(14deg); color: #fff; font-weight: 900; font-style: italic; font-size: 6.6vmin; line-height: 1.15;
+    letter-spacing: -.01em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw;
+    text-shadow: 0 .5vmin 0 rgba(0,0,0,.6); }
+#fcmsOverlay .pmeta { display: flex; align-items: center; justify-content: center; margin-top: 1.6vmin; color: rgba(255,255,255,.9); font-size: 2.4vmin; font-weight: 700;
+    text-shadow: 0 .3vmin .8vmin rgba(0,0,0,.6); }
+#fcmsOverlay .pmeta > img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; margin-right: 1vmin; }
+#fcmsOverlay .pmeta .ping { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; background: rgba(0,0,0,.45); font-size: 2vmin; }
+#fcmsOverlay .rank { display: inline-flex; align-items: center; margin-left: 1.2vmin; }
+#fcmsOverlay .rank .fc-tag { --sz: 4.4vmin; }
+/* the character, on a big slanted plate */
+#fcmsOverlay .cplate { position: relative; margin-top: 2.2vmin; padding: .6vmin 5vmin .8vmin; background: linear-gradient(180deg, #ffd166, #f0923a);
+    transform: skewX(-14deg); box-shadow: 1vmin 1vmin 0 rgba(0,0,0,.45); animation: fcms-plate .45s .7s cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay .cplate b { display: block; transform: skewX(14deg); color: #1a0d00; font-weight: 900; font-style: italic; font-size: 5vmin; line-height: 1.05;
+    letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+#fcmsOverlay .cplate small { position: absolute; left: 50%; top: -1.6vmin; transform: translateX(-50%) skewX(14deg); padding: .1vmin 1.2vmin; border-radius: .5vmin;
+    background: #0b0a0d; color: #ffd166; font-size: 1.6vmin; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
+@keyframes fcms-plate { from { opacity: 0; transform: skewX(-14deg) scale(calc(1 + .6 * var(--fc-move, 1))); } to { opacity: 1; transform: skewX(-14deg) scale(1); } }
+#fcmsOverlay .picks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 1.8vmin; animation: fcms-in .4s .95s both; }
+#fcmsOverlay .picks small { width: 100%; margin-bottom: .8vmin; color: rgba(255,255,255,.75); font-size: 1.7vmin; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+#fcmsOverlay .picks span { display: inline-flex; align-items: center; margin: 0 .5vmin .6vmin; padding: .35vmin 1.2vmin; border-radius: .6vmin; background: rgba(0,0,0,.5);
+    color: #fff; font-size: 2.1vmin; font-weight: 800; box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.18); }
+#fcmsOverlay .picks span i { margin-left: .9vmin; font-style: normal; color: #ffd166; }
+
+#fcmsOverlay .vsword { position: absolute; left: 50%; top: 33vh; font-weight: 900; font-style: italic; font-size: 22vmin;
+    line-height: 1; color: #fff; transform: translate(-50%,-50%);
+    text-shadow: 0 0 3vmin #fff, 0 0 8vmin #f0b232, .8vmin 1vmin 0 #b3261e, -.4vmin -.4vmin 0 #22e3f2;
+    animation: fcms-slam .42s .7s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes fcms-slam { from { opacity: 0; transform: translate(-50%,-50%) scale(calc(1 + 2.2 * var(--fc-move, 1))) rotate(-10deg); }
+                       to { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0); } }
+#fcmsOverlay.vs .ring { position: absolute; left: 50%; top: 33vh; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; border-radius: 50%;
+    border: 1vmin solid #fff; opacity: 0; pointer-events: none; animation: fcms-ring .7s .9s ease-out both; }
+@keyframes fcms-ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.2); } }
+#fcmsOverlay .sparks { position: absolute; left: 50%; top: 33vh; width: 0; height: 0; pointer-events: none; }
+#fcmsOverlay .spark { position: absolute; left: 0; top: 0; width: 16vmin; height: .6vmin; margin-top: -.3vmin; border-radius: .3vmin; transform-origin: 0 50%;
+    background: linear-gradient(90deg, #fff, #ffd166 40%, transparent); opacity: 0; animation: fcms-spark .55s .9s ease-out both; }
+@keyframes fcms-spark { 0% { opacity: 1; transform: rotate(var(--a)) translateX(6vmin) scaleX(.2); }
+                        100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scaleX(1); } }
+#fcmsOverlay .flash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #fff; opacity: 0; pointer-events: none;
+    animation: fcms-flash .5s .9s ease-out both; }
+@keyframes fcms-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+#fcmsOverlay.vs .shake { animation: fcms-shake .4s .9s linear both; }
+@keyframes fcms-shake { 0%,100% { transform: translate(0,0); } 20% { transform: translate(calc(-1.2vmin * var(--fc-move, 1)), calc(.8vmin * var(--fc-move, 1))); }
+    40% { transform: translate(calc(1vmin * var(--fc-move, 1)), calc(-.8vmin * var(--fc-move, 1))); } 60% { transform: translate(calc(-.8vmin * var(--fc-move, 1)), calc(-.4vmin * var(--fc-move, 1))); }
+    80% { transform: translate(calc(.6vmin * var(--fc-move, 1)), calc(.6vmin * var(--fc-move, 1))); } }
+
+/* the tale of the tape */
+#fcmsOverlay .tape { position: absolute; left: 50%; bottom: 13vh; width: 64vmin; transform: translateX(-50%); padding: 1.6vmin 2.6vmin 1.4vmin;
+    background: rgba(8,7,12,.82); box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.14), 0 2vmin 6vmin rgba(0,0,0,.5);
+    clip-path: polygon(3vmin 0, 100% 0, calc(100% - 3vmin) 100%, 0 100%); animation: fcms-tape .45s 1.05s cubic-bezier(.2,1.2,.4,1) both; }
+#fcmsOverlay .tape:empty { display: none; }
+@keyframes fcms-tape { from { opacity: 0; transform: translateX(-50%) translateY(calc(4vmin * var(--fc-move, 1))); } to { opacity: 1; transform: translateX(-50%); } }
+#fcmsOverlay .tape .row { display: flex; align-items: center; height: 4.4vmin; border-bottom: .15vmin solid rgba(255,255,255,.08); }
+#fcmsOverlay .tape .row span { flex: 1; font-weight: 900; font-size: 3vmin; color: rgba(255,255,255,.88); font-style: italic; }
+#fcmsOverlay .tape .row .a { text-align: left; }
+#fcmsOverlay .tape .row .b { text-align: right; }
+#fcmsOverlay .tape .row .k { flex: none; width: 22vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.8vmin; font-style: normal; font-weight: 800;
+    letter-spacing: .22em; text-transform: uppercase; }
+#fcmsOverlay .tape .row .up { color: #ffd166; }
+#fcmsOverlay .odds { display: flex; flex-wrap: wrap; align-items: center; margin-top: 1.4vmin; }
+#fcmsOverlay .odds .pa, #fcmsOverlay .odds .pb { width: 8vmin; font-size: 3vmin; font-weight: 900; font-style: italic; color: #fff; }
+#fcmsOverlay .odds .pb { text-align: right; }
+#fcmsOverlay .odds .bar { position: relative; flex: 1; height: 2.2vmin; overflow: hidden; background: rgba(255,255,255,.1); transform: skewX(-14deg); }
+#fcmsOverlay .odds .bar i { position: absolute; top: 0; bottom: 0; width: 100%; }
+#fcmsOverlay .odds .ma { left: 0; background: var(--ca); transform-origin: 0 50%; transform: scaleX(var(--p)); animation: fcms-oddsa .9s 1.3s cubic-bezier(.2,.9,.2,1) both; }
+#fcmsOverlay .odds .mb { right: 0; background: var(--cb); transform-origin: 100% 50%; transform: scaleX(calc(1 - var(--p))); animation: fcms-oddsb .9s 1.3s cubic-bezier(.2,.9,.2,1) both; }
+@keyframes fcms-oddsa { from { transform: scaleX(.5); } to { transform: scaleX(var(--p)); } }
+@keyframes fcms-oddsb { from { transform: scaleX(.5); } to { transform: scaleX(calc(1 - var(--p))); } }
+#fcmsOverlay .odds small { width: 100%; margin-top: .8vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.6vmin; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+#fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 4.5vh; text-align: center; color: rgba(255,255,255,.8);
+    font-size: 2.4vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase; animation: fcms-in .5s 1.1s both; }
+#fcmsOverlay .game small { display: block; margin-top: 1vmin; font-size: 2vmin; letter-spacing: .08em; text-transform: none; color: rgba(255,255,255,.9); }
+html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still #fcmsOverlay .spark { animation: none !important; }
+
+/* ---------- results (3.1: arcade) ---------- */
+#fcmsOverlay.res .art { filter: saturate(1.1) brightness(.26) blur(.4vmin); }
+#fcmsOverlay.res .rays { position: absolute; left: 50%; top: 19vh; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
     opacity: .35; animation: fcms-spin 14s linear infinite; }
 @keyframes fcms-spin { to { transform: rotate(360deg); } }
-#fcmsOverlay.res .big { position: absolute; left: 0; right: 0; top: 45%; text-align: center; transform: translateY(-50%);
-    font-weight: 900; font-style: italic; font-size: 17vmin; line-height: 1; letter-spacing: -.02em; white-space: nowrap; }
-#fcmsOverlay.res .sub { position: absolute; left: 0; right: 0; top: 64%; text-align: center; color: rgba(255,255,255,.92);
-    font-size: 4vmin; font-weight: 800; animation: fcms-in .5s .6s both; }
-#fcmsOverlay.res .sub small { display: block; margin-top: 1.2vmin; font-size: 2.2vmin; font-weight: 700; letter-spacing: .35em;
-    text-transform: uppercase; color: rgba(255,255,255,.6); }
+#fcmsOverlay.res .big { position: absolute; left: 0; right: 0; top: 19vh; text-align: center; transform: translateY(-50%); }
+#fcmsOverlay.res .stack { position: absolute; left: 0; right: 0; top: 33vh; display: flex; flex-direction: column; align-items: center; }
+#fcmsOverlay.res .big span { display: inline-block; font-weight: 900; font-style: italic; font-size: 16vmin; line-height: 1.05; letter-spacing: -.02em; white-space: nowrap;
+    padding: 0 3vmin; transform: skewX(-6deg); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#fcmsOverlay.res .board { display: flex; align-items: center; animation: fcms-in .4s .55s both; }
+#fcmsOverlay.res .side { display: flex; flex-direction: column; align-items: center; width: 24vmin; color: #fff; }
+#fcmsOverlay.res .side .avatar { width: 9vmin; height: 9vmin; object-fit: cover; background: #222; border: .5vmin solid #fff; transform: skewX(-8deg); box-shadow: .8vmin .8vmin 0 rgba(0,0,0,.4); }
+#fcmsOverlay.res .side b { margin-top: 1.2vmin; max-width: 24vmin; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 3vmin; font-weight: 900; font-style: italic; text-transform: uppercase; }
+#fcmsOverlay.res .side small { margin-top: .4vmin; color: #ffd166; font-size: 2vmin; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+#fcmsOverlay.res .score { display: flex; align-items: center; margin: 0 2vmin; }
+#fcmsOverlay.res .score .n { display: inline-block; min-width: 11vmin; padding: .5vmin 2vmin; text-align: center; background: rgba(0,0,0,.6); color: rgba(255,255,255,.7);
+    font-size: 11vmin; font-weight: 900; font-style: italic; line-height: 1; transform: skewX(-12deg); box-shadow: inset 0 0 0 .3vmin rgba(255,255,255,.15), 1vmin 1vmin 0 rgba(0,0,0,.4); }
+#fcmsOverlay.res .score .n.w { color: #fff; box-shadow: inset 0 0 0 .4vmin rgba(255,255,255,.6), 1vmin 1vmin 0 rgba(0,0,0,.4), 0 0 4vmin var(--glow, rgba(255,209,102,.5)); }
+#fcmsOverlay.res .score i { margin: 0 2vmin; color: rgba(255,255,255,.6); font-size: 6vmin; font-weight: 900; font-style: italic; }
+/* game by game */
+#fcmsOverlay.res .games { display: flex; flex-wrap: wrap; justify-content: center; max-width: 88vw; margin-top: 3vmin; }
+#fcmsOverlay.res .games .g { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 5.4vmin; margin: 0 .5vmin .8vmin; padding: .4vmin 1vmin;
+    transform: skewX(-12deg); font-style: italic; animation: fcms-game .35s calc(.9s + var(--i) * .09s) cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay.res .games .g b { transform: skewX(12deg); font-size: 3.2vmin; font-weight: 900; line-height: 1.1; }
+#fcmsOverlay.res .games .g small { transform: skewX(12deg); font-size: 1.4vmin; font-weight: 800; font-style: normal; white-space: nowrap; opacity: .85; }
+#fcmsOverlay.res .games .g.w { background: #ffd166; color: #2a1a00; }
+#fcmsOverlay.res .games .g.l { background: rgba(242,63,67,.85); color: #fff; }
+@keyframes fcms-game { from { opacity: 0; transform: skewX(-12deg) translateY(calc(2vmin * var(--fc-move, 1))) scale(.6); } to { opacity: 1; transform: skewX(-12deg); } }
+/* ELO + rank progress */
+#fcmsOverlay.res .elo { display: flex; flex-wrap: wrap; align-items: center; width: 56vmin; margin-top: 3vmin; color: #fff; animation: fcms-in .4s .8s both; }
+#fcmsOverlay.res .elo > .fc-tag { --sz: 6vmin; margin-right: 2vmin; }
+#fcmsOverlay.res .elo .nums { display: flex; align-items: baseline; flex: 1; }
+#fcmsOverlay.res .elo .nums .n { font-size: 5vmin; font-weight: 900; font-style: italic; }
+#fcmsOverlay.res .elo .nums small { margin-left: 1.2vmin; color: rgba(255,255,255,.6); font-size: 1.8vmin; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+#fcmsOverlay.res .elo .d { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; font-size: 2.6vmin; font-weight: 900; animation: fcms-in .3s 2s both; }
+#fcmsOverlay.res .elo .d.up { background: #248046; }
+#fcmsOverlay.res .elo .d.dn { background: #b3261e; }
+#fcmsOverlay.res .elo .bar { position: relative; width: 100%; height: 1.6vmin; margin-top: 1vmin; overflow: hidden; background: rgba(255,255,255,.12); transform: skewX(-14deg); }
+#fcmsOverlay.res .elo .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--c); transform-origin: 0 50%; transform: scaleX(var(--b));
+    animation: fcms-rank 1.1s .9s cubic-bezier(.2,.9,.2,1) both; }
+@keyframes fcms-rank { from { transform: scaleX(var(--a)); } to { transform: scaleX(var(--b)); } }
+#fcmsOverlay.res .elo .nx { width: 100%; margin-top: .8vmin; text-align: right; color: rgba(255,255,255,.65); font-size: 1.8vmin; font-weight: 700; }
+#fcmsOverlay.res .elo .burst { margin-left: auto; padding: .4vmin 1.6vmin; background: #ffd166; color: #2a1a00; transform: rotate(-8deg);
+    font-size: 2.8vmin; font-weight: 900; font-style: italic; box-shadow: 0 0 3vmin rgba(255,209,102,.7); animation: fcms-pop3 .5s 2s cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay.res .sub { margin-top: 3vmin; text-align: center; color: rgba(255,255,255,.92);
+    font-size: 3vmin; font-weight: 800; animation: fcms-in .5s 1s both; }
+#fcmsOverlay.res .sub small { display: block; font-size: 2vmin; font-weight: 700; letter-spacing: .35em; text-transform: uppercase; color: rgba(255,255,255,.55); }
 
-#fcmsOverlay.won { background: radial-gradient(ellipse at 50% 45%, #6b4a00 0%, #2a1c00 45%, #0c0800 100%); }
+#fcmsOverlay.won { background: radial-gradient(ellipse at 50% 30%, #6b4a00 0%, #2a1c00 45%, #0c0800 100%); }
 #fcmsOverlay.won .rays { background: repeating-conic-gradient(from 0deg, rgba(255,209,102,.45) 0deg 6deg, transparent 6deg 18deg); }
-#fcmsOverlay.won .big { color: #ffd166; -webkit-text-stroke: .35vmin #5a3a00;
-    text-shadow: 0 0 1vmin rgba(255,243,196,.8), 0 0 4vmin rgba(240,178,50,.7), 0 1.2vmin 0 #5a3a00;
-    animation: fcms-punch .6s .15s cubic-bezier(.2,1.7,.4,1) both, fcms-glow 1.6s .8s ease-in-out infinite alternate; }
-@keyframes fcms-punch { from { opacity: 0; transform: translateY(-50%) scale(.2); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
-@keyframes fcms-glow { to { text-shadow: 0 0 1.5vmin rgba(255,243,196,.9), 0 0 6vmin rgba(255,209,102,.8), 0 1.2vmin 0 #5a3a00; } }
-#fcmsOverlay.won .bit { position: absolute; left: 50%; top: 45%; width: 1.6vmin; height: 1.6vmin; border-radius: .3vmin;
+#fcmsOverlay.won .big span { background-image: linear-gradient(180deg, #fffbe6 0%, #ffd166 38%, #f0923a 52%, #ffe9a8 66%, #f0b232 100%);
+    -webkit-text-stroke: .35vmin #5a3a00; filter: drop-shadow(0 1.2vmin 0 #5a3a00) drop-shadow(0 0 3vmin rgba(240,178,50,.6));
+    animation: fcms-punch .55s .1s cubic-bezier(.2,1.7,.4,1) both; }
+@keyframes fcms-punch { from { opacity: 0; transform: skewX(-6deg) scale(calc(1 - .8 * var(--fc-move, 1))); } to { opacity: 1; transform: skewX(-6deg) scale(1); } }
+#fcmsOverlay.won .shake { animation: fcms-shake .35s .55s linear both; }
+#fcmsOverlay.won .bit { position: absolute; left: 50%; top: 19vh; width: 1.6vmin; height: 1.6vmin; border-radius: .3vmin;
     animation: fcms-burst 1.6s .2s cubic-bezier(.1,.8,.3,1) both; }
 @keyframes fcms-burst { from { transform: translate(0,0) rotate(0); opacity: 1; }
                         to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+#fcmsOverlay.won .flash { animation: fcms-flash .45s .5s ease-out both; }
 
-#fcmsOverlay.lost { background: radial-gradient(ellipse at 50% 45%, #5a0d10 0%, #26070a 50%, #0a0203 100%); }
-#fcmsOverlay.lost .rays { background: repeating-conic-gradient(from 0deg, rgba(242,63,67,.25) 0deg 4deg, transparent 4deg 20deg); opacity: .25; }
-#fcmsOverlay.lost .big { color: #f23f43; text-shadow: 0 0 5vmin #8b0000, 0 1.2vmin 0 #3a0003;
+#fcmsOverlay.lost { background: radial-gradient(ellipse at 50% 30%, #5a0d10 0%, #26070a 50%, #0a0203 100%); }
+#fcmsOverlay.lost .rays { background: repeating-conic-gradient(from 0deg, rgba(242,63,67,.25) 0deg 4deg, transparent 4deg 20deg); opacity: .22; }
+#fcmsOverlay.lost .big span { background-image: linear-gradient(180deg, #ffd0d0 0%, #f23f43 40%, #8b0000 60%, #f23f43 100%);
+    -webkit-text-stroke: .3vmin #2a0003; filter: drop-shadow(0 1.2vmin 0 #3a0003) drop-shadow(0 0 4vmin rgba(139,0,0,.8)) saturate(.85);
     animation: fcms-drop .5s .1s cubic-bezier(.5,0,.8,.4) both; }
-@keyframes fcms-drop { from { opacity: 0; transform: translateY(-160%) scale(1.4); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
+@keyframes fcms-drop { from { opacity: 0; transform: skewX(-6deg) translateY(calc(-40vh * var(--fc-move, 1))) scale(1.3); } to { opacity: 1; transform: skewX(-6deg); } }
+#fcmsOverlay.lost .crack { position: absolute; left: 50%; top: 50%; width: 70vmin; height: 6vmin; margin: -3vmin 0 0 -35vmin; overflow: visible; pointer-events: none; }
+#fcmsOverlay.lost .crack path { fill: none; stroke: rgba(255,255,255,.85); stroke-width: .6; vector-effect: non-scaling-stroke; stroke-dasharray: 140; stroke-dashoffset: 140;
+    animation: fcms-crack .35s .6s ease-out both; }
+@keyframes fcms-crack { to { stroke-dashoffset: 0; } }
 #fcmsOverlay.lost .shake { animation: fcms-shake .45s .6s linear both; }
+#fcmsOverlay.lost .score .n.w { --glow: rgba(242,63,67,.5); }
 
-#fcmsOverlay.draw { background: radial-gradient(ellipse at 50% 45%, #1f2c4a 0%, #0f1526 55%, #06080f 100%); }
+#fcmsOverlay.draw { background: radial-gradient(ellipse at 50% 30%, #1f2c4a 0%, #0f1526 55%, #06080f 100%); }
 #fcmsOverlay.draw .rays { background: repeating-conic-gradient(from 0deg, rgba(160,180,220,.25) 0deg 5deg, transparent 5deg 20deg); }
-#fcmsOverlay.draw .big { color: #cfd8ea; text-shadow: 0 0 5vmin #5865f2, 0 1.2vmin 0 #20263a;
-    animation: fcms-punch .6s .15s cubic-bezier(.2,1.5,.4,1) both; }
-#fcmsOverlay.res .streak { display: inline-block; margin-top: 2.4vmin; padding: .6vmin 2vmin; border-radius: 3vmin;
-    font-size: 2.6vmin; font-weight: 900; letter-spacing: .08em; animation: fcms-pop2 .5s 1s cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay.draw .big span { background-image: linear-gradient(180deg, #ffffff 0%, #cfd8ea 45%, #7f8db0 60%, #dfe6f5 100%);
+    -webkit-text-stroke: .3vmin #20263a; filter: drop-shadow(0 1.2vmin 0 #20263a) drop-shadow(0 0 4vmin rgba(88,101,242,.6));
+    animation: fcms-punch .55s .1s cubic-bezier(.2,1.5,.4,1) both; }
+#fcmsOverlay.draw .score .n { --glow: rgba(160,180,220,.4); }
+#fcmsOverlay.res .streak { display: inline-block; margin-top: 1.8vmin; padding: .6vmin 2.4vmin; font-size: 2.6vmin; font-weight: 900; font-style: italic; letter-spacing: .08em;
+    transform: skewX(-12deg); animation: fcms-pop2 .5s 1.2s cubic-bezier(.2,1.6,.4,1) both; }
 #fcmsOverlay.res .streak.hot { background: #ffd166; color: #3a2400; box-shadow: 0 0 3vmin rgba(255,209,102,.6); }
 #fcmsOverlay.res .streak.cold { background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
-@keyframes fcms-pop2 { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
-#fcmsOverlay.res .rematch { display: inline-block; margin-top: 2.6vmin; padding: 1.2vmin 3.2vmin; border-radius: 1vmin; cursor: pointer;
-    font-size: 2.4vmin; font-weight: 800; letter-spacing: .04em; color: #fff; background: rgba(88,101,242,.92);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.25), 0 0 2.4vmin rgba(88,101,242,.6); pointer-events: auto; transition: transform .12s ease, filter .12s ease; }
-#fcmsOverlay.res .rematch:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.12); }
-#fcmsOverlay.res .rematch.off { background: rgba(255,255,255,.12); box-shadow: none; cursor: default; font-size: 1.9vmin; transform: none; }
+@keyframes fcms-pop2 { from { opacity: 0; transform: skewX(-12deg) scale(.4); } to { opacity: 1; transform: skewX(-12deg) scale(1); } }
+@keyframes fcms-pop3 { from { opacity: 0; transform: rotate(-8deg) scale(.4); } to { opacity: 1; transform: rotate(-8deg) scale(1); } }
+#fcmsOverlay.res .rematch { display: inline-block; margin: 1.8vmin 0 0 1.6vmin; padding: 1.1vmin 3.4vmin; cursor: pointer; transform: skewX(-12deg);
+    font-size: 2.4vmin; font-weight: 900; font-style: italic; letter-spacing: .04em; color: #fff; background: rgba(88,101,242,.95);
+    box-shadow: 0 0 0 .2vmin rgba(255,255,255,.3), .8vmin .8vmin 0 rgba(0,0,0,.4), 0 0 2.4vmin rgba(88,101,242,.6); pointer-events: auto; transition: transform .12s ease, filter .12s ease; }
+#fcmsOverlay.res .rematch:hover { transform: skewX(-12deg) translateY(-2px) scale(1.04); filter: brightness(1.12); }
+#fcmsOverlay.res .rematch.off { background: rgba(255,255,255,.12); box-shadow: none; cursor: default; font-size: 1.9vmin; transform: skewX(-12deg); }
 #fcmsOverlay.res .rematch.sent { background: #248046; box-shadow: 0 0 2.4vmin rgba(36,128,70,.6); }
-#fcmsOverlay.res .extra { display: block; margin-top: 1.8vmin; font-size: 2.2vmin; font-weight: 700; color: rgba(255,255,255,.75);
-    animation: fcms-in .5s 1.2s both; }
+#fcmsOverlay.res .extra { display: block; margin-top: 1.4vmin; font-size: 2.2vmin; font-weight: 700; color: rgba(255,255,255,.75); animation: fcms-in .5s 1.3s both; }
 #fcmsOverlay .hint { position: absolute; right: 2.4vmin; bottom: 2vmin; font-size: 1.6vmin; color: rgba(255,255,255,.35); }
 .fcmsPill { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; margin-right: 8px; border-radius: var(--fc-r1);
     background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; }
@@ -859,9 +1104,14 @@ function start(f) {
     fc.cmd('vs', 'Match screens: previews and help', (arg) => {
         const a = String(arg || '').toLowerCase();
         const opp = standIn(), game = gameName();
+        // made-up games for the previews (W / L in order), and your rank in this channel
+        const games = (wl) => wl.split('').map(c => ({ w: c === 'W' ? 1 : 0, m: '', t: '' }));
+        const rank = fc.data.rankNum(card(fc.app.me() || '').rank) || 4;
         if (a === 'test') showVs(fc.app.me() || T('You'), opp);
-        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: T('{n} WIN STREAK', { n: 3 }), hot: true, lines: [T("You're {record} vs {name}", { record: '4–2', name: opp }), T('Tonight {record}', { record: '7–3' })] });
-        else if (a === 'lose') showResult('lost', 1, 3, opp, game, { streak: T('Streak of {n} ended', { n: 3 }), lines: [T("You're {record} vs {name}", { record: '4–3', name: opp }), T('Tonight {record}', { record: '7–4' })] });
+        else if (a === 'win') showResult('won', 3, 1, opp, game, { streak: T('{n} WIN STREAK', { n: 3 }), hot: true, games: games('WLWW'), elo: { start: 1582, end: 1601 }, rank,
+            lines: [T("You're {record} vs {name}", { record: '4–2', name: opp }), T('Tonight {record}', { record: '7–3' })] });
+        else if (a === 'lose') showResult('lost', 1, 3, opp, game, { streak: T('Streak of {n} ended', { n: 3 }), games: games('LWLL'), rank,
+            lines: [T("You're {record} vs {name}", { record: '4–3', name: opp }), T('Tonight {record}', { record: '7–4' })] });
         else if (a === 'draw') showResult('draw', 2, 2, opp, game);
         else fc.ui.toast(T(cfg.enabled ? 'Match screens: on' : 'Match screens: off'), { icon: 'sword', ms: 9000,
             sub: T('/vs test · /vs win · /vs lose · /vs draw (previews). Sounds: vs / win / lose / draw .wav in {dir}', { dir: SOUND_DIR }) });
@@ -901,6 +1151,7 @@ const api = {
         recordVs: (o) => recordVs(o), extrasFor: (k, o, b, e) => extrasFor(k, o, b, e), load: () => ({ sets: H().all() }) },
     _showVs: (a, b) => showVs(a, b),
     _showResult: (...a) => showResult(...a),
+    picksOf, tapeOf,
     _quarkResult: (...a) => quarkResult(...a),
     _poll: () => poll(),
     _vsOnce: (n) => vsOnce(n),

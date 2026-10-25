@@ -83,7 +83,7 @@ de boas-vindas curta te guia pelo resto.
   formato do set, rank, jogadores que você nunca enfrentou, ou uma lista de bloqueio.
 - **Achar partida:** um botão mostra quem está livre agora perto do seu rank, com ping bom, novo
   para você ou equilibrado no confronto direto, com suas chances e um botão Desafiar.
-- **Telas de partida:** VS / VOCÊ VENCEU! / VOCÊ PERDEU!, e o placar da noite no topo do canal.
+- **Telas de partida, estilo arcade (3.1):** uma tela de VS com os dois personagens, seus mais usados e um comparativo de rank, ELO, confronto direto e suas chances; VOCÊ VENCEU! / VOCÊ PERDEU! com o set jogo a jogo e seu ELO e barra de rank se mexendo; o placar da noite no topo do canal.
 - **Estatísticas:** seu histórico, confrontos diretos, sequências e um cartão para compartilhar.
 - **Histórico de rank e ELO:** um gráfico do seu rank ao longo do tempo em cada jogo, com
   comemoração quando você sobe.

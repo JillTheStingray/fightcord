@@ -93,7 +93,7 @@ walks you through the rest.
   set length, rank, players you haven't met, or a block list.
 - **Find a match:** one button lists who's free right now near your rank, on a good ping, new to
   you or close in your head-to-head, with your odds and a Challenge button.
-- **Match screens:** VS / YOU WON! / YOU LOST!, and tonight's record in the channel header.
+- **Match screens, arcade style (3.1):** a VS screen with both characters, your most-used picks and a face-off of rank, ELO, head-to-head and your odds; YOU WON! / YOU LOST! with the set game by game and your ELO and rank bar moving; tonight's record in the channel header.
 - **Stats:** your history, head-to-heads, streaks, and a share card.
 - **Rank & ELO history:** a chart of your rank over time per game, and a celebration when you rank
   up.

@@ -119,6 +119,11 @@ const NEWS = [
         ['bolt', N_('More animations'), N_('Pop-ups, pages, buttons and switches move more smoothly and close smoothly too. Settings → General → Animations: Full, Subtle or Off.')],
         ['lock', N_('Lobbies, upgraded'), N_('A picture, banner and colour, a welcome message, moderators, reactions and replies, pinned messages, events with reminders and a leaderboard.')],
         ['check', N_('Invite codes for busy lobbies'), N_('In a lobby with lots of messages, a new invite code said it couldn’t find the lobby. Fixed.')]
+    ] },
+    { v: '3.1', title: 'Fightcord 3.1', items: [
+        ['sword', N_('A new VS screen'), N_('Arcade style: the characters you both pick, your most-used ones, and a face-off of rank, ELO, head-to-head and your chance to win.')],
+        ['trophy', N_('New win and lose screens'), N_('The set game by game, and your ELO and rank bar moving after the set.')],
+        ['star', N_('New rank icons'), N_('Fresh badges for every rank, everywhere ranks show.')]
     ] }
 ];
 
