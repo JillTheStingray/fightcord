@@ -110,7 +110,7 @@ const SCENES = [
         await sleep(600);` },
     { name: 'welcome', snap: CHANNEL, run: `fightcord.modules.get('welcome').open(0); await sleep(1000);` },
     // the website (fightcord-site): Looks, voice chat, the game hub, the VS screen, the emulator bar, the visualizer
-    ...['dark', 'neon', 'crt', 'strike', 'tokyo'].map(k => ({ name: 'look-' + k, snap: CHANNEL, wait: 7000, run: `
+    ...['dark', 'ash', 'onyx', 'neon', 'crt', 'strike', 'tokyo'].map(k => ({ name: 'look-' + k, snap: CHANNEL, wait: 7000, run: `
         __sim.music();
         fightcord.modules.get('discord-theme').applyLook('${k}', true);
         await sleep(3500);` })),
@@ -148,7 +148,10 @@ const SCENES = [
         await sleep(3000);` },
     { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
     // private lobbies: made-up members and chat (the harness has no relays)
-    { name: 'lobby', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ more: [{ id: 'demo1', name: 'Parry Club', seeds: ['0'], epoch: 0, lastRead: 0 }] }); await sleep(1500);` },
+    // (3.0: the lobby's picture, banner, roles, reactions, a reply, a pin, the voice room, the hover toolbar)
+    { name: 'lobby', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ v3: true, voice: true, more: [{ id: 'demo1', name: 'Parry Club', seeds: ['0'], epoch: 0, lastRead: 0 }] }); await sleep(1500);
+        const ln = [...document.querySelectorAll('.fclbLog .ln[data-mid]')].slice(-2)[0];
+        ln.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sleep(300);` },
     { name: 'lobby-voice', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ voice: true }); await sleep(1500);` },
     // 2.15 pop-ups: the profile popout with quick settings, Tonight, quick settings from the ⋯ menu, notes
     { name: 'pop-profile', snap: CHANNEL, run: `fightcord.modules.get('profile-card')._show(); await sleep(900);` },
@@ -401,7 +404,50 @@ const SCENES = [
         fightcord.modules.get('progress')._celebrate('C', 'B', 'Street Fighter III 3rd Strike');
         await sleep(1600);
         if (!document.querySelector('#fcCeleb .prgUp .fc-tag')) throw new Error('no rank-up');`, keepToasts: true },
-    { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` }
+    // 3.0: the new layout (the default now), and Classic for comparison
+    { name: 'v3-main', snap: CHANNEL, run: `await sleep(300);` },
+    { name: 'v3-classic', snap: CHANNEL, run: `
+        const l3 = fightcord.config('layout3'); l3.data.enabled = false; fightcord.modules.get('layout3').update(); await sleep(400);
+        if (document.documentElement.classList.contains('dc-refresh') || document.getElementById('l3Title')) throw new Error('Classic still shows the new layout');` },
+    { name: 'v3-ash', snap: CHANNEL, run: `fightcord.modules.get('discord-theme').applyLook('ash', false); fightcord.modules.get('layout3').update(); await sleep(600);` },
+    { name: 'v3-onyx', snap: CHANNEL, run: `fightcord.modules.get('discord-theme').applyLook('onyx', false); fightcord.modules.get('layout3').update(); await sleep(600);` },
+    { name: 'v3-compact', snap: CHANNEL, run: `const l3 = fightcord.config('layout3'); l3.data.density = 'compact'; fightcord.modules.get('layout3').update(); await sleep(500);` },
+    // Fightcade's start page: "Start" in the title bar, your panel shrunk to your avatar (no side column under it)
+    { name: 'v3-start', snap: LOBBY, run: `
+        // (on the start page Fightcade hides the channels, like this)
+        document.querySelectorAll('#app > .channelWrapper').forEach(w => { w.style.display = 'none'; });
+        fightcord.app.root().activeChannelId = 'about-channel'; fightcord.modules.get('layout3').update(); await sleep(400);
+        if (document.querySelector('#l3Title .l3Where b').textContent !== 'Start') throw new Error('title: ' + document.querySelector('#l3Title .l3Where b').textContent);
+        if (!document.documentElement.classList.contains('l3-panel-mini')) throw new Error('the panel should be just the avatar here');` },
+    { name: 'v3-help', snap: CHANNEL, run: `document.querySelector('#l3Title [data-l3="help"]').click(); await sleep(400);` },
+    { name: 'v3-profile', snap: CHANNEL, run: `document.querySelector('#l3Panel [data-l3="me"]').click(); await sleep(300); fightcord.modules.get('profile-card')._show(); await sleep(900);` },
+    { name: 'lobby-invite', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); const id = lb._demo({}); await sleep(600); lb._invite(id); await sleep(800);` },
+    // 3.0 lobbies: picture + banner + colour, roles, reactions, a reply, a pin, the hover toolbar
+    { name: 'lb3-main', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ v3: true }); await sleep(900);
+        const ln = [...document.querySelectorAll('.fclbLog .ln[data-mid]')].slice(-2)[0];
+        ln.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sleep(300);
+        if (!document.querySelector('.fclbTb.on')) throw new Error('no toolbar on hover');
+        if (!document.querySelector('.fclbG .rx')) throw new Error('no reactions');
+        if (!document.querySelector('.fclbG .rq')) throw new Error('no reply quote');
+        if (!document.querySelector('#fclbRail .fclbIco.hasPic')) throw new Error('no lobby picture in the rail');` },
+    { name: 'lb3-reply', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ v3: true }); await sleep(900);
+        const ln = [...document.querySelectorAll('.fclbLog .ln[data-mid]')].slice(-1)[0];
+        ln.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sleep(200);
+        document.querySelector('.fclbTb [data-tb="reply"]').click(); await sleep(400);
+        if (!document.querySelector('.fclbReBar')) throw new Error('no reply bar');
+        document.querySelector('.fclbIn').value = 'bring it, I have the bracket ready'; ` },
+    { name: 'lb3-pins', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._pins(); await sleep(500);` },
+    { name: 'lb3-events', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._tab('events'); await sleep(600);
+        if (document.querySelectorAll('.fclbEv').length !== 2) throw new Error('events: ' + document.querySelectorAll('.fclbEv').length);` },
+    { name: 'lb3-plan', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._tab('events'); lb._plan(); await sleep(300);
+        document.querySelector('.fc-modal [data-f="title"]').value = 'Saturday Oro mirror night'; await sleep(400);` },
+    { name: 'lb3-board', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._tab('board'); await sleep(600);
+        if (!document.querySelector('.fclbBoard .r.top1 .mk.kg')) throw new Error('no king on top');` },
+    { name: 'lb3-settings', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._settings(null, 'look'); await sleep(600);` },
+    { name: 'lb3-mods', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._settings(null, 'mods'); await sleep(600);` },
+    { name: 'lb3-welcome', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._welcome(); await sleep(900);` },
+    { name: 'lb3-member', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ v3: true }); await sleep(900);
+        document.querySelector('.fclbM[data-who="k2"]').click(); await sleep(500);` }
 ];
 
 // every scene: the made-up chat in view (scrolled to the bottom), no leftover toasts

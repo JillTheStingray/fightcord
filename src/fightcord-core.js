@@ -1671,19 +1671,26 @@ const ICONS = {
     refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>',
     shield: '<path d="M12 3l8 3v6c0 4.5-3.5 8-8 9-4.5-1-8-4.5-8-9V6z"/>',
     bug: '<rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M7 13H3M21 13h-4M8 9 5 6M16 9l3-3M7 18l-3 2M17 18l3 2M9 5a3 3 0 0 1 6 0"/>',
-    // from Lucide (ISC license): swords, wifi, ban, log-out, handshake
+    // from Lucide (ISC license): swords, wifi, ban, log-out, handshake, pin, crown, reply, calendar, image
     swords: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/>',
     wifi: '<path d="M12 20h.01M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0"/>',
     ban: '<circle cx="12" cy="12" r="9"/><path d="M5.7 5.7l12.6 12.6"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>',
+    headset: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="2"/><rect x="16.5" y="14" width="4.5" height="7" rx="2"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.7.3-1.2.9-1.2 1.7v.4M12 17.4h.01"/>',
     handshake: '<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/>',
     live: '<circle cx="12" cy="12" r="5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/>',
     at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
     smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>',
     hash: '<path d="M5 9h14M5 15h14M10.5 4 8.5 20M15.5 4l-2 16"/>',
-    speaker: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>'
+    speaker: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/>',
+    pin: '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+    crown: '<path d="M11.56 3.27a.5.5 0 0 1 .88 0l2.95 5.6a1 1 0 0 0 1.52.3l4.27-3.67a.5.5 0 0 1 .8.52l-2.83 10.25a1 1 0 0 1-.96.73H5.81a1 1 0 0 1-.96-.73L2.02 6.02a.5.5 0 0 1 .8-.52l4.27 3.67a1 1 0 0 0 1.52-.3z"/><path d="M5 21h14"/>',
+    reply: '<path d="M20 18v-2a4 4 0 0 0-4-4H4"/><path d="m9 17-5-5 5-5"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>'
 };
 
 // an icon as a CSS url(): a mask (black) or a picture in one colour, for ::before / ::after and backgrounds
@@ -1711,13 +1718,24 @@ const STYLE = `
   --fc-sh1: 0 1px 3px rgba(0,0,0,.3); --fc-sh2: 0 4px 14px rgba(0,0,0,.35); --fc-sh3: 0 12px 40px rgba(0,0,0,.5); --fc-glow: 0 0 24px rgba(79,99,240,.45);
   --fc-z-page: 20; --fc-z-modal: 1000; --fc-z-pop: 100001; --fc-z-toast: 100004; --fc-z-top: 2147483000;
   --fc-fast: .12s; --fc-med: .2s; --fc-slow: .35s; --fc-ease: cubic-bezier(.2,.8,.2,1);
+  --fc-spring: cubic-bezier(.3,1.45,.5,1); --fc-out: 150ms; --fc-move: 1;
   --fc-font: var(--dc-font, 'gg sans', 'Noto Sans', 'Segoe UI', sans-serif);
 }
 html.fc-still *, html.fc-still *::before, html.fc-still *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; }
+/* Animations: Subtle = shorter, and fades without the movement */
+html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0; }
 @keyframes fcIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fcPop { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
-@keyframes fcRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes fcSlide { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes fcPop { from { opacity: 0; transform: scale(calc(1 - .04 * var(--fc-move, 1))) translateY(calc(4px * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+@keyframes fcRise { from { opacity: 0; transform: translateY(calc(8px * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+@keyframes fcSlide { from { opacity: 0; transform: translateX(calc(24px * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+@keyframes fcOut { from { opacity: 1; } to { opacity: 0; transform: scale(calc(1 - .03 * var(--fc-move, 1))); } }
+@keyframes fcFadeOut { from { opacity: 1; } to { opacity: 0; } }
+/* closing: pop-ups and modals shrink away, pages and the modal's shade fade */
+.fc-pop.fc-out, .fc-mask.fc-out > .fc-modal { animation: fcOut var(--fc-out) ease both !important; pointer-events: none; }
+.fc-mask.fc-out, .fc-page.fc-out { animation: fcFadeOut var(--fc-out) ease both !important; pointer-events: none; }
+/* buttons give a little when pressed */
+.fc-btn { transition: background-color var(--fc-fast) ease, box-shadow var(--fc-fast) ease, transform var(--fc-fast) var(--fc-ease), filter var(--fc-fast) ease; }
+.fc-btn:active:not([disabled]) { transform: scale(calc(1 - .03 * var(--fc-move, 1))); }
 @keyframes fcSpin { to { transform: rotate(360deg); } }
 /* ui.celebrate: a full-screen moment with a burst of confetti (rank-ups, the thank-you for a new install) */
 #fcCeleb { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); display: flex; flex-direction: column; align-items: center;
@@ -1802,13 +1820,18 @@ html.fc-still *, html.fc-still *::before, html.fc-still *::after { animation-dur
 .fc-tab { position: relative; padding: 8px 2px; margin-right: 18px; font: 500 14px/1 var(--fc-font); color: var(--fc-muted); cursor: pointer; }
 .fc-tab:hover { color: var(--fc-text); }
 .fc-tab.on { color: var(--fc-head); }
-.fc-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--fc-accent); }
+.fc-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--fc-accent);
+    animation: fcTabIn var(--fc-med) var(--fc-ease) both; }
+@keyframes fcTabIn { from { transform: scaleX(.3); opacity: 0; } to { transform: none; opacity: 1; } }
 .fc-tab .n { margin-left: 6px; font-size: 12px; color: var(--fc-faint); }
 
 .fc-switch-in { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
 .fc-switch { position: relative; flex: none; width: 40px; height: 24px; border-radius: 12px; background: #80848e; transition: background var(--fc-med); cursor: pointer; }
 .fc-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
-  transition: transform var(--fc-med) var(--fc-ease); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  transition: transform var(--fc-med) var(--fc-spring), width var(--fc-fast) ease; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+/* the knob stretches a little while you press it, then springs across */
+.fc-switch:active::after { width: 22px; }
+.fc-switch-in:checked + .fc-switch:active::after { transform: translateX(12px); }
 .fc-switch-in:checked + .fc-switch { background: var(--fc-success); }
 .fc-switch-in:checked + .fc-switch::after { transform: translateX(16px); }
 .fc-switch-in:focus + .fc-switch { box-shadow: 0 0 0 2px var(--fc-link); }
@@ -1992,6 +2015,16 @@ function pushLayer(close) {
         }, true);
     }
     return () => { const i = layers.indexOf(close); if (i >= 0) layers.splice(i, 1); };
+}
+
+// take a pop-up / modal / page away with its close animation (at once with Animations off)
+const OUT_MS = 150;                 // (= --fc-out in the CSS)
+function animateOut(el, done) {
+    if (!el) return;
+    const fin = () => { el.remove(); if (done) done(); };
+    if (!hasDom() || document.documentElement.classList.contains('fc-still') || !el.isConnected) { fin(); return; }
+    el.classList.add('fc-out');
+    setTimeout(fin, OUT_MS);
 }
 
 function toEl(content) {
@@ -2205,7 +2238,7 @@ const ui = {
             closed = true;
             unlayer();
             document.removeEventListener('mousedown', outside, true);
-            el.remove();
+            animateOut(el);
             if (p.onClose) p.onClose();
         };
         setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
@@ -2263,7 +2296,7 @@ const ui = {
             if (closed) return;
             closed = true;
             unlayer();
-            mask.remove();
+            animateOut(mask);
             if (p.onClose) p.onClose();
         };
         mask.addEventListener('mousedown', (e) => { if (e.target === mask) close(); });
@@ -2317,7 +2350,7 @@ const ui = {
                 if (closed) return;
                 closed = true;
                 unlayer();
-                el.remove();
+                animateOut(el);
                 if (p.onClose) p.onClose();
             }
         };
@@ -2747,6 +2780,7 @@ function applyCoreSettings() {
     if (!coreStore || !hasDom()) return;
     debugFile = !!coreStore.data.debugLog;
     document.documentElement.classList.toggle('fc-still', coreStore.data.animations === false);
+    document.documentElement.classList.toggle('fc-subtle', coreStore.data.animations === 'subtle');
 }
 
 // called by the loader (or by an old loader as if this were a plugin)

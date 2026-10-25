@@ -40,7 +40,10 @@ walks you through the rest.
 ## What you get
 
 **The look**
-- A Discord-style theme: Dark, AMOLED, Classic grey or FightCord Neon, any accent colour, your own
+- **New in 3.0: a layout like today's Discord.** A title bar that shows where you are, your own panel
+  at the bottom left (voice chat, music, settings), a roomier chat, three densities and smoother
+  animations (Full / Subtle / Off). Settings → Appearance → Layout brings back Classic.
+- A Discord-style theme: Dark, Ash, Onyx, Classic grey or FightCord Neon, any accent colour, your own
   chat background, or your own colours in the theme editor.
 - A Discord-style channel rail, member list (grouped by rank, with ping, Wi-Fi/VPN warnings and
   leaderboard spots), hover cards, a profile popout and a right-click menu.
@@ -61,7 +64,8 @@ walks you through the rest.
 - A calm, one-row channel header, our own rank icons everywhere ranks show, and real system logos
   in Discover.
 - Private lobbies, like a Discord server: invite-only, with a chat that keeps its history, a member
-  list with Challenge, and a voice room for up to 8.
+  list with Challenge, a voice room for up to 8 and, since 3.0, a picture and banner, moderators,
+  reactions, replies, pins, events and a leaderboard.
 - Pictures, GIFs, clips and audio files in the chat for Fightcord players: paste, drop or click +,
   favorite GIFs and send them again from the GIF button.
 - Messages with several lines: Shift+Enter opens a taller message box, sent as one message everyone sees.
@@ -103,13 +107,21 @@ walks you through the rest.
 | ![An incoming challenge with the scout card: ELO, win odds, head-to-head](docs/screenshots/scout.png) | ![Training goals next to tonight's record](docs/screenshots/goals.png) |
 | ![Rank & ELO history](docs/screenshots/progress.png) | ![Match analytics](docs/screenshots/analytics.png) |
 
-**Private lobbies** (new in 2.14)
+**Private lobbies** (new in 2.14, upgraded in 3.0)
 - Your own **invite-only lobby, like a Discord server**: the **+** under your game channels creates one
   or joins one with an invite code. Only people with the code, and Fightcord, can get in.
 - A **chat that keeps its history**, a **member list** (online, away, in a match, in voice) with
   **Challenge** (Fightcord gets you both into the lobby's game channel), and a **voice room** for up to 8.
 - The owner can rename the lobby, change its game, make a new invite code or remove someone (everyone
   else gets a new key, so they can't read anything new).
+- **New in 3.0:**
+  - **Your lobby's look:** a picture or emoji, a banner and a colour, a description, and a welcome
+    message that new members see once.
+  - **Moderators** who can remove, mute and rename members, pin messages and plan events.
+  - **Reactions, replies and pinned messages**: point at a message for the toolbar.
+  - **Events** with Going / Can't make it and a reminder before they start.
+  - **A leaderboard:** sets between members in the lobby's game count by themselves, and the top
+    player is King of the lobby.
 
 ![A private lobby: channels and the voice room on the left, the chat, and the member list](docs/screenshots/lobby.png)
 
@@ -158,7 +170,7 @@ Fightcord has no server and no analytics. It only talks to:
 | Discord status | the Discord app on your PC | while Discord status is on |
 | OBS overlay | a page at `127.0.0.1` that only this PC can open | while the overlay is on (Settings → Streamer mode) |
 | "Who has Fightcord" | free public Nostr relays (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | while Fightcade runs, unless you turn off "Show that I use Fightcord": your Fightcade name, hashed, and whether voice chat is on, every few minutes; relays forward it live and don't store it; with "Share my profile" on (the default), also your status, About me, banner game and badges when another Fightcord player asks for them; for your first week after installing, also that you're new to Fightcord ("Tell Fightcord players I'm new" turns that off) |
-| Private lobbies | free public Nostr relays (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | for the lobbies you're in, while Fightcade runs: messages, joins and "online" signals, encrypted with a key that only exists in the invite code. The relays keep the encrypted messages so you see what you missed; they can't read them. The voice room goes directly between players' PCs, like voice chat |
+| Private lobbies | free public Nostr relays (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | for the lobbies you're in, while Fightcade runs: messages, joins, "online" signals, the lobby's pictures and settings, and results of sets between members (for its leaderboard), all encrypted with a key that only exists in the invite code. The relays keep the encrypted messages so you see what you missed; they can't read them. The voice room goes directly between players' PCs, like voice chat |
 | Pictures in chat | sending: `catbox.moe`, or `uguu.se` when catbox is down (files there are deleted after 3 hours); showing: catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; GIF search: `api.klipy.com` (`tenor.com` if KLIPY can't answer) | what you type in the GIF button's search box goes to KLIPY (or Tenor) after you stop typing, with a random per-install id KLIPY asks for; a picture or audio file is uploaded only when you click Upload (public to anyone with its link); pictures from those sites load when they show up in the chat (or when you click them, with "Blur them until clicked") |
 | Voice chat | the same relays for the encrypted handshake, then directly your opponent's PC (STUN: Google / Cloudflare to find a route) | only during a set, only when you both joined |
 

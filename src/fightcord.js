@@ -61,7 +61,7 @@ const PLUGINS = [
     ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
     ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
     ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
-    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')], ['game-hub.js', N_('Game hub (Rankings, Replays, Events, Profile)')], ['presence.js', N_('Fightcord players (who has Fightcord)')], ['rank-icons.js', N_('Rank icons')], ['system-logos.js', N_('System logos')], ['voice.js', N_('Voice chat with opponents')], ['lobbies.js', N_('Private lobbies')], ['uploads.js', N_('Pictures in chat')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')], ['game-hub.js', N_('Game hub (Rankings, Replays, Events, Profile)')], ['presence.js', N_('Fightcord players (who has Fightcord)')], ['rank-icons.js', N_('Rank icons')], ['system-logos.js', N_('System logos')], ['voice.js', N_('Voice chat with opponents')], ['lobbies.js', N_('Private lobbies')], ['uploads.js', N_('Pictures in chat')], ['layout3.js', N_('Fightcord 3.0 layout')],
     ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 
@@ -414,7 +414,7 @@ const isOpen = () => { const m = document.getElementById('fcordModal'); return !
 function pushEsc() {
     const h = (e) => {
         if (e.key !== 'Escape' || !isOpen()) return;
-        if (document.querySelector('.fc-mask, .fc-pop')) return;          // the popup closes first
+        if (document.querySelector('.fc-mask:not(.fc-out), .fc-pop:not(.fc-out)')) return;          // the popup closes first
         close();
     };
     window.addEventListener('keyup', h, true);
@@ -821,7 +821,8 @@ function start(f) {
             { key: 'lang', type: 'select', label: 'Language', hint: 'Applies after a restart',
                 options: [['auto', 'Automatic (Windows language)'], ['en', 'English'], ['pt', 'Português (Brasil)'], ['es', 'Español']],
                 onChange: () => fc.ui.toast('Restart Fightcade to switch the language', { icon: 'globe', ms: 6000 }) },
-            { key: 'animations', type: 'switch', label: 'Animations', hint: 'Off = no motion anywhere in Fightcord (and calmer Fightcade)' },
+            { key: 'animations', type: 'select', label: 'Animations', hint: 'Subtle: quick fades without movement. Off: no motion anywhere in Fightcord (and calmer Fightcade)',
+                options: [[true, 'Full'], ['subtle', 'Subtle'], [false, 'Off']] },
             { key: 'sfxVolume', type: 'slider', label: 'Sound effects', hint: 'Pings, the challenge ring, chimes', scale: 100, unit: '%', onChange: () => fc.sound.play('ping') }
         ]
     });

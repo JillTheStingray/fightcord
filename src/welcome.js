@@ -113,6 +113,12 @@ const NEWS = [
     { v: '2.19', title: 'Fightcord 2.19', items: [
         ['rocket', N_('Welcome new players'), N_('When someone in your channel just got Fightcord, a line in your chat says hi, and their card shows “New to Fightcord” for a week.')],
         ['refresh', N_('Updates work again'), N_('GitHub changed something that stopped Fightcord from updating itself. Fixed: from now on updates arrive on their own again.')]
+    ] },
+    { v: '3.0', title: 'Fightcord 3.0', items: [
+        ['palette', N_('A new look'), N_('A title bar that shows where you are, your own panel at the bottom left (voice, music, settings), a roomier chat and new Ash and Onyx themes. Settings → Appearance → Layout brings back Classic.')],
+        ['bolt', N_('More animations'), N_('Pop-ups, pages, buttons and switches move more smoothly and close smoothly too. Settings → General → Animations: Full, Subtle or Off.')],
+        ['lock', N_('Lobbies, upgraded'), N_('A picture, banner and colour, a welcome message, moderators, reactions and replies, pinned messages, events with reminders and a leaderboard.')],
+        ['check', N_('Invite codes for busy lobbies'), N_('In a lobby with lots of messages, a new invite code said it couldn’t find the lobby. Fixed.')]
     ] }
 ];
 

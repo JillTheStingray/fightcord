@@ -8,7 +8,7 @@
  *   node tools/i18n-check.js --left x.js  English that x.js still shows without going through fc.t
  *
  * A key is the English text itself. It's found in:
- *   fc.t('…') / T('…') / tr('…') / N_('…'), and both forms of .plural(n, '…', '…')
+ *   fc.t('…') / T('…') / Th('…') / tr('…') / N_('…'), and both forms of .plural(n, '…', '…')
  *   what the core's builders translate on their own: ui.btn / ui.chip / ui.toast('…'),
  *   fc.cmd(name, '…'), fc.settings.section(id, '…') and block / field properties
  *   (label, hint, title, sub, button, text, action, ok, cancel), options: [[value, '…'], …]
@@ -50,7 +50,7 @@ function firstArgLiterals(c, from) {
 }
 
 const PATTERNS = [
-    /(?:\bT|\bET|\btr|\bfc\.t|\bN_)\(/g,
+    /(?:\bT|\bET|\bTh|\btr|\bfc\.t|\bN_)\(/g,
     new RegExp(String.raw`\.plural\(\s*[^,()]+(?:\([^()]*\))?\s*,\s*` + STR + String.raw`\s*,\s*` + STR, 'g'),
     new RegExp(String.raw`\bui\.(?:btn|chip|toast)\(\s*` + STR, 'g'),
     new RegExp(String.raw`\bfc\.cmd\(\s*` + STR + String.raw`\s*,\s*` + STR, 'g'),

@@ -111,7 +111,8 @@ test('mentions and message groups', () => {
 // one in-memory relay: keeps regular events, forwards everything to matching subscriptions
 function Relay() {
     const stored = [], conns = new Set();
-    const match = (f, ev) => (!f.kinds || f.kinds.includes(ev.kind)) && (!f['#t'] || ev.tags.some(t => t[0] === 't' && f['#t'].includes(t[1]))) && (!f.since || ev.created_at >= f.since);
+    const match = (f, ev) => (!f.kinds || f.kinds.includes(ev.kind)) && (!f['#t'] || ev.tags.some(t => t[0] === 't' && f['#t'].includes(t[1]))) && (!f.since || ev.created_at >= f.since) &&
+        (!f.until || ev.created_at <= f.until) && (!f.authors || f.authors.includes(ev.pubkey));
     function WS() {
         const ws = { readyState: 0, subs: new Map(), sent: 0 };
         const deliver = (d) => setTimeout(() => { if (ws.readyState === 1 && ws.onmessage) ws.onmessage({ data: JSON.stringify(d) }); }, 0);
@@ -227,6 +228,91 @@ test('end to end: create, invite, chat, remove someone, old code refused, new co
         assert.equal(relay.stored.every(ev => !/Friday|sure|Bob/.test(ev.content)), true, 'the relay only sees ciphertext');
     } finally {
         [alice, bob, carol, dave].forEach(c => c.stop());
+    }
+});
+
+test('3.0 end to end: a look and pictures, a moderator removes someone, and their new code works for a newcomer', async () => {
+    const relay = Relay();
+    const alice = client('Alice', relay), bob = client('Bob', relay), carol = client('Carol', relay), dave = client('Dave', relay), eve = client('Eve', relay);
+    try {
+        await settle(50);
+        const lb = alice.mod.create('Friday Fights', 'SF3 channel', 'sfiii3nr1');
+        const code = alice.mod.code(lb.id);
+        for (const c of [bob, carol, dave]) assert.ok(c.mod.join(await c.mod.lookup(code)));
+        await settle(300);
+        const ar = alice.mod._room(lb.id);
+        await until(() => ['Bob', 'Carol', 'Dave'].every(n => [...ar.members.values()].some(m => m.n === n)));
+        const pkOf = (n) => [...ar.members.values()].find(m => m.n === n).pk;
+        // the owner's look, a picture, and Bob as a moderator
+        const IMG = 'data:image/webp;base64,UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAfQ//73/w==';
+        assert.ok(alice.mod.saveSettings(lb.id, { col: '#eb459e', emo: '🥊', desc: 'FT5s every Friday', welcome: 'Read the pins first!' }));
+        assert.ok(alice.mod.setArt(lb.id, IMG, ''));
+        assert.ok(alice.mod.setMod(lb.id, pkOf('Bob'), true));
+        const br = bob.mod._room(lb.id);
+        await until(() => br.info && br.info.welcome === 'Read the pins first!' && br.art && br.art.ic === IMG && br.canMod(br.members.get(pkOf('Bob')) ? pkOf('Bob') : ''));
+        assert.equal(br.info.col, '#eb459e');
+        assert.ok(!alice.mod.setMod(lb.id, pkOf('Alice'), true), 'the owner is no moderator of their own');
+        // a moderator pins and mutes; a plain member can't
+        assert.ok(alice.mod.send(lb.id, 'Rules: FT5, no lag switching'));
+        await until(() => br.visible().some(m => m.x === 'Rules: FT5, no lag switching'));
+        const rules = br.visible().find(m => m.x === 'Rules: FT5, no lag switching').id;
+        assert.ok(bob.mod.pin(lb.id, rules, true));
+        assert.ok(!carol.mod.pin(lb.id, rules, true), 'Carol isn’t a moderator');
+        await until(() => ar.pinned().length === 1);
+        // Bob removes Carol: Alice and Dave get Bob's new key, Carol finds out
+        assert.ok(!bob.mod.kick(lb.id, pkOf('Alice')), 'a moderator can’t remove the owner');
+        await settle(600);
+        assert.ok(bob.mod.kick(lb.id, pkOf('Carol')));
+        await until(() => alice.cfg.lobbies[0].epoch === 1 && dave.cfg.lobbies[0].epoch === 1);
+        await until(() => carol.cfg.lobbies[0].removed === true);
+        assert.ok(!ar.active().find(m => m.n === 'Carol'));
+        await settle(600);
+        assert.ok(dave.mod.send(lb.id, 'safe now'));
+        await until(() => ar.visible().some(m => m.x === 'safe now'));
+        // Bob's new invite code: Eve finds the lobby (through the owner's info Bob carries) and joins
+        const code2 = bob.mod.code(lb.id);
+        assert.notEqual(code2, code);
+        const f = await eve.mod.lookup(code2);
+        assert.equal(f.err, undefined, String(f.err));
+        assert.equal(f.info.name, 'Friday Fights');
+        assert.equal(f.info.desc, 'FT5s every Friday', 'the settings are the owner’s');
+        assert.ok(eve.mod.join(f));
+        await until(() => ar.active().some(m => m.n === 'Eve'));
+        assert.ok(eve.mod.send(lb.id, 'hi all'));
+        await until(() => ar.visible().some(m => m.x === 'hi all'));
+    } finally {
+        [alice, bob, carol, dave, eve].forEach(c => c.stop());
+    }
+});
+
+test('a busy lobby: an invite still finds it, and a newcomer still gets its picture and pins', async () => {
+    const relay = Relay();
+    const alice = client('Alice', relay), eve = client('Eve', relay);
+    try {
+        await settle(50);
+        const lb = alice.mod.create('Busy Lobby', 'SF3 channel', 'sfiii3nr1');
+        const IMG = 'data:image/webp;base64,UklGRhIAAABXRUJQVlA4TAYAAAAvAAAAAAfQ//73/w==';
+        assert.ok(alice.mod.setArt(lb.id, IMG, ''));
+        assert.ok(alice.mod.send(lb.id, 'house rules: FT5'));
+        await settle(100);
+        const rules = alice.mod._room(lb.id).visible().find(m => m.x === 'house rules: FT5').id;
+        assert.ok(alice.mod.pin(lb.id, rules, true));
+        await settle(100);
+        // then 650 messages from someone else: more than two pages of history
+        const d = L.derive(alice.cfg.lobbies[0].seeds[0]);
+        const sk = crypto.randomBytes(32), t0 = Math.floor(Date.now() / 1000) + 5;
+        for (let k = 0; k < 650; k++) relay.stored.push(V.makeEvent(sk, L.KIND, [['t', d.topic]], V.seal(d.key, { t: 'msg', x: 'msg ' + k, n: 'Bob' }), t0 + k));
+        const f = await eve.mod.lookup(alice.mod.code(lb.id));
+        assert.equal(f.err, undefined, String(f.err));
+        assert.equal(f.info.name, 'Busy Lobby');
+        assert.equal(f.art && f.art.ic, IMG, 'the invite preview has the picture');
+        assert.ok(eve.mod.join(f));
+        const er = eve.mod._room(lb.id);
+        await until(() => er.art && er.art.ic === IMG, 4000);
+        await until(() => er.pinned().length === 1 && er.pinned()[0].msg && er.pinned()[0].msg.x === 'house rules: FT5', 4000);
+        await until(() => er.visible().some(m => m.x === 'msg 649'), 4000);
+    } finally {
+        [alice, eve].forEach(c => c.stop());
     }
 });
 

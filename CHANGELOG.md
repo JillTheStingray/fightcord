@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.0.0
+
+- **On Fightcord 2.18 or older?** Those versions can't update themselves any more (a change on GitHub's
+  side): run FightcordSetup.exe once. From 2.19 on, updates arrive by themselves.
+- **A new look, closer to today's Discord:**
+  - A title bar that shows where you are, with your inbox and help.
+  - Your own panel at the bottom left: avatar, status, voice chat, music and settings.
+  - A roomier chat with a bigger, rounder message box.
+  - New **Ash** and **Onyx** themes.
+  - **Density** (Compact / Default / Spacious).
+  - Settings → Appearance → Layout brings back **Classic** (the 2.x look).
+- **More animations:** pop-ups, pages and toasts open and close smoothly; buttons and switches respond.
+  Settings → General → Animations: **Full**, **Subtle** (fades, no movement) or **Off**.
+- **Private lobbies, upgraded:**
+  - **Look:** a picture (or an emoji), a banner and a colour, shown in the server list, the lobby and the
+    invite preview. Pictures stay inside the lobby's encryption.
+  - **Words:** a description, and a welcome message new members see once.
+  - **Moderators:** they can remove, mute and rename members, pin messages and plan events. They can't
+    act on the owner or other moderators, or change the lobby's settings.
+  - **Messages:** reactions and replies (point at a message for the toolbar), and pinned messages.
+  - **Events:** with Going / Can't make it, and reminders 15 minutes before and when they start.
+  - **Leaderboard:** sets between lobby members in the lobby's game count once both players report the
+    same result. It has a lobby rating, and the top player with 5+ sets is King of the lobby.
+  - Older Fightcords in the same lobby still chat normally; they just don't see the new things.
+- **Fixed:** in a lobby with lots of messages, new invite codes said "Couldn't find that lobby".
+- Fixed: the title bar on Fightcade's start page, and your panel there.
+
 ## 2.19.0
 
 - **Stuck on an older Fightcord? Download the installer once.** Since late October, GitHub answers

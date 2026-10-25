@@ -40,7 +40,7 @@ const DEFAULTS = {
 };
 
 const N_ = (s) => s;          // translated where shown
-const PRESETS = { dark: N_('Dark'), amoled: N_('AMOLED black'), classic: N_('Classic grey'), neon: N_('FightCord Neon'),
+const PRESETS = { dark: N_('Dark'), ash: N_('Ash'), amoled: N_('Onyx'), classic: N_('Classic grey'), neon: N_('FightCord Neon'),
     crt: N_('Arcade CRT'), strike: N_('3rd Strike'), tokyo: N_('Neon Tokyo'), custom: N_('Custom (theme editor)') };
 // fonts from Google Fonts (free, open licence), loaded only when picked
 const GFONTS = { "'Share Tech Mono', monospace": 'Share+Tech+Mono', "'Chakra Petch', sans-serif": 'Chakra+Petch:wght@400;500;600;700',
@@ -50,6 +50,10 @@ const GFONTS = { "'Share Tech Mono', monospace": 'Share+Tech+Mono', "'Chakra Pet
 const LOOKS = {
     dark: { name: N_('Discord'), desc: N_('The Discord look Fightcord started with'), preset: 'dark', accent: '#5865f2', font: '',
         bg: { style: 'particles', intensity: 0.5 }, emuFont: 'theme', sw: ['#131215', '#1b1a1f', '#dfdfe2'] },
+    ash: { name: N_('Ash'), desc: N_('Discord’s greyer dark theme, easy on the eyes'), preset: 'ash', accent: '#5865f2', font: '',
+        bg: { style: 'particles', intensity: 0.4 }, emuFont: 'theme', sw: ['#202125', '#323339', '#dbdee1'] },
+    onyx: { name: N_('Onyx'), desc: N_('Deep black, made for OLED screens'), preset: 'amoled', accent: '#5865f2', font: '',
+        bg: { style: 'particles', intensity: 0.35 }, emuFont: 'theme', sw: ['#000000', '#08080a', '#eeeef0'] },
     neon: { name: N_('FightCord Neon'), desc: N_('Deep navy, blurple and cyan, with a pulsing visualizer'), preset: 'neon', accent: '#5865f2', font: '',
         bg: { style: 'visualizer', look: 'pulse', intensity: 0.55 }, emuFont: 'theme', sw: ['#080a15', '#0d0f1f', '#22e3f2'] },
     crt: { name: N_('Arcade CRT'), desc: N_('Black glass, amber glow, scanlines and a terminal font'), preset: 'crt', accent: '#ffb000', font: "'Share Tech Mono', monospace",
@@ -107,8 +111,15 @@ html.dc-theme {
     --dc-font: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 /* Presets only redefine the palette above (dark = the defaults) */
+html.dc-theme.dc-preset-ash {
+    /* Discord's Ash (2025): its older greys, a touch lighter and cooler */
+    --dc-bg: #323339; --dc-bg2: #2b2c31; --dc-bg3: #202125; --dc-input: #3a3b41; --dc-input-edge: #44454b;
+    --dc-hover: #36373d; --dc-select: #3e3f45; --dc-active: #45464c; --dc-float: #1a1b1e;
+    --dc-divider: #3f4046; --dc-text: #dbdee1; --dc-head: #f2f3f5; --dc-muted: #9b9ca3; --dc-faint: #6d6f78;
+    --dc-icon: #b5b6bd; --dc-btn: #4a4b52; --dc-btn-h: #5a5b62;
+}
 html.dc-theme.dc-preset-amoled {
-    /* true black, like the user's AMOLED Discord */
+    /* Onyx: true black, like the user's AMOLED Discord */
     --dc-bg: #000000; --dc-bg2: #000000; --dc-bg3: #000000; --dc-input: #121214; --dc-input-edge: #1c1c1f;
     --dc-hover: #0a0a0b; --dc-select: #1c1c20; --dc-active: #1c1c20; --dc-float: #0b0b0c;
     --dc-divider: #1a1a1d; --dc-text: #eeeef0; --dc-head: #ffffff; --dc-muted: #9a9aa3;

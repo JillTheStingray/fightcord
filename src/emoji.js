@@ -449,7 +449,8 @@ function pickerBody(q) {
     return html;
 }
 
-function openPicker(anchor) {
+// onPick(emoji, name): the emoji goes there instead of into Fightcade's chat box (lobby reactions)
+function openPicker(anchor, onPick) {
     if (document.getElementById('emojiPicker')) { closePicker(); return; }
     closePopup();
     const input = anchor.closest('.chatInput')?.querySelector('input.input');
@@ -492,6 +493,7 @@ function openPicker(anchor) {
     box.addEventListener('click', (e) => {
         e.stopPropagation();
         const c = e.target.closest('.emjCell');
+        if (c && onPick) { noteRecent([c.dataset.name]); closePicker(); onPick(c.dataset.emoji, c.dataset.name); return; }
         if (!c || !input) return;
         input.focus();
         insertAtCaret(input, c.dataset.emoji);
@@ -574,6 +576,7 @@ const api = {
     convertShortcodes: (t, used) => convertShortcodes(t, used),
     search: (q, n) => search(q, n),
     lookup: (n) => lookup(n),
+    pick: (anchor, onPick) => openPicker(anchor, onPick),
     get _config() { return config; }
 };
 

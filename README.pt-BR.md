@@ -43,7 +43,11 @@ de boas-vindas curta te guia pelo resto.
 ## O que você ganha
 
 **O visual**
-- Um tema estilo Discord: Escuro, AMOLED, Cinza clássico ou FightCord Neon, qualquer cor de destaque,
+- **Novo na 3.0: um layout como o Discord de hoje.** Uma barra de título que mostra onde você está, seu
+  próprio painel no canto inferior esquerdo (chat de voz, música, configurações), um chat mais espaçoso,
+  três densidades e animações mais suaves (Completo / Sutil / Desligado). Configurações → Aparência →
+  Layout traz o Clássico de volta.
+- Um tema estilo Discord: Escuro, Ash, Onyx, Cinza clássico ou FightCord Neon, qualquer cor de destaque,
   seu próprio fundo no chat, ou suas próprias cores no editor de tema.
 - Barra de canais, lista de membros (agrupada por rank, com ping, avisos de Wi-Fi/VPN e posição no
   ranking), cartões ao passar o mouse, painel de perfil e menu do botão direito, tudo estilo Discord.
@@ -93,13 +97,20 @@ de boas-vindas curta te guia pelo resto.
 | ![Um desafio recebido com a ficha do oponente: ELO, chances, confronto direto](docs/screenshots/scout.png) | ![Metas de treino ao lado do placar da noite](docs/screenshots/goals.png) |
 | ![Histórico de rank e ELO](docs/screenshots/progress.png) | ![Análise de partidas](docs/screenshots/analytics.png) |
 
-**Lobbies privados** (novo na 2.14)
+**Lobbies privados** (novo na 2.14, turbinado na 3.0)
 - Seu próprio **lobby só com convite, como um servidor do Discord**: o **+** embaixo dos seus canais
   de jogo cria um ou entra em um com um código de convite. Só entra quem tem o código e o Fightcord.
 - Um **chat que guarda o histórico**, uma **lista de membros** (online, ausente, numa partida, na voz)
   com **Desafiar** (o Fightcord leva vocês dois para o canal do jogo do lobby) e uma **sala de voz** para até 8.
 - O dono pode renomear o lobby, trocar o jogo, criar um código de convite novo ou remover alguém (todos
   os outros recebem uma chave nova, então essa pessoa não consegue ler nada novo).
+- **Novo na 3.0:**
+  - **O visual do seu lobby:** uma imagem ou emoji, um banner e uma cor, uma descrição e uma mensagem de
+    boas-vindas que os novos membros veem uma vez.
+  - **Moderadores** que podem remover, silenciar e renomear membros, fixar mensagens e marcar eventos.
+  - **Reações, respostas e mensagens fixadas**: passe o mouse numa mensagem para ver a barra.
+  - **Eventos** com Vou / Não vou poder e um lembrete antes de começar.
+  - **Um ranking:** sets entre membros no jogo do lobby contam sozinhos, e o primeiro vira o Rei do lobby.
 
 ![Um lobby privado: canais e a sala de voz à esquerda, o chat e a lista de membros](docs/screenshots/lobby.png)
 
@@ -110,7 +121,7 @@ de boas-vindas curta te guia pelo resto.
 - **Lembretes de eventos:** um aviso antes dos torneios do Fightcade dos seus jogos começarem (ou de
   qualquer evento em que você tocar o sininho), com um botão para abrir o canal.
 - **Status no Discord:** mostra seu jogo, oponente e o tempo de partida no seu perfil do Discord.
-- **Lobbies privados**, como um servidor do Discord: só com convite, com um chat que guarda o histórico, lista de membros com Desafiar e uma sala de voz para até 8.
+- **Lobbies privados**, como um servidor do Discord: só com convite, com um chat que guarda o histórico, lista de membros com Desafiar, uma sala de voz para até 8 e, desde a 3.0, imagem e banner, moderadores, reações, respostas, mensagens fixadas, eventos e um ranking.
 - **Imagens, GIFs, clipes e áudios no chat** para quem usa o Fightcord: cole, solte ou clique no +, favorite GIFs e envie de novo pelo botão GIF.
 - **Mensagens com várias linhas:** Shift+Enter abre uma caixa de mensagem maior, enviada como uma só mensagem que todo mundo vê.
 - **Boas-vindas a novos jogadores com Fightcord:** uma linha no seu chat quando alguém no seu canal acabou de instalar.
@@ -155,7 +166,7 @@ O Fightcord não tem servidor nem coleta de dados. Ele só conversa com:
 | Overlay do OBS | uma página em `127.0.0.1` que só este PC abre | enquanto o overlay está ligado (Configurações → Modo streamer) |
 | "Quem tem o Fightcord" | relays Nostr públicos e gratuitos (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | enquanto o Fightcade está aberto, a menos que você desligue "Mostrar que eu uso o Fightcord": seu nome no Fightcade, com hash, e se o chat de voz está ligado, a cada poucos minutos; os relays repassam ao vivo e não guardam; com "Compartilhar meu perfil" ligado (o padrão), também seu status, Sobre mim, jogo do banner e emblemas quando outro jogador com Fightcord pedir; na primeira semana depois de instalar, também que você é novo no Fightcord ("Contar aos jogadores com Fightcord que sou novo" desliga isso) |
 | Chat de voz | os mesmos relays para o aperto de mão criptografado, depois direto o PC do seu oponente (STUN: Google / Cloudflare para achar o caminho) | só durante um set, só quando os dois entraram |
-| Lobbies privados | relays Nostr públicos e gratuitos (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | para os lobbies em que você está, enquanto o Fightcade está aberto: mensagens, entradas e sinais de "online", criptografados com uma chave que só existe no código de convite. Os relays guardam as mensagens criptografadas para você ver o que perdeu, mas não conseguem lê-las. A sala de voz vai direto entre os PCs dos jogadores, como o chat de voz |
+| Lobbies privados | relays Nostr públicos e gratuitos (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | para os lobbies em que você está, enquanto o Fightcade está aberto: mensagens, entradas, sinais de "online", as imagens e configurações do lobby e os resultados de sets entre membros (para o ranking), tudo criptografado com uma chave que só existe no código de convite. Os relays guardam as mensagens criptografadas para você ver o que perdeu, mas não conseguem lê-las. A sala de voz vai direto entre os PCs dos jogadores, como o chat de voz |
 | Imagens no chat | envio: `catbox.moe`, ou `uguu.se` quando o catbox está fora do ar (lá os arquivos são apagados depois de 3 horas); exibição: catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; busca de GIFs: `api.klipy.com` (`tenor.com` se o KLIPY não responder) | o que você digita na busca do botão GIF vai para o KLIPY (ou o Tenor) quando você para de digitar, com um id aleatório desta instalação que o KLIPY pede; uma imagem só é enviada quando você clica em Enviar (pública para quem tiver o link); imagens desses sites carregam quando aparecem no chat (ou quando você clica nelas, com "Desfocar até clicar") |
 
 Configurações, notas, amigos e histórico de partidas ficam na pasta do Fightcord no seu PC
