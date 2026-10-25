@@ -74,8 +74,9 @@ walks you through the rest.
 > **On Fightcord 2.18 or older?** Automatic updates stopped working in late October 2026 (a change on
 > GitHub's side). Download and run [FightcordSetup.exe](https://github.com/JillTheStingray/fightcord/releases/latest/download/FightcordSetup.exe)
 > once; from 2.19 on, updates arrive by themselves again.
-- Profiles for Fightcord players (status, About me, banner, badges), a member list with search,
-  folding groups and a one-click challenge, and setup codes to share your look.
+- Profiles for Fightcord players (status, About me, banner, badges) on Discord-style profile cards
+  (3.2: game-art banner, status bubble, a Message @name box), a member list with each player's status
+  under their name, search, folding groups and a one-click challenge, and setup codes to share your look.
 - Chat: mentions, timestamps, link previews, jump to present, `:emoji:` shortcodes, font styles, and
   automatic translation of incoming chat.
 

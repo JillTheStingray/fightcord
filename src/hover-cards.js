@@ -58,18 +58,21 @@ function cardHtml(name, chanHint) {
         '<span>' + E([(u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '', conn].filter(Boolean).join(' · ')) + '</span>';
     const vsLine = !playLine && vs && (vs.w || vs.l || vs.played)
         ? `<div class="hcVs"><span>${E(T('You vs {name}', { name }))}</span><b class="${vs.w > vs.l ? 'up' : vs.w < vs.l ? 'down' : ''}">${vs.w}–${vs.l}</b>${vs.played ? `<small>${E(T('{n} sets', { n: vs.played }))}</small>` : ''}</div>` : '';
-    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.data.hashColor(name);
-    const prof = pr && pr.profileHtml ? pr.profileHtml(name, { about: false }) : '';
-    return fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 64, status: status === 'live' ? 'playing' : status, ring: 'var(--fc-s0)' }), marks, meta }) +
+    // 3.2: the game they're in (or this channel's) as the banner, their status in a bubble
+    const ch = fc.app.channel(playing ? playing.channelId : chan);
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.ui.cardBanner((playing && playing.gameId) || (ch && ch.gameid) || '', fc.data.hashColor(name));
+    const p = pr && pr.profile ? pr.profile(name) : null;
+    const prof = pr && pr.profileHtml ? pr.profileHtml(name, { about: false, status: false }) : '';
+    const inner = prof + playLine + vsLine + (notes ? `<div class="hcNotes">${notes}</div>` : '');
+    return fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 80, status: status === 'live' ? 'playing' : status, ring: 'var(--fc-s0)' }), marks, meta, status: p && p.s }) +
         `<div class="hcBody">
-            ${prof}${playLine}${vsLine}
-            ${notes ? `<div class="hcNotes">${notes}</div>` : ''}
+            ${inner ? `<div class="fc-ch-sec">${inner}</div>` : ''}
             ${isMe ? '' : `<div class="hcBtns">
                 ${cst ? fc.ui.btn('Challenge', { size: 'sm', icon: 'sword', cls: 'hcGo', disabled: !cst.ok, title: cst.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(cst.why), attrs: 'data-hc="challenge"' }) : ''}
                 ${fr ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'star', cls: isFr ? 'hcFr on' : 'hcFr', title: isFr ? T('Remove friend') : T('Add friend'), attrs: 'data-hc="friend"' }) : ''}
                 ${nt ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'note', title: 'Notes & tags', attrs: 'data-hc="notes"' }) : ''}
                 ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', title: 'Scout: ELO, odds, form, head-to-head', attrs: 'data-hc="scout"' })}
-            </div>`}
+            </div>${fc.ui.cardMsg(name, 'data-hc="mention"')}`}
         </div>`;
 }
 
@@ -77,9 +80,11 @@ function show(row) {
     const name = nameOf(row);
     if (!name) return;
     let card = document.getElementById('hcCard');
+    if (card && card.classList.contains('fc-out')) { card.remove(); card = null; }      // still fading out
     if (!card) {
         card = document.createElement('div');
         card.id = 'hcCard';
+        card.className = 'fc-cardpop';
         card.addEventListener('mouseenter', () => clearTimeout(hideT));
         card.addEventListener('mouseleave', () => scheduleHide());
         card.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -95,11 +100,13 @@ function show(row) {
     card.innerHTML = cardHtml(name, card.dataset.chan);
     const r = row.getBoundingClientRect();
     card.style.left = (r.left > 320 ? r.left - 300 - 10 : Math.min(window.innerWidth - 308, r.right + 10)) + 'px';
-    card.classList.remove('in');
     card.style.top = '0px';
     const h = card.offsetHeight;
-    card.style.top = Math.max(8, Math.min(window.innerHeight - h - 8, r.top - 12)) + 'px';
-    setTimeout(() => card.classList.add('in'), 16);
+    card.style.top = Math.max(40, Math.min(window.innerHeight - h - 8, r.top - 12)) + 'px';
+    // the next person: the spring again
+    card.style.animation = 'none';
+    void card.offsetWidth;
+    card.style.animation = '';
     opened.push(name);
     if (opened.length > 50) opened.shift();
 }
@@ -113,7 +120,7 @@ function refreshOpen() {
 
 function hide() {
     const card = document.getElementById('hcCard');
-    if (card) card.remove();
+    if (card && !card.classList.contains('fc-out')) fc.ui.animateOut(card);
     current = '';
 }
 
@@ -150,6 +157,9 @@ function onClick(e) {
         hide();
         const st = mod('stats');
         if (st && st.open) st.open({ opp: name });
+    } else if (act === 'mention') {
+        hide();
+        fc.app.mention(name);
     } else if (act === 'scout') {
         const r = card.getBoundingClientRect();
         hide();
@@ -187,10 +197,9 @@ function onScroll(e) {
 const CSS = `
 #hcCard { position: fixed; z-index: 100001; width: 300px; overflow: hidden; border-radius: var(--fc-r3); pointer-events: auto;
     background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.55);
-    opacity: 0; transform: translateX(8px) scale(.98); transition: opacity .14s ease, transform .16s ease; }
-#hcCard.in { opacity: 1; transform: none; }
+    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.55); transform-origin: left center; }
 #hcCard .hcBody { padding: 0 14px 14px; }
+#hcCard .fc-ch-sec > :first-child { margin-top: 0; }
 #hcCard .hcStar { color: var(--fc-warning); display: inline-flex; }
 #hcCard .hcStar .fc-ic { width: 14px; height: 14px; }
 #hcCard .fc-ch-meta > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }

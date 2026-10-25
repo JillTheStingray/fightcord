@@ -1745,6 +1745,10 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 /* closing: pop-ups and modals shrink away, pages and the modal's shade fade */
 .fc-pop.fc-out, .fc-mask.fc-out > .fc-modal { animation: fcOut var(--fc-out) ease both !important; pointer-events: none; }
 .fc-mask.fc-out, .fc-page.fc-out { animation: fcFadeOut var(--fc-out) ease both !important; pointer-events: none; }
+/* player cards (3.2): spring in, fade out */
+@keyframes fcCardIn { from { opacity: 0; transform: translateY(calc(6px * var(--fc-move, 1))) scale(calc(1 - .05 * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+.fc-cardpop { animation: fcCardIn var(--fc-slow) var(--fc-spring) both; }
+.fc-cardpop.fc-out { animation: fcOut var(--fc-out) ease both !important; pointer-events: none; }
 /* buttons give a little when pressed */
 .fc-btn { transition: background-color var(--fc-fast) ease, box-shadow var(--fc-fast) ease, transform var(--fc-fast) var(--fc-ease), filter var(--fc-fast) ease; }
 .fc-btn:active:not([disabled]) { transform: scale(calc(1 - .03 * var(--fc-move, 1))); }
@@ -1949,15 +1953,23 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-chart text { fill: var(--fc-muted); font-size: 10px; }
 .fc-chart text.v { fill: var(--fc-head); font-weight: 700; }
 
-/* card building blocks (ui.cardHead / ui.stats / ui.warn), 2.13 */
+/* card building blocks (ui.cardHead / ui.stats / ui.warn), 2.13; the Discord 2025 pop-out look, 3.2 */
 .fc-ch { position: relative; }
-.fc-ch-banner { height: 56px; }
+.fc-ch-banner { height: 96px; }
 .fc-ch .fc-ch-x { position: absolute; top: 8px; right: 8px; color: #fff; background: rgba(0,0,0,.35); }
 .fc-ch .fc-ch-x:hover { background: rgba(0,0,0,.55); }
-.fc-ch-body { position: relative; padding: 40px 16px 0; }
-.fc-ch-av { position: absolute; left: 12px; top: -40px; line-height: 0; padding: 4px; border-radius: 50%; background: var(--fc-s0); }
+.fc-ch-body { position: relative; padding: 42px 16px 0; }
+.fc-ch-av { position: absolute; left: 12px; top: -50px; line-height: 0; padding: 5px; border-radius: 50%; background: var(--fc-s0); }
 .fc-ch-av .fc-avatar > .st { border-width: 4px; }
-.fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 18px/24px var(--fc-font); color: var(--fc-head); }
+/* the status as a speech bubble next to the avatar */
+.fc-ch-bub { position: absolute; left: 106px; right: 12px; top: 8px; display: flex; }
+.fc-ch-bub > span { position: relative; max-width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: 12px; background: var(--fc-s2);
+  font: 500 12.5px/16px var(--fc-font); color: var(--fc-text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.fc-ch-bub::before { content: ''; position: absolute; left: -9px; top: 22px; width: 10px; height: 10px; border-radius: 50%; background: var(--fc-s2); }
+.fc-ch-bub::after { content: ''; position: absolute; left: -15px; top: 33px; width: 5px; height: 5px; border-radius: 50%; background: var(--fc-s2); }
+.fc-ch.has-bub .fc-ch-body { padding-top: 46px; }
+.fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 20px/26px var(--fc-font); color: var(--fc-head); }
 .fc-ch-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-ch-name > *:not(span) { flex: none; margin-left: 6px; }
 .fc-ch-meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 13px; color: var(--fc-muted); }
@@ -1975,6 +1987,16 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-warn { display: flex; align-items: center; margin-top: 8px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: 12.5px; font-weight: 600;
   color: var(--fc-warning); background: rgba(240,178,50,.12); }
 .fc-warn > .fc-ic { width: 14px; height: 14px; flex: none; margin-right: 6px; }
+/* the inner panel of a card (about me, badges, numbers) and the "Message @name" box under it */
+.fc-ch-sec { margin-top: 12px; padding: 10px 12px; border-radius: var(--fc-r3); background: var(--fc-s1); }
+.fc-ch-sec > .fc-stats:first-child { margin-top: 0; }
+.fc-ch-sec > .fc-stats:last-child { margin-bottom: -8px; }
+.fc-cmsg { display: flex; align-items: center; height: 40px; margin-top: 12px; padding: 0 12px; box-sizing: border-box; border-radius: var(--fc-r2);
+  background: var(--fc-input, var(--fc-s2)); box-shadow: inset 0 0 0 1px var(--fc-divider); color: var(--fc-muted); font: 14px/1 var(--fc-font);
+  cursor: text; transition: box-shadow var(--fc-fast) ease, color var(--fc-fast) ease; }
+.fc-cmsg:hover { color: var(--fc-text); box-shadow: inset 0 0 0 1px var(--fc-muted); }
+.fc-cmsg > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-cmsg > .fc-ic { flex: none; width: 16px; height: 16px; margin-left: 8px; opacity: .7; }
 
 /* pop-up parts (ui.popHead / ui.popFoot), 2.15 */
 .fc-pop.fc-pop-card { padding: 0; }
@@ -2423,12 +2445,13 @@ const ui = {
 
     // Card building blocks (2.13), so every card looks the same. Values are HTML (escape your own text).
     // The top of a player card: banner, avatar over its edge, name (+ marks), one meta line, one sub line
-    //   fc.ui.cardHead({ name, banner, avatar, marks, meta, sub, close })
+    //   fc.ui.cardHead({ name, banner, avatar, marks, meta, sub, status, close })   (status: text, a bubble by the avatar)
     cardHead(o) {
         const p = o || {};
-        return `<div class="fc-ch"><div class="fc-ch-banner" style="background:${p.banner || 'var(--fc-s3)'}"></div>` +
+        return `<div class="fc-ch${p.status ? ' has-bub' : ''}"><div class="fc-ch-banner" style="background:${p.banner || 'var(--fc-s3)'}"></div>` +
             (p.close ? ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close', cls: 'fc-ch-x' }) : '') +
             `<div class="fc-ch-body"><div class="fc-ch-av">${p.avatar || ''}</div>` +
+            (p.status ? `<div class="fc-ch-bub" title="${fmt.esc(p.status)}"><span>${fmt.esc(p.status)}</span></div>` : '') +
             `<div class="fc-ch-name"><span title="${fmt.esc(p.name || '')}">${fmt.esc(p.name || '')}</span>${p.marks || ''}</div>` +
             (p.meta ? `<div class="fc-ch-meta">${p.meta}</div>` : '') + (p.sub ? `<div class="fc-ch-sub">${p.sub}</div>` : '') + '</div></div>';
     },
@@ -2439,6 +2462,18 @@ const ui = {
             `<div class="fc-stat${s.tone ? ' ' + s.tone : ''}"${s.title ? ` title="${fmt.esc(s.title)}"` : ''}><span>${fmt.esc(tr(s.label))}</span>` +
             `<b>${s.value}</b>${s.sub ? `<small>${s.sub}</small>` : ''}</div>`).join('') + '</div>';
     },
+    // a card's banner: the game's art darkened at the bottom, over a colour (no art: just the colour)
+    cardBanner(rom, color) {
+        const c = color || 'var(--fc-s3)';
+        return rom ? `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.5)),url(&quot;${fmt.esc(data.artUrl(rom, 'https://web.fightcade.com/'))}&quot;) center 30%/cover,${c}` : c;
+    },
+    // the "Message @name" box at the bottom of a card (attrs: what the card's click handler looks for)
+    cardMsg(name, attrs) {
+        return `<div class="fc-cmsg" role="button" ${attrs || ''} title="${fmt.esc(tr('Put @{name} in the chat box', { name }))}">` +
+            `<span>${fmt.esc(tr('Message @{name}', { name }))}</span>${ui.icon('chat')}</div>`;
+    },
+    // take a card away with its close animation (cards with fc-cardpop)
+    animateOut: (el, done) => animateOut(el, done),
     // one warning line (several reasons joined)
     warn(text, title) {
         const t = Array.isArray(text) ? text.filter(Boolean).join(' · ') : text;

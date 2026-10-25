@@ -124,6 +124,10 @@ const NEWS = [
         ['sword', N_('A new VS screen'), N_('Arcade style: the characters you both pick, your most-used ones, and a face-off of rank, ELO, head-to-head and your chance to win.')],
         ['trophy', N_('New win and lose screens'), N_('The set game by game, and your ELO and rank bar moving after the set.')],
         ['star', N_('New rank icons'), N_('Fresh badges for every rank, everywhere ranks show.')]
+    ] },
+    { v: '3.2', title: 'Fightcord 3.2', items: [
+        ['users', N_('A new member list'), N_('Roomier rows, cleaner group headings, and the Fightcord status of each player right under their name.')],
+        ['user', N_('New profile cards'), N_('A big banner with the game’s art, a larger avatar with their status in a bubble, everything about them in one panel, and a Message box that puts @name in the chat.')]
     ] }
 ];
 

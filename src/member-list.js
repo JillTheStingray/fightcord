@@ -165,18 +165,26 @@ function renderRow(item, info, where) {
     const live = cfg.activity ? liveLine(info) : '';
     const pr = mod('presence');
     const pres = pr && pr.mark ? pr.mark(info.name) : '';
+    // 3.2: their Fightcord status under the name, Discord style (not while in a match / playing)
+    const prof = !live && !gameTxt && pr && pr.softProfile ? pr.softProfile(info.name) : null;
+    const status = prof && prof.s ? prof.s : '';
     const quick = cfg.quickChallenge && canQuick({ name: info.name, me: fc.app.isMe(info.name), away: !!w.away, playing: !!info.playing });
     const mate = (w.mate || []).join(', ');
     const sig = [info.country, info.flagCss, info.ping, info.net, info.top, cfg.bars ? 1 : 0, gameTxt, friend ? 'F' : '', noteDots, live, pres,
-        vs ? vs.w + '-' + vs.l + '-' + vs.sets : '', quick ? 'Q' : '', mate].join('|');
+        vs ? vs.w + '-' + vs.l + '-' + vs.sets : '', quick ? 'Q' : '', mate, status].join('|');
     if (item.dataset.fcmSig === sig && item.querySelector(':scope > .fcm-bars, .fcm-sub')) return;
     item.dataset.fcmSig = sig;
 
     const nag = item.querySelector('.nameAndGame');
     if (nag) {
-        // line 2: flag · country · ping · Wi-Fi -- unless Fightcade shows a "Playing …" line
+        // line 2: their status, else flag · country · ping · Wi-Fi -- unless Fightcade shows a "Playing …" line
+        let st = nag.querySelector(':scope > .fcm-st');
+        if (status) {
+            if (!st) { st = document.createElement('div'); st.className = 'fcm-st'; nag.appendChild(st); }
+            if (st.textContent !== status) { st.textContent = status; st.title = status; }
+        } else if (st) st.remove();
         let sub = nag.querySelector(':scope > .fcm-sub');
-        if (gameTxt) { if (sub) sub.remove(); }
+        if (gameTxt || status) { if (sub) sub.remove(); }
         else {
             if (!sub) { sub = document.createElement('div'); sub.className = 'fcm-sub'; nag.appendChild(sub); }
             const bits = [];
@@ -590,6 +598,21 @@ html.fcm-compact.dc-layout body .usersListToolbar, html.fcm-compact.dc-layout bo
 html.fcm-compact body .usersListWrapper .fcm-sub { display: none !important; }
 html.fcm-compact body .usersListWrapper .userItem .avatarWrapper, html.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 28px !important; height: 28px !important; }
 html.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing) { height: 36px !important; min-height: 36px !important; }
+${P} .fcm-st { display: block; font-size: 12px; line-height: 16px; color: var(--fc-muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 3.2, the Discord 2025 list (the new layout): 32 px avatars and 42 px rows even with one line,
+   rounded rows, small capital group headings, rows fading in the first time they show */
+html.dc-refresh body .usersListWrapper .userItem.fcm-row { border-radius: 8px !important; animation: fcRise var(--fc-med) ease both; }
+html.dc-refresh.fcm-compact body .usersListWrapper .userItem .avatarWrapper,
+html.dc-refresh.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 32px !important; height: 32px !important; }
+html.dc-refresh.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing):not(.fcm-folded-head) { height: 42px !important; min-height: 42px !important; }
+html.dc-refresh.dc-dens-compact.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing):not(.fcm-folded-head) { height: 34px !important; min-height: 34px !important; }
+html.dc-refresh.dc-dens-compact.fcm-compact body .usersListWrapper .userItem .avatarWrapper,
+html.dc-refresh.dc-dens-compact.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 24px !important; height: 24px !important; }
+html.dc-refresh.dc-dens-compact body .usersListWrapper .fcm-st { display: none; }
+html.dc-refresh.dc-dens-spacious.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing):not(.fcm-folded-head) { height: 48px !important; min-height: 48px !important; }
+html.dc-refresh body .usersListWrapper .userItem .fcm-gh { padding-left: 26px; font: 600 12px/26px var(--fc-font); letter-spacing: .02em; text-transform: uppercase;
+    background-size: 20px 20px; }
+html.dc-refresh body .usersListWrapper .userItem .fcm-gh i .fc-ic { width: 11px; height: 11px; }
 .fcm-filters .fcm-popt { margin: 2px 2px 6px; font: 700 11px/14px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 .fcm-filters .fcm-poprow { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
 .fcm-filters .fcm-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; margin: 0 4px 4px 0; border-radius: 12px;
@@ -656,7 +679,7 @@ function teardown() {
     document.documentElement.classList.remove('fcm-left', 'fcm-compact');
     document.querySelectorAll('.fcm-pl-open').forEach(n => n.classList.remove('fcm-pl-open'));
     if (filterPop) filterPop.close();
-    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live, .fcm-pres, .fcm-gh, .fcm-qc, .fcm-lb').forEach(n => n.remove());
+    document.querySelectorAll('.fcm-chips, .fcm-sub, .fcm-st, .fcm-bars, .fcm-vs, .fcm-top, .fcm-fr, .fcm-nt, .fcm-live, .fcm-pres, .fcm-gh, .fcm-qc, .fcm-lb').forEach(n => n.remove());
     document.querySelectorAll('.fcm-playing').forEach(n => n.classList.remove('fcm-playing'));
     document.querySelectorAll('.fcm-list').forEach(l => l.classList.remove('fcm-list', 'fcm-grouped', 'fcm-colors'));
     document.querySelectorAll('.fcm-row').forEach(r => {

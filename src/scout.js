@@ -206,7 +206,8 @@ function sectionsHtml(name, data) {
             sub: (g && g.rank ? fc.ui.tag(g.rank, '', 14) + ' ' : '') + (data.lb ? '<span title="' + E(T('#{n} on the leaderboard', { n: data.lb.pos })) + '">#' + data.lb.pos + '</span>' : g && g.matches ? E(T('{n} matches', { n: fc.fmt.num(g.matches) })) : '') }
         : { label: 'Rank', value: g && g.rank ? fc.ui.tag(g.rank) : E(T('Unranked')) };
     const odds = o
-        ? { label: 'Your odds', value: fc.fmt.pct(o.set), tone: o.set >= .5 ? 'up' : 'down', sub: E(T('to win an FT{ft}', { ft: o.ft })),
+        // (shown 1-99%: a set is never certain)
+        ? { label: 'Your odds', value: fc.fmt.pct(Math.min(.99, Math.max(.01, o.set))), tone: o.set >= .5 ? 'up' : 'down', sub: E(T('to win an FT{ft}', { ft: o.ft })),
             title: T('{pct} per game', { pct: fc.fmt.pct(o.game) }) + ' · ' + T('You {mine} vs {theirs}', { mine: fc.data.fmtElo(data.myElo), theirs: fc.data.fmtElo(data.elo) }) }
         : { label: 'Your odds', value: '—', sub: E(T('not enough to go on')) };
     const vs = (h.w || h.l)
@@ -242,18 +243,22 @@ function renderCard(card, name, data) {
     // one meta line: flag · state · ping
     const meta = (info && info.country ? fc.ui.flag(info.country, info.countryName || '') : '') +
         `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}</span>`;
-    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.data.hashColor(name);
-    const prof = pr && pr.profileHtml ? pr.profileHtml(name) : '';
-    card.innerHTML = fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 72, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, close: true }) +
+    // 3.2: the game they're in (or this one) as the banner, their status in a bubble, one inner panel
+    const playing = info && info.playing && info.playing.gameId;
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.ui.cardBanner(playing || gameId() || '', fc.data.hashColor(name));
+    const p = pr && pr.profile ? pr.profile(name) : null;
+    const prof = pr && pr.profileHtml ? pr.profileHtml(name, { status: false }) : '';
+    card.innerHTML = fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 80, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, status: p && p.s, close: true }) +
         `<div class="fcsc-body">
-            ${prof}
-            ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
-            <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
+            <div class="fc-ch-sec">
+                ${prof}
+                ${notes ? `<div class="fcsc-notes">${notes}</div>` : ''}
+                <div class="fcsc-panel">${sectionsHtml(name, data)}</div>
+            </div>
             ${!me ? `<div class="fcsc-acts">
                 ${chal ? fc.ui.btn('Challenge', { icon: 'sword', act: 'challenge', cls: 'fc-grow', disabled: !chal.ok, title: chal.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(chal.why) }) : ''}
-                ${fc.ui.btn(chal ? '' : 'Mention', { kind: 'sec', icon: 'chat', act: 'mention', cls: chal ? '' : 'fc-grow', title: T('Put @{name} in the chat box', { name }) })}
                 ${fc.ui.btn('', { kind: 'sec', icon: 'more', act: 'more', title: 'More' })}
-            </div>` : ''}
+            </div>${fc.ui.cardMsg(name, 'data-act="mention"')}` : ''}
         </div>`;
     card.onclick = (e) => onCardClick(e, card, name);
     if (pop && pop.el.contains(card)) fc.ui.place(pop.el, popAnchor, popSide);
@@ -307,6 +312,7 @@ function onCardClick(e, card, name) {
 
 const CSS = `
 .fc-pop.fcsc-pop { padding: 0; overflow-x: hidden; }
+.fc-pop.fcsc-pop:not(.fc-out) { animation: fcCardIn var(--fc-slow) var(--fc-spring) both; }
 .fcsc { position: relative; width: 320px; }
 .fcsc-body { padding: 0 16px 16px; }
 .fcsc-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; background: #80848e; }
@@ -316,6 +322,8 @@ const CSS = `
 .fcsc-star { color: var(--fc-warning); display: inline-flex; }
 .fcsc-star .fc-ic { width: 14px; height: 14px; }
 .fcsc-notes { margin-top: 10px; }
+.fcsc-body .fc-ch-sec > :first-child, .fcsc-body .fc-ch-sec .fcsc-panel:first-child > .fc-stats { margin-top: 0; }
+.fcsc-panel > .fc-stats { margin-top: 10px; }
 .fcsc-wait { padding: 16px 0 4px; font-size: 13px; }
 .fcsc-panel .fc-stat em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
 .fcsc-panel .fc-stat .fc-tag { vertical-align: -2px; }

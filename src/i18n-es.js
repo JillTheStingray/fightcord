@@ -1962,5 +1962,11 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "The set game by game, and your ELO and rank bar moving after the set.": "El set partida a partida, y tu ELO y la barra de rango moviéndose después del set.",
     "New rank icons": "Nuevos iconos de rango",
     "Fresh badges for every rank, everywhere ranks show.": "Insignias nuevas para cada rango, en todos los sitios donde aparecen los rangos.",
-    "Fightcord 3.1": "Fightcord 3.1"
+    "Fightcord 3.1": "Fightcord 3.1",
+    "Message @{name}": "Mensaje a @{name}",
+    "Fightcord 3.2": "Fightcord 3.2",
+    "A new member list": "Una nueva lista de miembros",
+    "Roomier rows, cleaner group headings, and the Fightcord status of each player right under their name.": "Filas más amplias, títulos de grupo más limpios y el estado de Fightcord de cada jugador justo debajo de su nombre.",
+    "New profile cards": "Nuevas tarjetas de perfil",
+    "A big banner with the game’s art, a larger avatar with their status in a bubble, everything about them in one panel, and a Message box that puts @name in the chat.": "Un banner grande con el arte del juego, un avatar más grande con su estado en una burbuja, todo sobre la persona en un solo panel y un cuadro de mensaje que pone @nombre en el chat."
 } };

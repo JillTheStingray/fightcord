@@ -424,6 +424,23 @@ const SCENES = [
         await sleep(1600);
         if (!document.querySelector('#fcCeleb .prgUp .fc-tag')) throw new Error('no rank-up');`, keepToasts: true },
     // 3.0: the new layout (the default now), and Classic for comparison
+    // 3.2: the member list with Fightcord statuses, the hover card and the scout card on the new card head
+    { name: 'm32-list', snap: CHANNEL, run: `
+        const pr = fightcord.modules.get('presence');
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        [[1, 'FT5s only tonight'], [2, 'labbing Urien resets'], [4, 'back from Evo, rusty'], [7, 'Japan server, sorry for the lag']].forEach(([i, s]) => pr._profile(others[i], { s, a: '', b: '' }));
+        await sleep(1500);
+        const row = document.querySelector('.usersOnlineList .userItem.fcm-row:not(.fcm-playing) .fcm-st');
+        if (row) row.closest('.userItem').scrollIntoView({ block: 'center' });
+        await sleep(600);` },
+    { name: 'm32-hover', snap: CHANNEL, run: `
+        const pr = fightcord.modules.get('presence');
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n));
+        pr._profile(others[5], { s: 'Looking for Urien players to lab with', a: 'Urien main, 4 years on 3rd Strike. EU, wired.', b: '', bd: ['sets500', 'streak10'] });
+        await sleep(800);
+        const row = [...document.querySelectorAll('.usersOnlineList .userItem')].find(r => ((r.querySelector('.playerName') || {}).textContent || '').trim() === others[5]);
+        if (row) { row.scrollIntoView({ block: 'center' }); await sleep(300); fightcord.modules.get('hover-cards')._show(row); }
+        await sleep(1200);` },
     { name: 'v3-main', snap: CHANNEL, run: `await sleep(300);` },
     { name: 'v3-classic', snap: CHANNEL, run: `
         const l3 = fightcord.config('layout3'); l3.data.enabled = false; fightcord.modules.get('layout3').update(); await sleep(400);

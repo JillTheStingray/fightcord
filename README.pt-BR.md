@@ -127,7 +127,7 @@ de boas-vindas curta te guia pelo resto.
 - **Boas-vindas a novos jogadores com Fightcord:** uma linha no seu chat quando alguém no seu canal acabou de instalar.
 
 > **No Fightcord 2.18 ou anterior?** As atualizações automáticas pararam no fim de outubro de 2026 (uma mudança do lado do GitHub). Baixe e rode o [FightcordSetup.exe](https://github.com/JillTheStingray/fightcord/releases/latest/download/FightcordSetup.exe) uma vez; a partir da 2.19 as atualizações voltam a chegar sozinhas.
-- **Perfis** para quem usa o Fightcord (status, Sobre mim, banner, emblemas), uma lista de membros com busca, grupos que recolhem e desafio com um clique, e códigos para compartilhar sua configuração.
+- **Perfis** para quem usa o Fightcord (status, Sobre mim, banner, emblemas) em cartões de perfil no estilo do Discord (3.2: banner com a arte do jogo, status num balão, caixa Mensagem para @nome), uma lista de membros com o status de cada jogador abaixo do nome, busca, grupos que recolhem e desafio com um clique, e códigos para compartilhar sua configuração.
 - **Música** no lobby (traga sua própria faixa; nenhuma vem incluída).
 
 **Para streamers**

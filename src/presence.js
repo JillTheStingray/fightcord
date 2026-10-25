@@ -317,8 +317,9 @@ function takeProfile(m, now) {
 }
 
 const isHidden = (name) => (cfg.hiddenProfiles || []).indexOf(lc(name)) >= 0;
-// someone's profile: null until it's known (asking for it the first time), or when hidden
-function profile(name) {
+// someone's profile: null until it's known (asking for it the first time), or when hidden;
+// soft (the member list): ask once per version, never again every 30 s
+function profile(name, soft) {
     if (!name || !cfg) return null;
     if (fc.app.isMe(name)) { const p = myProfile(); return isEmptyProfile(p) ? null : p; }
     if (!cfg.showProfiles || isHidden(name)) return null;
@@ -329,7 +330,7 @@ function profile(name) {
     if (c && c.pv === e.pv) return c.p;
     // a new version: ask now; the same one again: not more than every 30 s
     const last = asked.get(h);
-    if (relays && (!last || last.pv !== e.pv || now - last.at > 30000)) { asked.set(h, { pv: e.pv, at: now }); send('prof?', { q: h }); }
+    if (relays && (!last || last.pv !== e.pv || (!soft && now - last.at > 30000))) { asked.set(h, { pv: e.pv, at: now }); send('prof?', { q: h }); }
     return null;
 }
 
@@ -356,13 +357,15 @@ function newbieHtml(name) {
     const tip = T('New to Fightcord') + (fc.app.isMe(name) ? '' : ' · ' + T('from their Fightcord'));
     return `<span class="fcBadge new" title="${E(tip)}">${fc.ui.ic('rocket', 'fill')}<span>${E(T('New to Fightcord'))}</span></span>`;
 }
-// the status line, About me and badges for a card (opts.about: show About me)
+// the status line, About me and badges for a card (opts.about / opts.status: false leaves them
+// out; a card showing the status in its bubble passes status: false)
 function profileHtml(name, opts) {
     const p = profile(name), nb = newbieHtml(name);
     if (!p) return nb ? `<div class="fcProf"><div class="fcBadges">${nb}</div></div>` : '';
     const o = opts || {};
     const badges = badgesHtml(p, fc.app.isMe(name));
-    return `<div class="fcProf">${p.s ? `<div class="fcProfS">${fc.ui.ic('chat')}<span>${E(p.s)}</span></div>` : ''}` +
+    if (o.status === false && !(o.about !== false && p.a) && !badges && !nb) return '';
+    return `<div class="fcProf">${p.s && o.status !== false ? `<div class="fcProfS">${fc.ui.ic('chat')}<span>${E(p.s)}</span></div>` : ''}` +
         (o.about !== false && p.a ? `<div class="fcProfA"><b>${E(T('About me'))}</b>${E(p.a)}</div>` : '') +
         (nb ? (badges ? badges.replace('<div class="fcBadges">', '<div class="fcBadges">' + nb) : `<div class="fcBadges">${nb}</div>`) : badges) + '</div>';
 }
@@ -501,6 +504,7 @@ const api = {
     line: (n) => line(n),
     visible: () => !!(cfg && cfg.visible),
     profile: (n) => profile(n),
+    softProfile: (n) => profile(n, true),
     profileHtml: (n, o) => profileHtml(n, o),
     badgesHtml: (p, mine) => badgesHtml(p, mine),
     bannerFor: (n) => bannerFor(n),

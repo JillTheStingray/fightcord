@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.2.0
+
+- **A new member list, closer to today's Discord:**
+  - Roomier rows with bigger avatars and a rounded highlight.
+  - Group headings in small capitals ("RANK A — 5").
+  - The Fightcord status of each player right under their name (when they've set one).
+  - Rows fade in gently. Compact and Spacious density still apply.
+- **New profile cards** (hover cards, scout cards and your own card):
+  - A taller banner with the game's art, and a bigger avatar over its edge.
+  - Their status in a speech bubble next to the avatar.
+  - About me, badges, your record against them and the numbers together in one panel.
+  - A **Message @name** box at the bottom that puts @name in the chat box.
+  - They spring open and fade out (following Settings → General → Animations).
+- **Fixes:**
+  - Your own profile card no longer runs off the top of the screen.
+  - The scout card showed 0% odds against much stronger players; the odds now show between 1% and 99%.
+
 ## 3.1.0
 
 - **New VS screen, arcade style:**

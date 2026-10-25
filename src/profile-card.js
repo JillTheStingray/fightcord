@@ -131,9 +131,7 @@ function cardHtml() {
     const dnd = fc.ui.dnd();
     const st = d.status === 'live' ? 'playing' : d.status === 'away' ? 'away' : dnd ? 'dnd' : 'on';
     const statusText = T({ playing: 'In a match', away: 'Away', dnd: 'Do not disturb', on: 'Online' }[st]);
-    const art = d.main && d.main.rom ? fc.data.artUrl(d.main.rom, 'https://web.fightcade.com/') : '';
-    const banner = art ? `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.45)),url(&quot;${E(art)}&quot;) center 30%/cover,var(--fc-brand)`
-        : 'linear-gradient(120deg,var(--fc-accent),#8b5cf6 60%,#22e3f2)';
+    const banner = d.main && d.main.rom ? fc.ui.cardBanner(d.main.rom, 'var(--fc-brand)') : 'linear-gradient(120deg,var(--fc-accent),#8b5cf6 60%,#22e3f2)';
     const streak = d.tStreak.n >= 2 ? (d.tStreak.kind === 'won' ? T('{n} win streak', { n: d.tStreak.n }) : T('{n} losses in a row', { n: d.tStreak.n })) : '';
     const stats = fc.ui.stats([
         { label: 'Tonight', value: d.tonight ? E(d.tRec.w + '–' + d.tRec.l) : '—',
@@ -147,13 +145,14 @@ function cardHtml() {
     const mine = pr && pr.myProfile ? pr.myProfile() : null;
     const myBanner = pr && pr.bannerFor ? pr.bannerFor(d.me) : '';
     const shared = pr && pr.sharing ? pr.sharing() : false;
-    const profBits = mine && (mine.s || mine.a || (mine.bd || []).length) ? pr.profileHtml(d.me) : '';
+    // 3.2: your status in the bubble by your avatar, About me / badges / sharing in one inner panel
+    const profBits = mine && (mine.a || (mine.bd || []).length) ? pr.profileHtml(d.me, { status: false }) : '';
     return fc.ui.cardHead({
         name: d.me || T('You'), banner: myBanner || banner,
-        avatar: fc.ui.avatar(d.me, { size: 72, status: st, ring: 'var(--fc-s0)' }),
-        meta: `<span class="pcSt ${st}">${E(statusText)}</span>`
-    }) + `<div class="pcBody">${profBits || (pr ? `<div class="pcSetStatus" data-pc="profile">${fc.ui.ic('chat')}${E(T('Set a status'))}</div>` : '')}
-        ${pr ? `<div class="pcProfRow"><span class="pcShare${shared ? ' on' : ''}">${E(shared ? T('Fightcord players see this') : T('Only you see this'))}</span>${fc.ui.btn('Edit profile', { kind: 'sec', size: 'sm', icon: 'edit', attrs: 'data-pc="profile"' })}</div>` : ''}
+        avatar: fc.ui.avatar(d.me, { size: 80, status: st, ring: 'var(--fc-s0)' }),
+        meta: `<span class="pcSt ${st}">${E(statusText)}</span>`, status: mine && mine.s
+    }) + `<div class="pcBody">${pr ? `<div class="fc-ch-sec">${profBits || (!(mine && mine.s) ? `<div class="pcSetStatus" data-pc="profile">${fc.ui.ic('chat')}${E(T('Set a status'))}</div>` : '')}
+        <div class="pcProfRow"><span class="pcShare${shared ? ' on' : ''}">${E(shared ? T('Fightcord players see this') : T('Only you see this'))}</span>${fc.ui.btn('Edit profile', { kind: 'sec', size: 'sm', icon: 'edit', attrs: 'data-pc="profile"' })}</div></div>` : ''}
         ${stats}
         ${g && g.summaryHtml ? g.summaryHtml() : ''}
         ${d.friends.length ? `<div class="pcSec"><div class="fc-card-h">${E(T('Friends online'))}</div><div class="pcFriends">${d.friends.slice(0, 6).map(n =>
@@ -245,9 +244,11 @@ let unlayer = null;
 function show() {
     document.documentElement.classList.add('fcpc-on');
     let c = document.getElementById('pcCard');
+    if (c && c.classList.contains('fc-out')) { c.remove(); c = null; }      // still fading out
     if (!c) {
         c = document.createElement('div');
         c.id = 'pcCard';
+        c.className = 'fc-cardpop';
         c.addEventListener('click', onClick);
         c.addEventListener('input', onQuickInput);
         c.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -256,13 +257,12 @@ function show() {
     c.innerHTML = cardHtml();
     const rail = document.querySelector('.mainToolbarWrapper .mainToolbar');
     c.style.left = ((rail ? rail.getBoundingClientRect().right : 72) + 10) + 'px';
-    setTimeout(() => c.classList.add('in'), 16);
     if (!unlayer) unlayer = fc.ui.layer(() => closeFc());
 }
 
 function hide() {
     const c = document.getElementById('pcCard');
-    if (c) c.remove();
+    if (c && !c.classList.contains('fc-out')) fc.ui.animateOut(c);
     if (unlayer) { unlayer(); unlayer = null; }
 }
 
@@ -277,18 +277,15 @@ const CSS = `
 html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; pointer-events: none !important; }
 #pcCard { position: fixed; bottom: 12px; z-index: calc(var(--fc-z-pop) + 4); width: 320px; max-height: calc(100vh - 24px); overflow-x: hidden; overflow-y: auto;
     border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); opacity: 0; transform: translateY(10px) scale(.98);
-    transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
-#pcCard.in { opacity: 1; transform: none; }
-#pcCard .fc-ch-banner { height: 64px; image-rendering: pixelated; }
-#pcCard .fc-ch-body { padding-top: 44px; }
-#pcCard .fc-ch-av { top: -44px; }
+    box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); transform-origin: left bottom; }
+#pcCard .fc-ch-banner { image-rendering: pixelated; }
+#pcCard .fc-ch-sec > :first-child { margin-top: 0; }
 .fc-avatar > .st.dnd { background: var(--fc-danger); }
 #pcCard .pcSt { font-weight: 600; color: var(--fc-success); }
 #pcCard .pcSt.away { color: var(--fc-warning); } #pcCard .pcSt.playing, #pcCard .pcSt.dnd { color: var(--fc-danger); }
 #pcCard .pcBody { padding: 0 16px 12px; }
 #pcCard .fcProf { margin-top: 10px; }
-#pcCard .pcSetStatus { display: flex; align-items: center; margin-top: 10px; padding: 6px 9px; border-radius: var(--fc-r2); border: 1px dashed var(--fc-divider);
+#pcCard .pcSetStatus { display: flex; align-items: center; margin-top: 0; padding: 6px 9px; border-radius: var(--fc-r2); border: 1px dashed var(--fc-divider);
     color: var(--fc-muted); font-size: 13px; cursor: pointer; }
 #pcCard .pcSetStatus:hover { color: var(--fc-text); border-color: var(--fc-muted); }
 #pcCard .pcSetStatus .fc-ic { width: 13px; height: 13px; margin-right: 7px; }

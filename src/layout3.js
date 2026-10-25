@@ -280,7 +280,8 @@ html.dc-refresh .mainToolbarWrapper { flex: none !important; }
 html.l3-panel .mainToolbar .buttonBar { height: 68px !important; min-height: 0 !important; padding: 0 !important; overflow: hidden !important; visibility: hidden !important; }
 html.l3-panel .mainToolbar .buttonBar .userButton .userStateMenu { visibility: hidden !important; }
 /* your profile card opens above your panel */
-html.l3-panel #pcCard { left: 8px !important; bottom: 68px !important; }
+html.l3-panel #pcCard { left: 8px !important; bottom: 68px !important; max-height: calc(100vh - 80px) !important; }
+html.l3-panel.l3-tb #pcCard { max-height: calc(100vh - ${80 + TOP}px) !important; }
 html.l3-panel.l3-panel-right #pcCard { left: auto !important; right: 8px !important; }
 
 /* ---- the side panels (rail = title bar colour, member list a step lighter, the channel lightest) */
