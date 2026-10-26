@@ -1922,7 +1922,7 @@ function renderPage(first) {
     if (!L) { view.page.close(); return; }
     const body = view.page.body;
     if (!body.querySelector('.fclbWrap')) {
-        body.innerHTML = `<div class="fclbWrap"><div class="fclbSide"></div><div class="fclbMain"><div class="fclbTop"></div><div class="fclbLog"></div><div class="fclbPane"></div>` +
+        body.innerHTML = `<div class="fclbWrap"><div class="fclbSide" data-l3-dock="1"></div><div class="fclbMain"><div class="fclbTop"></div><div class="fclbLog"></div><div class="fclbPane"></div>` +
             `<div class="fclbReply"></div><div class="fclbFoot"></div><div class="fclbHl"></div><div class="fclbTb"></div></div><div class="fclbMem"></div></div>`;
     }
     const set = (sel, html) => { const el = body.querySelector(sel); fc.ui.setHtml(el, html); return el; };

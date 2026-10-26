@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.4.1
+
+- **Your panel no longer covers a page's message box:** with the member list on the right, your panel
+  (avatar, name, mute, settings) sat on top of a private lobby's message box. In a lobby it now sits at
+  the foot of the lobby's left column, like on Discord. On other full pages (Stats, the game hub) it
+  shrinks to your avatar at the foot of the left rail.
+
 ## 3.4.0
 
 - **Pictures that upload reliably:**

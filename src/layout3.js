@@ -192,13 +192,21 @@ function update() {
     // over the rail + member list (list on the left), or over the list (on the right)
     const list = document.querySelector('.channelWrapper:not([style*="none"]) .usersListToolbar');
     const lw = list && list.offsetWidth ? list.offsetWidth : 0;
+    // a full page over the channel (a private lobby, Stats, the game hub) hides that list: the panel goes to
+    // the foot of the page's own left column when it has one ([data-l3-dock], like Discord's channel list),
+    // else it's just your avatar at the foot of the rail -- never on top of the page's message box
+    const page = [...document.querySelectorAll('.fc-page:not(.fc-out)')].filter(p => p.offsetWidth).pop();
+    const dock = page && page.querySelector('[data-l3-dock]');
+    const dr = dock && dock.offsetWidth ? dock.getBoundingClientRect() : null;
     // no side column under it (Fightcade's start page, Patreon): just your avatar, at the foot of the rail
-    const side = lw > 0 || html.classList.contains('fcd-browse');
+    const side = page ? !!dr : lw > 0 || html.classList.contains('fcd-browse');
     html.classList.toggle('l3-panel-mini', !side);
-    const box = side ? panelBox({ rail: 72, list: lw, vw: window.innerWidth, listLeft: html.classList.contains('fcm-left') }) : { left: 8, width: 56 };
+    html.classList.toggle('l3-docked', !!dr);
+    const box = dr ? { left: Math.round(dr.left) + 8, width: Math.round(dr.width) - 16 }
+        : side ? panelBox({ rail: 72, list: lw, vw: window.innerWidth, listLeft: html.classList.contains('fcm-left') }) : { left: 8, width: 56 };
     if (panel.style.left !== box.left + 'px') panel.style.left = box.left + 'px';
     if (panel.style.width !== box.width + 'px') panel.style.width = box.width + 'px';
-    html.classList.toggle('l3-panel-right', box.left > 72);
+    html.classList.toggle('l3-panel-right', !dr && box.left > 72);
     // Fightcade's own settings / notifications cover the window (like Discord's settings): the panel steps aside
     html.classList.toggle('l3-covered', !!document.querySelector('.settingsWrapper.active, .notificationsWrapper.active'));
 }
@@ -253,6 +261,8 @@ html.l3-panel #l3Panel { position: fixed; bottom: 8px; left: 8px; height: 52px; 
 @keyframes l3Up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 html.l3-panel.l3-covered #l3Panel { opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
 html.l3-panel #l3Panel { transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
+/* docked at the foot of a page's left column: that column keeps room for it */
+html.l3-panel.l3-docked .fc-page [data-l3-dock] { padding-bottom: 68px; box-sizing: border-box; }
 #l3Panel .l3Me { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; height: 40px; padding: 0 6px 0 4px; margin-right: 4px; border-radius: 8px; cursor: pointer;
     transition: background-color var(--fc-fast) ease; }
 #l3Panel .l3Me:hover { background: rgba(255,255,255,.06); }
