@@ -150,7 +150,7 @@ de bienvenida corta te guía con el resto.
 Fightcord (y su instalador) habla **inglés, portugués de Brasil y español**. Sigue el idioma de
 Windows, o elige uno en Configuración → Mi Fightcord → Idioma.
 
-Todo se puede activar o desactivar: **Ctrl+,** abre la configuración (o escribe `/fightcord`, y
+Todo se puede activar o desactivar: **Ctrl+,** abre la ventana de configuración (en 3.3, una ventana flotante sobre Fightcade; o escribe `/fightcord`, y
 `/help` muestra todos los comandos del chat). Los perfiles **Ligero / Completo / Competitivo**
 cambian grupos enteros de una vez.
 

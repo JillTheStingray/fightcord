@@ -162,7 +162,7 @@ async function loadProfile(name) {
 const flag = (cc) => cc ? fc.ui.flag(cc) : '';
 const onlineDot = (name) => { const s = fc.app.status(name); return s === 'on' || s === 'playing' ? `<i class="ghDot ${s}"></i>` : ''; };
 const waitNote = () => fc.api.blockedFor() > 0 ? `<div class="ghWait">${fc.ui.ic('clock')}<span>${ET('Fightcade asked to slow down — loading in {s}s', { s: Math.ceil(fc.api.blockedFor() / 1000) })}</span></div>` : '';
-const shimmer = (n) => waitNote() + `<div class="ghSkel">${'<i></i>'.repeat(n || 6)}</div>`;
+const shimmer = (n) => waitNote() + fc.ui.skeleton(n || 6, 40);
 const failed = (msg, act) => `<div class="ghErr">${fc.ui.icon('warn')}<span>${ET('Fightcade didn’t answer')} (${E(msg)})</span>${fc.ui.btn('Try again', { kind: 'sec', size: 'sm', act })}</div>`;
 const siteLink = (key) => view.links[key] ? `<span class="ghSite" data-site="${E(key)}">${fc.ui.ic('link')}${ET('Open on fightcade.com')}</span>` : '';
 
@@ -284,6 +284,7 @@ function profileHtml() {
     </div>`;
 }
 
+let shownKey = '';
 function render() {
     if (!page) return;
     page.setTitle(shortName(view.channel) || T('Game'));
@@ -299,6 +300,9 @@ function render() {
     const s = page.body.querySelector('.ghSearch');
     const had = s && document.activeElement === s ? s.selectionStart : null;
     page.body.innerHTML = `<div class="ghTab ${view.tab}">${inner}</div>`;
+    // (3.3) a different tab, or the profile now loaded: rises in, numbers count up
+    const key = view.tab + '|' + (view.tab === 'profile' ? (pf.name || '') + (pf.user ? 1 : 0) : '');
+    if (key !== shownKey) { shownKey = key; const t = page.body.firstElementChild; fc.ui.enter(t); if (view.tab === 'profile') fc.ui.countUp(t); }
     if (had != null) { const n = page.body.querySelector('.ghSearch'); if (n) { n.focus(); n.setSelectionRange(had, had); } }
 }
 
@@ -381,6 +385,7 @@ function open(opts) {
     if (o.who) pf.name = '';
     resetFor(view.rom);
     if (!page) {
+        shownKey = '';
         page = fc.ui.page('game-hub', {
             title: shortName(view.channel), icon: 'pad', cls: 'ghPage',
             tools: `<span class="ghTabs">${TABS.map(([id, label, icon]) => `<span class="ghTabBtn" data-tab="${id}">${fc.ui.ic(icon)}${ET(label)}</span>`).join('')}</span>`,
@@ -487,9 +492,6 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghErr { display: flex; align-items: center; padding: 16px; border-radius: 8px; background: rgba(242,63,67,.08); color: var(--fc-text); }
 #ghHub .ghErr .fc-ic { color: var(--fc-danger); margin-right: 8px; }
 #ghHub .ghErr .fc-btn { margin-left: auto; }
-#ghHub .ghSkel i { display: block; height: 40px; margin-bottom: 6px; border-radius: 8px;
-    background: linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.08), rgba(255,255,255,.03)); background-size: 200% 100%; animation: ghShim 1.2s linear infinite; }
-@keyframes ghShim { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 `;
 
 /* ------------------------------------------------------------------- module */

@@ -286,12 +286,23 @@ function overviewHtml() {
         </div>`;
 }
 
+// what's on screen: a different tab / game / period rises in and counts its numbers up (3.3);
+// the same one redrawn (a new set came in) just updates
+let shownKey = '';
+function settle(el) {
+    const key = [view.opp || '', view.tab, view.game || '', view.period || ''].join('|');
+    if (key === shownKey) return;
+    shownKey = key;
+    fc.ui.enter(el);
+    fc.ui.countUp(el);
+}
+
 function render() {
     if (!page) return;
     page.el.classList.toggle('h2h', !!view.opp);
     page.setTitle(view.opp ? T('You vs {name}', { name: view.opp }) : T('Your stats'));
     syncHead();
-    if (view.opp) { page.body.innerHTML = `<div class="fcsNote">${E(view.note)}</div>` + h2hHtml(); return; }
+    if (view.opp) { page.body.innerHTML = `<div class="fcsNote">${E(view.note)}</div>` + h2hHtml(); settle(page.body); return; }
     const t = tabs.find(x => x.id === view.tab) || tabs[0];
     const ctx = tabCtx();
     let inner;
@@ -300,6 +311,7 @@ function render() {
     page.body.innerHTML = `<div class="fcsNote">${E(view.note)}</div>` +
         (tabs.length > 1 ? `<div class="fcsTabs">${fc.ui.tabs(tabs.map(x => [x.id, x.label]), t.id)}</div>` : '') + `<div class="fcsTab">${inner}</div>`;
     if (t.after) { try { t.after(page.body.querySelector('.fcsTab'), ctx); } catch (e) { fc.log.error('stats tab ' + t.id, e); } }
+    settle(page.body.querySelector('.fcsTab'));
 }
 
 function syncHead() {
@@ -622,6 +634,7 @@ function open(opts) {
     const fr = mod('friends');
     if (fr && fr.close) fr.close();
     if (!page) {
+        shownKey = '';
         page = fc.ui.page('stats', {
             title: 'Your stats', icon: 'chart', cls: 'fcsPage',
             tools: `<span class="fcsSeg"><span data-p="7">${ET('7 days')}</span><span data-p="30">${ET('30 days')}</span><span data-p="all">${ET('All time')}</span></span>` +

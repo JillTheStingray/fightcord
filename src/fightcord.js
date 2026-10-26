@@ -313,21 +313,23 @@ function diagnosticsHtml() {
 /* -------------------------------------------------------------------- modal */
 
 let navSig = '';
+let downOnShade = false;
 
 function ensureModal() {
     let m = document.getElementById('fcordModal');
     if (m) { syncNav(m); return m; }
     m = document.createElement('div');
     m.id = 'fcordModal';
-    m.innerHTML = `<div class="fcordSide"><nav>
+    // 3.3: one floating window over the dimmed app (a click on the dimmed part closes it)
+    m.innerHTML = `<div class="fcordWin" role="dialog"><div class="fcordSide"><nav>
             <div class="fcordSearch">${fc.ui.icon('search')}<input type="text" placeholder="${ET('Search settings')}" spellcheck="false"></div>
             <div class="fcordNav"></div>
             <div class="sep"></div><div class="ver">Fightcord ${E(version())}</div></nav></div>
         <div class="fcordMain"><div class="fcordContent"><div class="fcordPane fcordResults" data-results="1"></div></div>
-            <div class="fcordClose" title="${ET('Close (Esc)')}">${fc.ui.icon('close')}<small>ESC</small></div></div>`;
+            <div class="fcordClose" title="${ET('Close (Esc)')}">${fc.ui.icon('close')}<small>ESC</small></div></div></div>`;
     m.addEventListener('click', onModalClick);
     m.addEventListener('change', onModalChange);
-    m.addEventListener('mousedown', (e) => e.stopPropagation());
+    m.addEventListener('mousedown', (e) => { e.stopPropagation(); downOnShade = e.target === m; });
     const search = m.querySelector('.fcordSearch input');
     search.addEventListener('input', () => runSearch(search.value));
     search.addEventListener('keydown', (e) => e.stopPropagation(), true);
@@ -471,6 +473,8 @@ function goToHit(h) {
 
 function onModalClick(e) {
     e.stopPropagation();
+    // (only a click that also started on the dimmed part: not a text selection dragged out of the window)
+    if (e.target === e.currentTarget) { if (downOnShade) close(); return; }
     if (e.target.closest('.fcordClose')) { close(); return; }
     const item = e.target.closest('.fcordNav .item');
     if (item) { show(item.dataset.sec); return; }
@@ -694,19 +698,25 @@ const CSS = `
 .fcordNotes ul { margin: 0; padding-left: 20px; list-style: disc outside; white-space: normal; }
 .fcordNotes li { margin-bottom: 8px; }
 .fcordNotes code { padding: 0 4px; border-radius: 3px; background: var(--fc-s1); font-size: 13px; }
-#fcordModal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal); display: flex; visibility: hidden; opacity: 0;
-    transform: scale(1.04); transition: opacity .18s ease, transform .18s ease, visibility 0s linear .18s;
-    background: var(--fc-s3); color: var(--fc-text); font: 16px/1.375 var(--fc-font); }
-#fcordModal.open { visibility: visible; opacity: 1; transform: none; transition: opacity .18s ease, transform .18s ease; }
-#fcordModal .fcordSide { flex: 1 0 218px; display: flex; justify-content: flex-end; background: var(--fc-s2); overflow-y: auto; }
-#fcordModal .fcordSide nav { width: 218px; padding: 60px 6px 60px 20px; }
+/* 3.3: a floating window over the dimmed app (the title bar stays in view) */
+#fcordModal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal); display: flex; align-items: center; justify-content: center;
+    padding: 24px; box-sizing: border-box; visibility: hidden; opacity: 0; transition: opacity .18s ease, visibility 0s linear .18s;
+    background: rgba(0,0,0,.62); color: var(--fc-text); font: 16px/1.375 var(--fc-font); }
+html.l3-tb #fcordModal { top: 32px; }
+#fcordModal.open { visibility: visible; opacity: 1; transition: opacity .18s ease; }
+#fcordModal .fcordWin { position: relative; display: flex; width: 100%; max-width: 1100px; height: 100%; max-height: 860px; overflow: hidden;
+    border-radius: 16px; background: var(--fc-s3); box-shadow: 0 0 0 1px var(--fc-divider), 0 24px 64px rgba(0,0,0,.6);
+    transform: translateY(calc(10px * var(--fc-move, 1))) scale(calc(1 - .03 * var(--fc-move, 1))); transition: transform var(--fc-slow) var(--fc-spring); }
+#fcordModal.open .fcordWin { transform: none; }
+#fcordModal .fcordSide { flex: none; width: 248px; background: var(--fc-s2); overflow-y: auto; box-shadow: inset -1px 0 0 var(--fc-divider); }
+#fcordModal .fcordSide nav { padding: 20px 10px 20px 12px; }
 #fcordModal .fcordSearch { position: relative; margin: 0 0 12px; }
-#fcordModal .fcordSearch .fc-ic { position: absolute; left: 8px; top: 7px; width: 16px; height: 16px; color: var(--fc-muted); }
-#fcordModal .fcordSearch input { width: 100%; height: 30px; padding: 0 8px 0 30px; box-sizing: border-box; border: 0; border-radius: var(--fc-r1);
+#fcordModal .fcordSearch .fc-ic { position: absolute; left: 10px; top: 9px; width: 16px; height: 16px; color: var(--fc-muted); }
+#fcordModal .fcordSearch input { width: 100%; height: 34px; padding: 0 8px 0 32px; box-sizing: border-box; border: 0; border-radius: var(--fc-r2);
     background: var(--fc-s1); color: var(--fc-text); font: 14px var(--fc-font); outline: none; }
 #fcordModal .fcordSearch input:focus { box-shadow: 0 0 0 2px var(--fc-accent); }
 #fcordModal .fcordSide .sec { padding: 6px 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--fc-muted); }
-#fcordModal .fcordSide .item { display: flex; align-items: center; margin-bottom: 2px; padding: 6px 10px; border-radius: var(--fc-r1); font-size: 15px; font-weight: 500;
+#fcordModal .fcordSide .item { display: flex; align-items: center; margin-bottom: 2px; padding: 7px 10px; border-radius: var(--fc-r2); font-size: 15px; font-weight: 500;
     color: var(--fc-muted); cursor: pointer; transition: background-color var(--fc-fast), color var(--fc-fast); }
 #fcordModal .fcordSide .item .fc-ic { width: 16px; height: 16px; margin-right: 10px; opacity: .8; }
 #fcordModal .fcordSide .item:hover { background: var(--fc-hover); color: var(--fc-text); }
@@ -729,16 +739,22 @@ const CSS = `
 .fcordSetupWhat small { display: block; margin-top: 6px; color: var(--fc-muted); }
 #fcordModal .fcordSide .sep { height: 1px; margin: 8px 10px; background: var(--fc-divider); }
 #fcordModal .fcordSide .ver { padding: 6px 10px; font-size: 12px; color: var(--fc-muted); }
-#fcordModal .fcordMain { flex: 1 1 800px; display: flex; min-width: 0; }
-#fcordModal .fcordContent { flex: 1; max-width: 740px; min-width: 0; padding: 60px 40px 80px; overflow-y: auto; }
-#fcordModal .fcordClose { flex: none; width: 36px; margin: 60px 20px 0 21px; display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--fc-muted); }
-#fcordModal .fcordClose .fc-ic { width: 36px; height: 36px; padding: 7px; box-sizing: border-box; border-radius: 50%; border: 2px solid currentColor; transition: color var(--fc-fast); }
+#fcordModal .fcordMain { flex: 1; display: flex; min-width: 0; }
+#fcordModal .fcordContent { flex: 1; min-width: 0; padding: 28px 64px 48px 36px; overflow-y: auto; }
+#fcordModal .fcordContent > * { max-width: 760px; }
+#fcordModal .fcordClose { position: absolute; top: 16px; right: 16px; z-index: 2; display: flex; flex-direction: column; align-items: center; cursor: pointer; color: var(--fc-muted); }
+#fcordModal .fcordClose .fc-ic { width: 32px; height: 32px; padding: 8px; box-sizing: border-box; border-radius: 50%; background: var(--fc-s2);
+    box-shadow: inset 0 0 0 1px var(--fc-divider); transition: color var(--fc-fast), background-color var(--fc-fast); }
 #fcordModal .fcordClose:hover { color: var(--fc-head); }
-#fcordModal .fcordClose small { margin-top: 8px; font-size: 13px; font-weight: 600; }
+#fcordModal .fcordClose:hover .fc-ic { background: var(--fc-s4); }
+#fcordModal .fcordClose small { margin-top: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
 #fcordModal .fcordPane { display: none; }
-#fcordModal .fcordPane.on { display: block; animation: fcRise .2s ease both; }
-#fcordModal .fcordPane > .fcBlock { margin: 0 0 16px; padding: 16px; border-radius: var(--fc-r2); background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); }
-#fcordModal h2 { margin: 0 0 20px; font-size: 20px; font-weight: 700; color: var(--fc-head); }
+#fcordModal .fcordPane.on { display: block; animation: fcIn var(--fc-med) ease both; }
+#fcordModal .fcordPane > .fcBlock { margin: 0 0 16px; padding: 16px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+/* the built-in pages' lists of switches: one card each */
+#fcordModal .fcordHead > .fc-set > .fc-field:last-child { border-bottom: 0; }
+#fcordModal .fcordHead > .fc-set { padding: 4px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+#fcordModal h2 { margin: 0 0 20px; font-size: 22px; font-weight: 800; color: var(--fc-head); }
 #fcordModal h3 { margin: 28px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--fc-muted); }
 #fcordModal h3 small { text-transform: none; font-weight: 500; }
 #fcordModal .lead { margin: 0 0 16px; font-size: 14px; color: var(--fc-muted); }

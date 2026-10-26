@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.3.0
+
+- **Settings in a floating window:**
+  - Settings open as a big rounded window over the dimmed Fightcade (the title bar stays in view)
+    instead of covering everything.
+  - Each group of settings sits in its own card, and sections fade in when you switch.
+  - Click the dimmed area around it to close it (or the X, or Esc).
+- **Refreshed buttons, inputs and menus:** rounder and a little roomier, like today's Discord. Menus
+  highlight in grey.
+- **Pop-ups** (Find a match, Tonight, Goals, Events, Notes, GIFs, Quick settings) spring open, with a new
+  header.
+- **Pages:**
+  - Stats, the game hub and the other pages slide in, and so does a tab you switch to.
+  - Numbers in stat boxes count up (Progress, Overview, Analytics, the game hub profile, the scout card).
+  - Loading shows a shimmer instead of a spinner.
+  - Settings → General → Animations still controls all of it (Off = no motion, no count-ups).
+
 ## 3.2.0
 
 - **A new member list, closer to today's Discord:**

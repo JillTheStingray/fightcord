@@ -1968,5 +1968,10 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "A new member list": "Uma nova lista de membros",
     "Roomier rows, cleaner group headings, and the Fightcord status of each player right under their name.": "Linhas mais espaçosas, títulos de grupo mais limpos e o status do Fightcord de cada jogador logo abaixo do nome.",
     "New profile cards": "Novos cartões de perfil",
-    "A big banner with the game’s art, a larger avatar with their status in a bubble, everything about them in one panel, and a Message box that puts @name in the chat.": "Um banner grande com a arte do jogo, um avatar maior com o status num balão, tudo sobre a pessoa num só painel e uma caixa de mensagem que coloca @nome no chat."
+    "A big banner with the game’s art, a larger avatar with their status in a bubble, everything about them in one panel, and a Message box that puts @name in the chat.": "Um banner grande com a arte do jogo, um avatar maior com o status num balão, tudo sobre a pessoa num só painel e uma caixa de mensagem que coloca @nome no chat.",
+    "Fightcord 3.3": "Fightcord 3.3",
+    "Settings in a floating window": "Configurações numa janela flutuante",
+    "Settings open over Fightcade instead of covering it, with each group in its own card. Click outside to close.": "As configurações abrem por cima do Fightcade em vez de cobri-lo, com cada grupo no seu próprio cartão. Clique fora para fechar.",
+    "Smoother pop-ups and pages": "Pop-ups e páginas mais suaves",
+    "Pop-ups spring open, pages and tabs slide in, numbers in your stats count up, and loading shows a shimmer instead of a spinner.": "Os pop-ups abrem com um salto, páginas e abas deslizam, os números das suas estatísticas sobem contando e o carregamento mostra um brilho em vez de um ícone girando."
 } };

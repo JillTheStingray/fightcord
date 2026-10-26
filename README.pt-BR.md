@@ -147,7 +147,7 @@ de boas-vindas curta te guia pelo resto.
 O Fightcord (e o instalador) fala **inglês, português do Brasil e espanhol**. Ele segue o idioma do
 Windows, ou escolha um em Configurações → Meu Fightcord → Idioma.
 
-Tudo pode ser ligado ou desligado: **Ctrl+,** abre as configurações (ou digite `/fightcord`, e
+Tudo pode ser ligado ou desligado: **Ctrl+,** abre a janela de configurações (na 3.3, uma janela flutuante sobre o Fightcade; ou digite `/fightcord`, e
 `/help` lista todos os comandos do chat). Os perfis **Leve / Completo / Competitivo** trocam grupos
 inteiros de uma vez.
 

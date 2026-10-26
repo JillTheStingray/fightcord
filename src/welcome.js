@@ -128,6 +128,10 @@ const NEWS = [
     { v: '3.2', title: 'Fightcord 3.2', items: [
         ['users', N_('A new member list'), N_('Roomier rows, cleaner group headings, and the Fightcord status of each player right under their name.')],
         ['user', N_('New profile cards'), N_('A big banner with the game’s art, a larger avatar with their status in a bubble, everything about them in one panel, and a Message box that puts @name in the chat.')]
+    ] },
+    { v: '3.3', title: 'Fightcord 3.3', items: [
+        ['gear', N_('Settings in a floating window'), N_('Settings open over Fightcade instead of covering it, with each group in its own card. Click outside to close.')],
+        ['bolt', N_('Smoother pop-ups and pages'), N_('Pop-ups spring open, pages and tabs slide in, numbers in your stats count up, and loading shows a shimmer instead of a spinner.')]
     ] }
 ];
 

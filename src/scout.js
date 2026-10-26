@@ -174,6 +174,7 @@ function openCard(name, anchorRect, side) {
         if (pop !== me) return;
         card.__data = data;
         renderCard(card, name, data);
+        fc.ui.countUp(card);
         // first look at this game: refine ELO / #spot once the leaderboard has landed
         if (data && data.boardPending) {
             fc.api.leaderboard(gameId()).then(() => loadScout(name)).then(d2 => { if (d2 && pop === me) renderCard(card, name, d2); }).catch(() => {});
@@ -198,7 +199,7 @@ function quitsNote(q) {
 
 // the numbers: one 2x2 grid (ELO, your odds, vs you, form), one warning, recent sets folded away
 function sectionsHtml(name, data) {
-    if (!data) return `<div class="fcsc-wait fc-muted"><span class="fc-spin"></span> ${E(T('Loading…'))}</div>`;
+    if (!data) return `<div class="fcsc-skel" title="${E(T('Loading…'))}">${fc.ui.skeleton(4, 58)}</div>`;
     if (data.error) return `<div class="fcsc-wait fc-muted">${E(T('Match history unavailable — {error}', { error: data.error }))}</div>`;
     const g = data.game, f = data.form, h = data.h2h, o = data.odds;
     const elo = data.elo
@@ -325,6 +326,8 @@ const CSS = `
 .fcsc-body .fc-ch-sec > :first-child, .fcsc-body .fc-ch-sec .fcsc-panel:first-child > .fc-stats { margin-top: 0; }
 .fcsc-panel > .fc-stats { margin-top: 10px; }
 .fcsc-wait { padding: 16px 0 4px; font-size: 13px; }
+.fcsc-skel .fc-skel { display: flex; flex-wrap: wrap; margin: 0 -4px; }
+.fcsc-skel .fc-skel i { flex: 1 1 calc(50% - 8px); margin: 0 4px 8px; }
 .fcsc-panel .fc-stat em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
 .fcsc-panel .fc-stat .fc-tag { vertical-align: -2px; }
 .fcsc b.up { color: var(--fc-success); }

@@ -1780,7 +1780,8 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-kbd { display: inline-block; padding: 0 5px; border-radius: 3px; font: 600 11px/16px var(--fc-font); background: var(--fc-s1); border: 1px solid var(--fc-divider); color: var(--fc-text); }
 .fc-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--fc-s4); border-top-color: var(--fc-accent); animation: fcSpin .8s linear infinite; display: inline-block; }
 
-.fc-btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 16px; border: 0; border-radius: var(--fc-r1);
+/* 3.3: Discord 2025 sizes -- 36 / 28 / 44 px, rounder corners */
+.fc-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 0; border-radius: var(--fc-r2);
   font: 500 14px/1 var(--fc-font); color: #fff; background: var(--fc-accent); cursor: pointer; white-space: nowrap; user-select: none;
   transition: background var(--fc-fast), color var(--fc-fast), opacity var(--fc-fast), box-shadow var(--fc-fast); text-decoration: none; }
 .fc-btn:hover { background: var(--fc-accent-h); }
@@ -1795,16 +1796,16 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-btn.success { background: var(--fc-success); }
 .fc-btn.success:hover { background: #1a8d4b; }
 .fc-btn.brand { background: var(--fc-brand); box-shadow: var(--fc-glow); }
-.fc-btn.sm { height: 24px; padding: 0 10px; font-size: 12px; }
+.fc-btn.sm { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12.5px; }
 .fc-btn.sm > .fc-ic { width: 14px; height: 14px; margin-right: 4px; }
-.fc-btn.lg { height: 40px; padding: 0 20px; font-size: 15px; }
-.fc-btn.icon { width: 32px; padding: 0; }
+.fc-btn.lg { height: 44px; padding: 0 22px; border-radius: 10px; font-size: 15px; }
+.fc-btn.icon { width: 36px; padding: 0; }
 .fc-btn.icon > .fc-ic { margin: 0; }
-.fc-btn.sm.icon { width: 24px; }
+.fc-btn.sm.icon { width: 28px; }
 .fc-btn[disabled], .fc-btn.is-off { opacity: .5; cursor: default; transform: none !important; }
 .fc-btn[disabled]:hover { filter: none; }
 
-.fc-chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--fc-pill); background: var(--fc-btn);
+.fc-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: var(--fc-pill); background: var(--fc-btn);
   color: var(--fc-text); font: 600 12px/1 var(--fc-font); white-space: nowrap; cursor: default; }
 .fc-chip[data-act] { cursor: pointer; }
 .fc-chip[data-act]:hover { background: var(--fc-btn-h); }
@@ -1821,11 +1822,11 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--fc-pill); text-align: center;
   font: 700 11px/16px var(--fc-font); color: #fff; background: var(--fc-danger); }
 
-.fc-card { background: var(--fc-s2); border-radius: var(--fc-r2); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+.fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: inset 0 0 0 1px var(--fc-divider); }
 .fc-card.raised { box-shadow: inset 0 0 0 1px var(--fc-divider), var(--fc-sh2); }
 .fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 700 12px/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
 .fc-card-h > .fc-ic { width: 14px; height: 14px; margin-right: 6px; }
-.fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r2); background: var(--fc-s1); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+.fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r3); background: var(--fc-s1); box-shadow: inset 0 0 0 1px var(--fc-divider); }
 .fc-tile .v { font: 700 22px/1.1 var(--fc-font); color: var(--fc-head); }
 .fc-tile .k { margin-top: 4px; font: 700 11px/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
 .fc-tile .s { margin-top: 2px; font: 12px/1.3 var(--fc-font); color: var(--fc-muted); }
@@ -1851,7 +1852,7 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-switch-in:checked + .fc-switch { background: var(--fc-success); }
 .fc-switch-in:checked + .fc-switch::after { transform: translateX(16px); }
 .fc-switch-in:focus + .fc-switch { box-shadow: 0 0 0 2px var(--fc-link); }
-.fc-input, .fc-select { height: 36px; padding: 0 10px; border: 0; border-radius: var(--fc-r1); background: var(--fc-input); color: var(--fc-text);
+.fc-input, .fc-select { height: 38px; padding: 0 12px; border: 0; border-radius: var(--fc-r2); background: var(--fc-input); color: var(--fc-text);
   font: 14px var(--fc-font); outline: none; box-sizing: border-box; }
 .fc-input:focus, .fc-select:focus { box-shadow: 0 0 0 2px var(--fc-accent); }
 .fc-input.fc-color { width: 48px; padding: 2px; cursor: pointer; }
@@ -1875,7 +1876,7 @@ label.fc-field { cursor: pointer; }
   font: 800 10px/16px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--fc-danger); }
 .fc-set-row.fc-changed .fc-field-text > b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; border-radius: 50%;
   vertical-align: 2px; background: var(--fc-accent); }
-.fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r1); background: var(--fc-s1); font: 12px/1.45 var(--fc-font); color: var(--fc-muted); }
+.fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r2); background: var(--fc-s1); font: 12px/1.45 var(--fc-font); color: var(--fc-muted); }
 
 .fc-avatar { position: relative; display: inline-block; flex: none; width: var(--sz, 32px); height: var(--sz, 32px); vertical-align: middle; }
 .fc-avatar > img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--fc-s4); display: block; }
@@ -1899,10 +1900,11 @@ label.fc-field { cursor: pointer; }
 .fc-empty .fc-btn { margin-top: 14px; }
 
 .fc-pop { position: fixed; z-index: var(--fc-z-pop); min-width: 180px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto;
-  padding: 8px; border-radius: var(--fc-r2); background: var(--fc-s0); color: var(--fc-text); box-shadow: var(--fc-sh3);
+  padding: 8px; border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3);
   font: 14px/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; box-sizing: border-box; }
-.fc-menu-item { display: flex; align-items: center; padding: 6px 8px; border-radius: 2px; cursor: pointer; color: var(--fc-text); }
-.fc-menu-item:hover { background: var(--fc-accent); color: #fff; }
+.fc-pop.fc-pop-card:not(.fc-out) { animation: fcCardIn var(--fc-slow) var(--fc-spring) both; }
+.fc-menu-item { display: flex; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--fc-text); }
+.fc-menu-item:hover { background: var(--fc-s4); color: var(--fc-head); }
 .fc-menu-item.danger { color: var(--fc-danger); }
 .fc-menu-item.danger:hover { background: var(--fc-danger); color: #fff; }
 .fc-menu-item > .fc-ic { width: 16px; height: 16px; margin-right: 8px; }
@@ -1920,7 +1922,13 @@ label.fc-field { cursor: pointer; }
 .fc-modal-f > .fc-btn + .fc-btn { margin-left: 8px; }
 
 .fc-page { position: fixed; top: 0; bottom: 0; right: 0; left: var(--fcd-left, 72px); z-index: var(--fc-z-page); display: flex; flex-direction: column;
-  background: var(--fc-s3); color: var(--fc-text); font: 14px/1.45 var(--fc-font); animation: fcIn var(--fc-med) ease both; }
+  background: var(--fc-s3); color: var(--fc-text); font: 14px/1.45 var(--fc-font); animation: fcPageIn var(--fc-slow) var(--fc-ease) both; }
+@keyframes fcPageIn { from { opacity: 0; transform: translateY(calc(10px * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
+.fc-enter { animation: fcRise var(--fc-med) var(--fc-ease) both; }
+.fc-skel i { display: block; margin-bottom: 6px; border-radius: var(--fc-r2); background: linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.08), rgba(255,255,255,.03));
+  background-size: 200% 100%; animation: fcShim 1.2s linear infinite; }
+@keyframes fcShim { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+html.fc-still .fc-skel i { animation: none !important; }
 /* the Discover browse sidebar takes another 232px */
 html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-page-h { flex: none; display: flex; align-items: center; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--fc-divider); box-shadow: var(--fc-sh1); }
@@ -2000,14 +2008,15 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 
 /* pop-up parts (ui.popHead / ui.popFoot), 2.15 */
 .fc-pop.fc-pop-card { padding: 0; }
-.fc-ph { display: flex; align-items: center; padding: 12px 8px 8px 16px; }
-.fc-ph > .fc-ic { width: 18px; height: 18px; flex: none; margin-right: 10px; color: var(--fc-accent); }
+.fc-ph { display: flex; align-items: center; padding: 14px 10px 10px 14px; }
+.fc-ph > .fc-ic { width: 32px; height: 32px; flex: none; margin-right: 10px; padding: 7px; box-sizing: border-box; border-radius: 10px;
+  color: var(--fc-accent); background: var(--fc-accent-soft); }
 .fc-ph .tt { flex: 1; min-width: 0; }
-.fc-ph .tt > b { display: block; font: 700 16px/1.25 var(--fc-font); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-ph .tt > b { display: block; font: 800 16px/1.25 var(--fc-font); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fc-ph .tt > span { display: block; margin-top: 1px; font-size: 12px; line-height: 1.35; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fc-ph > .fc-btn, .fc-ph > .fc-chip { flex: none; margin-left: 4px; }
 .fc-pb { padding: 0 12px 10px; }
-.fc-pf { display: flex; align-items: center; padding: 8px 12px 10px; border-top: 1px solid var(--fc-divider); }
+.fc-pf { display: flex; align-items: center; padding: 10px 12px; border-top: 1px solid var(--fc-divider); background: rgba(255,255,255,.02); }
 .fc-pf .l { flex: 1; min-width: 0; margin-right: 8px; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fc-pf .r { display: flex; align-items: center; flex: none; }
 .fc-pf .r > * + * { margin-left: 6px; }
@@ -2471,6 +2480,41 @@ const ui = {
     cardMsg(name, attrs) {
         return `<div class="fc-cmsg" role="button" ${attrs || ''} title="${fmt.esc(tr('Put @{name} in the chat box', { name }))}">` +
             `<span>${fmt.esc(tr('Message @{name}', { name }))}</span>${ui.icon('chat')}</div>`;
+    },
+    // grey placeholder rows that shimmer while something loads (3.3): n rows of h px
+    skeleton(n, h) {
+        return `<div class="fc-skel">${`<i style="height:${h || 40}px"></i>`.repeat(n || 6)}</div>`;
+    },
+    // the numbers in stat boxes / tiles count up from 0 (3.3). Only the text node changes (no
+    // element is added or replaced, so nothing watching the page wakes up); "4–2" and "#12" stay put.
+    countUp(root, ms) {
+        if (!hasDom() || !root || document.documentElement.classList.contains('fc-still')) return;
+        const dur = ms || 700, t0 = Date.now();
+        const jobs = [];
+        root.querySelectorAll('.fc-tile .v, .fc-stat > b, .fc-countup').forEach(el => {
+            const tn = [...el.childNodes].reverse().find(x => x.nodeType === 3 && x.nodeValue.trim());
+            const m = tn && /^(\s*[+~]?)(\d{1,3}(?:[,.  ]\d{3})+|\d+)(\s*%?\s*)$/.exec(tn.nodeValue);
+            if (!m) return;
+            const to = +m[2].replace(/\D/g, ''), sep = (m[2].match(/\D/) || [''])[0];
+            if (!to || to > 1e7) return;
+            jobs.push({ tn, m, to, sep });
+        });
+        if (!jobs.length) return;
+        const put = (j, v) => { j.tn.nodeValue = j.m[1] + (j.sep ? String(v).replace(/\B(?=(\d{3})+(?!\d))/g, j.sep) : String(v)) + j.m[3]; };
+        const step = () => {
+            const k = Math.min(1, (Date.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+            jobs.forEach(j => { if (j.tn.isConnected) put(j, Math.round(j.to * e)); });
+            if (k < 1 && jobs.some(j => j.tn.isConnected)) requestAnimationFrame(step);
+        };
+        jobs.forEach(j => put(j, 0));
+        requestAnimationFrame(step);
+    },
+    // new content (a tab you switched to) rises in once
+    enter(el) {
+        if (!el || !el.classList) return;
+        el.classList.remove('fc-enter');
+        void el.offsetWidth;
+        el.classList.add('fc-enter');
     },
     // take a card away with its close animation (cards with fc-cardpop)
     animateOut: (el, done) => animateOut(el, done),

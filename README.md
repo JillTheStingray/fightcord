@@ -43,6 +43,8 @@ walks you through the rest.
 - **New in 3.0: a layout like today's Discord.** A title bar that shows where you are, your own panel
   at the bottom left (voice chat, music, settings), a roomier chat, three densities and smoother
   animations (Full / Subtle / Off). Settings → Appearance → Layout brings back Classic.
+  3.3 adds settings in a floating window, rounder buttons, springier pop-ups, pages that slide in and
+  stats that count up.
 - A Discord-style theme: Dark, Ash, Onyx, Classic grey or FightCord Neon, any accent colour, your own
   chat background, or your own colours in the theme editor.
 - A Discord-style channel rail, member list (grouped by rank, with ping, Wi-Fi/VPN warnings and
@@ -154,7 +156,7 @@ walks you through the rest.
 Fightcord (and its installer) speaks **English, Português (Brasil) and Español**. It follows your
 Windows language, or pick one in Settings → My Fightcord → Language.
 
-Everything can be switched on or off: **Ctrl+,** opens the settings (or type `/fightcord`, and
+Everything can be switched on or off: **Ctrl+,** opens the settings window (or type `/fightcord`, and
 `/help` lists every chat command). The **Lite / Full / Competitive** profiles switch whole groups at once.
 
 ## Privacy
