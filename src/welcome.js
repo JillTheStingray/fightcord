@@ -132,6 +132,10 @@ const NEWS = [
     { v: '3.3', title: 'Fightcord 3.3', items: [
         ['gear', N_('Settings in a floating window'), N_('Settings open over Fightcade instead of covering it, with each group in its own card. Click outside to close.')],
         ['bolt', N_('Smoother pop-ups and pages'), N_('Pop-ups spring open, pages and tabs slide in, numbers in your stats count up, and loading shows a shimmer instead of a spinner.')]
+    ] },
+    { v: '3.4', title: 'Fightcord 3.4', items: [
+        ['image', N_('Pictures that upload reliably'), N_('Pictures now go to Nostr picture servers, with a copy on a second one, so they still show when a server is down.')],
+        ['share', N_('Uploads in the message box'), N_('Files wait as tiles in the message box, like Discord: mark one as a spoiler, rename or remove it, then Enter sends them with your text.')]
     ] }
 ];
 

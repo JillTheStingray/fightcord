@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.4.0
+
+- **Pictures that upload reliably:**
+  - Pictures, clips and audio now go to free Nostr picture servers (Blossom): blossom.primal.net,
+    nostr.download, cdn.nostrcheck.me, blossom.yakihonne.com, blossom.band, the first that takes them.
+  - Fightcord checks that the server really kept the file before it sends the link, and puts a copy on
+    a second server. The link carries the file's fingerprint, so when one server is down, other players'
+    Fightcord shows the picture from the copy.
+  - Each upload is signed with a brand-new throwaway key, so uploads can't be linked to each other or to
+    you.
+  - catbox.moe (and uguu.se) are only used when none of the servers takes the file, or for files over
+    50 MB.
+- **Uploads in the message box, like Discord:**
+  - Pasted, dropped or picked files wait as tiles in the message box, with their name (up to 5 at once).
+  - Point at a tile: mark it as a spoiler, change its name, or remove it.
+  - Enter uploads them and sends them with what you typed; nothing goes up before that. A file that fails
+    stays in the box with a red frame, and your text stays too.
+- **Spoilers:** pictures marked as a spoiler show blurred with a SPOILER label until you click them.
+- Fightcord 3.3 and older show the new picture links as plain links, until they update.
+
 ## 3.3.0
 
 - **Settings in a floating window:**

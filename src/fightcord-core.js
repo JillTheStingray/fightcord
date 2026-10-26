@@ -237,6 +237,23 @@ const data = {
         return o.replace(/\/?$/, '/') + 'static/previews/' + encodeURIComponent(String(rom || '').replace(/^fc1_/, '')) + '.png';
     },
 
+    // Blossom picture servers (3.4), the quickest first. A file there is named by its SHA-256, so any
+    // server that has it can serve it: uploads go to the first that takes them (and a copy to the next)
+    BLOSSOM: ['blossom.primal.net', 'nostr.download', 'cdn.nostrcheck.me', 'blossom.yakihonne.com', 'blossom.band'],
+    // a Blossom link -> { hash, ext, host }, or null
+    blossomOf(url) {
+        let u;
+        try { u = new URL(String(url || '')); } catch (e) { return null; }
+        const m = /^\/([0-9a-f]{64})(\.[a-z0-9]{2,5})?$/.exec(u.pathname);
+        if (u.protocol !== 'https:' || !m || !data.BLOSSOM.some(h => u.hostname === h || u.hostname.endsWith('.' + h))) return null;
+        return { hash: m[1], ext: m[2] || '', host: u.hostname };
+    },
+    // the same file on the other servers (where a copy may be), in order
+    blossomAlts(url) {
+        const b = data.blossomOf(url);
+        return b ? data.BLOSSOM.filter(h => b.host !== h && !b.host.endsWith('.' + h)).map(h => 'https://' + h + '/' + b.hash + b.ext) : [];
+    },
+
     // spectate a running match in Fightcade
     watchUrl(m) {
         return m && m.emu && m.rom && m.quark && m.port != null
@@ -1651,6 +1668,7 @@ const ICONS = {
     bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     chat: '<path d="M4 5h16v11H9l-5 4z"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"/><path d="M10.7 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a13 13 0 0 1-1.7 2.7"/><path d="M6.6 6.6A13.5 13.5 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/>',
     play: '<path d="M7 4v16l13-8z"/>',
     pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
     trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6v4H9z"/>',

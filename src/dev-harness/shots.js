@@ -194,7 +194,14 @@ const SCENES = [
         const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 640, 360); gr.addColorStop(0, '#5865f2'); gr.addColorStop(1, '#eb459e');
         g.fillStyle = gr; g.fillRect(0, 0, 640, 360); g.fillStyle = '#fff'; g.font = 'bold 96px sans-serif'; g.textAlign = 'center'; g.fillText('GG 3-2', 320, 210);
         const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-        fightcord.modules.get('uploads').offer(new File([blob], 'shot.png', { type: 'image/png' }), fightcord.app.chatInput());
+        const up = fightcord.modules.get('uploads');
+        up.offer(new File([blob], 'gg-3-2.png', { type: 'image/png' }), fightcord.app.chatInput());
+        // a second one, marked as a spoiler, and the toolbar of the first shown as on hover
+        const c2 = document.createElement('canvas'); c2.width = 360; c2.height = 640; const g2 = c2.getContext('2d'); g2.fillStyle = '#23a55a'; g2.fillRect(0, 0, 360, 640);
+        up.offer(new File([await new Promise(r => c2.toBlob(r, 'image/png'))], 'combo-route.png', { type: 'image/png' }), fightcord.app.chatInput());
+        await sleep(300);
+        const sp = document.querySelectorAll('.fcupTile [data-tray="spoiler"]')[1]; if (sp) sp.click();
+        fightcord.app.setChatText('look at this');
         await sleep(900);` },
     { name: 'gif-favs', snap: CHANNEL, run: `
         const up = fightcord.modules.get('uploads');

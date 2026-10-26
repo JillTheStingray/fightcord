@@ -310,3 +310,70 @@ test('chat font styles keep Fightcade\'s \\n line break (and stop a link at it)'
     assert.ok(out.includes('https://x.com/a' + BR), 'the link is untouched and ends at the line break');
     assert.ok(!out.split(BR)[2].includes('next'), 'the text after it is still styled');
 });
+
+// 3.4: Blossom servers first (Nostr's picture servers), catbox only when none takes the file
+const voiceMod = require('../voice.js');
+const coreData = require('../fightcord-core.js')._test.data;
+const crypto = require('crypto');
+
+test('Blossom answers: only a link that carries the file\'s hash counts', () => {
+    const h = 'ab'.repeat(32);
+    assert.equal(up.blossomUrl(JSON.stringify({ url: 'https://nostr.download/' + h + '.png', sha256: h, size: 3 }), h), 'https://nostr.download/' + h + '.png');
+    assert.equal(up.blossomUrl(JSON.stringify({ url: 'https://nostr.download/' + h + '.png', sha256: 'cd'.repeat(32) }), h), null, 'another file');
+    assert.equal(up.blossomUrl(JSON.stringify({ url: 'https://evil.example/other.png' }), h), null);
+    assert.equal(up.blossomUrl(JSON.stringify({ url: 'javascript:' + h }), h), null);
+    assert.equal(up.blossomUrl('<html>busy</html>', h), null);
+});
+
+test('Blossom upload permission: a signed kind 24242 note for this file and this server, from a fresh key', () => {
+    const h = crypto.createHash('sha256').update('hello').digest('hex');
+    const a = up.blossomAuth(h, 'blossom.primal.net', 1760000000000);
+    const b = up.blossomAuth(h, 'blossom.primal.net', 1760000000000);
+    assert.match(a, /^Nostr [A-Za-z0-9+/]+=*$/, 'standard base64 (Primal turns down the URL-safe kind)');
+    const ev = JSON.parse(Buffer.from(a.slice(6), 'base64').toString());
+    assert.equal(ev.kind, 24242);
+    assert.ok(voiceMod.checkEvent(ev), 'a valid signature');
+    const tag = (k) => (ev.tags.find(t => t[0] === k) || [])[1];
+    assert.equal(tag('t'), 'upload');
+    assert.equal(tag('x'), h);
+    assert.equal(tag('server'), 'blossom.primal.net');
+    assert.ok(+tag('expiration') > ev.created_at && ev.created_at < 1760000000, 'expires later, made just before now');
+    assert.notEqual(JSON.parse(Buffer.from(b.slice(6), 'base64').toString()).pubkey, ev.pubkey, 'a new key every upload');
+});
+
+test('uploads go to the first Blossom server that takes them: the bytes as they are, by PUT', async () => {
+    const data = Buffer.from('a picture');
+    const h = crypto.createHash('sha256').update(data).digest('hex');
+    const seen = [];
+    const req = (url, o, cb) => {
+        seen.push({ url, method: o.method, x: o.headers['X-SHA-256'], auth: /^Nostr /.test(o.headers.Authorization || ''), type: o.headers['Content-Type'] });
+        if (/one\.example/.test(url)) return fakeRequest(413, 'too big').request(url, o, cb);
+        if (/two\.example/.test(url)) return fakeRequest(201, JSON.stringify({ url: 'https://two.example/' + h + '.png', sha256: h })).request(url, o, cb);
+        return fakeRequest(200, 'https://files.catbox.moe/no.png').request(url, o, cb);
+    };
+    const got = await up.uploadRetry(data, 'image/png', null, { request: req, head: fakeHead(data.length), blossom: ['one.example', 'two.example'], waits: [5] }).promise;
+    assert.deepEqual(got, { url: 'https://two.example/' + h + '.png', host: 'blossom', server: 'two.example', hash: h });
+    assert.deepEqual(seen.map(s => s.url), ['https://one.example/upload', 'https://two.example/upload']);
+    assert.ok(seen.every(s => s.method === 'PUT' && s.x === h && s.auth && s.type === 'image/png'));
+    // every Blossom server says no (or keeps nothing): catbox, as before
+    const urls = [];
+    const none = (url, o, cb) => { urls.push(url); return /catbox/.test(url) ? fakeRequest(200, 'https://files.catbox.moe/ok99.png').request(url, o, cb) : fakeRequest(503, '').request(url, o, cb); };
+    const fb = await up.uploadRetry(data, 'image/png', null, { request: none, head: fakeHead(data.length), blossom: ['one.example', 'two.example'], waits: [5] }).promise;
+    assert.deepEqual(fb, { url: 'https://files.catbox.moe/ok99.png', host: 'catbox' });
+    assert.deepEqual(urls, ['https://one.example/upload', 'https://two.example/upload', 'https://catbox.moe/user/api.php']);
+    // the copy goes to the next server that takes it
+    const copy = await up.mirror(data, 'image/png', got, { request: (url, o, cb) => /three/.test(url)
+        ? fakeRequest(201, JSON.stringify({ url: 'https://three.example/' + h + '.png' })).request(url, o, cb) : fakeRequest(500, '').request(url, o, cb),
+        head: fakeHead(data.length), blossom: ['one.example', 'two.example', 'three.example'] });
+    assert.equal(copy, 'three.example');
+});
+
+test('a Blossom link: the same file on the other servers, by its hash', () => {
+    const h = 'ef'.repeat(32);
+    assert.deepEqual(coreData.blossomOf('https://blossom.primal.net/' + h + '.png'), { hash: h, ext: '.png', host: 'blossom.primal.net' });
+    assert.equal(coreData.blossomOf('https://files.catbox.moe/abc.png'), null);
+    assert.equal(coreData.blossomOf('https://evil.example/' + h + '.png'), null, 'only the known servers');
+    const alts = coreData.blossomAlts('https://npub1xyz.blossom.band/' + h + '.gif');
+    assert.ok(alts.length === coreData.BLOSSOM.length - 1 && alts.every(u => u.endsWith('/' + h + '.gif')) && !alts.some(u => /blossom\.band/.test(u)));
+    assert.equal(alts[0], 'https://blossom.primal.net/' + h + '.gif');
+});

@@ -353,7 +353,9 @@ function act(what, line) {
 const HOSTS = [
     'youtube.com', 'youtu.be', 'twitch.tv', 'x.com', 'twitter.com', 'imgur.com', 'fightcade.com',
     'streamable.com', 'reddit.com', 'redd.it', 'twimg.com', 'tenor.com', 'giphy.com',
-    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com', 'catbox.moe', 'klipy.com', 'uguu.se'
+    'cdn.discordapp.com', 'media.discordapp.net', 'supercombo.gg', 'github.com', 'catbox.moe', 'klipy.com', 'uguu.se',
+    // the Blossom picture servers uploads go to (3.4; fc.data.BLOSSOM)
+    'blossom.primal.net', 'nostr.download', 'nostrcheck.me', 'blossom.yakihonne.com', 'blossom.band'
 ];
 const allowed = (host) => HOSTS.some(h => host === h || host.endsWith('.' + h));
 // Preview IMAGES load from your connection too, and a trusted page's og:image can point
@@ -375,7 +377,7 @@ const AUD_EXT = /\.(mp3|ogg|oga|wav|m4a|flac|opus|aac)$/i;
 function audioName(u) {
     const ext = (u.pathname.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '';
     let n = '';
-    try { n = decodeURIComponent((u.hash || '').slice(1)); } catch (e) { /* bad escape */ }
+    try { n = decodeURIComponent((u.hash || '').slice(1)).replace(/^SPOILER_/, ''); } catch (e) { /* bad escape */ }
     n = n.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 60);
     if (!n) { try { n = decodeURIComponent(u.pathname.split('/').pop()).replace(/\.[a-z0-9]{2,5}$/i, ''); } catch (e) { n = 'audio'; } }
     return n + (ext ? '.' + ext.toLowerCase() : '');
@@ -551,7 +553,9 @@ function renderPreview(line, p) {
     if (p.kind === 'image' || p.kind === 'clip' || p.kind === 'gifv') {
         if (!cfg.imagePreviews || !imageAllowed(p.url)) return;
         div.classList.add('fcxImage');
-        if (cfg.blurMedia) div.classList.add('fcxBlur');
+        // the sender marked it as a spoiler (3.4: #SPOILER_ after the link, Discord's mark): blurred with a label
+        const spoiler = /#SPOILER_/.test(p.url);
+        if (cfg.blurMedia || spoiler) div.classList.add('fcxBlur');
         div.dataset.view = p.url;
         div.dataset.link = p.page || p.url;
         div.dataset.kind = p.kind;
@@ -561,7 +565,7 @@ function renderPreview(line, p) {
             : p.kind === 'gifv'
                 ? `<video class="fcxGifv" src="${E(p.url)}" autoplay muted loop playsinline${p.still ? ` poster="${E(p.still)}"` : ''}></video>`
                 : `<img src="${E(p.url)}" alt="" loading="lazy">`) +
-            (cfg.blurMedia ? `<span class="fcxShow">${E(T('Show'))}</span>` : '') + (p.kind === 'clip' ? '' : favStar(p.page || p.url));
+            (cfg.blurMedia || spoiler ? `<span class="fcxShow">${E(T(spoiler ? 'Spoiler' : 'Show'))}</span>` : '') + (p.kind === 'clip' ? '' : favStar(p.page || p.url));
         // only the link in the message: show only the picture
         if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
     } else if (p.kind === 'audio') {
@@ -583,7 +587,14 @@ function renderPreview(line, p) {
             ${p.desc ? `<div class="fcxDesc">${E(p.desc)}</div>` : ''}
             ${img}`;
     }
-    div.querySelectorAll('img, video, audio').forEach(i => { i.onerror = () => { if (/^(image|clip|audio)$/.test(p.kind)) { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove(); }; });
+    // a Blossom picture that won't load: the same file (by its hash) from the other servers, in turn
+    div.querySelectorAll('img, video, audio').forEach(i => {
+        const alts = fc.data.blossomAlts ? fc.data.blossomAlts(i.getAttribute('src') || '') : [];
+        i.onerror = () => {
+            if (alts.length) { i.src = alts.shift(); return; }
+            if (/^(image|clip|audio)$/.test(p.kind)) { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove();
+        };
+    });
     bc.appendChild(div);
 }
 
@@ -1149,7 +1160,7 @@ function start(f) {
             opt('newLine', 'NEW line', 'Red divider where you left off'),
             opt('hoverActions', 'Hover actions', 'Reply · Copy · Translate · Profile'),
             opt('linkPreviews', 'Link previews', 'YouTube, Twitch, X, imgur, Fightcade… (only well-known sites are ever fetched)'),
-            opt('imagePreviews', 'Images, GIFs, clips and audio', 'Pictures, videos and audio from trusted sites (catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
+            opt('imagePreviews', 'Images, GIFs, clips and audio', 'Pictures, videos and audio from trusted sites (Nostr picture servers, catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat', (d) => d.linkPreviews),
             opt('blurMedia', 'Blur them until clicked', 'Click a blurred picture to show it', (d) => d.linkPreviews && d.imagePreviews),
             opt('multiLine', 'Messages with several lines', 'Shift+Enter (or pasting several lines) opens a taller box; Fightcade shows the lines as one message, for everyone'),
             opt('jumpBar', 'Jump to present', 'A bar when you scroll up'),

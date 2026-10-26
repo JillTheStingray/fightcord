@@ -3,8 +3,11 @@
  *
  * Paste an image into the chat box, drag one onto the chat, or click the + next to the message
  * box: you see it first, then Upload sends it. Fightcade's chat only carries text, so the file goes
- * to catbox.moe (free, no account) and the message is its link. Everyone with Fightcord sees the
+ * to a free picture server and the message is its link. Everyone with Fightcord sees the
  * picture / GIF / clip in the chat (chat-extras.js); everyone else sees the link.
+ *   - 3.4: Blossom servers first (Nostr's picture servers: the upload is signed with a fresh
+ *     throwaway key each time, the file is named by its SHA-256, and a copy goes to a second server
+ *     so the picture still shows when one is down); catbox.moe, then uguu.se, only if none take it.
  *   - Pictures, GIFs (still animated) and short clips (mp4 / webm / mov), up to 200 MB.
  *   - Photos are redrawn before they go, which drops their hidden details (location, camera).
  *     GIFs and clips go as they are.
@@ -67,7 +70,33 @@ function uguuUrl(text) {
     const u = j && j.success && Array.isArray(j.files) && j.files[0] && j.files[0].url;
     return /^https:\/\/([a-z0-9-]+\.)?uguu\.se\/[A-Za-z0-9_-]+\.[A-Za-z0-9]{2,5}$/.test(u || '') ? u : null;
 }
-// where files go: catbox (kept), then uguu.se when catbox is down (kept 3 hours)
+/* ------------------------------------------------------------------- Blossom */
+
+// bigger files skip the Blossom servers (they cap uploads well below catbox's 200 MB)
+const BLOSSOM_MAX = 50 * 1024 * 1024;
+let V = null;                    // voice.js: its Nostr signer
+function signer() {
+    if (!V) { try { V = require(require('path').join(__dirname, 'voice.js')); } catch (e) { V = null; } }
+    return V;
+}
+const sha256 = (data) => require('crypto').createHash('sha256').update(data).digest('hex');
+// the "Authorization: Nostr …" header for one upload to one server (BUD-11): a fresh key every time,
+// so nothing links your uploads together. Standard base64: Primal turns down the URL-safe kind.
+function blossomAuth(hash, server, now, sv) {
+    const t = Math.floor((now || Date.now()) / 1000);
+    const ev = (sv || signer()).makeEvent(require('crypto').randomBytes(32), 24242,
+        [['t', 'upload'], ['x', hash], ['expiration', String(t + 300)], ['server', server]], 'Upload a file', t - 5);
+    return 'Nostr ' + Buffer.from(JSON.stringify(ev)).toString('base64');
+}
+// what a Blossom server answers (its blob descriptor) -> the link, only if it's the file we sent
+function blossomUrl(text, hash) {
+    let d = null;
+    try { d = JSON.parse(String(text || '')); } catch (e) { return null; }
+    const u = d && typeof d.url === 'string' ? d.url : '';
+    return /^https:\/\/[^\s"<>]+$/.test(u) && u.indexOf(hash) > 0 && (!d.sha256 || d.sha256 === hash) ? u : null;
+}
+
+// where files go when no Blossom server takes them: catbox (kept), then uguu.se when catbox is down (kept 3 hours)
 const HOSTS = {
     catbox: { name: 'catbox.moe', api: API, field: 'fileToUpload', fields: { reqtype: 'fileupload' }, parse: catboxUrl },
     uguu: { name: 'uguu.se', api: 'https://uguu.se/upload', field: 'files[]', fields: {}, parse: uguuUrl }
@@ -165,23 +194,30 @@ const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.ma
 
 /* ------------------------------------------------------------------ uploading */
 
-// -> { promise, cancel }. opts.host: 'catbox' (default) | 'uguu'; opts.request: https.request (the tests pass a fake)
+// -> { promise, cancel }. opts.host: 'catbox' (default) | 'uguu'; opts.blossom: a Blossom server's
+// name (then opts.host is ignored); opts.request: https.request (the tests pass a fake)
 function upload(data, type, onProgress, opts) {
     const o = opts || {};
-    const host = HOSTS[o.host] || HOSTS.catbox;
+    const bl = o.blossom ? { name: o.blossom, hash: o.hash || sha256(data) } : null;
+    const host = bl ? { name: bl.name, parse: (t) => blossomUrl(t, bl.hash) } : HOSTS[o.host] || HOSTS.catbox;
     const request = o.request || require('https').request;
     const boundary = '----fightcord' + Math.random().toString(16).slice(2);
     const name = 'fightcord.' + (TYPES[type] || 'bin');
-    const body = multipart(boundary, host.fields, { name, type, data, field: host.field });
+    const body = bl ? data : multipart(boundary, host.fields, { name, type, data, field: host.field });
+    const headers = bl
+        ? { 'Content-Type': type, 'Content-Length': body.length, 'X-SHA-256': bl.hash, Authorization: blossomAuth(bl.hash, bl.name, 0, o.signer), 'User-Agent': 'Fightcord' }
+        : { 'Content-Type': 'multipart/form-data; boundary=' + boundary, 'Content-Length': body.length, 'User-Agent': 'Fightcord' };
     let req = null, cancelled = false;
     const promise = new Promise((resolve, reject) => {
-        req = request(o.url || host.api, { method: 'POST', timeout: 120000,
-            headers: { 'Content-Type': 'multipart/form-data; boundary=' + boundary, 'Content-Length': body.length, 'User-Agent': 'Fightcord' } }, (res) => {
+        req = request(o.url || (bl ? 'https://' + bl.name + '/upload' : host.api), { method: bl ? 'PUT' : 'POST', timeout: 120000, headers }, (res) => {
             let text = '';
             res.setEncoding('utf8');
             res.on('data', (c) => { text += c; if (text.length > 4096) req.destroy(); });
             res.on('end', () => {
                 const url = host.parse(text);
+                // a Blossom server: 201 stored, 200 had it already; anything else, the next server
+                if (bl) return url && (res.statusCode === 200 || res.statusCode === 201) ? resolve(url)
+                    : reject(Object.assign(new Error((res.headers && res.headers['x-reason']) || 'HTTP ' + res.statusCode), { busy: true }));
                 if (res.statusCode === 200 && url) return resolve(url);
                 // when catbox is overloaded it answers 200 with nothing (or a 5xx): worth another try
                 if (!text.trim() || res.statusCode >= 500 || res.statusCode === 429 || (res.statusCode === 200 && host !== HOSTS.catbox)) return reject(busyError(host));
@@ -234,18 +270,35 @@ function lostError(host) {
     e.busy = true;
     return e;
 }
-// upload to catbox, trying again (after 2 s, then 6 s) while it's busy; still busy -> uguu.se once
-// -> { promise (resolves { url, host }), cancel }. opts.onRetry(n, hostName)
+// the Blossom servers in turn (3.4); none takes it -> catbox, trying again (after 2 s, then 6 s) while
+// it's busy; still busy -> uguu.se once
+// -> { promise (resolves { url, host } + server, hash for Blossom), cancel }. opts.onRetry(n, hostName);
+// opts.blossom: the servers to try (default Fightcord's list; none when the core isn't there)
 function uploadRetry(data, type, onProgress, opts) {
     const o = opts || {}, waits = o.waits || [2000, 6000];
+    const servers = data.length > BLOSSOM_MAX || !(o.signer || signer()) ? [] : o.blossom || (fc ? fc.data.BLOSSOM : []);
     let job = null, timer = 0, wake = null, cancelled = false;
     const once = async (hostKey) => {
-        job = upload(data, type, onProgress, Object.assign({}, o, { host: hostKey }));
+        job = upload(data, type, onProgress, Object.assign({}, o, { host: hostKey, blossom: null }));
         const url = await job.promise;
         if (await stored(url, data.length, o) === false) throw lostError(HOSTS[hostKey]);
         return { url, host: hostKey };
     };
+    const hash = servers.length ? sha256(data) : '';
     const promise = (async () => {
+        for (const server of servers) {
+            if (cancelled) throw new Error('cancelled');
+            try {
+                job = upload(data, type, onProgress, Object.assign({}, o, { blossom: server, hash }));
+                const url = await job.promise;
+                if (await stored(url, data.length, o) === false) throw lostError({ name: server });
+                return { url, host: 'blossom', server, hash };
+            } catch (e) {
+                if (cancelled) throw new Error('cancelled');
+                if (fc) fc.log('upload: ' + server + ' didn’t take it (' + e.message + ')');
+                if (onProgress) onProgress(0);
+            }
+        }
         for (let i = 0; ; i++) {
             if (cancelled) throw new Error('cancelled');
             try { return await once('catbox'); }
@@ -256,7 +309,7 @@ function uploadRetry(data, type, onProgress, opts) {
                     if (o.fallback === false) throw e;
                     if (o.onRetry) o.onRetry(i + 1, HOSTS.uguu.name);
                     try { return await once('uguu'); }
-                    catch (e2) { throw cancelled ? new Error('cancelled') : e2.busy ? Object.assign(new Error(T('catbox.moe and uguu.se are both having trouble right now. Try again later.')), { busy: true }) : e2; }
+                    catch (e2) { throw cancelled ? new Error('cancelled') : e2.busy ? Object.assign(new Error(servers.length ? T('None of the picture servers took the file right now. Try again later.') : T('catbox.moe and uguu.se are both having trouble right now. Try again later.')), { busy: true }) : e2; }
                 }
                 if (o.onRetry) o.onRetry(i + 1, HOSTS.catbox.name);
                 await new Promise(r => { wake = r; timer = setTimeout(r, waits[i]); });
@@ -264,6 +317,23 @@ function uploadRetry(data, type, onProgress, opts) {
         }
     })();
     return { promise, cancel() { cancelled = true; clearTimeout(timer); if (wake) wake(); if (job) job.cancel(); } };
+}
+
+// a copy of a Blossom upload on the next server that takes it (quietly; nothing waits for it).
+// The link stays the first server's: other Fightcords find the copy by the file's hash.
+function mirror(data, type, got, opts) {
+    const o = opts || {};
+    const list = o.blossom || (fc ? fc.data.BLOSSOM : []);
+    const rest = list.filter(h => h !== got.server);
+    return (async () => {
+        for (const server of rest) {
+            try {
+                const url = await upload(data, type, null, Object.assign({}, o, { blossom: server, hash: got.hash })).promise;
+                if (await stored(url, data.length, o) !== false) return server;
+            } catch (e) { /* the next one */ }
+        }
+        return null;
+    })();
 }
 
 // photos lose their hidden details (EXIF: location, camera) by being redrawn; GIFs / clips go as they are
@@ -283,72 +353,175 @@ async function prepare(file) {
 
 /* ------------------------------------------------------------------------ UI */
 
-let card = null;          // { pop, file, input, job, url (object URL) }
+// 3.4: files wait in a tray on top of the message box, like Discord's: a tile each (eye = spoiler,
+// pencil = name, bin = remove). Enter sends them with what you typed; nothing goes up before that.
+const TRAY_MAX = 5;
+let tray = null;          // { wrap, input, el, items: [{ id, file, type, url (object URL), name, spoiler, job, el }], busy }
+let trayId = 0;
 
 function chatInputOf(el) {
     const w = el && el.closest ? el.closest('.chatInput') : null;
     return (w && w.querySelector('input.input, input')) || fc.app.chatInput();
 }
 
-function closeCard() {
-    if (!card) return;
-    const c = card;
-    card = null;
-    if (c.job) c.job.cancel();
-    if (c.url) URL.revokeObjectURL(c.url);
-    c.pop.close();
+// the name and the spoiler mark ride after the link's # (Discord marks spoilers with SPOILER_ too);
+// an audio file always carries its name (the player shows it)
+function fragment(it) {
+    const tag = audioTag(it.name);
+    const named = isAudio(it.type) || it.renamed;
+    return it.spoiler ? '#SPOILER_' + (named ? tag.slice(1) : '') : named ? tag : '';
+}
+
+function tileHtml(it) {
+    const clip = /^video\//.test(it.type), audio = isAudio(it.type);
+    const th = audio ? `<div class="au">${fc.ui.icon('music')}</div>`
+        : clip ? `<video src="${E(it.url)}" muted autoplay loop playsinline></video>` : `<img src="${E(it.url)}" alt="">`;
+    return `<div class="th">${th}${it.spoiler ? `<span class="sp">${E(T('Spoiler'))}</span>` : ''}<i class="bar"><b></b></i></div>` +
+        `<div class="nm" title="${E(it.name)}">${E(it.name)}</div>` +
+        `<div class="fcupTb">` +
+        `<span data-tray="spoiler" title="${E(T(it.spoiler ? 'Remove spoiler' : 'Mark as spoiler'))}">${fc.ui.icon(it.spoiler ? 'eyeOff' : 'eye')}</span>` +
+        `<span data-tray="edit" title="${E(T('Change the name'))}">${fc.ui.icon('edit')}</span>` +
+        `<span data-tray="remove" class="bad" title="${E(T('Remove'))}">${fc.ui.icon('trash')}</span></div>`;
+}
+
+function renderTray() {
+    if (!tray) return;
+    tray.el.innerHTML = tray.items.map(it => `<div class="fcupTile${it.spoiler ? ' spoiler' : ''}${it.err ? ' err' : ''}" data-id="${it.id}">${tileHtml(it)}</div>`).join('') +
+        `<div class="fcupTrayNote">${E(T('Enter sends · public to anyone with the link'))}</div>`;
+    tray.items.forEach(it => { it.el = tray.el.querySelector('[data-id="' + it.id + '"]'); });
+    placeTray();
+}
+
+// on top of the message box, as wide as it (the box squares its top corners to join it)
+function placeTray() {
+    if (!tray) return;
+    const { wrap, input, el } = tray;
+    if (!input.isConnected) { closeTray(); return; }
+    const bottom = wrap.clientHeight - input.offsetTop;
+    Object.assign(el.style, { left: input.offsetLeft + 'px', width: input.offsetWidth + 'px', bottom: bottom + 'px' });
+}
+
+function closeTray() {
+    if (!tray) return;
+    const t = tray;
+    tray = null;
+    t.items.forEach(it => { if (it.job) it.job.cancel(); URL.revokeObjectURL(it.url); });
+    t.el.remove();
+    t.wrap.classList.remove('fcupTrayOn');
+    window.removeEventListener('resize', placeTray);
 }
 
 function offer(file, input) {
     if (!cfg.enabled) return;
     const why = checkFile(file);
     if (why) { fc.ui.toast(why, { kind: 'warning', icon: 'warn' }); return; }
-    closeCard();
-    const url = URL.createObjectURL(file);
-    const type = typeOf(file);
-    const clip = /^video\//.test(type), audio = isAudio(type);
-    const box = document.createElement('div');
-    box.className = 'fcupCard';
-    const prev = audio ? `<div class="fcupAudio">${fc.ui.icon('music')}<b>${E(file.name || T('Audio'))}</b><audio src="${E(url)}" controls preload="metadata"></audio></div>`
-        : clip ? `<video src="${E(url)}" muted autoplay loop playsinline></video>` : `<img src="${E(url)}" alt="">`;
-    box.innerHTML = fc.ui.popHead({ icon: 'share', title: T('Send to the chat'), sub: E(fmtSize(file.size) + ' · ' + (TYPES[type] || '').toUpperCase()) }) +
-        `<div class="fc-pb"><div class="fcupPrev${audio ? ' au' : ''}">${prev}</div>` +
-        `<div class="fcupBar"><i></i></div><div class="fcupNote">${E(T('Fightcord players see it in the chat; others see a link. It goes to catbox.moe (or uguu.se when catbox is down): public to anyone with the link.'))}</div></div>` +
-        fc.ui.popFoot(E(T('Enter to send · Esc to cancel')), fc.ui.btn('Cancel', { kind: 'ghost', size: 'sm', act: 'up-cancel' }) + fc.ui.btn('Upload', { kind: 'brand', size: 'sm', icon: 'share', act: 'up-go' }));
-    box.addEventListener('click', (e) => {
-        if (e.target.closest('[data-act="up-cancel"]')) closeCard();
-        else if (e.target.closest('[data-act="up-go"]')) go();
-    });
-    const anchor = (input && input.isConnected && input) || { x: window.innerWidth / 2 - 180, y: window.innerHeight - 80 };
-    const pop = fc.ui.popover(anchor, box, { side: 'top', width: 360, cls: 'fc-pop-card fcupPop', onClose: () => { if (card && card.pop === pop) { const c = card; card = null; if (c.job) c.job.cancel(); URL.revokeObjectURL(c.url); } } });
-    card = { pop, file, input, url, box };
+    const box = (input && input.isConnected && input) || fc.app.chatInput();
+    const wrap = box && box.closest('.chatInput');
+    if (!wrap) { fc.ui.toast(T('Open a chat first'), { icon: 'warn' }); return; }
+    if (tray && tray.input !== box) closeTray();
+    if (!tray) {
+        if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+        const el = document.createElement('div');
+        el.className = 'fcupTray';
+        el.addEventListener('mousedown', (e) => e.stopPropagation());
+        el.addEventListener('click', onTrayClick);
+        wrap.appendChild(el);
+        wrap.classList.add('fcupTrayOn');
+        tray = { wrap, input: box, el, items: [], busy: false };
+        window.addEventListener('resize', placeTray);
+    }
+    if (tray.busy) { fc.ui.toast(T('Wait for the files on their way'), { icon: 'clock' }); return; }
+    if (tray.items.length >= TRAY_MAX) { fc.ui.toast(T('Up to {n} files at once', { n: TRAY_MAX }), { kind: 'warning', icon: 'warn' }); return; }
+    tray.items.push({ id: ++trayId, file, type: typeOf(file), url: URL.createObjectURL(file), name: file.name || 'image.' + (TYPES[typeOf(file)] || 'png'), spoiler: false });
+    renderTray();
+    box.focus();
 }
 
+function onTrayClick(e) {
+    e.stopPropagation();
+    const b = e.target.closest('[data-tray]');
+    const tile = e.target.closest('.fcupTile');
+    const it = tile && tray && tray.items.find(x => x.id === +tile.dataset.id);
+    if (!b || !it || tray.busy) return;
+    const act = b.dataset.tray;
+    if (act === 'remove') {
+        URL.revokeObjectURL(it.url);
+        tray.items = tray.items.filter(x => x !== it);
+        if (!tray.items.length) { closeTray(); return; }
+        renderTray();
+    } else if (act === 'spoiler') {
+        it.spoiler = !it.spoiler;
+        renderTray();
+    } else if (act === 'edit') {
+        editTile(it, b);
+    }
+}
+
+// the pencil: the file's name and the spoiler mark, Discord's "Modify attachment"
+function editTile(it, anchor) {
+    const box = document.createElement('div');
+    box.innerHTML = fc.ui.popHead({ icon: 'edit', title: T('Change the file'), sub: E(fmtSize(it.file.size) + ' · ' + (TYPES[it.type] || '').toUpperCase()) }) +
+        `<div class="fc-pb"><input class="fc-input fcupName" maxlength="60" value="${E(it.name)}">` +
+        `<label class="fcupSp"><input type="checkbox"${it.spoiler ? ' checked' : ''}> ${E(T('Mark as spoiler'))}</label></div>` +
+        fc.ui.popFoot('', fc.ui.btn('Cancel', { kind: 'ghost', size: 'sm', act: 'tr-cancel' }) + fc.ui.btn('Save', { size: 'sm', act: 'tr-save' }));
+    const pop = fc.ui.popover(anchor, box, { side: 'top', width: 300, cls: 'fc-pop-card' });
+    const name = box.querySelector('.fcupName');
+    const save = () => {
+        const n = name.value.trim();
+        if (n && n !== it.name) { it.name = n; it.renamed = true; }
+        it.spoiler = box.querySelector('.fcupSp input').checked;
+        pop.close();
+        renderTray();
+    };
+    ['keydown', 'keypress', 'keyup'].forEach(ev => name.addEventListener(ev, (e) => { e.stopPropagation(); if (ev === 'keydown' && e.key === 'Enter') save(); }));
+    box.addEventListener('click', (e) => {
+        if (e.target.closest('[data-act="tr-cancel"]')) pop.close();
+        else if (e.target.closest('[data-act="tr-save"]')) save();
+    });
+    setTimeout(() => { name.focus(); name.select(); }, 30);
+}
+
+// Enter: every file goes up in turn (its tile fills), then out: what you typed with the first link,
+// the others after it (Fightcade turns down messages sent too fast)
 async function go() {
-    const c = card;
-    if (!c || c.job) return;
-    const btn = c.box.querySelector('[data-act="up-go"]');
-    if (btn) { btn.disabled = true; btn.lastChild.textContent = T('Uploading…'); }
-    c.box.classList.add('busy');
-    const bar = c.box.querySelector('.fcupBar > i');
-    try {
-        const p = await prepare(c.file);
-        if (card !== c) return;
-        c.job = uploadRetry(p.data, p.type, (f) => { if (bar) bar.style.width = Math.round(f * 100) + '%'; },
-            { onRetry: (n, host) => { if (btn) btn.lastChild.textContent = host === HOSTS.uguu.name ? T('Trying uguu.se…') : T('Trying again…'); } });
-        const got = await c.job.promise;
-        const link = got.url + (isAudio(p.type) ? audioTag(c.file.name) : '');
-        if (got.host === 'uguu') fc.ui.toast(T('Sent through uguu.se: catbox.moe is down'), { icon: 'share', sub: T('This one disappears after 3 hours.') });
-        if (card !== c) return;
-        c.job = null;
-        closeCard();
-        send(c.input, link);
-    } catch (e) {
-        if (card !== c || /cancelled/.test(e.message)) return;
-        c.job = null;
-        c.box.classList.remove('busy');
-        if (btn) { btn.disabled = false; btn.lastChild.textContent = T('Try again'); }
-        fc.ui.toast(T('Upload failed'), { kind: 'danger', icon: 'warn', sub: e.message });
+    const t = tray;
+    if (!t || t.busy || !t.items.length) return;
+    t.busy = true;
+    t.el.classList.add('busy');
+    const links = [];
+    for (const it of t.items.slice()) {
+        if (tray !== t) return;
+        it.err = false;
+        if (it.el) it.el.classList.add('up');
+        const bar = it.el && it.el.querySelector('.bar > b');
+        try {
+            const p = await prepare(it.file);
+            it.job = uploadRetry(p.data, p.type, (f) => { if (bar) bar.style.width = Math.round(f * 100) + '%'; },
+                { onRetry: (n, host) => fc.log('upload: trying ' + host + ' again (' + n + ')') });
+            const got = await it.job.promise;
+            it.job = null;
+            if (got.host === 'uguu') fc.ui.toast(T('Sent through uguu.se: catbox.moe is down'), { icon: 'share', sub: T('This one disappears after 3 hours.') });
+            if (got.host === 'blossom') mirror(p.data, p.type, got).then(m => fc.log('upload: copy on ' + (m || 'no other server')));
+            links.push(got.url + fragment(it));
+            URL.revokeObjectURL(it.url);
+            t.items = t.items.filter(x => x !== it);
+            if (it.el) it.el.remove();
+        } catch (e) {
+            it.job = null;
+            if (tray !== t || /cancelled/.test(e.message)) return;
+            it.err = true;
+            fc.ui.toast(T('Upload failed'), { kind: 'danger', icon: 'warn', sub: e.message });
+            break;
+        }
+    }
+    if (tray === t) {
+        t.busy = false;
+        t.el.classList.remove('busy');
+        if (t.items.length) renderTray(); else closeTray();
+    }
+    for (let i = 0; i < links.length; i++) {
+        if (i) await new Promise(r => setTimeout(r, 1100));
+        send(t.input, links[i]);
     }
 }
 
@@ -379,11 +552,11 @@ function onPaste(e) {
     offer(f, input);
 }
 
-// Enter / Esc while the card is up: upload / cancel instead of sending the chat line
+// Enter in the message box with files in the tray: they go up, then out with what you typed
 // (only real key presses: the Enter that sends the link is ours)
 function onKey(e) {
-    if (!card || !e.isTrusted || e.key !== 'Enter' || e.shiftKey) return;
-    if (!(e.target && e.target.closest && (e.target.closest('.chatInput') || e.target.closest('.fcupCard')))) return;
+    if (!tray || !tray.items.length || !e.isTrusted || e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    if (!(e.target && e.target.closest && e.target.closest('.chatInput') === tray.wrap)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     go();
@@ -413,9 +586,9 @@ function onDrop(e) {
     if (!a) return;
     e.preventDefault();
     e.stopPropagation();
-    const f = fileFrom(e.dataTransfer.files);
     const w = a.closest('.channelWrapper') || document;
-    offer(f, (w.querySelector('.chatInput input.input') || fc.app.chatInput()));
+    const box = w.querySelector('.chatInput input.input') || fc.app.chatInput();
+    [...(e.dataTransfer.files || [])].slice(0, TRAY_MAX).forEach(f => offer(f, box));
 }
 
 // the + on the left of the message box, like Discord's
@@ -618,7 +791,8 @@ function pick(input) {
     const f = document.createElement('input');
     f.type = 'file';
     f.accept = Object.keys(TYPES).concat(Object.keys(BY_EXT).map(x => '.' + x)).join(',');
-    f.addEventListener('change', () => { if (f.files && f.files[0]) offer(f.files[0], input); });
+    f.multiple = true;
+    f.addEventListener('change', () => { [...(f.files || [])].slice(0, TRAY_MAX).forEach(x => offer(x, input)); });
     f.click();
 }
 
@@ -645,17 +819,39 @@ const CSS = `
 .fcupFav:hover .star { display: block; }
 .fcupFav .star .fc-ic { width: 16px; height: 16px; }
 .fcupBtn .fc-ic { width: 16px; height: 16px; stroke-width: 3; }
-.fcupPrev.au { height: auto; padding: 14px; }
-.fcupAudio { display: flex; flex-direction: column; align-items: center; width: 100%; line-height: 1.3; text-align: center; color: var(--fc-text); }
-.fcupAudio > .fc-ic { width: 32px; height: 32px; margin-bottom: 6px; color: var(--fc-accent); }
-.fcupAudio b { max-width: 100%; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.fcupAudio audio { width: 100%; height: 36px; }
-.fcupPrev { display: flex; align-items: center; justify-content: center; height: 200px; padding: 8px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s1); line-height: 0; }
-.fcupPrev img, .fcupPrev video { max-width: 100%; max-height: 184px; border-radius: 6px; object-fit: contain; }
-.fcupBar { height: 4px; margin-top: 8px; border-radius: 2px; background: var(--fc-s4); overflow: hidden; visibility: hidden; }
-.fcupBar > i { display: block; width: 0; height: 100%; background: var(--fc-accent); transition: width .15s; }
-.fcupCard.busy .fcupBar { visibility: visible; }
-.fcupNote { margin-top: 8px; font-size: 12px; line-height: 1.4; color: var(--fc-muted); }
+/* the tray on top of the message box (3.4) */
+.fcupTray { position: absolute; z-index: 55; display: flex; flex-wrap: wrap; align-items: flex-start; box-sizing: border-box; padding: 20px 16px 6px;
+    border-radius: 10px 10px 0 0; background: var(--fc-input, #383a40); box-shadow: 0 -1px 0 var(--fc-divider); }
+html body .chatInput.fcupTrayOn input.input { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+.fcupTile { position: relative; width: 216px; margin: 0 12px 10px 0; padding: 8px; box-sizing: border-box; border-radius: var(--fc-r2);
+    background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
+.fcupTile .th { position: relative; display: flex; align-items: center; justify-content: center; height: 200px; overflow: hidden; border-radius: 6px;
+    background: var(--fc-s1); line-height: 0; }
+.fcupTile .th img, .fcupTile .th video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fcupTile .th .au .fc-ic { width: 48px; height: 48px; color: var(--fc-accent); }
+.fcupTile.spoiler .th img, .fcupTile.spoiler .th video { filter: blur(18px); transform: scale(1.08); }
+.fcupTile .sp { position: absolute; padding: 4px 10px; border-radius: 12px; background: rgba(0,0,0,.65); color: #fff; font: 800 11px/1.2 var(--fc-font);
+    letter-spacing: .06em; text-transform: uppercase; }
+.fcupTile .nm { margin-top: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 13px/18px var(--fc-font); color: var(--fc-text); }
+.fcupTile .bar { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.5); overflow: hidden; display: none; }
+.fcupTile .bar > b { display: block; width: 0; height: 100%; background: var(--fc-accent); transition: width .15s; }
+.fcupTile.up .bar { display: block; }
+.fcupTile.err { box-shadow: inset 0 0 0 2px var(--fc-danger); }
+/* the toolbar on the tile's corner: spoiler, name, remove */
+.fcupTb { position: absolute; top: -12px; right: -10px; display: flex; padding: 2px; border-radius: var(--fc-r2); background: var(--fc-s0);
+    box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh2); }
+.fcupTb > span { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; color: var(--fc-text); }
+.fcupTb > span:hover { background: var(--fc-s4); color: var(--fc-head); }
+.fcupTb > span .fc-ic { width: 20px; height: 20px; }
+.fcupTb > span.bad { color: var(--fc-danger); }
+.fcupTb > span.bad:hover { background: var(--fc-danger); color: #fff; }
+.fcupTb { opacity: 0; pointer-events: none; transition: opacity var(--fc-fast) ease; }
+.fcupTile:hover .fcupTb { opacity: 1; pointer-events: auto; }
+.fcupTray.busy .fcupTb { display: none; }
+.fcupTrayNote { flex: 1 1 100%; font: 12px/18px var(--fc-font); color: var(--fc-muted); }
+.fcupName { width: 100%; }
+.fcupSp { display: flex; align-items: center; margin-top: 10px; font-size: 13px; color: var(--fc-text); cursor: pointer; }
+.fcupSp input { margin: 0 8px 0 0; }
 #fcupDrop { position: fixed; z-index: var(--fc-z-pop); display: none; align-items: center; justify-content: center; pointer-events: none;
     background: rgba(88,101,242,.18); box-shadow: inset 0 0 0 3px var(--fc-accent); border-radius: 8px; }
 #fcupDrop > div { display: flex; flex-direction: column; align-items: center; padding: 24px 32px; border-radius: var(--fc-r3); background: var(--fc-accent); color: #fff; text-align: center; }
@@ -683,7 +879,7 @@ function start(f) {
     fc.watch(ensureButtons, { selector: '.chatInput' });
     fc.tick(ensureButtons, 2000);                      // the emoji / font buttons place themselves too
     fc.own(() => {
-        closeCard();
+        closeTray();
         if (dropEl) dropEl.remove();
         if (picker) picker.close();
         document.querySelectorAll('.fcupBtn, .fcupGifBtn').forEach(b => b.remove());
@@ -709,8 +905,8 @@ const api = {
     favorites: () => (cfg ? cfg.favorites.slice() : []),
     openPicker: (btn, input) => openPicker(btn, input),
     searchGifs: (q, get) => searchGifs(q, get),
-    _card: () => card
+    _tray: () => tray
 };
 
-module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, uploadRetry, stored, uguuUrl, typeOf, audioTag, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
+module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, uploadRetry, stored, uguuUrl, blossomUrl, blossomAuth, mirror, BLOSSOM_MAX, typeOf, audioTag, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

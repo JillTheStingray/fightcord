@@ -1973,5 +1973,22 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "Settings in a floating window": "Ajustes en una ventana flotante",
     "Settings open over Fightcade instead of covering it, with each group in its own card. Click outside to close.": "Los ajustes se abren sobre Fightcade en vez de taparlo, con cada grupo en su propia tarjeta. Haz clic fuera para cerrar.",
     "Smoother pop-ups and pages": "Pop-ups y páginas más fluidos",
-    "Pop-ups spring open, pages and tabs slide in, numbers in your stats count up, and loading shows a shimmer instead of a spinner.": "Los pop-ups se abren con un rebote, las páginas y pestañas se deslizan, los números de tus estadísticas suben contando y la carga muestra un brillo en vez de un círculo girando."
+    "Pop-ups spring open, pages and tabs slide in, numbers in your stats count up, and loading shows a shimmer instead of a spinner.": "Los pop-ups se abren con un rebote, las páginas y pestañas se deslizan, los números de tus estadísticas suben contando y la carga muestra un brillo en vez de un círculo girando.",
+    "Pictures, videos and audio from trusted sites (Nostr picture servers, catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) show in the chat": "Imágenes, videos y audios de sitios de confianza (servidores de imágenes de Nostr, catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord) aparecen en el chat",
+    "Fightcord players see it in the chat; others see a link. It goes to free Nostr picture servers (Blossom), or catbox.moe when they’re all down: public to anyone with the link.": "Quienes usan Fightcord lo ven en el chat; los demás ven un enlace. Va a servidores de imágenes gratuitos de Nostr (Blossom), o a catbox.moe cuando todos están caídos: público para cualquiera con el enlace.",
+    "None of the picture servers took the file right now. Try again later.": "Ningún servidor de imágenes aceptó el archivo ahora mismo. Inténtalo más tarde.",
+    "Spoiler": "Spoiler",
+    "Remove spoiler": "Quitar el spoiler",
+    "Mark as spoiler": "Marcar como spoiler",
+    "Change the name": "Cambiar el nombre",
+    "Enter sends · public to anyone with the link": "Enter envía · público para cualquiera con el enlace",
+    "Open a chat first": "Abre un chat primero",
+    "Wait for the files on their way": "Espera a los archivos que se están enviando",
+    "Up to {n} files at once": "Hasta {n} archivos a la vez",
+    "Change the file": "Cambiar el archivo",
+    "Fightcord 3.4": "Fightcord 3.4",
+    "Pictures that upload reliably": "Imágenes que se suben sin fallar",
+    "Pictures now go to Nostr picture servers, with a copy on a second one, so they still show when a server is down.": "Las imágenes ahora van a servidores de imágenes de Nostr, con una copia en un segundo, así que se siguen viendo cuando un servidor se cae.",
+    "Uploads in the message box": "Subidas en el cuadro de mensaje",
+    "Files wait as tiles in the message box, like Discord: mark one as a spoiler, rename or remove it, then Enter sends them with your text.": "Los archivos esperan como mosaicos en el cuadro de mensaje, como en Discord: marca uno como spoiler, renómbralo o quítalo, y Enter los envía con tu texto."
 } };
