@@ -147,14 +147,19 @@ function klipySlug(link) {
         return m && m[2] !== 'search' ? { type: m[1], slug: m[2] } : null;
     } catch (e) { return null; }
 }
-// one KLIPY item -> a tile / preview: its small looping mp4 (+ a still), and its page as the link
+// one KLIPY item -> a tile / preview: its small animated webp (else its looping mp4 + a still), and its
+// page as the link. (3.5.2: Fightcade's Chromium 80 hands video to the graphics driver, which shows these
+// mp4s far too contrasty; a picture is drawn like any other, and the webp is about the mp4's size)
 function klipyPick(it, type) {
     const f = (it && it.file) || {};
     const size = f.sm || f.md || f.hd || f.xs || {};
+    const anim = (size.webp || {}).url;
     const vid = (size.mp4 || {}).url || ((f.md || {}).mp4 || {}).url, still = (size.jpg || size.webp || {}).url || '';
     const ok = (u) => /^https:\/\/([a-z0-9-]+\.)*klipy\.com\//.test(u || '');
-    if (!it || !it.slug || !ok(vid)) return null;
-    return { link: 'https://klipy.com/' + (type || 'gifs') + '/' + it.slug, src: vid, still: ok(still) ? still : '', kind: 'gifv', name: String(it.title || '').slice(0, 80) };
+    if (!it || !it.slug || !(ok(anim) || ok(vid))) return null;
+    const link = 'https://klipy.com/' + (type || 'gifs') + '/' + it.slug, name = String(it.title || '').slice(0, 80);
+    if (ok(anim)) return { link, src: anim, still: ok(still) ? still : '', kind: 'image', name };
+    return { link, src: vid, still: ok(still) ? still : '', kind: 'gifv', name };
 }
 // a KLIPY answer ({ result, data: { data: [...] } }) -> tiles
 function parseKlipy(json, type) {
@@ -180,10 +185,12 @@ function parseTenor(html) {
         if (!searches) continue;
         Object.keys(searches).forEach(k => (searches[k].results || []).forEach(r => {
             const mf = r.media_formats || {};
-            const vid = (mf.tinymp4 || mf.mp4 || {}).url, still = (mf.tinygif || mf.gifpreview || {}).url;
+            // the small animated webp (a picture, see klipyPick), else the small mp4
+            const anim = (mf.tinywebp || mf.webp || {}).url, vid = (mf.tinymp4 || mf.mp4 || {}).url, still = (mf.tinygif || mf.gifpreview || {}).url;
+            const tenor = (u) => /^https:\/\/media\d*\.tenor\.com\//.test(u || '');
             const link = r.itemurl;
-            if (!/^https:\/\/media\d*\.tenor\.com\//.test(vid || '') || !/^https:\/\/tenor\.com\/view\//.test(link || '') || out.some(x => x.link === link)) return;
-            out.push({ link, src: vid, still: /^https:\/\/media\d*\.tenor\.com\//.test(still || '') ? still : '', kind: 'gifv',
+            if (!(tenor(anim) || tenor(vid)) || !/^https:\/\/tenor\.com\/view\//.test(link || '') || out.some(x => x.link === link)) return;
+            out.push({ link, src: tenor(anim) ? anim : vid, still: tenor(still) ? still : '', kind: tenor(anim) ? 'image' : 'gifv',
                 name: String(r.h1_title || r.content_description || '').replace(/\s*GIF$/i, '').slice(0, 80) });
         }));
     }
@@ -356,6 +363,8 @@ async function prepare(file) {
 // 3.4: files wait in a tray on top of the message box, like Discord's: a tile each (eye = spoiler,
 // pencil = name, bin = remove). Enter sends them with what you typed; nothing goes up before that.
 const TRAY_MAX = 5;
+// a message box: Fightcade's (.chatInput), or another chat's (.fcupHost: lobbies, DMs; it sends through el.fcupSend)
+const HOST = '.chatInput, .fcupHost';
 let tray = null;          // { wrap, input, el, items: [{ id, file, type, url (object URL), name, spoiler, job, el }], busy }
 let trayId = 0;
 
@@ -416,7 +425,7 @@ function offer(file, input) {
     const why = checkFile(file);
     if (why) { fc.ui.toast(why, { kind: 'warning', icon: 'warn' }); return; }
     const box = (input && input.isConnected && input) || fc.app.chatInput();
-    const wrap = box && box.closest('.chatInput');
+    const wrap = box && box.closest(HOST);
     if (!wrap) { fc.ui.toast(T('Open a chat first'), { icon: 'warn' }); return; }
     if (tray && tray.input !== box) closeTray();
     if (!tray) {
@@ -529,6 +538,7 @@ async function go() {
 function send(input, link) {
     const el = input && input.isConnected ? input : fc.app.chatInput();
     if (!el) { fc.ui.copy(link); fc.ui.toast(T('Uploaded: the link is copied'), { icon: 'link' }); return; }
+    if (typeof el.fcupSend === 'function') { el.fcupSend(joinText(el.value, link)); return; }
     fc.app.setChatText(joinText(el.value, link));
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
 }
@@ -543,7 +553,7 @@ function fileFrom(list) {
 }
 
 function onPaste(e) {
-    const input = e.target && e.target.closest && e.target.closest('.chatInput') ? e.target : null;
+    const input = e.target && e.target.closest && e.target.closest(HOST) ? e.target : null;
     if (!input || !cfg.enabled || !e.clipboardData) return;
     const f = fileFrom(e.clipboardData.items);
     if (!f) return;                                       // plain text: Fightcade's paste
@@ -556,7 +566,7 @@ function onPaste(e) {
 // (only real key presses: the Enter that sends the link is ours)
 function onKey(e) {
     if (!tray || !tray.items.length || !e.isTrusted || e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
-    if (!(e.target && e.target.closest && e.target.closest('.chatInput') === tray.wrap)) return;
+    if (!(e.target && e.target.closest && e.target.closest(HOST) === tray.wrap)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     go();
@@ -564,7 +574,7 @@ function onKey(e) {
 
 let dropEl = null, dragDepth = 0;
 const hasFiles = (e) => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].indexOf('Files') >= 0);
-function chatArea(e) { return e.target && e.target.closest ? e.target.closest('.chatWrapper, .channelContent') : null; }
+function chatArea(e) { return e.target && e.target.closest ? e.target.closest('.chatWrapper, .channelContent, .fcupArea') : null; }
 function showDrop(area) {
     if (!dropEl) {
         dropEl = document.createElement('div');
@@ -587,7 +597,7 @@ function onDrop(e) {
     e.preventDefault();
     e.stopPropagation();
     const w = a.closest('.channelWrapper') || document;
-    const box = w.querySelector('.chatInput input.input') || fc.app.chatInput();
+    const box = (a.classList.contains('fcupArea') && a.querySelector('.fcupHost textarea, .fcupHost input')) || w.querySelector('.chatInput input.input') || fc.app.chatInput();
     [...(e.dataTransfer.files || [])].slice(0, TRAY_MAX).forEach(f => offer(f, box));
 }
 
@@ -723,6 +733,34 @@ function toggleFav(item) {
     fc.emit('gifs:changed', { link: item.link, on });
     if (on) fc.ui.toast(T('Added to your favorites'), { icon: 'star', sub: T('The GIF button in the message box has them') });
     return on;
+}
+
+// (before 3.5.2 a favourite GIF was its mp4, see klipyPick) -> its animated webp: Tenor's by the address
+// (mp4 ...AAAPo = webp ...AAAAx, tiny mp4 ...AAAP1 = tiny webp ...AAAA1), KLIPY's by asking KLIPY.
+// Changes the list in place; -> how many changed
+function tenorWebp(src) {
+    const m = String(src || '').match(/^(https:\/\/media\d*\.tenor\.com\/(?:m\/)?[A-Za-z0-9_-]+?)AAAP(o|1)\/([^/?#]+)\.mp4$/);
+    return m ? m[1] + 'AAAA' + (m[2] === 'o' ? 'x' : '1') + '/' + m[3] + '.webp' : '';
+}
+function upgradeFavs(list, get) {
+    let n = 0;
+    const old = (list || []).filter(f => f && f.kind === 'gifv');
+    old.forEach(f => { const w = tenorWebp(f.src); if (w) { f.src = w; f.kind = 'image'; n++; } });
+    const slugs = old.filter(f => f.kind === 'gifv').map(f => klipySlug(f.link)).filter(k => k && k.type === 'gifs').map(k => k.slug);
+    if (!slugs.length) return Promise.resolve(n);
+    const fetch_ = get || getPage;
+    return fetch_(KLIPY + '/gifs/items?slugs=' + slugs.map(encodeURIComponent).join(',')).then(text => {
+        const got = parseKlipy(JSON.parse(text), 'gifs');
+        // (KLIPY can answer a shorter slug: "ellie-williams-tlou-3" for "ellie-williams-tlou-3--kDZOCg9QK")
+        const slugOf = (link) => (klipySlug(link) || {}).slug || '';
+        old.forEach(f => {
+            const s = slugOf(f.link);
+            const it = got.filter(g => { const t = slugOf(g.link); return t && (t === s || s.indexOf(t + '-') === 0); })
+                .sort((a, b) => slugOf(b.link).length - slugOf(a.link).length)[0];
+            if (f.kind === 'gifv' && it && it.kind === 'image') { f.src = it.src; f.kind = 'image'; f.still = it.still; n++; }
+        });
+        return n;
+    }, () => n);
 }
 
 // one tile: a favourite or a search result (i = its place in the picker's list)
@@ -867,6 +905,7 @@ function start(f) {
     if (!Array.isArray(cfg.favorites)) cfg.favorites = [];
     // (before 2.17 a video could be starred like a GIF)
     if (cfg.favorites.some(f => f && f.kind === 'clip')) { cfg.favorites = cfg.favorites.filter(f => f && f.kind !== 'clip'); store.save(); }
+    upgradeFavs(cfg.favorites).then(n => { if (n) { store.save(); fc.log('favorites: ' + n + ' GIF(s) now a picture'); } }).catch(() => {});
     setTimeout(() => fc.emit('gifs:changed', {}), 0);           // stars on the GIFs already in the chat
     fc.ui.style('fcupStyle', CSS);
     const listen = (t, ev, fn, cap) => { t.addEventListener(ev, fn, cap); fc.own(() => t.removeEventListener(ev, fn, cap)); };
@@ -904,9 +943,10 @@ const api = {
     toggleFav: (item) => toggleFav(item),
     favorites: () => (cfg ? cfg.favorites.slice() : []),
     openPicker: (btn, input) => openPicker(btn, input),
+    pick: (input) => pick(input),
     searchGifs: (q, get) => searchGifs(q, get),
     _tray: () => tray
 };
 
-module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, uploadRetry, stored, uguuUrl, blossomUrl, blossomAuth, mirror, BLOSSOM_MAX, typeOf, audioTag, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
+module.exports = { id: 'uploads', name: 'Pictures in chat', start, checkFile, uploadRetry, stored, uguuUrl, blossomUrl, blossomAuth, mirror, BLOSSOM_MAX, typeOf, audioTag, catboxUrl, joinText, multipart, upload, fileFrom, nameOf, searchFavs, tenorSearchUrl, parseTenor, tenorWebp, upgradeFavs, klipySlug, klipyPick, parseKlipy, KLIPY, TYPES, MAX };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

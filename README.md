@@ -64,6 +64,9 @@ walks you through the rest.
 - A matchup guide (3rd Strike, Vampire Savior, Alpha 3, Super Turbo, Garou): how to beat the character
   your opponent plays on the VS screen, and each character's strengths, weaknesses and hard matchups in
   your matchup notes, with their icon. Based on the SuperCombo Wiki.
+- Friends and DMs (3.6): friend requests between Fightcord players, then DMs that keep their history
+  (pictures and GIFs too), voice calls and Challenge from the DM. Message requests from everyone else.
+  Use the same Fightcord on several PCs with a link code (friends don't have to add you again).
 - Looks in one click: Arcade CRT, 3rd Strike and Neon Tokyo set the colours, font, background and
   emulator font together.
 - A calm, one-row channel header, our own rank icons everywhere ranks show, and real system logos
@@ -180,6 +183,7 @@ Fightcord has no server and no analytics. It only talks to:
 | Private lobbies | free public Nostr relays (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | for the lobbies you're in, while Fightcade runs: messages, joins, "online" signals, the lobby's pictures and settings, and results of sets between members (for its leaderboard), all encrypted with a key that only exists in the invite code. The relays keep the encrypted messages so you see what you missed; they can't read them. The voice room goes directly between players' PCs, like voice chat |
 | Pictures in chat | sending: free Nostr picture servers (Blossom: `blossom.primal.net`, `nostr.download`, `cdn.nostrcheck.me`, `blossom.yakihonne.com`, `blossom.band`), each upload signed with a new throwaway key and copied to a second server; `catbox.moe`, or `uguu.se` (files there are deleted after 3 hours), only when none of them takes it; showing: those servers, catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; GIF search: `api.klipy.com` (`tenor.com` if KLIPY can't answer) | what you type in the GIF button's search box goes to KLIPY (or Tenor) after you stop typing, with a random per-install id KLIPY asks for; a picture or audio file is uploaded only when you press Enter to send it (public to anyone with its link); pictures from those sites load when they show up in the chat (or when you click them, with "Blur them until clicked") |
 | Character icons | the SuperCombo Wiki (`wiki.supercombo.gg`) | when the VS screen, a matchup note or Analytics shows a character (the pictures are loaded, nothing is sent) |
+| Friends and DMs | the same free public Nostr relays as private lobbies | while Fightcade runs: friend requests, DMs and call signals with the friends and players you write to, encrypted so only the two of you can read them (the relays keep the encrypted DMs so you see what you missed). Your Fightcord ID (a key made on your PC) goes out with "Show that I use Fightcord", so others can send you a request. Calls go directly between the two PCs |
 | Voice chat | the same relays for the encrypted handshake, then directly your opponent's PC (STUN: Google / Cloudflare to find a route) | only during a set, only when you both joined |
 
 Settings, notes, friends and match history stay in Fightcord's folder on your PC

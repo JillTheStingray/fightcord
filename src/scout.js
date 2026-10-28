@@ -31,6 +31,12 @@ const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const mod = (id) => fc.modules.get(id);
+// the card's "Message @name": a DM when they're on Fightcord (3.6), else @name in the chat box
+function msgBox(name, attr) {
+    const d = mod('dms');
+    const dm = !!(d && d.canDm && d.canDm(name));
+    return fc.ui.cardMsg(name, attr + (dm ? '="dm"' : '="mention"'), dm ? T('Send {name} a direct message', { name }) : '');
+}
 
 /* --------------------------------------------------------------------- data */
 
@@ -259,7 +265,7 @@ function renderCard(card, name, data) {
             ${!me ? `<div class="fcsc-acts">
                 ${chal ? fc.ui.btn('Challenge', { icon: 'sword', act: 'challenge', cls: 'fc-grow', disabled: !chal.ok, title: chal.ok ? T('Challenge {name} (Fightcade asks for the FT)', { name }) : T(chal.why) }) : ''}
                 ${fc.ui.btn('', { kind: 'sec', icon: 'more', act: 'more', title: 'More' })}
-            </div>${fc.ui.cardMsg(name, 'data-act="mention"')}` : ''}
+            </div>${msgBox(name, 'data-act')}` : ''}
         </div>`;
     card.onclick = (e) => onCardClick(e, card, name);
     if (pop && pop.el.contains(card)) fc.ui.place(pop.el, popAnchor, popSide);
@@ -288,6 +294,7 @@ function onCardClick(e, card, name) {
         if (items.length) fc.ui.menu(b, items, { side: 'bottom' });
     }
     else if (act === 'mention') { closeCard(); fc.app.mention(name); }
+    else if (act === 'dm') { const d = mod('dms'); closeCard(); if (d && d.openWith) d.openWith(name); }
     else if (act === 'friend') {
         const fr = mod('friends');
         if (!fr) return;

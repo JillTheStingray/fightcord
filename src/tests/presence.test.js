@@ -18,7 +18,7 @@ test('the book: news only when something changed, gone after the TTL', () => {
     assert.equal(b.heard('a', 0, 0), true);             // new
     assert.equal(b.heard('a', 0, 500), false);          // same, still fresh
     assert.equal(b.heard('a', 1, 600), true);           // voice turned on
-    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0 });
+    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0, dk: '' });
     assert.equal(b.heard('a', 1, 650, 'abcd1234'), true, 'a new profile version is news');
     assert.equal(b.heard('a', 1, 660, 'abcd1234'), false);
     assert.equal(b.heard('a', 1, 670, 'not-a-pv'), true, 'a broken version counts as none');

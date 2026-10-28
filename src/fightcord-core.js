@@ -1663,6 +1663,10 @@ const ICONS = {
     sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/>',
     users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6 6 0 0 1 3.5 5.8"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    userPlus: '<circle cx="10" cy="8" r="4"/><path d="M2.5 21a7.5 7.5 0 0 1 12.6-5.5M19 14v6M16 17h6"/>',
+    phone: '<path d="M5 3.5h3.2l1.6 4.2-2.1 1.4a11 11 0 0 0 5.2 5.2l1.4-2.1 4.2 1.6V17a2 2 0 0 1-2.1 2A15.5 15.5 0 0 1 3 5.6 2 2 0 0 1 5 3.5z"/>',
+    phoneOff: '<path d="M10.7 13.3A11 11 0 0 1 7.7 9.1l2.1-1.4-1.6-4.2H5A2 2 0 0 0 3 5.6a15.5 15.5 0 0 0 4.6 10.8M13.7 15.4a11 11 0 0 0 .2.1l1.4-2.1 4.2 1.6V17a2 2 0 0 1-2.1 2 15.5 15.5 0 0 1-6.3-1.9M3 21 21 3"/>',
+    send: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
     gear: '<path d="M18.94 10.08L21.38 10.47L21.38 13.53L18.94 13.92L18.26 15.55L19.71 17.55L17.55 19.71L15.55 18.26L13.92 18.94L13.53 21.38L10.47 21.38L10.08 18.94L8.45 18.26L6.45 19.71L4.29 17.55L5.74 15.55L5.06 13.92L2.62 13.53L2.62 10.47L5.06 10.08L5.74 8.45L4.29 6.45L6.45 4.29L8.45 5.74L10.08 5.06L10.47 2.62L13.53 2.62L13.92 5.06L15.55 5.74L17.55 4.29L19.71 6.45L18.26 8.45z"/><circle cx="12" cy="12" r="3"/>',
     music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
@@ -2495,8 +2499,9 @@ const ui = {
         return rom ? `linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.5)),url(&quot;${fmt.esc(data.artUrl(rom, 'https://web.fightcade.com/'))}&quot;) center 30%/cover,${c}` : c;
     },
     // the "Message @name" box at the bottom of a card (attrs: what the card's click handler looks for)
-    cardMsg(name, attrs) {
-        return `<div class="fc-cmsg" role="button" ${attrs || ''} title="${fmt.esc(tr('Put @{name} in the chat box', { name }))}">` +
+    // (title: what clicking it does, when it isn't the mention: 3.6's DMs)
+    cardMsg(name, attrs, title) {
+        return `<div class="fc-cmsg" role="button" ${attrs || ''} title="${fmt.esc(title || tr('Put @{name} in the chat box', { name }))}">` +
             `<span>${fmt.esc(tr('Message @{name}', { name }))}</span>${ui.icon('chat')}</div>`;
     },
     // grey placeholder rows that shimmer while something loads (3.3): n rows of h px

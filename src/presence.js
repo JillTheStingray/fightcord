@@ -69,12 +69,14 @@ function announceDecision(state, o) {
 function Book(ttl) {
     const m = new Map();
     return {
-        heard(h, voice, now, pv, nw) {
+        // dk (3.6): their Fightcord ID, for friend requests and DMs
+        heard(h, voice, now, pv, nw, dk) {
             const old = m.get(h);
             const v = typeof pv === 'string' && /^[0-9a-f]{8}$/.test(pv) ? pv : '';
-            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw) });
+            const d = typeof dk === 'string' && /^[0-9a-f]{64}$/.test(dk) ? dk : '';
+            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d });
             if (m.size > 5000) m.delete(m.keys().next().value);
-            return !old || old.voice !== !!voice || old.pv !== v || now - old.at > ttl;       // news?
+            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || now - old.at > ttl;       // news?
         },
         gone(h) { return m.delete(h); },
         get(h, now) { const e = m.get(h); return e && now - e.at <= ttl ? e : null; },
@@ -161,7 +163,14 @@ function send(t, extra) {
     if (pv) msg.pv = pv;
     const nw = named && (t === 'hi' || t === 'here') ? myNewDay() : 0;
     if (nw) msg.nw = nw;
+    // your Fightcord ID (3.6): other Fightcords can send you a friend request with it
+    const dk = named && t !== 'bye' ? myDk() : '';
+    if (dk) msg.dk = dk;
     relays.send(Object.assign(msg, extra));
+}
+function myDk() {
+    const lb = fc.modules.get('lobbies'), d = fc.modules.get('dms');
+    return lb && lb.myId && (!d || !d.enabled || d.enabled()) ? lb.myId() : '';
 }
 // this install's day 1..7 when it's new and you share that (else 0)
 function myNewDay() {
@@ -183,7 +192,8 @@ function onMsg(m) {
     if (m && m.t === 'prof') { takeProfile(m, now); return; }
     const what = react(m, myHash());
     if (what === 'record' || what === 'record+reply') {
-        if (book.heard(m.h, m.voice, now, m.pv, m.nw)) changed();
+        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk)) changed();
+        if (m.dk && /^[0-9a-f]{64}$/.test(m.dk)) fc.emit('presence:id', { h: m.h, dk: m.dk });
         if (m.nw) newcomer(m.h, m.nw);
         for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice }); }
     }
@@ -393,7 +403,7 @@ function info(name) {
     if (!name) return null;
     if (fc.app.isMe(name)) return cfg.visible ? { voice: voiceOn() } : null;
     const e = book.get(hashOf(name), Date.now());
-    return e ? { voice: e.voice } : null;
+    return e ? { voice: e.voice, dk: e.dk || '' } : null;
 }
 
 // ask one player directly (a set is starting and they're not in the book yet)

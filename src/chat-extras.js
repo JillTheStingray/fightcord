@@ -459,13 +459,15 @@ async function buildPreview(raw) {
         if (!k) return null;
         const json = JSON.parse(await http(up.KLIPY + '/' + k.type + '/items?slugs=' + encodeURIComponent(k.slug)));
         const it = up.parseKlipy(json, k.type)[0];
-        return it ? { kind: 'gifv', url: it.src, still: it.still, page: raw } : null;
+        // (its animated webp: a picture, see uploads.js klipyPick; an mp4 only when there's no webp)
+        return it ? (it.kind === 'image' ? { kind: 'image', url: it.src, page: raw } : { kind: 'gifv', url: it.src, still: it.still, page: raw }) : null;
     }
     // giphy.com/gifs/<name>-<id> (or /media/<id>/…): the files have fixed addresses, no page to read
     if (host === 'giphy.com') {
         const m = u.pathname.match(/^\/(?:gifs|stickers|embed)\/(?:[\w-]*-)?([A-Za-z0-9]{8,})\/?$/) || u.pathname.match(/^\/media\/([A-Za-z0-9]{8,})\//);
         if (!m) return null;
-        return { kind: 'gifv', url: 'https://media.giphy.com/media/' + m[1] + '/giphy.mp4', still: 'https://media.giphy.com/media/' + m[1] + '/giphy_s.gif', page: raw };
+        // (the animated webp, about the mp4's size: Fightcade shows these mp4s far too contrasty)
+        return { kind: 'image', url: 'https://media.giphy.com/media/' + m[1] + '/giphy.webp', page: raw };
     }
     if (VID_EXT.test(u.pathname)) return { kind: 'clip', url: raw };
     if (/(^|\.)imgur\.com$/.test(host) && /\.gifv$/i.test(u.pathname)) return { kind: 'gifv', url: raw.replace(/\.gifv(\?.*)?$/i, '.mp4'), page: raw };
@@ -504,12 +506,17 @@ async function buildPreview(raw) {
         return { kind: 'video', color: '#9146ff', site: 'Twitch', title: T('{name} on Twitch', { name: login }), url: raw,
                  image: 'https://static-cdn.jtvnw.net/previews-ttv/live_user_' + encodeURIComponent(login.toLowerCase()) + '-440x248.jpg' };
     }
-    // a Tenor / Giphy page is the GIF itself: its small looping mp4 if it has one, else the .gif
+    // a Tenor / Giphy page is the GIF itself: Tenor's animated webp (from its mp4's address), else the
+    // .gif, else the looping mp4 (Fightcade's Chromium 80 shows those mp4s far too contrasty)
     if (gifPage) {
         const vid = ogVideo(html);
         const gif = og.image && /\.(gif|webp)(\?|$)/i.test(og.image) ? new URL(og.image, raw).href : '';
-        if (vid && imageAllowed(vid)) return { kind: 'gifv', url: vid, still: gif && imageAllowed(gif) ? gif : '', page: raw };
+        let up = null;
+        try { up = require(require('path').join(__dirname, 'uploads.js')); } catch (e) { /* harness */ }
+        const webp = vid && up && up.tenorWebp ? up.tenorWebp(vid) : '';
+        if (webp && imageAllowed(webp)) return { kind: 'image', url: webp, page: raw };
         if (gif && imageAllowed(gif)) return { kind: 'image', url: gif, page: raw };
+        if (vid && imageAllowed(vid)) return { kind: 'gifv', url: vid, page: raw };
         return null;
     }
     // app shells whose tags only ever say their own name aren't worth a card
@@ -543,15 +550,16 @@ async function pumpPreviews() {
     finally { pqBusy = false; setTimeout(pumpPreviews, 150); }
 }
 
-function renderPreview(line, p) {
-    const bc = line.querySelector('.blocksContainer');
-    if (!bc) return;
-    const old = bc.querySelector(':scope > .fcxEmbed');
-    if (old) old.remove();
+// a preview -> its embed (a detached element; null: previews are off or the picture's server isn't
+// allowed). dataset.media: a picture / clip / GIF / audio file (what stands in for the link). onGone:
+// the file didn't load after all (the embed has removed itself)
+function embedEl(p, onGone) {
     const div = document.createElement('div');
     div.className = 'fcxEmbed';
+    const media = p.kind === 'image' || p.kind === 'clip' || p.kind === 'gifv' || p.kind === 'audio';
+    if (media && (!cfg.imagePreviews || !imageAllowed(p.url))) return null;
+    if (media) div.dataset.media = '1';
     if (p.kind === 'image' || p.kind === 'clip' || p.kind === 'gifv') {
-        if (!cfg.imagePreviews || !imageAllowed(p.url)) return;
         div.classList.add('fcxImage');
         // the sender marked it as a spoiler (3.4: #SPOILER_ after the link, Discord's mark): blurred with a label
         const spoiler = /#SPOILER_/.test(p.url);
@@ -566,16 +574,12 @@ function renderPreview(line, p) {
                 ? `<video class="fcxGifv" src="${E(p.url)}" autoplay muted loop playsinline${p.still ? ` poster="${E(p.still)}"` : ''}></video>`
                 : `<img src="${E(p.url)}" alt="" loading="lazy">`) +
             (cfg.blurMedia || spoiler ? `<span class="fcxShow">${E(T(spoiler ? 'Spoiler' : 'Show'))}</span>` : '') + (p.kind === 'clip' ? '' : favStar(p.page || p.url));
-        // only the link in the message: show only the picture
-        if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
     } else if (p.kind === 'audio') {
-        if (!cfg.imagePreviews || !imageAllowed(p.url)) return;
         div.classList.add('fcxAudio');
         div.innerHTML = `<div class="fcxAuTop">${fc.ui.icon('music')}<a href="${E(p.url)}" target="_blank" rel="noopener noreferrer" title="${E(p.name)}">${E(p.name)}</a></div>` +
             `<div class="fcxAuCtl"><span class="fcxPlay" title="${E(T('Play'))}">${fc.ui.icon('play', 'fill')}</span><span class="fcxTime">0:00 / -:--</span>` +
             `<div class="fcxSeek"><i></i></div></div><audio src="${E(p.url)}" preload="metadata"></audio>`;
         wirePlayer(div);
-        if (lineText(line).replace(/\s+/g, '') === String(line.dataset.fcxUrl || '').replace(/\s+/g, '')) line.classList.add('fcxOnlyMedia');
     } else {
         div.style.borderLeftColor = p.color;
         const img = p.image && cfg.imagePreviews && imageAllowed(p.image)
@@ -592,11 +596,48 @@ function renderPreview(line, p) {
         const alts = fc.data.blossomAlts ? fc.data.blossomAlts(i.getAttribute('src') || '') : [];
         i.onerror = () => {
             if (alts.length) { i.src = alts.shift(); return; }
-            if (/^(image|clip|audio)$/.test(p.kind)) { div.remove(); line.classList.remove('fcxOnlyMedia'); } else i.parentNode.remove();
+            if (/^(image|clip|audio)$/.test(p.kind)) { div.remove(); if (onGone) onGone(); } else i.parentNode.remove();
         };
     });
+    return div;
+}
+
+function renderPreview(line, p) {
+    const bc = line.querySelector('.blocksContainer');
+    if (!bc) return;
+    const old = bc.querySelector(':scope > .fcxEmbed');
+    if (old) old.remove();
+    const div = embedEl(p, () => { line.classList.remove('fcxOnlyMedia'); showUrlBlocks(line); });
+    if (!div) return;
+    // only the link in the message: show only the picture; with other words, hide just the link
+    if (div.dataset.media) {
+        if (lineText(line).replace(/s+/g, '') === String(line.dataset.fcxUrl || '').replace(/s+/g, '')) line.classList.add('fcxOnlyMedia');
+        else hideUrlBlock(line, line.dataset.fcxUrl);
+    }
     bc.appendChild(div);
 }
+
+// any link -> its embed, for chats that aren't Fightcade's (private lobbies, DMs): Promise<element|null>.
+// The same allowlist, cache and settings as Fightcade's chat
+function embed(url) {
+    if (!cfg || !cfg.linkPreviews) return Promise.resolve(null);
+    let host;
+    try { host = new URL(url).hostname.toLowerCase(); } catch (e) { return Promise.resolve(null); }
+    if (!allowed(host)) return Promise.resolve(null);
+    return preview(url).then(p => (p && cfg.linkPreviews ? embedEl(p) : null), () => null);
+}
+
+// Fightcade puts a link in a block of its own (<div class="blocks"><span class="link">): with a picture
+// under it, that block is hidden and the rest of the message stays (Discord does the same)
+function hideUrlBlock(line, url) {
+    const want = String(url || '').trim();
+    if (!want) return;
+    line.querySelectorAll('.blocksContainer > .blocks').forEach(b => {
+        const t = b.textContent.trim();
+        if (t && (t === want || (b.querySelector('.link') && t.length > 10 && want.indexOf(t) === 0))) b.classList.add('fcxUrlHid');
+    });
+}
+const showUrlBlocks = (root) => (root || document).querySelectorAll('.blocks.fcxUrlHid').forEach(b => b.classList.remove('fcxUrlHid'));
 
 // the star that keeps a GIF / picture in your favorites (uploads.js has them)
 function favStar(link) {
@@ -699,7 +740,7 @@ function previewLinks(chat) {
         if (line.dataset.fcxUrl === url) continue;
         line.dataset.fcxUrl = url;
         const old = line.querySelector('.blocksContainer > .fcxEmbed');
-        if (old) old.remove();
+        if (old) { old.remove(); showUrlBlocks(line); }
         if (!url) continue;
         let host;
         try { host = new URL(url).hostname.toLowerCase(); } catch (e) { continue; }
@@ -983,7 +1024,7 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxEmbed .fcxVideo::after { content: ''; position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
     margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(0,0,0,.6)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E") center / 26px no-repeat; }
-.fcxEmbed.fcxImage { position: relative; display: inline-block; padding: 0; background: none; border: 0; max-width: 400px; overflow: hidden; border-radius: 8px; line-height: 0; }
+.fcxEmbed.fcxImage { position: relative; display: block; width: -webkit-fit-content; width: fit-content; padding: 0; background: none; border: 0; max-width: 400px; overflow: hidden; border-radius: 8px; line-height: 0; }
 .fcxEmbed.fcxImage img, .fcxEmbed.fcxImage video { width: auto !important; height: auto !important; max-width: 400px; max-height: 300px;
     border-radius: 8px; display: block; cursor: zoom-in; background: rgba(0,0,0,.2); }
 .fcxEmbed.fcxImage video { cursor: default; }
@@ -998,6 +1039,7 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxEmbed .fcxFav:hover { background: rgba(0,0,0,.8); }
 .fcxEmbed .fcxFav .fc-ic { width: 16px; height: 16px; }
 .line.fcxOnlyMedia .blocksContainer > :not(.fcxEmbed):not(.fcTr) { display: none !important; }
+.blocksContainer > .blocks.fcxUrlHid { display: none !important; }
 /* multi-line messages */
 .fcxMulti { position: absolute; z-index: 60; box-sizing: border-box; margin: 0; padding-top: 11px; padding-bottom: 11px; border: 0; outline: none; resize: none;
     overflow-y: auto; white-space: pre-wrap; box-shadow: 0 0 0 1px var(--fc-accent), 0 -6px 18px rgba(0,0,0,.25); }
@@ -1106,6 +1148,7 @@ function onSetting(key) {
     if (!cfg.linkPreviews || !cfg.imagePreviews || key === 'blurMedia') {
         document.querySelectorAll('.fcxEmbed').forEach(n => n.remove());
         document.querySelectorAll('.line.fcxOnlyMedia').forEach(l => l.classList.remove('fcxOnlyMedia'));
+        showUrlBlocks();
         document.querySelectorAll('.line[data-fcx-url]').forEach(l => { delete l.dataset.fcxUrl; });
     }
     if (!cfg.newLine) clearNew();
@@ -1144,6 +1187,7 @@ function start(f) {
         document.querySelectorAll('.fcxEmbed audio').forEach(a => a.pause());
         document.querySelectorAll('.fcxEmbed').forEach(n => n.remove());
         document.querySelectorAll('.line.fcxOnlyMedia').forEach(l => l.classList.remove('fcxOnlyMedia'));
+        showUrlBlocks();
         clearNew();
         window.__fcChatExtrasLoaded = false;
     });
@@ -1178,6 +1222,8 @@ function start(f) {
 }
 
 const api = {
+    // a link's embed for another chat (lobbies, DMs): Promise<element|null>
+    embed: (url) => embed(url),
     _noticeSummary: (n) => noticeSummary(n),
     _buildPreview: (u) => buildPreview(u),
     // the dev harness: show a preview for a made-up file (blob: URLs only there)

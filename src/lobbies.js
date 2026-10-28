@@ -111,6 +111,37 @@ function unwrapSeed(sk, pk, blob) {
     catch (e) { return null; }
 }
 
+/* ============================================== your Fightcord ID + DMs (3.6, pure) */
+
+// Your Fightcord ID: one key per install, from the same secret as your lobby keys. A friend pins it
+// when they accept you. A DM is a lobby of two whose seed both sides work out alone (ECDH between the
+// two IDs): nobody else can read it, and nobody else can post in it either (only those two can make
+// its key, so a message that opens came from one of them).
+const ID_SALT = 'fightcord-id-v1';
+const idKeyOf = (secret) => memberKey(secret, ID_SALT);
+const isPk = (x) => typeof x === 'string' && /^[0-9a-f]{64}$/.test(x);
+function dmSeed(sk, theirPk) {
+    return sha('fightcord-dm-v1|' + V.ecdh(sk, Buffer.from(theirPk, 'hex')).toString('hex')).slice(0, 9).toString('hex');
+}
+// where requests to an ID go: relays only ever see this
+const inboxTopic = (pk) => sha('fightcord-dm-v1|inbox|' + pk).toString('hex').slice(0, 32);
+// a friend request (and the like) to an ID: sealed with the key only the two of you can make
+function inboxEvent(sk, toPk, body) {
+    return V.makeEvent(sk, KIND, [['t', inboxTopic(toPk)]], V.seal(V.ecdh(sk, Buffer.from(toPk, 'hex')), Object.assign({ ms: Date.now() }, body)));
+}
+// a relay event -> { id, from, at, b } | null (not for this ID, or it doesn't open: then it isn't from that key)
+function openInbox(sk, myPk, ev) {
+    try {
+        if (!ev || ev.kind !== KIND || typeof ev.content !== 'string' || !Array.isArray(ev.tags) || !isPk(ev.pubkey)) return null;
+        if ((ev.tags.find(x => x[0] === 't') || [])[1] !== inboxTopic(myPk)) return null;
+        const b = V.open([V.ecdh(sk, Buffer.from(ev.pubkey, 'hex'))], ev.content);
+        if (!b || typeof b.t !== 'string') return null;
+        // from yourself: only the notes your other PCs leave (3.6: friends changed there)
+        if (ev.pubkey === myPk && b.t !== 'sync') return null;
+        return { id: ev.id, from: ev.pubkey, at: sentAt(ev, b), b };
+    } catch (e) { return null; }
+}
+
 /* =================================================================== a room (pure) */
 
 // Everything a lobby's events say, in any order (history arrives shuffled across relays):
@@ -425,6 +456,7 @@ module.exports = {
     start: (f) => start(f),
     // pure parts, for the tests
     encodeCode, decodeCode, derive, memberKey, wrapSeed, unwrapSeed, Room, mentions, groups, b32, unb32, KIND, LIVE,
+    idKeyOf, dmSeed, inboxTopic, inboxEvent, openInbox, cleanLinkCode,
     _setVoice: (v) => { V = v; }
 };
 
@@ -495,6 +527,9 @@ const now = () => Date.now();
 const me = () => fc.app.me() || '';
 const myGravatar = () => { const [, u] = fc.app.user(me()); return (u && u.gravatar) || ''; };
 const lobbyById = (id) => cfg.lobbies.find(l => l.id === id) || null;
+const lobbiesOnly = () => cfg.lobbies.filter(lb => !lb.dm);
+// someone in a room: a member, or (a DM) your friend even before they've written
+const whoIs = (L, pk) => L.room.members.get(pk) || (L.lb.dm && pk === L.lb.dm.pk ? { pk, n: L.lb.dm.n, g: L.lb.dm.g || '' } : null);
 const gameName = (lb) => shortName(lb && lb.ch) || T('No game');
 
 function keysFor(L) {
@@ -509,7 +544,9 @@ function roomFor(lb) {
     let L = rooms.get(lb.id);
     if (L) return L;
     L = { lb, room: Room({ owner: lb.owner, pre: lb.pre }), live: new Map(), sk: null, pk: '', sub: null, oldSubs: [], lastHere: 0 };
-    if (crypto && V && cfg.secret) { L.sk = memberKey(cfg.secret, lb.id); L.pk = V.pubkey(L.sk).toString('hex'); }
+    // a DM signs with your ID (that's the key your friend pinned); a lobby with its own key
+    if (lb.dm) { const id = myId(); if (id) { L.sk = id.sk; L.pk = id.pk; } }
+    else if (crypto && V && cfg.secret) { L.sk = memberKey(cfg.secret, lb.id); L.pk = V.pubkey(L.sk).toString('hex'); }
     keysFor(L);
     (cache.data[lb.id] || []).forEach(ev => L.room.apply(ev));
     rooms.set(lb.id, L);
@@ -521,9 +558,13 @@ function onEvent(L, ev) {
     if (!ev || typeof ev.content !== 'string' || !Array.isArray(ev.tags)) return;
     const t = (ev.tags.find(x => x[0] === 't') || [])[1];
     const tk = t && L.topics.get(t);
-    if (!tk || ev.pubkey === L.pk) return;
+    // yours: what you post from another PC (the same ID, 3.6) counts; your own live signals don't
+    if (!tk || (ev.pubkey === L.pk && ev.kind === LIVE)) return;
+    // a DM: only your friend's ID and yours (and the name is the one you know them by, not what the event says)
+    if (L.lb.dm && ev.pubkey !== L.lb.dm.pk && ev.pubkey !== L.pk) return;
     const b = V.open([tk.key], ev.content);
     if (!b || typeof b.t !== 'string') return;
+    if (L.lb.dm && typeof b.n === 'string') b.n = ev.pubkey === L.pk ? me() || b.n : L.lb.dm.n;
     const sent = typeof b.ms === 'number' && Math.abs(b.ms - ev.created_at * 1000) < 120000 ? b.ms : ev.created_at * 1000;
     if (ev.kind === LIVE) { onLive(L, ev.pubkey, b, sent); return; }
     applyEv(L, recOf(ev, b, tk.ep, (t) => { const x = L.topics.get(t); return x ? x.key : null; }), true);
@@ -573,6 +614,8 @@ function applyEv(L, rec, fromNet) {
     if (what === 'look' || what === 'info') setTimeout(renderRail, 0);
     remember(L, rec);
     if (what === 'msg' && fromNet) notify(L, rec);
+    // a closed DM comes back to the list with a new message
+    if (what === 'msg' && L.lb.dm && L.lb.hidden) { L.lb.hidden = false; store.save(); }
     changed(L.lb.id);
 }
 
@@ -680,7 +723,10 @@ function hereBody(L, t) {
 
 function onLive(L, pk, b, at) {
     if (L.room.out.has(pk) && !(L.room.members.has(pk))) return;
-    const n = typeof b.n === 'string' ? b.n.slice(0, 40) : (L.room.members.get(pk) || {}).n;
+    const n = L.lb.dm ? L.lb.dm.n : typeof b.n === 'string' ? b.n.slice(0, 40) : (L.room.members.get(pk) || {}).n;
+    // a DM call: they rang (or turned it down)
+    if (L.lb.dm && b.t === 'ring' && b.to === L.pk) { ringIn(L, at); return; }
+    if (L.lb.dm && b.t === 'nope' && b.to === L.pk) { ringOff(L, true); return; }
     if (b.t === 'hi' || b.t === 'here') {
         const was = L.live.get(pk);
         L.live.set(pk, { pk, n, g: b.g || '', st: b.st || 'on', v: !!b.v, vs: b.vs || '', at });
@@ -919,7 +965,7 @@ const rsvp = (id, e, go) => memberPost(id, { t: 'rsvp', e, go: !!go });
 function reportSet(set) {
     if (!set || !set.opp || set.quark == null || set.mine == null || set.theirs == null || set.mine === set.theirs) return;
     rooms.forEach(L => {
-        if (L.lb.removed || L.lb.closed || !L.sk) return;
+        if (L.lb.removed || L.lb.closed || !L.sk || L.lb.dm) return;
         if (L.lb.rom && set.rom && L.lb.rom !== set.rom) return;
         const opp = L.room.active().find(m => m.pk !== L.pk && lc(m.n) === lc(set.opp));
         if (opp) post(L, { t: 'set', q: String(set.quark), o: opp.pk, w: set.mine, l: set.theirs });
@@ -970,7 +1016,233 @@ function send(id, text, re) {
     L.lastSend = now();
     const body = Object.assign({ t: 'msg', x, n: me() || 'You', g: myGravatar() }, re ? { re } : {});
     if (demo) { applyEv(L, { id: 'd' + now(), pk: L.pk, at: now(), ep: 0, b: body }, false); return true; }
-    return !!post(L, body);
+    const ok = !!post(L, body);
+    // a DM to someone who isn't your friend yet: the DMs module lets them know (a message request)
+    if (ok && L.lb.dm) fc.emit('dm:sent', { pk: L.lb.dm.pk });
+    return ok;
+}
+
+/* =========================================================== DMs + your inbox (3.6) */
+
+const HOME = '@home';                    // the DM page's Friends view (view.id)
+let ids = null;                          // your Fightcord ID: { sk, pk }
+function myId() {
+    if (!ids && crypto && V && cfg && /^[0-9a-f]{64}$/.test(cfg.secret || '')) { const sk = idKeyOf(cfg.secret); ids = { sk, pk: V.pubkey(sk).toString('hex') }; }
+    return ids;
+}
+const dmOf = (pk) => (cfg ? cfg.lobbies.find(l => l.dm && l.dm.pk === pk) : null) || null;
+
+// the DM with an ID, made the first time (o.req: a message request, not accepted yet)
+function dmFor(pk, n, g, o) {
+    const id = myId();
+    if (!id || !isPk(pk) || pk === id.pk) return null;
+    const name = String(n || '').trim().slice(0, 40);
+    let lb = dmOf(pk);
+    if (lb) {
+        if (name && lb.dm.n !== name) { lb.dm.n = name; lb.name = name; }
+        if (g && /^[0-9a-f]{1,64}$/i.test(g)) lb.dm.g = g;
+        if (o && o.req === false && lb.req) lb.req = false;
+        if (o && o.show) lb.hidden = false;
+        store.save();
+        return lb;
+    }
+    const seed = dmSeed(id.sk, pk);
+    lb = { id: derive(seed).topic, dm: { pk, n: name || '?', g: g && /^[0-9a-f]{1,64}$/i.test(g) ? g : '' }, name: name || '?', ch: '', rom: '', owner: '', pre: '',
+        seeds: [seed], epoch: 0, joinedAt: now(), lastRead: now(), notify: 'all', req: !!(o && o.req), hidden: !!(o && o.hidden) };
+    cfg.lobbies.push(lb);
+    store.save();
+    if (pool && !demo) startLobby(lb);
+    return lb;
+}
+// a DM gone for good (blocked, a request turned down): its history leaves this PC too
+function dmDrop(pk) {
+    const lb = dmOf(pk);
+    if (!lb) return;
+    if (vr && vr.id === lb.id) voiceLeave();
+    const L = rooms.get(lb.id);
+    if (L && L.sub) L.sub.close();
+    rooms.delete(lb.id);
+    cfg.lobbies = cfg.lobbies.filter(l => l !== lb);
+    delete cache.data[lb.id];
+    store.save(); cache.save();
+    if (view.id === lb.id && view.page) openLobby(HOME);
+    changed(lb.id);
+}
+// the DM list: newest first
+function dmList() {
+    return cfg.lobbies.filter(lb => lb.dm).map(lb => {
+        const L = rooms.get(lb.id);
+        const vis = L ? L.room.visible().filter(m => !m.sys) : [];
+        const last = vis[vis.length - 1];
+        const st = L ? statusOf(L, lb.dm.pk) : { on: false, st: 'off', v: false };
+        return { id: lb.id, pk: lb.dm.pk, n: lb.dm.n, g: lb.dm.g, req: !!lb.req, hidden: !!lb.hidden, old: !!lb.dm.old, unread: L ? unread(L).n : 0,
+            at: last ? last.at : lb.joinedAt || 0, last: last ? { x: last.x, mine: last.pk === (L && L.pk) } : null, st, voice: !!(vr && vr.id === lb.id) };
+    }).sort((a, b) => b.at - a.at);
+}
+
+// requests (and the like) to someone's ID; theirs to you come through onInbox
+let inboxSub = null, inboxFn = null;
+const inboxQ = [];
+function inboxSend(toPk, body) {
+    const id = myId();
+    if (!id || !isPk(toPk) || demo) return false;
+    if (!pool) return false;
+    pool.pub(inboxEvent(id.sk, toPk, Object.assign({ n: me(), g: myGravatar() }, body)), true);
+    return true;
+}
+function subscribeInbox() {
+    const id = myId();
+    if (!pool || inboxSub || !id) return;
+    const since = Math.floor((now() - KEEP) / 1000);
+    inboxSub = pool.sub([{ kinds: [KIND], '#t': [inboxTopic(id.pk)], since, limit: 300 }], (ev) => {
+        const m = openInbox(id.sk, id.pk, ev);
+        if (!m) return;
+        if (inboxFn) inboxFn(m); else { inboxQ.push(m); if (inboxQ.length > 300) inboxQ.shift(); }
+    });
+}
+function onInbox(fn) { inboxFn = fn; while (fn && inboxQ.length) fn(inboxQ.shift()); }
+
+// a call in a DM: join its voice room and ring them
+let ringing = null;                      // { id, toast, timer, out }: a call ringing, theirs or ours
+function call(id) {
+    const L = rooms.get(id);
+    if (!L || !L.lb.dm) return;
+    voiceJoin(id);
+    post(L, { t: 'ring', to: L.lb.dm.pk }, true);
+    ringOff(L);
+    const t = setTimeout(() => { if (ringing && ringing.id === id) ringing = null; }, 30000);
+    ringing = { id, out: true, timer: t };
+    changed(id);
+}
+function ringIn(L, at) {
+    if (now() - at > 40000 || (vr && vr.id === L.lb.id)) return;
+    const D = mod('dms');
+    if (D && D.blocked && D.blocked(L.lb.dm.pk)) return;
+    ringOff(L);
+    const id = L.lb.id, name = L.lb.dm.n;
+    const toast = fc.ui.toast(T('{name} is calling you', { name }), {
+        icon: 'phone', sub: T('Voice call · Fightcord'), ms: 30000, urgent: true,
+        actions: [{ label: T('Join'), fn: () => { ringOff(L); openLobby(id); voiceJoin(id); } },
+            { label: T('Decline'), kind: 'sec', fn: () => { ringOff(L); post(L, { t: 'nope', to: L.lb.dm.pk }, true); } }]
+    });
+    let n = 0;
+    const ring = () => { if (!ringing || ringing.id !== id || n++ > 8) return; fc.sound.tone([[660, 0, .12], [880, .16, .12], [660, .32, .12]], { volume: .45 }); ringing.timer = setTimeout(ring, 3000); };
+    ringing = { id, toast, timer: 0 };
+    ring();
+    setTimeout(() => { if (ringing && ringing.id === id && ringing.toast === toast) ringOff(L); }, 30000);
+    changed(id);
+}
+function ringOff(L, declined) {
+    if (!ringing || (L && ringing.id !== L.lb.id)) return;
+    const r = ringing;
+    ringing = null;
+    clearTimeout(r.timer);
+    if (r.toast && r.toast.close) r.toast.close();
+    if (declined && L) fc.ui.toast(T('{name} can’t talk right now', { name: L.lb.dm.n }), { icon: 'phone' });
+    if (L) changed(L.lb.id);
+}
+
+// a friend got a new PC (and you accepted it): their old DM stays readable here, but closed
+function dmRetire(pk) {
+    const lb = dmOf(pk);
+    if (!lb) return;
+    lb.dm.old = true;
+    store.save();
+    if (vr && vr.id === lb.id) voiceLeave();
+    changed(lb.id);
+}
+
+/* ================================================== linking another PC (3.6) */
+
+// Your Fightcord on a second PC, with the same ID (so friends don't have to add you again): this PC
+// shows a code, the other one types it, this one asks you, then sends your ID's secret, your lobbies
+// and (from the DMs module) your friends. Live events only (relays pass them on, don't keep them),
+// sealed with a key made from the code; the code works while its window is open.
+const linkTopic = (code) => sha('fightcord-link-v1|t|' + code).toString('hex').slice(0, 32);
+const linkKey = (code) => sha('fightcord-link-v1|k|' + code);
+const newLinkCode = () => b32(crypto.randomBytes(8)).slice(0, 12).match(/.{4}/g).join('-');
+function cleanLinkCode(s) {
+    const c = String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1').replace(/U/g, 'V');
+    return c.length === 12 ? c.match(/.{4}/g).join('-') : '';
+}
+function linkChannel(code, onMsg) {
+    if (!pool || !crypto || !V) return null;
+    const topic = linkTopic(code), key = linkKey(code), sk = crypto.randomBytes(32);
+    const mine = V.pubkey(sk).toString('hex');
+    const sub = pool.sub([{ kinds: [LIVE], '#t': [topic], since: Math.floor(now() / 1000) - 30 }], (ev) => {
+        if (!ev || ev.pubkey === mine || typeof ev.content !== 'string') return;
+        const b = V.open([key], ev.content);
+        if (b && typeof b.t === 'string') onMsg(b);
+    });
+    return { send: (b) => pool.pub(V.makeEvent(sk, LIVE, [['t', topic]], V.seal(key, b)), false), close: () => sub.close() };
+}
+// this PC: offer your Fightcord. onAsk(yes): the other PC asked; call yes(extra) to send it
+function linkOffer(onAsk) {
+    if (demo) return { code: 'K7QM-4XPA-93RD', close() {} };          // (the harness: no relays)
+    const code = newLinkCode();
+    let done = false;
+    const ch = linkChannel(code, (b) => {
+        if (b.t !== 'ask' || done) return;
+        onAsk((extra) => {
+            if (done) return;
+            done = true;
+            const keep = cfg.lobbies.map(lb => Object.assign({}, lb));
+            ch.send({ t: 'give', secret: cfg.secret, lobbies: keep, extra: extra || {} });
+        });
+    });
+    return ch ? { code, close: () => ch.close() } : null;
+}
+// the other PC: ask with the code -> Promise<{ secret, lobbies, extra }> (rejects: no answer in time)
+function linkAsk(text) {
+    const code = cleanLinkCode(text);
+    if (!code) return Promise.reject(new Error(T('That isn’t a link code')));
+    return new Promise((ok, no) => {
+        let t = 0, n = 0;
+        const ch = linkChannel(code, (b) => {
+            if (b.t !== 'give' || !/^[0-9a-f]{64}$/.test(b.secret || '') || !Array.isArray(b.lobbies)) return;
+            clearTimeout(t); ch.close(); ok(b);
+        });
+        if (!ch) { no(new Error(T('Not connected to the relays yet — try again in a moment'))); return; }
+        const ask = () => { if (n++ > 40) { ch.close(); no(new Error(T('No answer: is the code still showing on your other PC?'))); return; } ch.send({ t: 'ask' }); t = setTimeout(ask, 3000); };
+        setTimeout(ask, 600);
+    });
+}
+// take over the other PC's Fightcord: its ID, its lobbies and DMs (this PC's own are replaced)
+function adopt(p) {
+    if (!p || !/^[0-9a-f]{64}$/.test(p.secret || '') || !Array.isArray(p.lobbies)) return false;
+    const ok = (lb) => lb && typeof lb.id === 'string' && /^[\w-]{1,80}$/.test(lb.id) && Array.isArray(lb.seeds) && lb.seeds.every(s => /^[0-9a-f]{18}$/.test(s)) &&
+        (!lb.dm || isPk(lb.dm.pk));
+    voiceLeave();
+    rooms.forEach(L => { if (L.sub) L.sub.close(); });
+    rooms.clear();
+    if (inboxSub) { inboxSub.close(); inboxSub = null; }
+    ids = null;
+    cfg.secret = p.secret;
+    cfg.lobbies = p.lobbies.filter(ok).map(lb => Object.assign({}, lb, { lastRead: Math.min(+lb.lastRead || 0, now()) }));
+    Object.keys(cache.data).forEach(k => delete cache.data[k]);
+    store.save(); cache.save();
+    if (view.page) view.page.close();
+    boot();
+    renderRail();
+    fc.emit('lobbies:changed', {});
+    return true;
+}
+
+// Challenge from a DM: the games to pick from (theirs and yours first, then what you played lately)
+function dmGames(L) {
+    const out = [], add = (ch) => { if (gameCh(ch) && out.indexOf(ch) < 0) out.push(ch); };
+    const u = fc.app.userInfo(L.lb.dm.n);
+    const mine = fc.app.joinedChannels().map(c => c.name || c.id);
+    (u && u.channels || []).forEach(ch => { if (mine.indexOf(ch) >= 0) add(ch); });
+    (u && u.channels || []).forEach(add);
+    mine.forEach(add);
+    try { (fc.history.all() || []).slice(-60).reverse().forEach(s => add(s.channel)); } catch (e) { /* no history */ }
+    return out.slice(0, 8);
+}
+function dmChallenge(anchor, L) {
+    const games = dmGames(L);
+    if (!games.length) { fc.ui.toast(T('Join a game channel first'), { icon: 'sword', sub: T('Then you can challenge {name} in it.', { name: L.lb.dm.n }) }); return; }
+    fc.ui.menu(anchor, games.map(ch => ({ label: shortName(ch), icon: 'pad', fn: () => challenge(L.lb.id, L.lb.dm.pk, ch) })), { side: 'bottom' });
 }
 
 /* =========================================================== unread + notifying */
@@ -992,6 +1264,8 @@ function markRead(id) {
     lb.lastRead = now();
     store.save();
     renderRail();
+    // the DM list (and its bubble in the rail) count unread too
+    if (lb.dm) changed(id);
 }
 
 function notify(L, rec) {
@@ -1000,6 +1274,8 @@ function notify(L, rec) {
     if (shown) { markRead(L.lb.id); return; }
     const m = L.room.msgs.find(x => x.id === rec.id);
     if (!m) return;
+    // a DM: the DMs module knows your pop-up / sound settings (and keeps message requests quiet)
+    if (L.lb.dm) { const D = mod('dms'); if (D && D.onMessage) D.onMessage(L.lb.dm.pk, m); return; }
     const re = m.re && L.room.msgs.find(x => x.id === m.re);
     const at = mentions(m.x, me()) || !!(re && re.pk === L.pk);
     const how = L.lb.notify || 'mentions';
@@ -1045,12 +1321,12 @@ function waitFor(test, ms) {
     });
 }
 
-async function challenge(id, pk) {
+async function challenge(id, pk, chosen) {
     const L = rooms.get(id);
-    const m = L && L.room.members.get(pk);
+    const m = L && whoIs(L, pk);
     if (!m) return;
     const ms = mod('match-screens');
-    const ch = L.lb.ch;
+    const ch = chosen || L.lb.ch;
     if (!ms || !ms.challenge) { fc.ui.toast(T('Match screens are off'), { kind: 'warning', icon: 'sword' }); return; }
     if (!ch) { fc.ui.toast(T('This lobby has no game yet'), { kind: 'warning', icon: 'sword' }); return; }
     if (!inGame(m.n, ch)) {
@@ -1070,10 +1346,12 @@ async function challenge(id, pk) {
     }, 300);
 }
 
-// a member wants a set: get into the lobby's game so their challenge reaches us
+// a member wants a set: get into the lobby's game so their challenge reaches us (a friend in a DM picks
+// the game: any of Fightcade's game channels)
+const gameCh = (ch) => typeof ch === 'string' && ch.length > 2 && ch.length < 200 && !/-channel$/.test(ch);
 function comeJoin(L, pk, ch) {
-    const m = L.room.members.get(pk);
-    if (!m || !ch || ch !== L.lb.ch) return;
+    const m = whoIs(L, pk);
+    if (!m || !gameCh(ch) || (!L.lb.dm && ch !== L.lb.ch)) return;
     if (fc.app.channel(ch)) return;
     if (cfg.autoJoin) {
         joinGame(ch, true);
@@ -1276,7 +1554,7 @@ function marks(L, pk, king) {
     return h;
 }
 // the name shown in the lobby: its nickname, else the Fightcade name
-const nameOf = (L, pk, fallback) => L.room.name(pk) || (pk === L.pk ? me() : '') || fallback || '?';
+const nameOf = (L, pk, fallback) => (L.lb.dm && pk === L.lb.dm.pk ? L.lb.dm.n : '') || L.room.name(pk) || (pk === L.pk ? me() : '') || fallback || '?';
 const avatarOf = (name, g, size) => fc.ui.avatar(name, { size }).replace(/src="[^"]*"/, `src="${E(fc.data.avatarUrl(name, g, size * 2))}"`);
 // a translated line with one {key} filled with html
 function Th(s, key, html, v) {
@@ -1334,7 +1612,7 @@ function initials(name) {
 }
 
 function railHtml() {
-    const icons = cfg.lobbies.map(lb => {
+    const icons = lobbiesOnly().map(lb => {
         const L = rooms.get(lb.id);
         const look = lookOf(L);
         const u = L ? unread(L) : { n: 0, at: 0 };
@@ -1647,20 +1925,27 @@ function keysInside(el) { el.addEventListener('keydown', (e) => e.stopPropagatio
 
 /* =================================================================== the page */
 
+// a lobby, a DM, or (HOME) the DM page's Friends view. DMs and the Friends view share one page
+// (Discord's Home): the DM list on the left, from the DMs module
 function openLobby(id) {
-    const lb = lobbyById(id);
-    if (!lb) return;
+    const home = id === HOME;
+    const lb = home ? null : lobbyById(id);
+    if (!home && !lb) return;
+    const mode = home || lb.dm ? 'dm' : 'lobby';
+    if (view.page && view.mode !== mode) view.page.close();
     if (view.id !== id) { view.tab = 'chat'; view.re = ''; view.rx = null; }
     view.id = id;
-    const L = roomFor(lb);
-    loadOld(L);
+    view.mode = mode;
+    const L = home ? null : roomFor(lb);
+    if (L) loadOld(L);
     if (!view.page) {
-        view.page = fc.ui.page('lobby', {
-            title: lb.name, icon: 'lock', cls: 'fclbPage',
-            tools: fc.ui.btn('Invite', { kind: 'brand', size: 'sm', icon: 'plus', act: 'lb-invite' }),
+        const page = fc.ui.page(mode === 'dm' ? 'dms' : 'lobby', {
+            title: home ? T('Friends') : lb.name, icon: mode === 'dm' ? 'chat' : 'lock', cls: 'fclbPage' + (mode === 'dm' ? ' fclbDmPage' : ''),
+            tools: mode === 'dm' ? '' : fc.ui.btn('Invite', { kind: 'brand', size: 'sm', icon: 'plus', act: 'lb-invite' }),
             onEsc: () => { if (view.re) { view.re = ''; renderPage(); return false; } if (view.tab !== 'chat') { view.tab = 'chat'; renderPage(); return false; } },
-            onClose: () => { view.page = null; renderRail(); }
+            onClose: () => { if (view.page === page) view.page = null; renderRail(); fc.emit('lobbies:changed', {}); }
         });
+        view.page = page;
         const el = view.page.el;
         el.addEventListener('click', onPageClick);
         el.addEventListener('keydown', onPageKey);
@@ -1670,18 +1955,19 @@ function openLobby(id) {
         el.addEventListener('mouseover', onPageOver);
         el.addEventListener('scroll', onLogScroll, true);
     }
-    view.page.setTitle(lb.name);
+    view.page.setTitle(home ? T('Friends') : lb.name);
     view.stick = true;
     renderPage(true);
-    markRead(id);
+    if (!home) markRead(id);
     renderRail();
+    fc.emit('lobbies:changed', {});
     setTimeout(() => { const t = view.page && view.page.el.querySelector('.fclbIn'); if (t) t.focus(); }, 40);
 }
 
 function statusOf(L, pk) {
     if (pk === L.pk) return { on: true, st: myStatus(), v: !!(vr && vr.id === L.lb.id) };
     const x = liveOf(L, pk);
-    const m = L.room.members.get(pk);
+    const m = whoIs(L, pk);
     const fcSt = m ? fc.app.status(m.n) : 'off';
     if (!x) return { on: false, st: 'off', v: false };
     return { on: true, st: fcSt === 'playing' ? 'playing' : x.st || 'on', v: !!x.v };
@@ -1711,6 +1997,37 @@ function soonText(at) {
     if (left < 3600000) return T('in {n} min', { n: Math.max(1, Math.round(left / 60000)) });
     if (left < 36 * 3600000) return T('in {n} h', { n: Math.round(left / 3600000) });
     return T('in {n} days', { n: Math.round(left / 86400000) });
+}
+
+// a message's first link -> where its picture / GIF / video / preview goes (chat-extras fills it in: fillEmbeds)
+const URL_IN = /https?:\/\/[^\s<>"']+/;
+function embSlot(it) {
+    const m = String(it.x || '').match(URL_IN);
+    return m ? `<div class="fclbEmb" data-emb="${E(m[0])}" data-k="${E(it.id)}"${it.x.trim() === m[0] ? ' data-only="1"' : ''}></div>` : '';
+}
+// the embeds are made once per message and moved into each new render (no reloading pictures)
+const embeds = new Map();                // message id + link -> Promise<element|null>
+function fillEmbeds(log) {
+    const cx = mod('chat-extras');
+    if (!cx || !cx.embed) return;
+    log.querySelectorAll('.fclbEmb[data-emb]').forEach(slot => {
+        const url = slot.dataset.emb, k = slot.dataset.k + ' ' + url;
+        let p = embeds.get(k);
+        if (!p) { p = cx.embed(url); embeds.set(k, p); if (embeds.size > 300) embeds.delete(embeds.keys().next().value); }
+        p.then(el => {
+            if (!el || !slot.isConnected || slot.firstChild) return;
+            slot.appendChild(el);
+            // a picture: the link itself goes (all of the message when it was only the link), like Discord
+            if (el.dataset.media) {
+                const ln = slot.closest('.ln');
+                if (slot.dataset.only) ln.classList.add('only');
+                else ln.querySelectorAll('.tx .fclbA').forEach(a => { if (a.dataset.href === url) a.classList.add('gone'); });
+            }
+            const stick = () => { const lg = slot.closest('.fclbLog'); if (lg && view.stick) lg.scrollTop = lg.scrollHeight; };
+            stick();
+            el.querySelectorAll('img, video').forEach(m => { m.addEventListener('load', stick, { once: true }); m.addEventListener('loadedmetadata', stick, { once: true }); });
+        });
+    });
 }
 
 // text -> html: escaped, links, @you highlighted
@@ -1778,9 +2095,12 @@ function chatHtml(L) {
     const fresh = new Set();
     let out = '', lastDay = '';
     const look = lookOf(L), own = !!(look.ic || look.emo);
-    const begin = `<div class="fclbHello"><div class="ic${own ? ' own' : ''}" style="--c:${colOf(lb.id, look)}">${own ? iconInner(lb.name, look) : fc.ui.icon('hash')}</div><h2>${E(T('Welcome to {lobby}', { lobby: lb.name }))}</h2>` +
-        `<p>${E(T('This is the start of the lobby. Only people with an invite code (and Fightcord) can read it.'))}</p>` +
-        fc.ui.btn('Invite people', { kind: 'sec', size: 'sm', icon: 'plus', act: 'lb-invite' }) + '</div>';
+    const begin = lb.dm
+        ? `<div class="fclbHello dm"><span class="av">${avatarOf(lb.dm.n, lb.dm.g, 80)}</span><h2>${E(lb.dm.n)}</h2>` +
+            `<p>${E(T('This is the beginning of your direct messages with {name}. Only the two of you can read them.', { name: lb.dm.n }))}</p></div>`
+        : `<div class="fclbHello"><div class="ic${own ? ' own' : ''}" style="--c:${colOf(lb.id, look)}">${own ? iconInner(lb.name, look) : fc.ui.icon('hash')}</div><h2>${E(T('Welcome to {lobby}', { lobby: lb.name }))}</h2>` +
+            `<p>${E(T('This is the start of the lobby. Only people with an invite code (and Fightcord) can read it.'))}</p>` +
+            fc.ui.btn('Invite people', { kind: 'sec', size: 'sm', icon: 'plus', act: 'lb-invite' }) + '</div>';
     if (msgs.length < 250) out += begin;
     const rxHtml = (mid) => {
         const list = L.room.reactions(mid);
@@ -1820,7 +2140,7 @@ function chatHtml(L) {
             `<div class="hd"><b data-who="${E(g.pk)}" style="color:${fc.data.hashColor(real)}"${name !== real ? ` title="${E(real)}"` : ''}>${E(name)}</b>${marks(L, g.pk, king)}` +
             (dupes.has(g.pk) ? `<i class="mk dup" title="${E(T('Another member uses this name too — this may not be who you think'))}">${fc.ui.icon('warn')}</i>` : '') +
             `<time>${E(when(g.at))}</time></div>` +
-            g.items.map(it => `<div class="ln${mentions(it.x, meName) ? ' at' : ''}${pinned.has(it.id) ? ' pinned' : ''}" data-mid="${E(it.id)}" title="${E(when(it.at))}"><span class="tx">${richText(it.x, meName)}</span>${rxHtml(it.id)}</div>`).join('') +
+            g.items.map(it => `<div class="ln${mentions(it.x, meName) ? ' at' : ''}${pinned.has(it.id) ? ' pinned' : ''}" data-mid="${E(it.id)}" title="${E(when(it.at))}"><span class="tx">${richText(it.x, meName)}</span>${embSlot(it)}${rxHtml(it.id)}</div>`).join('') +
             '</div></div></div>';
     });
     view.rx = fresh;
@@ -1852,7 +2172,53 @@ function boxHtml(L) {
     if (lb.closed) return `<div class="fclbGone">${fc.ui.icon('lock')}${E(T('The owner closed this lobby.'))}${fc.ui.btn('Leave', { kind: 'sec', size: 'sm', act: 'lb-leave' })}</div>`;
     const until = L.pk ? L.room.muteEnd(L.pk, now()) : 0;
     if (until) return `<div class="fclbGone">${fc.ui.icon('ban')}${E(T('A moderator muted you until {time}. Nobody sees what you write until then.', { time: whenEv(until) }))}</div>`;
-    return `<div class="fclbBox"><textarea class="fclbIn" rows="1" maxlength="${MAX_TEXT}" placeholder="${E(T('Message {lobby}', { lobby: lb.name }))}"></textarea></div>`;
+    // a message request: accept it (or not) before writing back
+    if (lb.dm && lb.req) {
+        return `<div class="fclbReq"><div class="tx"><b>${E(T('{name} wants to message you', { name: lb.dm.n }))}</b>` +
+            `<small>${E(T('They aren’t your friend yet. Accept to write back, or ignore it: they won’t be told either way.'))}</small></div>` +
+            fc.ui.btn('Accept', { kind: 'brand', size: 'sm', icon: 'check', act: 'dm-accept' }) + fc.ui.btn('Ignore', { kind: 'sec', size: 'sm', act: 'dm-ignore' }) +
+            fc.ui.btn('Block', { kind: 'danger', size: 'sm', icon: 'ban', act: 'dm-block' }) + '</div>';
+    }
+    const D = lb.dm ? mod('dms') : null;
+    if (D && D.canWrite && !D.canWrite(lb.dm.pk)) {
+        if (lb.dm.old) return `<div class="fclbGone">${fc.ui.icon('lock')}${E(T('This was {name}’s old PC. Write to them in their new DM.', { name: lb.dm.n }))}</div>`;
+        return `<div class="fclbGone">${fc.ui.icon('lock')}${E(T('You can’t message {name} any more: you aren’t friends.', { name: lb.dm.n }))}${fc.ui.btn('Add friend', { kind: 'brand', size: 'sm', icon: 'userPlus', act: 'dm-addfriend' })}</div>`;
+    }
+    const up = mod('uploads');
+    const tools = up && up.offer ? [`<span class="fclbBt plus" data-act="lb-file" title="${E(T('Send a picture, GIF, clip or audio file'))}">${fc.ui.icon('plus')}</span>`,
+        `<span class="fclbBt gif" data-act="lb-gif" title="${E(T('GIFs and favorites'))}">GIF</span>`] : ['', ''];
+    const em = mod('emoji');
+    const smile = em && em.pick ? `<span class="fclbBt" data-act="lb-emoji" title="${E(T('Emoji'))}">${fc.ui.icon('smile')}</span>` : '';
+    return `<div class="fclbBox fcupHost">${tools[0]}<textarea class="fclbIn" rows="1" maxlength="${MAX_TEXT}" placeholder="${E(lb.dm ? T('Message @{name}', { name: lb.dm.n }) : T('Message {lobby}', { lobby: lb.name }))}"></textarea>${tools[1]}${smile}</div>`;
+}
+// the box's Enter for uploads (uploads.js sends what you typed with the file's link through this)
+function wireBox(foot) {
+    const t = foot.querySelector('.fclbIn');
+    if (!t) return;
+    t.fcupSend = (text) => {
+        if (!send(view.id, text, view.re)) return;
+        t.value = ''; t.style.height = 'auto'; view.stick = true;
+        if (view.re) { view.re = ''; renderPage(); }
+    };
+}
+
+// the DM's bar: who, how they are, and Call / Challenge
+function dmTopHtml(L) {
+    const d = L.lb.dm, st = statusOf(L, d.pk);
+    const inCall = !!(vr && vr.id === L.lb.id);
+    const out = !!(ringing && ringing.id === L.lb.id && ringing.out);
+    const D = mod('dms');
+    const warn = D && D.warning ? D.warning(d.pk) : '';
+    const sub = st.v ? T('In the call') : T(ST_TEXT[st.st] || 'Offline');
+    return `<span class="ti dm" data-who="${E(d.pk)}">${fc.ui.avatar(d.n, { size: 24, status: st.on ? st.st : 'off' }).replace(/src="[^"]*"/, `src="${E(fc.data.avatarUrl(d.n, d.g, 48))}"`)}<b>${E(d.n)}</b>` +
+        (warn ? `<i class="mk dup" title="${E(warn)}">${fc.ui.icon('warn')}</i>` : '') + `</span><span class="sub">${E(sub)}</span>` +
+        `<span class="tl">` +
+        (inCall ? `<span class="fclbCall on">${fc.ui.icon('wifi')}${E(out && !st.v ? T('Calling…') : T('In a call'))}</span>` +
+            fc.ui.btn('', { kind: vr.muted ? 'danger' : 'ghost', size: 'sm', icon: 'mic', act: 'lb-mute', title: vr.muted ? T('Unmute (Ctrl+Shift+M)') : T('Mute (Ctrl+Shift+M)') }) +
+            fc.ui.btn('', { kind: 'danger', size: 'sm', icon: 'phoneOff', act: 'lb-vleave', title: T('Leave the call') })
+            : (L.lb.req ? '' : fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'phone', act: 'dm-call', title: st.v ? T('Join the call') : T('Start a voice call') }))) +
+        (L.lb.req ? '' : fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'dm-chal', title: T('Challenge {name} to a set', { name: d.n }) })) +
+        `</span>`;
 }
 
 function membersHtml(L) {
@@ -1918,33 +2284,49 @@ function boardHtml(L) {
 
 function renderPage(first) {
     if (!view.page) return;
-    const L = rooms.get(view.id);
-    if (!L) { view.page.close(); return; }
+    const home = view.id === HOME;
+    const L = home ? null : rooms.get(view.id);
+    if (!home && !L) { view.page.close(); return; }
+    const D = mod('dms');
+    const dm = view.mode === 'dm';
     const body = view.page.body;
     if (!body.querySelector('.fclbWrap')) {
-        body.innerHTML = `<div class="fclbWrap"><div class="fclbSide" data-l3-dock="1"></div><div class="fclbMain"><div class="fclbTop"></div><div class="fclbLog"></div><div class="fclbPane"></div>` +
+        body.innerHTML = `<div class="fclbWrap"><div class="fclbSide" data-l3-dock="1"></div><div class="fclbMain fcupArea"><div class="fclbTop"></div><div class="fclbLog"></div><div class="fclbPane"></div>` +
             `<div class="fclbReply"></div><div class="fclbFoot"></div><div class="fclbHl"></div><div class="fclbTb"></div></div><div class="fclbMem"></div></div>`;
     }
     const set = (sel, html) => { const el = body.querySelector(sel); fc.ui.setHtml(el, html); return el; };
-    const tab = view.tab || 'chat';
-    view.page.setTitle(L.lb.name);
+    const tab = home ? 'home' : view.tab || 'chat';
+    view.page.setTitle(home ? T('Friends') : L.lb.name);
     const main = body.querySelector('.fclbMain');
     if (main.dataset.tab !== tab) { main.dataset.tab = tab; hideTb(); }
-    main.style.setProperty('--lc', colOf(L.lb.id, lookOf(L)));
-    set('.fclbSide', sideHtml(L));
-    set('.fclbMem', membersHtml(L));
-    set('.fclbTop', topHtml(L));
+    body.querySelector('.fclbWrap').classList.toggle('dm', dm);
+    // the DM page: the DM list on the left; the Friends view (HOME) or a DM on the right
+    if (dm) set('.fclbSide', D && D.sideHtml ? D.sideHtml(view.id) : '');
+    if (home) {
+        set('.fclbTop', D && D.homeTopHtml ? D.homeTopHtml() : '');
+        set('.fclbPane', D && D.homeHtml ? D.homeHtml() : '');
+        set('.fclbMem', D && D.activeHtml ? D.activeHtml() : '');
+        set('.fclbTb', ''); set('.fclbReply', '');
+        const f = body.querySelector('.fclbFoot');
+        if (f.__k !== 'home') { f.__k = 'home'; f.innerHTML = ''; }
+        return;
+    }
+    main.style.setProperty('--lc', dm ? fc.data.hashColor(L.lb.dm.n) : colOf(L.lb.id, lookOf(L)));
+    if (!dm) set('.fclbSide', sideHtml(L));
+    set('.fclbMem', dm ? (D && D.profileHtml ? D.profileHtml(L.lb.dm.pk) : '') : membersHtml(L));
+    set('.fclbTop', dm ? dmTopHtml(L) : topHtml(L));
     set('.fclbTb', toolbarHtml(L));
     set('.fclbReply', replyHtml(L));
     const foot = body.querySelector('.fclbFoot');
     const until = L.pk ? L.room.muteEnd(L.pk, now()) : 0;
     view.muteEnd = until;
-    const want = L.lb.removed ? 'removed' : L.lb.closed ? 'closed' : until ? 'muted:' + until : 'box:' + L.lb.id;
-    if (foot.__k !== want) { foot.__k = want; foot.innerHTML = boxHtml(L); }
+    const want = L.lb.removed ? 'removed' : L.lb.closed ? 'closed' : until ? 'muted:' + until : L.lb.req ? 'req:' + L.lb.id : 'box:' + L.lb.id + (dm && D && D.canWrite && !D.canWrite(L.lb.dm.pk) ? ':no' : '');
+    if (foot.__k !== want) { foot.__k = want; foot.innerHTML = boxHtml(L); wireBox(foot); }
     if (tab === 'chat') {
         const log = body.querySelector('.fclbLog');
         const html = chatHtml(L) + (!L.loaded && pool ? `<div class="fclbLoad">${E(T('Loading messages…'))}</div>` : '');
         if (log.__html !== html) { log.__html = html; log.innerHTML = html; }
+        fillEmbeds(log);
         // at the bottom stays at the bottom (also when the reply bar takes some room)
         if ((first || view.stick) && log.scrollTop < log.scrollHeight - log.clientHeight) log.scrollTop = log.scrollHeight;
     } else set('.fclbPane', tab === 'events' ? eventsHtml(L) : boardHtml(L));
@@ -2010,6 +2392,7 @@ function onPageInput(e) {
 function onPageKey(e) {
     e.stopPropagation();                              // Fightcade's chat shortcuts stay out
     const t = e.target;
+    if (view.mode === 'dm') { const D = mod('dms'); if (D && D.pageKey && D.pageKey(e)) return; }
     if (!t.classList || !t.classList.contains('fclbIn')) return;
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -2034,8 +2417,27 @@ function jumpTo(mid) {
 }
 
 function onPageClick(e) {
+    // the DM list, the Friends view, the profile: the DMs module's
+    if (view.mode === 'dm') { const D = mod('dms'); if (D && D.pageClick && D.pageClick(e, view.id)) return; }
     const L = rooms.get(view.id);
     if (!L) return;
+    const bt = e.target.closest('[data-act]');
+    const act0 = bt && bt.dataset.act;
+    if (act0 === 'lb-file' || act0 === 'lb-gif' || act0 === 'lb-emoji') {
+        const t = view.page.body.querySelector('.fclbIn'), up = mod('uploads');
+        if (!t) return;
+        if (act0 === 'lb-file' && up && up.pick) up.pick(t);
+        else if (act0 === 'lb-gif' && up && up.openPicker) up.openPicker(bt, t);
+        else if (act0 === 'lb-emoji') { const em = mod('emoji'); if (em && em.pick) em.pick(bt, (emoji) => { t.value += emoji; t.focus(); }); }
+        return;
+    }
+    if (L.lb.dm) {
+        if (act0 === 'dm-call') { call(L.lb.id); return; }
+        if (act0 === 'dm-chal') { dmChallenge(bt, L); return; }
+        if (/^dm-(accept|ignore|block|addfriend)$/.test(act0 || '')) { const D = mod('dms'); if (D && D.act) D.act(act0.slice(3), L.lb.dm.pk); return; }
+        const w = e.target.closest('[data-who]');
+        if (w) { const sc = mod('scout'); const n = w.dataset.who === L.pk ? me() : L.lb.dm.n; if (sc && sc.openCard) sc.openCard(n, w.getBoundingClientRect(), 'beside'); return; }
+    }
     const tb = e.target.closest('[data-tb]');
     if (tb) { toolbarClick(L, tb); return; }
     const rx = e.target.closest('[data-rx]');
@@ -2227,7 +2629,7 @@ const CSS = `
 .fclbIco.add:hover { background: var(--fc-success); color: #fff; }
 .fclbIco.add .fc-ic { width: 20px; height: 20px; }
 
-#fcPage-lobby .fc-page-b { padding: 0; overflow: hidden; display: flex; }
+#fcPage-lobby .fc-page-b, #fcPage-dms .fc-page-b { padding: 0; overflow: hidden; display: flex; }
 .fclbWrap { display: flex; flex: 1; min-width: 0; min-height: 0; }
 .fclbSide { flex: none; display: flex; flex-direction: column; width: 232px; background: var(--fc-s2); border-right: 1px solid var(--fc-divider); overflow: auto; }
 .fclbMain { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--fc-s3); }
@@ -2542,6 +2944,33 @@ i.mk.dup { color: var(--fc-danger); }
 .fclbBoard .hot .fc-ic { width: 14px; height: 14px; margin-right: 2px; }
 .fclbBoard .cold { color: var(--fc-muted); }
 .fclbBoardNote { margin: 12px 2px 0; color: var(--fc-muted); font: 12px/1.45 var(--fc-font); }
+/* 3.6: the box's buttons, pictures in the chat, DMs */
+.fclbBox.fcupHost { position: relative; padding: 0 8px 0 4px; }
+.fclbBt { display: flex; align-items: center; justify-content: center; flex: none; height: 44px; min-width: 32px; padding: 0 4px; box-sizing: border-box; color: var(--fc-muted); cursor: pointer; }
+.fclbBt:hover { color: var(--fc-head); }
+.fclbBt .fc-ic { width: 22px; height: 22px; }
+.fclbBt.plus .fc-ic { width: 16px; height: 16px; padding: 3px; border-radius: 50%; background: var(--fc-muted); color: var(--fc-s4); }
+.fclbBt.plus:hover .fc-ic { background: var(--fc-head); }
+.fclbBt.gif { margin-right: 2px; font: 800 11px/1 var(--fc-font); letter-spacing: .02em; }
+.fclbEmb:empty { display: none; }
+.fclbEmb { margin: 2px 0 4px; }
+.fclbEmb .fcxEmbed { margin: 0; }
+.fclbLog .ln.only > .tx { display: none; }
+.fclbLog .ln .tx .fclbA.gone { display: none; }
+.fclbReq { display: flex; align-items: center; padding: 12px 12px 12px 16px; border-radius: 8px; background: var(--fc-s1); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+.fclbReq .tx { flex: 1; min-width: 0; margin-right: 8px; }
+.fclbReq b { display: block; color: var(--fc-head); font: 600 15px/1.3 var(--fc-font); }
+.fclbReq small { display: block; margin-top: 2px; color: var(--fc-muted); font: 13px/1.35 var(--fc-font); }
+.fclbReq .fc-btn { margin-left: 8px; }
+.fclbGone .fc-btn { margin-left: auto; }
+.fclbTop .ti.dm { cursor: pointer; }
+.fclbTop .ti.dm .fc-avatar { margin-right: 8px; }
+.fclbTop .ti.dm b { font-weight: 600; }
+.fclbTop .tl .fc-btn { margin-left: 6px; }
+.fclbCall { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: rgba(35,165,90,.18); color: var(--fc-green, #23a55a); font: 600 13px/1 var(--fc-font); }
+.fclbCall .fc-ic { width: 16px; height: 16px; margin-right: 6px; }
+.fclbHello.dm .av { display: inline-block; line-height: 0; }
+.fclbHello.dm .av img { width: 80px; height: 80px; border-radius: 50%; }
 `;
 
 /* =================================================================== start */
@@ -2561,6 +2990,8 @@ function start(f) {
         rooms.clear();
         timers.forEach(t => { clearTimeout(t); clearInterval(t); });
         timers = [];
+        if (inboxSub) { inboxSub.close(); inboxSub = null; }
+        ringOff(null);
         const p = pool; pool = null;
         if (p) setTimeout(() => p.close(), 400);
         if (view.page) view.page.close();
@@ -2617,17 +3048,20 @@ function remindTick() {
     });
 }
 
+// lobbies and DMs go on and off on their own switches (the DMs module says whether DMs are on)
+let dmsOn = false;
 function boot() {
-    if (!cfg.enabled || demo) return;
+    if (demo || !(cfg.enabled || dmsOn)) return;
     if (!pool && crypto && V && typeof WebSocket !== 'undefined') pool = Pool(RELAYS, WebSocket);
-    cfg.lobbies.forEach(lb => { const L = startLobby(lb); if (!L.sub) subscribe(L); });
+    cfg.lobbies.forEach(lb => { if (lb.dm ? !dmsOn : !cfg.enabled) return; const L = startLobby(lb); if (!L.sub) subscribe(L); });
+    if (dmsOn) subscribeInbox();
     renderRail();
 }
 
 /* ===================================================================== API */
 
 const api = {
-    list: () => cfg.lobbies.map(lb => ({ id: lb.id, name: lb.name, game: lb.ch, owner: !!(rooms.get(lb.id) && rooms.get(lb.id).pk === lb.owner) })),
+    list: () => lobbiesOnly().map(lb => ({ id: lb.id, name: lb.name, game: lb.ch, owner: !!(rooms.get(lb.id) && rooms.get(lb.id).pk === lb.owner) })),
     open: (id) => openLobby(id),
     create: (name, ch, rom) => create(name, ch, rom),
     lookup: (code) => lookup(code),
@@ -2652,7 +3086,7 @@ const api = {
     mates() {
         const out = new Map();
         rooms.forEach(L => {
-            if (L.lb.removed || L.lb.closed) return;
+            if (L.lb.removed || L.lb.closed || L.lb.dm) return;
             L.room.active().forEach(m => {
                 if (m.pk === L.pk || !m.n) return;
                 const k = lc(m.n);
@@ -2664,6 +3098,35 @@ const api = {
     },
     joinVoice: (id) => voiceJoin(id),
     leaveVoice: () => voiceLeave(),
+    // friends + DMs (3.6): the DMs module drives these
+    myId: () => { const id = myId(); return id ? id.pk : ''; },
+    setDms(on) { dmsOn = !!on; if (dmsOn) boot(); else { rooms.forEach(L => { if (L.lb.dm && L.sub) { L.sub.close(); L.sub = null; } }); if (view.mode === 'dm' && view.page) view.page.close(); } },
+    dmFor: (pk, n, g, o) => { const lb = dmFor(pk, n, g, o); return lb ? lb.id : ''; },
+    dmOf: (pk) => { const lb = dmOf(pk); return lb ? lb.id : ''; },
+    dmList: () => (cfg ? dmList() : []),
+    dmDrop: (pk) => dmDrop(pk),
+    dmRetire: (pk) => dmRetire(pk),
+    // another PC with the same Fightcord (3.6)
+    linkOffer: (onAsk) => linkOffer(onAsk),
+    linkAsk: (code) => linkAsk(code),
+    adopt: (p) => adopt(p),
+    dmHide(pk) {
+        const lb = dmOf(pk);
+        if (!lb) return;
+        lb.hidden = true;
+        store.save();
+        if (view.id === lb.id && view.page) openLobby(HOME);
+        changed(lb.id);
+    },
+    openDm(pk, n, g, o) { const lb = dmFor(pk, n, g, Object.assign({ show: true }, o || {})); if (lb) openLobby(lb.id); return !!lb; },
+    openHome() { openLobby(HOME); },
+    shown: () => (view.page ? view.id : ''),
+    HOME,
+    refresh() { if (view.page) renderPage(); },
+    call: (pk) => { const lb = dmOf(pk); if (!lb) return; openLobby(lb.id); call(lb.id); },
+    inboxSend: (pk, body) => inboxSend(pk, body),
+    onInbox: (fn) => onInbox(fn),
+    dmStatus(pk) { const lb = dmOf(pk), L = lb && rooms.get(lb.id); return L ? statusOf(L, pk) : null; },
     _voicePeers: () => (vr ? [...vr.peers].map(([pk, p]) => ({ pk, state: p.state })) : []),
     _me: (id) => { const L = rooms.get(id); return L ? L.pk : ''; },
     _relays: () => (pool ? pool.open() : 0),
@@ -2678,7 +3141,30 @@ const api = {
     _pins: () => { const a = view.page && view.page.el.querySelector('.fclbTopB'); const L = rooms.get(view.id); if (a && L) pinsPop(a, L); },
     _remind: () => remindTick(),
     _shrink: (file, banner) => shrinkImage(file, banner ? 720 : 128, banner ? 240 : 128, banner ? BANNER_SEND : ICON_SEND),
-    // the dev harness has no crypto / relays: a made-up lobby to draw
+    // the dev harness (no crypto / relays): made-up DMs. list: [{ pk, n, g, st, req, unread, msgs: [[who ('me' | 'them'), text, minutes ago]] }]
+    _demoDms(list) {
+        demo = true;
+        dmsOn = true;
+        ids = { sk: null, pk: 'me' };
+        const meName = me() || 'You';
+        cfg.lobbies = cfg.lobbies.filter(lb => !lb.dm);
+        [...rooms.keys()].forEach(id => { if (/^dm/.test(id)) rooms.delete(id); });
+        (list || []).forEach((d, k) => {
+            const lb = { id: 'dm' + String(k).padStart(30, '0'), dm: { pk: d.pk, n: d.n, g: d.g || '' }, name: d.n, ch: '', rom: '', owner: '', pre: '', seeds: ['0'], epoch: 0,
+                joinedAt: now() - 7 * 86400000, lastRead: now(), notify: 'all', req: !!d.req, hidden: !!d.hidden };
+            cfg.lobbies.push(lb);
+            const L = { lb, room: Room({}), live: new Map(), sk: null, pk: 'me', topics: new Map(), oldSubs: [], loaded: true, lastHere: 0 };
+            rooms.set(lb.id, L);
+            (d.msgs || []).forEach(([who, x, minAgo], i) => L.room.apply({ id: 'm' + k + '-' + i, pk: who === 'me' ? 'me' : d.pk, at: now() - minAgo * 60000, ep: 0, b: { t: 'msg', x, n: who === 'me' ? meName : d.n }, ok: true }));
+            if (d.unread) lb.lastRead = now() - (Math.max(...(d.msgs || [[0, 0, 0]]).filter(m => m[0] !== 'me').slice(-d.unread).map(m => m[2]), 0) + 0.5) * 60000;
+            if (d.st) L.live.set(d.pk, { pk: d.pk, n: d.n, st: d.st, v: !!d.v, vs: d.v ? 'vs' + d.pk : '', at: now() });
+        });
+        renderRail();
+        fc.emit('lobbies:changed', {});
+        return cfg.lobbies.filter(lb => lb.dm).map(lb => lb.id);
+    },
+    _ring: (id) => { const L = rooms.get(id); if (L) ringIn(L, now()); },
+    _call: (id) => call(id),
     // the dev harness has no crypto / relays: a made-up lobby to draw. { v3: true } adds 3.0's pictures, roles,
     // reactions, a reply, a pin, events and a leaderboard
     _demo(o) {

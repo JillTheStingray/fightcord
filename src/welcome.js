@@ -140,6 +140,10 @@ const NEWS = [
     { v: '3.5', title: 'Fightcord 3.5', items: [
         ['sword', N_('Matchup tips on the VS screen'), N_('How to beat the character your opponent plays, with their icon, for 3rd Strike, Vampire Savior, Alpha 3, Super Turbo and Garou.')],
         ['note', N_('A matchup guide in your notes'), N_('Matchup notes now show each character\'s strengths, weaknesses and who they struggle against, based on the SuperCombo Wiki.')]
+    ] },
+    { v: '3.6', title: 'Fightcord 3.6', items: [
+        ['users', N_('Friends, for real'), N_('Send a friend request to any Fightcord player. Once they accept, you\'re friends on both sides.')],
+        ['chat', N_('DMs'), N_('Message your friends with pictures and GIFs, call them, and challenge them to a set. The chat bubble at the top of the server list.')]
     ] }
 ];
 

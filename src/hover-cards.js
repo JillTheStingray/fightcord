@@ -16,6 +16,8 @@ const T = (s, v) => fc.t(s, v);
 T.plural = (n, one, many, v) => fc.t.plural(n, one, many, v);
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 const mod = (id) => fc.modules.get(id);
+// a DM instead of @name when they're on Fightcord (3.6)
+const dmOk = (name) => { const d = mod('dms'); return !!(d && d.canDm && d.canDm(name)); };
 
 /* --------------------------------------------------------------------- card */
 
@@ -72,7 +74,7 @@ function cardHtml(name, chanHint) {
                 ${fr ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'star', cls: isFr ? 'hcFr on' : 'hcFr', title: isFr ? T('Remove friend') : T('Add friend'), attrs: 'data-hc="friend"' }) : ''}
                 ${nt ? fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'note', title: 'Notes & tags', attrs: 'data-hc="notes"' }) : ''}
                 ${fc.ui.btn('', { kind: 'sec', size: 'sm', icon: 'search', title: 'Scout: ELO, odds, form, head-to-head', attrs: 'data-hc="scout"' })}
-            </div>${fc.ui.cardMsg(name, 'data-hc="mention"')}`}
+            </div>${fc.ui.cardMsg(name, dmOk(name) ? 'data-hc="dm"' : 'data-hc="mention"', dmOk(name) ? T('Send {name} a direct message', { name }) : '')}`}
         </div>`;
 }
 
@@ -160,6 +162,10 @@ function onClick(e) {
     } else if (act === 'mention') {
         hide();
         fc.app.mention(name);
+    } else if (act === 'dm') {
+        hide();
+        const d = mod('dms');
+        if (d && d.openWith) d.openWith(name);
     } else if (act === 'scout') {
         const r = card.getBoundingClientRect();
         hide();

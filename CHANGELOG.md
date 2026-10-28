@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.6.0
+
+- **Friends, for real:** send a friend request to any Fightcord player with their Fightcade name (or star
+  them, or press Add friend on their card). Once they accept, you're friends on both sides, like Discord.
+  Pending requests, blocked players and the friends you starred before 3.6 are all on the Friends view.
+- **DMs:** message your friends from the new chat bubble at the top of the server list. DMs keep their
+  history (messages sent while you were away are there when you come back), with replies, reactions,
+  pictures, GIFs and files. Players who aren't your friends can still write: that's a message request
+  you accept, ignore or block (Settings → Friends & DMs can limit DMs to friends).
+- **Calls and Challenge in DMs:** call a friend (voice, straight between your two PCs) and challenge
+  them to a set in any game you share; Fightcord gets them into the channel first.
+- **Who's who:** Fightcade can't prove who is behind a name, so accepting a request locks in that
+  player's Fightcord: nobody can pose as them afterwards, and you get a warning if another Fightcord
+  shows up under a friend's name.
+- **Your Fightcord on more than one PC:** Settings → Friends & DMs → Link a PC shows a code; type it on
+  the other PC (and say yes on the first) and it gets your Fightcord ID, friends, DMs and lobbies, so
+  nobody has to add you again. Both PCs keep working: messages you send from one show on the other, and
+  friends you accept or remove on one change on both. Lost a PC without linking? Your friends get a
+  "new PC" request from you; accepting it moves you over (your old DMs stay readable on their side).
+- **Pictures in private lobbies:** lobby chats now show pictures, GIFs and link previews too, and their
+  message box has the + (files) and GIF buttons.
+- **GIFs look right:** GIFs from KLIPY, Tenor and Giphy played as small videos, which Fightcade showed with
+  far too much contrast. They now show as animated pictures (about the same size), in the chat, the GIF
+  picker and your favorites (your saved favorites switch over by themselves).
+- **Pictures under the message:** a picture link with words around it ("look at this <link>") showed the
+  picture squeezed in beside the link. Now the words stay, the link is hidden, and the picture sits
+  underneath, like Discord.
+
 ## 3.5.1
 
 - **The matchup guide, for real this time:** 3.5.0's update left out the guide itself, so nothing new showed up.

@@ -127,7 +127,12 @@
                 const nm = c.querySelector('.name, .username, .user');
                 if (nm && name) nm.textContent = name;
                 const body = c.querySelector('.blocksContainer, .content, .text');
-                if (body && text) body.textContent = text + (n > 1 ? ' #' + (i + 1) : '');
+                // Fightcade's blocks: plain text, and each link in a block of its own
+                if (body && text) {
+                    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    body.innerHTML = (text + (n > 1 ? ' #' + (i + 1) : '')).split(/(https?:\/\/\S+)/).filter(Boolean)
+                        .map(s => `<div class="blocks"><span class="${/^https?:/.test(s) ? 'link' : 'regular'} ">${esc(s)}</span></div>`).join('');
+                }
                 last.parentNode.appendChild(c);
             }
             cc.scrollTop = cc.scrollHeight;

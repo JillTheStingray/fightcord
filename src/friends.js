@@ -48,6 +48,7 @@ function add(name) {
     const st = statusOf(exact);
     prev.set(key(exact), { online: st.online, quark: st.playing ? String(st.playing.quarkId) : '' });
     changed();
+    fc.emit('friends:added', { name: exact });            // (3.6: someone with Fightcord gets a friend request)
     return true;
 }
 
@@ -55,7 +56,7 @@ function remove(name) {
     const before = cfg.friends.length;
     cfg.friends = cfg.friends.filter(f => key(f.name) !== key(name));
     store.data.friends = cfg.friends;
-    if (cfg.friends.length !== before) changed();
+    if (cfg.friends.length !== before) { changed(); fc.emit('friends:removed', { name }); }
 }
 
 function toggle(name) {
@@ -269,7 +270,13 @@ function submitAdd() {
     else say(T('That name can’t be added.'));
 }
 
+// (3.6: the DM page's Friends view instead, when friends + DMs are on)
 function open() {
+    const dms = fc.modules.get('dms');
+    if (dms && dms.enabled && dms.enabled() && dms.openHome) { dms.openHome('all'); return; }
+    openClassic();
+}
+function openClassic() {
     openedOn = fc.app.activeChannelId();
     const stats = fc.modules.get('stats');
     if (stats && stats.close) stats.close();
@@ -349,6 +356,8 @@ function start(f) {
 
 const api = {
     isFriend, toggle, add, remove, list,
+    // an entry in the inbox's Friends tab from elsewhere (3.6: friend requests)
+    note: (title, sub, name, kind) => alert((kind || 'note') + ':' + key(name) + ':' + title, title, sub, name, kind || 'note'),
     open: () => open(),
     close: () => close(),
     onlineCount: () => Math.max(0, onlineCount),

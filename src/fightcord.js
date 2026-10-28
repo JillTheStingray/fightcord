@@ -261,6 +261,7 @@ function paneHtml(id) {
                 ${fc.ui.btn('Restore from a file…', { kind: 'sec', icon: 'refresh', act: 'restore' })}
                 <input type="file" class="fcordRestoreFile" accept=".json,application/json" style="display:none"></div>
             <div class="fcordNote" data-note="backup"></div>
+            <p class="lead small">${ET('The file also holds your Fightcord ID (for friends, DMs and lobbies): keep it to yourself, like a password. To use Fightcord on a second PC, Friends & DMs → Link a PC is easier.')}</p>
             <h3>${ET('Share your setup')}</h3>
             <p class="lead">${ET('A code with your look and layout (theme, background, emulator bar, member list, chat options…) that a friend can paste to get the same Fightcord. Never your notes, friends, history, lobbies or account.')}</p>
             <div class="fcordBtns">${fc.ui.btn('Copy my setup code', { icon: 'copy', act: 'setup-copy' })}${fc.ui.btn('Use a setup code…', { kind: 'sec', icon: 'download', act: 'setup-use' })}</div>

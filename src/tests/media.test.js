@@ -108,11 +108,11 @@ test('chat font styles leave links alone (and skip decorations around them)', ()
     assert.equal(fs._styleMessage('gg', 'bold', conf).includes('★'), true, 'decorations still apply without a link');
 });
 
-test('Giphy links: the GIF from the id (a small looping video), no page to read', async () => {
-    const want = { kind: 'gifv', url: 'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.mp4', still: 'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy_s.gif' };
+test('Giphy links: the GIF from the id (its animated webp, not the mp4), no page to read', async () => {
+    const want = { kind: 'image', url: 'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.webp' };
     for (const link of ['https://giphy.com/gifs/street-fighter-ryu-3o7TKSjRrfIPjeiVyM', 'https://giphy.com/gifs/3o7TKSjRrfIPjeiVyM', 'https://giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif']) {
         const p = await cx._buildPreview(link);
-        assert.deepEqual({ kind: p.kind, url: p.url, still: p.still }, want, link);
+        assert.deepEqual({ kind: p.kind, url: p.url }, want, link);
         assert.equal(p.page, link);
     }
     assert.equal(await cx._buildPreview('https://giphy.com/explore/ryu'), null, 'not a GIF page');
@@ -168,6 +168,10 @@ test('GIF search: the Tenor page for a search, its results read from the page', 
     assert.deepEqual(r.map(x => x.link), ['https://tenor.com/view/ryu-gif-aa', 'https://tenor.com/view/ryu-gif-bb'], 'Tenor links and media only, once each');
     assert.deepEqual(r[0], { link: 'https://tenor.com/view/ryu-gif-aa', src: 'https://media.tenor.com/aaP1/ryu.mp4', still: 'https://media.tenor.com/aaAM/ryu.gif', kind: 'gifv', name: 'Ryu aa' });
     assert.deepEqual(up.parseTenor('<html>no data</html>'), []);
+    // with an animated webp (Tenor's usual answer): that, as a picture -- Fightcade shows the mp4s too contrasty
+    const wp = up.parseTenor(tenorPage([tenorHit('ww', { media_formats: { tinymp4: { url: 'https://media.tenor.com/wwP1/ryu.mp4' }, tinywebp: { url: 'https://media.tenor.com/wwA1/ryu.webp' } } }),
+        tenorHit('xx', { media_formats: { tinymp4: { url: 'https://media.tenor.com/xxP1/ryu.mp4' }, tinywebp: { url: 'https://evil.example/x.webp' } } })]));
+    assert.deepEqual(wp.map(x => [x.kind, x.src]), [['image', 'https://media.tenor.com/wwA1/ryu.webp'], ['gifv', 'https://media.tenor.com/xxP1/ryu.mp4']], 'Tenor webps only');
     // KLIPY can't answer -> Tenor's page; the search goes out once, then comes from the cache
     const seen = [];
     const get = (url) => {
@@ -198,6 +202,9 @@ test('KLIPY: its links, its answers, search through it first', async () => {
     const list = up.parseKlipy({ result: true, data: { data: [klipyItem('cat-1'), klipyItem('bad', { file: { sm: { mp4: { url: 'https://evil.example/x.mp4' } } } }), { title: 'no slug' }] } }, 'gifs');
     assert.deepEqual(list, [{ link: 'https://klipy.com/gifs/cat-1', src: 'https://static.klipy.com/ii/a/cat-1.mp4', still: 'https://static.klipy.com/ii/a/cat-1.jpg', kind: 'gifv', name: 'Cat cat-1' }], 'KLIPY files only');
     assert.deepEqual(up.parseKlipy(null), []);
+    // with an animated webp: that, as a picture
+    const wp = up.parseKlipy({ result: true, data: { data: [klipyItem('cat-2', { file: { sm: { mp4: { url: 'https://static.klipy.com/ii/a/c2.mp4' }, webp: { url: 'https://static.klipy.com/ii/a/c2.webp' }, jpg: { url: 'https://static.klipy.com/ii/a/c2.jpg' } } } })] } }, 'gifs');
+    assert.deepEqual(wp, [{ link: 'https://klipy.com/gifs/cat-2', src: 'https://static.klipy.com/ii/a/c2.webp', still: 'https://static.klipy.com/ii/a/c2.jpg', kind: 'image', name: 'Cat cat-2' }]);
     const got = [];
     const r = await up.searchGifs('happy cat', (url) => { got.push(url); return Promise.resolve(JSON.stringify({ result: true, data: { data: [klipyItem('happy-1')] } })); });
     assert.equal(r.source, 'klipy');
@@ -376,4 +383,27 @@ test('a Blossom link: the same file on the other servers, by its hash', () => {
     const alts = coreData.blossomAlts('https://npub1xyz.blossom.band/' + h + '.gif');
     assert.ok(alts.length === coreData.BLOSSOM.length - 1 && alts.every(u => u.endsWith('/' + h + '.gif')) && !alts.some(u => /blossom\.band/.test(u)));
     assert.equal(alts[0], 'https://blossom.primal.net/' + h + '.gif');
+});
+
+test('favorites saved as mp4s (before 3.5.2) become their animated webp', async () => {
+    assert.equal(up.tenorWebp('https://media.tenor.com/Piy-mCwnslsAAAPo/meguna.mp4'), 'https://media.tenor.com/Piy-mCwnslsAAAAx/meguna.webp');
+    assert.equal(up.tenorWebp('https://media.tenor.com/FBUuWtevfpIAAAP1/street-fighter-uppercut.mp4'), 'https://media.tenor.com/FBUuWtevfpIAAAA1/street-fighter-uppercut.webp');
+    assert.equal(up.tenorWebp('https://evil.example/xAAAPo/a.mp4'), '');
+    const favs = [
+        { link: 'https://tenor.com/view/meguna-gif-1', src: 'https://media.tenor.com/Piy-mCwnslsAAAPo/meguna.mp4', kind: 'gifv' },
+        { link: 'https://klipy.com/gifs/ellie-williams-tlou-3--kDZOCg9QK', src: 'https://static.klipy.com/ii/a/e.mp4', kind: 'gifv' },
+        { link: 'https://klipy.com/gifs/gone-zz', src: 'https://static.klipy.com/ii/a/g.mp4', kind: 'gifv' },
+        { link: 'https://files.catbox.moe/ab.gif', src: 'https://files.catbox.moe/ab.gif', kind: 'image' }
+    ];
+    const asked = [];
+    // KLIPY answers the shorter slug, and nothing for one it no longer has
+    const n = await up.upgradeFavs(favs, (url) => { asked.push(url); return Promise.resolve(JSON.stringify({ result: true, data: { data: [
+        klipyItem('ellie-williams-tlou-3', { file: { sm: { webp: { url: 'https://static.klipy.com/ii/a/e.webp' }, jpg: { url: 'https://static.klipy.com/ii/a/e.jpg' } } } })] } })); });
+    assert.equal(n, 2);
+    assert.deepEqual(favs.map(f => [f.kind, f.src]), [['image', 'https://media.tenor.com/Piy-mCwnslsAAAAx/meguna.webp'], ['image', 'https://static.klipy.com/ii/a/e.webp'],
+        ['gifv', 'https://static.klipy.com/ii/a/g.mp4'], ['image', 'https://files.catbox.moe/ab.gif']]);
+    assert.equal(favs[1].link, 'https://klipy.com/gifs/ellie-williams-tlou-3--kDZOCg9QK', 'what gets sent stays the same');
+    assert.deepEqual(asked, [up.KLIPY + '/gifs/items?slugs=ellie-williams-tlou-3--kDZOCg9QK,gone-zz'], 'one request for all of them');
+    assert.equal(await up.upgradeFavs(favs.slice(3), () => { throw new Error('nothing to ask'); }), 0);
+    assert.equal(await up.upgradeFavs([{ link: 'https://klipy.com/gifs/x-1', src: 'a.mp4', kind: 'gifv' }], () => Promise.reject(new Error('offline'))), 0, 'offline: left as it was');
 });

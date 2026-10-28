@@ -178,6 +178,15 @@ const SCENES = [
     { name: 'pop-quick', snap: CHANNEL, run: `fightcord.modules.get('profile-card').openQuick(); await sleep(900);` },
     // 3.5 matchup guide: the guide above your own note (icons from the wiki)
     { name: 'mu-note', snap: CHANNEL, run: `fightcord.modules.get('notes').editMatchup('sfiii3nr1', 'Chun-Li'); await sleep(2500);` },
+    // friends + DMs (3.6): the Friends view, pending requests, a DM, a message request, a call ringing
+    { name: 'dm-home', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ tab: 'online' }); await sleep(900);` },
+    { name: 'dm-pending', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ tab: 'pending' }); await sleep(900);` },
+    { name: 'dm-add', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ tab: 'add' }); await sleep(900);` },
+    { name: 'dm-chat', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: 'dm' }); await sleep(5000);` },
+    { name: 'dm-req', snap: CHANNEL, run: `const ids = fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('lobbies').open(ids[4]); await sleep(2500);` },
+    { name: 'dm-link', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('dms').linkShow(); await sleep(900);` },
+    { name: 'dm-link-in', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('dms').linkEnter(); await sleep(900);` },
+    { name: 'dm-ring', snap: CHANNEL, keepToasts: true, run: `const ids = fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('lobbies')._ring(ids[0]); await sleep(900);` },
     { name: 'pop-notes', snap: CHANNEL, run: `const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x))[4]; fightcord.modules.get('notes').edit(n); await sleep(800);` },
     // pictures in chat: a message that's only a GIF link, and the upload card for a pasted picture
     { name: 'chat-media', snap: CHANNEL, wait: 9000, run: `
