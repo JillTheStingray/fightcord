@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.5.1
+
+- **The matchup guide, for real this time:** 3.5.0's update left out the guide itself, so nothing new showed up.
+  This one has it: matchup tips on the VS screen, a guide above your own matchup notes, and character
+  pictures from the SuperCombo Wiki, for 3rd Strike, Vampire Savior, Street Fighter Alpha 3, Super Street
+  Fighter II Turbo and Garou. Details under 3.5.0.
+
 ## 3.5.0
 
 - **Matchup guide:** for 3rd Strike, Vampire Savior, Street Fighter Alpha 3, Super Street Fighter II

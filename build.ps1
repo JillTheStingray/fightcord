@@ -32,7 +32,7 @@ $stage = Join-Path $build 'stage'
 $dist  = Join-Path $here 'dist'
 
 $plugins = @('fightcord-core.js', 'updater.js', 'analytics.js', 'goals.js', 'progress.js', 'feed.js', 'welcome.js', 'events.js', 'find-match.js', 'streamer.js', 'login-screen.js', 'emu-skin.js', 'game-hub.js', 'presence.js', 'rank-icons.js', 'system-logos.js', 'voice.js', 'lobbies.js', 'uploads.js', 'layout3.js', 'i18n-pt.js', 'i18n-es.js', 'backgrounds.js', 'branding.js', 'challenge-card.js', 'context-menu.js', 'inbox.js', 'music.js', 'profile-card.js', 'splash-art.js', 'challenge-filters.js', 'channel-banner.js', 'hover-cards.js', 'notes.js', 'chat-extras.js', 'discord-theme.js', 'discover.js', 'emoji.js', 'fightcord.js', 'friends.js',
-             'fontstyle.js', 'match-screens.js', 'member-list.js', 'scout.js', 'snapshot.js', 'stats.js', 'translate.js')
+             'fontstyle.js', 'match-screens.js', 'matchup-guide.js', 'member-list.js', 'scout.js', 'snapshot.js', 'stats.js', 'translate.js')
 
 # discord-rpc's optional native helper (register-scheme) is never used: discord-rpc loads it in a
 # try/catch, and we never register a URL scheme. Leaving it out keeps the payload pure JavaScript.
@@ -57,6 +57,9 @@ if (-not (Test-Path (Join-Path $rpcModules 'discord-rpc'))) {
 }
 
 Write-Host 'Collecting files'
+# every top-level .js in the source is a module: one missing from the list above never ships (3.5.0)
+$unlisted = Get-ChildItem $src -Filter *.js -File | Where-Object { $plugins -notcontains $_.Name } | ForEach-Object { $_.Name }
+if ($unlisted) { throw ('not in $plugins (add them to build.ps1): ' + ($unlisted -join ', ')) }
 Copy-Item (Join-Path $here 'loader\inject.js') (Join-Path $stage 'inject.js')
 foreach ($p in $plugins) { Copy-Item (Join-Path $src $p) (Join-Path $stage "fightcord\$p") }
 Copy-Item (Join-Path $rpc 'plugin\discord-rpc.js') (Join-Path $stage 'fightcord\discord-rpc.js')
