@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.5.0
+
+- **Matchup guide:** for 3rd Strike, Vampire Savior, Street Fighter Alpha 3, Super Street Fighter II
+  Turbo and Garou, Fightcord now knows each character: their strengths and weaknesses, how to fight them,
+  and who they do well or badly against. Written for Fightcord from the SuperCombo Wiki's character and
+  matchup pages; each character links to its wiki page.
+- **Tips on the VS screen:** "How to beat <character>" beside the tale of the tape: three short tips
+  against the character your opponent plays (the one they picked last time, or usually). Your own
+  matchup note comes first. For 3rd Strike there are tips for your own matchup too (Akuma, Ken, Ryu).
+  The VS screen stays up two seconds longer when it shows tips. Settings → Match screens → Matchup tips
+  on the VS screen.
+- **Character icons:** the VS screen's character plates, the matchup notes and Analytics' Matchups list
+  show each character's picture, loaded from the SuperCombo Wiki (none of it ships with Fightcord).
+  For 3rd Strike it's the wiki's character art, zoomed in on the face. Without a connection, a coloured
+  initial shows instead.
+- **Matchup notes:** the notes pop-up shows the guide above your own note. Analytics' Matchups list shows
+  the guide's first tip until you write a note of your own.
+
 ## 3.4.1
 
 - **Your panel no longer covers a page's message box:** with the member list on the right, your panel

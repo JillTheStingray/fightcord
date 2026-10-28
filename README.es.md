@@ -65,6 +65,9 @@ de bienvenida corta te guía con el resto.
   Filtro, y el récord de la noche con tus metas en una franja en la barra de arriba.
 - La clasificación del juego, repeticiones para ver, eventos y perfiles de jugadores dentro de Fightcade,
   y además una pantalla de VS con el arte del juego, personajes en tu estado de Discord y notas por personaje.
+- Una guía de enfrentamientos (3rd Strike, Vampire Savior, Alpha 3, Super Turbo, Garou): cómo vencer al personaje
+  de tu rival en la pantalla VS, y los puntos fuertes, puntos débiles y enfrentamientos difíciles de cada personaje
+  en tus notas de enfrentamiento, con su icono. Basado en la SuperCombo Wiki.
 - Estilos en un clic: CRT de arcade, 3rd Strike y Neon Tokyo cambian juntos los colores, la fuente, el
   fondo y la fuente del emulador.
 - Chat: menciones, horas, vistas previas de enlaces, ir al presente, atajos `:emoji:`, estilos de
@@ -171,6 +174,7 @@ Fightcord no tiene servidor ni recolecta datos. Solo se comunica con:
 | Chat de voz | los mismos relays para el apretón de manos cifrado, luego directo a la PC de tu rival (STUN: Google / Cloudflare para encontrar la ruta) | solo durante un set, solo cuando ambos se unieron |
 | Lobbies privados | relays Nostr públicos y gratuitos (`nos.lol`, `relay.primal.net`, `nostr.mom`, `offchain.pub`, `relay.damus.io`) | para los lobbies en los que estás, mientras Fightcade está abierto: mensajes, entradas, señales de "en línea", las imágenes y ajustes del lobby y los resultados de sets entre miembros (para la clasificación), todo cifrado con una clave que solo existe en el código de invitación. Los relays guardan los mensajes cifrados para que veas lo que te perdiste, pero no pueden leerlos. La sala de voz va directo entre las PC de los jugadores, como el chat de voz |
 | Imágenes en el chat | envío: servidores de imágenes gratuitos de Nostr (Blossom: `blossom.primal.net`, `nostr.download`, `cdn.nostrcheck.me`, `blossom.yakihonne.com`, `blossom.band`), cada subida firmada con una clave desechable nueva y copiada a un segundo servidor; `catbox.moe`, o `uguu.se` (allí los archivos se borran después de 3 horas), solo cuando ninguno la acepta; visualización: esos servidores, catbox, uguu, imgur, KLIPY, Tenor, Giphy, Discord; búsqueda de GIFs: `api.klipy.com` (`tenor.com` si KLIPY no responde) | lo que escribes en la búsqueda del botón GIF va a KLIPY (o Tenor) cuando dejas de escribir, con un id aleatorio de esta instalación que KLIPY pide; una imagen solo se sube cuando pulsas Enter para enviarla (pública para cualquiera con el enlace); las imágenes de esos sitios cargan cuando aparecen en el chat (o cuando haces clic en ellas, con "Desenfocar hasta hacer clic") |
+| Iconos de personajes | la SuperCombo Wiki (`wiki.supercombo.gg`) | cuando la pantalla VS, una nota de enfrentamiento o el Análisis muestra un personaje (las imágenes se cargan, no se envía nada) |
 
 La configuración, las notas, los amigos y el historial de partidas quedan en la carpeta de Fightcord
 en tu PC (`<Fightcade>\fc2-electron\resources\app\inject\fightcord\`). Configuración → Copia de

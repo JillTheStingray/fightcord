@@ -136,6 +136,10 @@ const NEWS = [
     { v: '3.4', title: 'Fightcord 3.4', items: [
         ['image', N_('Pictures that upload reliably'), N_('Pictures now go to Nostr picture servers, with a copy on a second one, so they still show when a server is down.')],
         ['share', N_('Uploads in the message box'), N_('Files wait as tiles in the message box, like Discord: mark one as a spoiler, rename or remove it, then Enter sends them with your text.')]
+    ] },
+    { v: '3.5', title: 'Fightcord 3.5', items: [
+        ['sword', N_('Matchup tips on the VS screen'), N_('How to beat the character your opponent plays, with their icon, for 3rd Strike, Vampire Savior, Alpha 3, Super Turbo and Garou.')],
+        ['note', N_('A matchup guide in your notes'), N_('Matchup notes now show each character\'s strengths, weaknesses and who they struggle against, based on the SuperCombo Wiki.')]
     ] }
 ];
 

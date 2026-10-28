@@ -35,6 +35,7 @@ const DEFAULTS = {
     result: true,
     session: true,         // "🏆 7–3" pill in the channel header
     rematch: true,         // Rematch on the result screen
+    vsTips: true,          // 3.5: the matchup guide's tips vs their character on the VS screen
     volume: 0.8,
     sessionClearedAt: 0
 };
@@ -163,7 +164,7 @@ function openOverlay(cls, html, ms) {
     // our own element: a click here only closes it
     o.addEventListener('mousedown', (e) => { e.stopPropagation(); });
     o.addEventListener('click', (e) => { e.stopPropagation(); closeOverlay(); });
-    o.querySelectorAll('img').forEach(i => { i.onerror = () => { i.style.visibility = 'hidden'; }; });
+    o.querySelectorAll('img').forEach(i => { if (!i.closest('.fc-mu-face')) i.onerror = () => { i.style.visibility = 'hidden'; }; });
     document.body.appendChild(o);
     fc.sound.duck(true);                        // background music dips under it
     if (!unlayer) unlayer = pushEsc(closeOverlay);
@@ -241,10 +242,23 @@ function playerHtml(p, side, o) {
         <div class="plate"><span class="pname">${E(p.name)}</span></div>
         <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
             `${o.ping ? `<span class="ping">${E(o.ping + ' ms')}</span>` : ''}${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
-        ${o.char ? `<div class="cplate">${o.charNote ? `<small>${E(o.charNote)}</small>` : ''}<b>${E(o.char)}</b></div>` : ''}
+        ${o.char ? `<div class="cplate">${o.charNote ? `<small>${E(o.charNote)}</small>` : ''}${o.face || ''}<b>${E(o.char)}</b></div>` : ''}
         ${picks}
     </div>`;
 }
+
+// the matchup guide's tips against their character (your own matchup note first)
+function tipsHtml(rom, myChar, oppChar, n) {
+    const mg = fc.modules.get('matchup-guide');
+    const e = cfg.vsTips && mg && oppChar ? mg.find(rom, oppChar) : null;
+    if (!e) return '';
+    const nt = fc.modules.get('notes');
+    const note = nt && nt.matchup ? nt.matchup(rom, oppChar) : null;
+    const lines = mg.tips(rom, myChar, oppChar, n).slice(0, note ? n - 1 : n);
+    return `<div class="mutips"><small>${E(T('How to beat {char}', { char: e.name }))}</small>` +
+        (note ? `<p class="own">${fc.ui.ic('note')}${E(note.text)}</p>` : '') + lines.map(x => `<p>${E(x)}</p>`).join('') + '</div>';
+}
+const faceOf = (rom, ch) => { const mg = fc.modules.get('matchup-guide'); return mg && ch ? mg.faceHtml(rom, ch, 40) : ''; };
 
 let vsShown = 0;                          // for tests: how many VS screens were opened
 function showVs(meName, oppName) {
@@ -262,17 +276,19 @@ function showVs(meName, oppName) {
     const oppChar = ch.opp || (oppPicks[0] ? oppPicks[0][0] : '');
     const u = fc.app.users()[oppName] || {};
     const face = faceoff(meName, oppName, rom);
+    const tips = tipsHtml(rom, myChar, oppChar, 3);
     const sparks = Array.from({ length: 12 }, (x, i) => `<span class="spark" style="--a:${i * 30 + 8}deg;--d:${(26 + (i % 3) * 9)}vmin"></span>`).join('');
     openOverlay('vs', `
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="half l" style="--c:${me.color}"></div>
         <div class="half r" style="--c:${opp.color}"></div>
-        ${playerHtml(me, 'l', { char: myChar, charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
-        ${playerHtml(opp, 'r', { char: oppChar, charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
+        ${playerHtml(me, 'l', { char: myChar, face: faceOf(rom, myChar), charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
+        ${playerHtml(opp, 'r', { char: oppChar, face: faceOf(rom, oppChar), charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
             picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0 })}
         <div class="sparks">${sparks}</div><div class="vsword">VS</div><div class="ring"></div>
         <div class="tape">${tapeHtml(tapeOf(face), me, opp)}</div>
-        <div class="game">${E(gameName())}${t.w || t.l || t.d ? `<small>${E(T('Tonight {record}', { record: fc.fmt.wl(t) }))}</small>` : ''}</div>`, 4600);
+        ${tips}
+        <div class="game">${E(gameName())}${t.w || t.l || t.d ? `<small>${E(T('Tonight {record}', { record: fc.fmt.wl(t) }))}</small>` : ''}</div>`, tips ? 6600 : 4600);
     const o = document.getElementById('fcmsOverlay');
     if (o) o.dataset.opp = oppName;
     play('vs');
@@ -897,6 +913,18 @@ const CSS = `
 #fcmsOverlay .cplate small { position: absolute; left: 50%; top: -1.6vmin; transform: translateX(-50%) skewX(14deg); padding: .1vmin 1.2vmin; border-radius: .5vmin;
     background: #0b0a0d; color: #ffd166; font-size: 1.6vmin; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
 @keyframes fcms-plate { from { opacity: 0; transform: skewX(-14deg) scale(calc(1 + .6 * var(--fc-move, 1))); } to { opacity: 1; transform: skewX(-14deg) scale(1); } }
+#fcmsOverlay .cplate .fc-mu-face { position: absolute; left: -6vmin; top: 50%; width: 9vmin; height: 9vmin; margin-top: -4.5vmin; border-radius: .8vmin;
+    transform: skewX(14deg); box-shadow: 0 0 0 .4vmin #0b0a0d, .6vmin .6vmin 0 rgba(0,0,0,.45); font-size: 3vmin; }
+#fcmsOverlay .cplate .fc-mu-face b { font-size: 3.2vmin; }
+/* beside the tape, under their side */
+#fcmsOverlay .mutips { position: absolute; left: calc(50% + 35vmin); right: 3%; bottom: 13vh; max-width: 62vmin; margin-left: auto; padding: 1.4vmin 2.2vmin 1.5vmin; border-radius: .8vmin; background: rgba(8,7,12,.8); text-align: left;
+    box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.14); animation: fcms-in .4s 1.1s both; }
+#fcmsOverlay .mutips small { display: block; margin-bottom: .6vmin; color: #ffd166; font-size: 1.6vmin; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+#fcmsOverlay .mutips p { position: relative; margin: .5vmin 0 0; padding-left: 2vmin; color: #fff; font-size: 2.1vmin; font-weight: 600; line-height: 1.3; }
+#fcmsOverlay .mutips p::before { content: ''; position: absolute; left: .2vmin; top: .8vmin; width: .8vmin; height: .8vmin; border-radius: 50%; background: #ffd166; }
+#fcmsOverlay .mutips p.own { padding-left: 2.8vmin; color: #ffd166; }
+#fcmsOverlay .mutips p.own::before { display: none; }
+#fcmsOverlay .mutips p.own svg { position: absolute; left: 0; top: .3vmin; width: 2vmin; height: 2vmin; }
 #fcmsOverlay .picks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 1.8vmin; animation: fcms-in .4s .95s both; }
 #fcmsOverlay .picks small { width: 100%; margin-bottom: .8vmin; color: rgba(255,255,255,.75); font-size: 1.7vmin; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
 #fcmsOverlay .picks span { display: inline-flex; align-items: center; margin: 0 .5vmin .6vmin; padding: .35vmin 1.2vmin; border-radius: .6vmin; background: rgba(0,0,0,.5);
@@ -1124,6 +1152,7 @@ function start(f) {
             { key: 'enabled', type: 'switch', label: 'Match screens', onChange: refreshSessionPill },
             { key: 'vs', type: 'switch', label: 'VS screen', hint: 'When a challenge is accepted', show: (d) => d.enabled },
             { key: 'result', type: 'switch', label: 'Result screen', hint: 'YOU WON! / YOU LOST! after the set', show: (d) => d.enabled },
+            { key: 'vsTips', type: 'switch', label: 'Matchup tips on the VS screen', hint: 'How to beat the character they play, from the matchup guide', show: (d) => d.enabled && d.vs },
             { key: 'rematch', type: 'switch', label: 'Rematch button', hint: 'On the result screen, same FT when known', show: (d) => d.enabled && d.result },
             { key: 'session', type: 'switch', label: 'Session tracker', hint: 'Tonight’s record in the channel header', show: (d) => d.enabled, onChange: refreshSessionPill },
             { key: 'volume', type: 'slider', label: 'Volume', scale: 100, unit: '%', onChange: () => play('vs') },

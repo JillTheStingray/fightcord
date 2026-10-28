@@ -1990,5 +1990,20 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "Pictures that upload reliably": "Imágenes que se suben sin fallar",
     "Pictures now go to Nostr picture servers, with a copy on a second one, so they still show when a server is down.": "Las imágenes ahora van a servidores de imágenes de Nostr, con una copia en un segundo, así que se siguen viendo cuando un servidor se cae.",
     "Uploads in the message box": "Subidas en el cuadro de mensaje",
-    "Files wait as tiles in the message box, like Discord: mark one as a spoiler, rename or remove it, then Enter sends them with your text.": "Los archivos esperan como mosaicos en el cuadro de mensaje, como en Discord: marca uno como spoiler, renómbralo o quítalo, y Enter los envía con tu texto."
+    "Files wait as tiles in the message box, like Discord: mark one as a spoiler, rename or remove it, then Enter sends them with your text.": "Los archivos esperan como mosaicos en el cuadro de mensaje, como en Discord: marca uno como spoiler, renómbralo o quítalo, y Enter los envía con tu texto.",
+    "How to beat {char}": "Cómo vencer a {char}",
+    "Matchup tips on the VS screen": "Consejos de enfrentamiento en la pantalla VS",
+    "How to beat the character they play, from the matchup guide": "Cómo vencer al personaje que juega, de la guía de enfrentamientos",
+    "As {char}": "Jugando con {char}",
+    "How to fight them": "Cómo enfrentarlo",
+    "Strengths": "Puntos fuertes",
+    "Weaknesses": "Puntos débiles",
+    "Struggles against": "Le cuesta contra",
+    "Strong against": "Fuerte contra",
+    "Based on the SuperCombo Wiki": "Basado en la SuperCombo Wiki",
+    "Your note": "Tu nota",
+    "How to beat the character your opponent plays, with their icon, for 3rd Strike, Vampire Savior, Alpha 3, Super Turbo and Garou.": "Cómo vencer al personaje de tu rival, con su icono, en 3rd Strike, Vampire Savior, Alpha 3, Super Turbo y Garou.",
+    "A matchup guide in your notes": "Una guía de enfrentamientos en tus notas",
+    "Matchup notes now show each character's strengths, weaknesses and who they struggle against, based on the SuperCombo Wiki.": "Las notas de enfrentamiento ahora muestran los puntos fuertes y débiles de cada personaje y contra quién le cuesta, basado en la SuperCombo Wiki.",
+    "Fightcord 3.5": "Fightcord 3.5"
 } };

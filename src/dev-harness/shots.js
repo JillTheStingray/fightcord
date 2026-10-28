@@ -176,6 +176,8 @@ const SCENES = [
     { name: 'pop-profile', snap: CHANNEL, run: `fightcord.modules.get('profile-card')._show(); await sleep(900);` },
     { name: 'pop-tonight', snap: CHANNEL, run: `document.querySelector('.fcmsPill').click(); await sleep(900);` },
     { name: 'pop-quick', snap: CHANNEL, run: `fightcord.modules.get('profile-card').openQuick(); await sleep(900);` },
+    // 3.5 matchup guide: the guide above your own note (icons from the wiki)
+    { name: 'mu-note', snap: CHANNEL, run: `fightcord.modules.get('notes').editMatchup('sfiii3nr1', 'Chun-Li'); await sleep(2500);` },
     { name: 'pop-notes', snap: CHANNEL, run: `const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x))[4]; fightcord.modules.get('notes').edit(n); await sleep(800);` },
     // pictures in chat: a message that's only a GIF link, and the upload card for a pasted picture
     { name: 'chat-media', snap: CHANNEL, wait: 9000, run: `

@@ -156,10 +156,10 @@
         }
         files['./rank-history.json'] = JSON.stringify({ v: 1, points });
         // the settings screen: the released version, and module files to list (empty stand-ins)
-        files['./fightcord.json'] = JSON.stringify({ version: '3.4.1', off: ['snapshot.js'] });
+        files['./fightcord.json'] = JSON.stringify({ version: '3.5.0', off: ['snapshot.js'] });
         ['fightcord-core.js', 'discord-theme.js', 'branding.js', 'discover.js', 'chat-extras.js', 'translate.js', 'emoji.js', 'fontstyle.js',
             'member-list.js', 'scout.js', 'challenge-filters.js', 'match-screens.js', 'stats.js', 'analytics.js', 'progress.js', 'goals.js',
-            'feed.js', 'welcome.js', 'friends.js', 'notes.js', 'challenge-card.js', 'channel-banner.js', 'hover-cards.js', 'profile-card.js',
+            'feed.js', 'welcome.js', 'friends.js', 'notes.js', 'matchup-guide.js', 'challenge-card.js', 'channel-banner.js', 'hover-cards.js', 'profile-card.js',
             'context-menu.js', 'inbox.js', 'backgrounds.js', 'music.js', 'discord-rpc.js', 'snapshot.js'].forEach(f => { if (!(('./' + f) in files)) files['./' + f] = ''; });
         files['./goals-config.json'] = JSON.stringify({ goals: [
             { id: 'g1', type: 'wins', target: 5, scope: 'day' },

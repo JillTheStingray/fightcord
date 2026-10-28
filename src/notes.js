@@ -84,23 +84,40 @@ function matchupRecord(rom, ch) {
     return Object.assign({ n: sets.length }, fc.data.recordOf(sets));
 }
 
+// the character you play most in a game (the guide has tips for some matchups of your own)
+function myMain(rom) {
+    const n = {};
+    fc.history.all().forEach(s => { if (s.myChar && (!rom || !s.rom || s.rom === rom)) n[s.myChar] = (n[s.myChar] || 0) + 1; });
+    return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || '';
+}
+
 function editMatchup(rom, ch, rect) {
     if (!cfg || !ch) return;
     closeEditor();
     const box = document.createElement('div');
     box.id = 'ntEdit';
     const r = matchupRecord(rom, ch), cur = matchup(rom, ch);
+    // 3.5: the matchup guide's page on this character, above your own note
+    const mg = fc.modules.get('matchup-guide');
+    const guide = mg ? mg.cardHtml(rom, ch, myMain(rom)) : '';
     box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Matchup notes vs {char}', { char: ch }), sub: r.w || r.l ? E(T('Your record: {wl}', { wl: fc.fmt.wl(r) })) : '' }) +
-        `<div class="fc-pb"><textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea></div>` +
+        `<div class="fc-pb">${guide ? `<div class="ntGuide">${guide}</div><small class="ntMine">${E(T('Your note'))}</small>` : ''}` +
+        `<textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea></div>` +
         fc.ui.popFoot(E(T('Shown when you face {char}', { char: ch })), fc.ui.btn('Save', { size: 'sm', act: 'save' }));
     const save = () => { setMatchup(rom, ch, box.querySelector('textarea').value); closeEditor(); };
     box.addEventListener('keydown', (e) => {
         e.stopPropagation();
         if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey) && e.target.tagName === 'TEXTAREA') { e.preventDefault(); save(); }
     }, true);
-    box.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('[data-act="save"]')) save(); });
-    const at = rect || { left: window.innerWidth / 2 - 160, right: window.innerWidth / 2 - 160, top: window.innerHeight / 3, bottom: window.innerHeight / 3, width: 0, height: 0 };
-    const me = editor = fc.ui.popover(at, box, { cls: 'ntPop fc-pop-card', width: 320, onClose: () => { if (editor === me) editor = null; } });
+    box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const src = e.target.closest('.fc-mu-src');
+        if (src) { e.preventDefault(); try { window.open(src.href, '_blank'); } catch (er) { /* ignore */ } return; }
+        if (e.target.closest('[data-act="save"]')) save();
+    });
+    const w = guide ? 400 : 320;
+    const at = rect || { left: window.innerWidth / 2 - w / 2, right: window.innerWidth / 2 - w / 2, top: window.innerHeight / 5, bottom: window.innerHeight / 5, width: 0, height: 0 };
+    const me = editor = fc.ui.popover(at, box, { cls: 'ntPop fc-pop-card' + (guide ? ' ntPop-guide' : ''), width: w, onClose: () => { if (editor === me) editor = null; } });
     box.querySelector('textarea').focus();
 }
 
@@ -247,6 +264,9 @@ const CSS = `
 #ntEdit .ntChip.pick:hover { opacity: .85; }
 #ntEdit .ntChip.pick.on { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--c); }
 #ntEdit textarea { width: 100%; height: 80px; padding: 8px 10px; resize: none; line-height: 1.4; }
+#ntEdit .ntGuide { max-height: 46vh; overflow-y: auto; margin: 0 -4px 10px; padding: 10px 12px; border-radius: 12px; background: var(--fc-s1, rgba(0,0,0,.2)); }
+#ntEdit .ntMine { display: block; margin-bottom: 4px; color: var(--fc-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+#ntEdit .ntGuide + .ntMine + textarea { height: 64px; }
 #ntEdit .f { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; }
 .ntTagRow .fc-input[type="text"] { width: 180px; margin-left: 8px; height: 30px; }
 .ntTagRow .fc-color { height: 30px; }
