@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.2
+
+- **Notes & tags opens on screen:** from a player's card (Find match → a player → ⋯ → Notes & tags, or
+  the note button on a hover card), the notes box opened in the bottom-left corner, half off the screen.
+  It now opens over the card. (Thanks Mushn1k, issue #1.)
+
 ## 3.6.1
 
 - **DMs reach you when Fightcade is in the background:** a DM, a friend request or a call used to show

@@ -2292,7 +2292,8 @@ const ui = {
         el.appendChild(toEl(content));
         document.body.appendChild(el);
         const rect = anchor instanceof Element ? anchor.getBoundingClientRect()
-            : anchor && anchor.width != null ? anchor : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y, width: 0, height: 0 };
+            // a box without width (scout's ⋯ → Notes & tags) is still a box, not an {x, y}: NaN left it at 0,0 (issue #1)
+            : anchor && (anchor.width != null || typeof anchor.left === 'number') ? anchor : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y, width: 0, height: 0 };
         ui.place(el, rect, p.side || 'bottom');
         let closed = false;
         const outside = (e) => { if (!el.contains(e.target) && !(anchor instanceof Element && anchor.contains(e.target))) close(); };
