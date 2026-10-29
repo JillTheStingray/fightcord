@@ -169,7 +169,7 @@ const directory = new Map();
 function client(name, relay, stores) {
     [LB_FILE, DM_FILE].forEach(f => delete require.cache[require.resolve(f)]);
     const lobbies = require(LB_FILE), dms = require(DM_FILE);
-    const st = stores || {}, disposers = [], toasts = [], handlers = new Map();
+    const st = stores || {}, disposers = [], toasts = [], alerts = [], handlers = new Map();
     const mods = new Map();
     const fc = {
         config(id, defs) { return st[id] || (st[id] = { data: JSON.parse(JSON.stringify(defs)), save() {}, saveNow() {} }); },
@@ -184,7 +184,7 @@ function client(name, relay, stores) {
         data: { hashColor: () => '#fff', avatarUrl: () => '', artUrl: () => '' },
         sound: { tone() {}, duck() {}, play() {} },
         log: Object.assign(() => {}, { warn() {} }),
-        ui: { style() {}, toast: (t, o) => { toasts.push({ t, o: o || {} }); return { close() {} }; }, header: { place() {} }, dnd: () => false },
+        ui: { style() {}, toast: (t, o) => { toasts.push({ t, o: o || {} }); return { close() {} }; }, header: { place() {} }, dnd: () => !!fc.dndOn, attention: (t, o) => { alerts.push({ t, o: o || {} }); return true; } },
         app: {
             me: () => name, user: (n) => [n, null], userInfo: () => null, status: () => 'on', isMe: (n) => n.toLowerCase() === name.toLowerCase(),
             joinedChannels: () => [], activeChannel: () => null, activeChannelId: () => '', channel: () => null, root: () => null
@@ -199,7 +199,7 @@ function client(name, relay, stores) {
         mods.set('dms', dms.start(fc) && dms);
     } finally { global.WebSocket = realWS; }
     directory.set(name.toLowerCase(), lobbies.myId());
-    return { lobbies, dms, fc, toasts, stores: st, stop: () => disposers.forEach(f => f()), id: lobbies.myId(), dm: () => st.dms.data };
+    return { lobbies, dms, fc, toasts, alerts, stores: st, stop: () => disposers.forEach(f => f()), id: lobbies.myId(), dm: () => st.dms.data };
 }
 const settle = (ms) => new Promise(r => setTimeout(r, ms || 150));
 async function until(fn, ms) { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > (ms || 5000)) throw new Error('timed out'); await settle(30); } }
@@ -358,6 +358,39 @@ test('a friend on a new PC: their request says so, and accepting it replaces the
     assert.equal(r.what, 'newpc');
     assert.deepEqual(s.in.map(x => [x.pk, x.n, x.was]), [[K('a2'), 'Alice', K('a1')]]);
     assert.equal(s.friends.length, 1, 'not friends with the new one until you accept');
+});
+
+test('a DM from a friend: a pop-up, and Windows hears too (Fightcade may be behind a match); the switch and Do not disturb quiet it', async () => {
+    const relay = Relay();
+    const alice = client('AliceW', relay), bob = client('BobW', relay);
+    try {
+        await settle(80);
+        alice.dms.request('BobW');
+        await until(() => bob.dm().in.length === 1);
+        assert.ok(bob.alerts.some(a => /AliceW sent you a friend request/.test(a.t)), 'a request reaches Windows');
+        bob.dms.accept(alice.id);
+        await until(() => alice.dm().friends.length === 1);
+        await settle(200);
+        const room = () => roomWith(bob, alice.id);
+        const sendAndWait = async (x) => { await settle(700); assert.ok(alice.lobbies.send(alice.lobbies.dmOf(bob.id), x)); await until(() => room().visible().some(m => m.x === x)); await settle(60); };
+        bob.toasts.length = bob.alerts.length = 0;
+        await sendAndWait('you there?');
+        assert.deepEqual(bob.toasts.map(x => [x.t, x.o.sub]), [['AliceW', 'you there?']]);
+        assert.deepEqual(bob.alerts.map(x => [x.t, x.o.body]), [['AliceW', 'you there?']]);
+        assert.equal(typeof bob.alerts[0].o.onClick, 'function', 'clicking it opens the DM');
+        // the switch off: the pop-up stays, Windows doesn't hear
+        bob.dm().desktop = false;
+        bob.alerts.length = 0;
+        await sendAndWait('hello?');
+        assert.equal(bob.alerts.length, 0);
+        assert.ok(bob.toasts.some(x => x.o.sub === 'hello?'));
+        // Do not disturb: nothing at all
+        bob.dm().desktop = true;
+        bob.fc.dndOn = true;
+        bob.toasts.length = bob.alerts.length = 0;
+        await sendAndWait('ok I give up');
+        assert.equal(bob.toasts.length + bob.alerts.length, 0);
+    } finally { alice.stop(); bob.stop(); }
 });
 
 test('end to end: link a second PC; both PCs get the DMs, see each other’s messages and follow friend changes', async () => {

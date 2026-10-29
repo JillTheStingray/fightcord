@@ -24,7 +24,7 @@ let fc = null;
 let store = null, cfg = null;            // dms-config.json
 
 const DEFAULTS = {
-    enabled: true, from: 'requests', popups: true, sound: true,
+    enabled: true, from: 'requests', popups: true, desktop: true, sound: true,
     friends: [],             // [{ pk, n, g, since }]: both of you accepted
     out: [],                 // [{ pk, n, g, at }]: your requests, waiting
     in: [],                  // [{ pk, n, g, at, id }]: theirs, waiting for you
@@ -391,6 +391,7 @@ function onInboxMsg(m) {
         if (fresh && cfg.popups && !quiet()) {
             fc.ui.toast(T('{name} has a new PC', { name: who }), { icon: 'userPlus', ms: 12000, sub: T('Accept their new friend request to keep talking'),
                 actions: [{ label: T('Look'), fn: () => openHome('pending') }] });
+            away(T('{name} has a new PC', { name: who }), T('Accept their new friend request to keep talking'), () => openHome('pending'), { n: who, tag: 'fcfr-' + m.from });
             if (cfg.sound) fc.sound.play('ping');
         }
     } else if (r.what === 'request') {
@@ -398,6 +399,7 @@ function onInboxMsg(m) {
         if (fresh && cfg.popups && !quiet()) {
             fc.ui.toast(T('{name} sent you a friend request', { name: who }), { icon: 'userPlus', ms: 12000,
                 actions: [{ label: T('Accept'), fn: () => accept(m.from) }, { label: T('Look'), kind: 'sec', fn: () => openHome('pending') }] });
+            away(T('{name} sent you a friend request', { name: who }), T('Open Friends → Pending to accept'), () => openHome('pending'), { n: who, tag: 'fcfr-' + m.from });
             if (cfg.sound) fc.sound.play('ping');
         }
     } else if (r.what === 'accepted') {
@@ -406,11 +408,13 @@ function onInboxMsg(m) {
         if (fr && fr.note) fr.note(T('{name} accepted your friend request', { name }), T('You can message and call each other now'), name, 'request');
         if (fresh && cfg.popups && !quiet()) {
             fc.ui.toast(T('{name} accepted your friend request', { name }), { icon: 'users', actions: [{ label: T('Message'), fn: () => openDm(m.from) }] });
+            away(T('{name} accepted your friend request', { name }), T('You can message and call each other now'), () => openDm(m.from), { n: name, tag: 'fcfr-' + m.from });
             if (cfg.sound) fc.sound.play('ping');
         }
     } else if (r.what === 'msgreq' && fresh && cfg.popups && !quiet()) {
         fc.ui.toast(T('{name} wants to message you', { name: who }), { icon: 'chat', sub: T('A message request: they aren’t your friend.'),
             actions: [{ label: T('Look'), fn: () => openHome('reqs') }] });
+        away(T('{name} wants to message you', { name: who }), T('A message request: they aren’t your friend.'), () => openHome('reqs'), { n: who, tag: 'fchi-' + m.from });
     }
 }
 
@@ -422,9 +426,16 @@ function onMessage(pk, m) {
     if (!d || d.req) return;                                 // a message request stays quiet
     if (!isFriendPk(pk) && cfg.from === 'friends') return;
     renderRail();
-    if (!cfg.popups || quiet() || (fc.ui.dnd && fc.ui.dnd())) return;
-    fc.ui.toast(d.n, { icon: 'chat', sub: fc.fmt.short(String(m.x || ''), 120), actions: [{ label: T('Reply'), fn: () => openDm(pk) }] });
-    if (cfg.sound) fc.sound.tone([[988, 0, .06], [1319, .07, .09]], { volume: .45 });
+    if (quiet() || (fc.ui.dnd && fc.ui.dnd())) return;
+    const text = fc.fmt.short(String(m.x || ''), 120);
+    if (cfg.popups) fc.ui.toast(d.n, { icon: 'chat', sub: text, actions: [{ label: T('Reply'), fn: () => openDm(pk) }] });
+    away(d.n, text, () => openDm(pk), { n: d.n, g: d.g, tag: 'fcdm-' + pk });
+    if (cfg.sound && (cfg.popups || cfg.desktop)) fc.sound.tone([[988, 0, .06], [1319, .07, .09]], { volume: .45 });
+}
+// 3.6.1: Fightcade is behind a match or another app: flash the taskbar and tell Windows too
+function away(title, body, open, who) {
+    if (!cfg.desktop || !fc.ui.attention) return;
+    fc.ui.attention(title, { body, tag: who.tag, icon: who.n ? fc.data.avatarUrl(who.n, who.g || '', 80) : '', onClick: open });
 }
 function quiet() { const st = mod('streamer'); return !!(st && st.quiet && st.quiet()); }
 
@@ -730,6 +741,9 @@ function adoptAll(p) {
 
 /* ===================================================================== the rail */
 
+const unreadDms = (list) => list.filter(d => d.unread && !d.req && !d.hidden && !isBlocked(d.pk) && (isFriendPk(d.pk) || cfg.from !== 'friends'));
+const railCount = (list) => cfg.in.length + cfg.reqs.length + unreadDms(list).reduce((n, d) => n + d.unread, 0);
+
 // a chat bubble at the top of the server rail (the DM page), then unread DMs as avatars, like Discord
 function railHtml() {
     const lb = L();
@@ -737,8 +751,8 @@ function railHtml() {
     const shown = lb.shown();
     const list = lb.dmList();
     const onPage = shown && (shown === lb.HOME || list.some(d => d.id === shown));
-    const unread = list.filter(d => d.unread && !d.req && !d.hidden && !isBlocked(d.pk) && (isFriendPk(d.pk) || cfg.from !== 'friends'));
-    const badge = cfg.in.length + cfg.reqs.length + unread.reduce((n, d) => n + d.unread, 0);
+    const unread = unreadDms(list);
+    const badge = railCount(list);
     return `<div class="fclbIco fcdmHome${onPage ? ' on' : ''}" data-dmr="home" title="${E(T('Direct messages and friends'))}">${fc.ui.icon('chat')}` +
         (badge ? `<b class="bd">${badge > 9 ? '9+' : badge}</b>` : '') + '</div>' +
         unread.slice(0, 5).map(d => `<div class="fclbIco hasPic fcdmBub${d.id === shown ? ' on' : ''} unread" data-dmr="${E(d.id)}" title="${E(d.n)}">` +
@@ -749,6 +763,7 @@ function renderRail() {
     if (typeof document === 'undefined' || !cfg) return;
     const list = document.querySelector('.mainToolbar .channelsList');
     let el = document.getElementById('fcdmRail');
+    if (fc.ui.taskbar) fc.ui.taskbar(cfg.enabled && cfg.desktop && L() ? railCount(L().dmList()) : 0);
     if (!cfg.enabled || !list || !L()) { if (el) el.remove(); return; }
     if (!el) {
         el = document.createElement('div');
@@ -830,7 +845,9 @@ function start(f) {
                 onChange: (v) => { const l = L(); if (l && l.setDms) l.setDms(v); renderRail(); } },
             { key: 'from', type: 'select', label: 'Who can message you', options: [['requests', 'Friends, and message requests from others'], ['friends', 'Only friends']], show: (d) => d.enabled },
             { key: 'popups', type: 'switch', label: 'Pop-ups for DMs and requests', hint: 'Do not disturb and streamer mode keep them quiet', show: (d) => d.enabled },
-            { key: 'sound', type: 'switch', label: 'Play a sound with them', show: (d) => d.enabled && d.popups },
+            { key: 'desktop', type: 'switch', label: 'Windows notifications', hint: 'When Fightcade is behind a match or another app: a notification, the taskbar button flashes, and a red count on its icon', show: (d) => d.enabled,
+                onChange: () => renderRail() },
+            { key: 'sound', type: 'switch', label: 'Play a sound with them', show: (d) => d.enabled && (d.popups || d.desktop) },
             { type: 'html', show: (d) => d.enabled, html: () => `<div class="fc-note">${E(fc.fmt.plural(cfg.friends.length, 'friend'))} · ${E(fc.fmt.plural(cfg.blocked.length, 'blocked player'))}. ` +
                 `${E(T('Your Fightcord ID: {id}', { id: (L() && L().myId ? L().myId() : '').slice(0, 8) || '—' }))}</div>` },
             { type: 'button', label: 'Friends and DMs', button: 'Open', act: 'open', show: (d) => d.enabled, onClick: () => { const s = mod('fightcord'); if (s && s.close) s.close(); openHome(); } },
@@ -967,6 +984,7 @@ const api = {
     sideHtml: (active) => sideHtml(active), homeTopHtml: () => homeTopHtml(), homeHtml: () => homeHtml(), activeHtml: () => activeHtml(),
     profileHtml: (pk) => profileHtml(pk), pageClick: (e, id) => pageClick(e, id), pageKey: (e) => pageKey(e), act: (what, pk) => act(what, pk),
     onMessage: (pk, m) => onMessage(pk, m),
+    away: (title, body, open, who) => away(title, body, open, who || {}),
     _onInbox: (m) => onInboxMsg(m),
     linkShow: () => linkShow(), linkEnter: () => linkEnter(), _adopt: (p) => adoptAll(p),
     _tab: (t) => { homeTab = t; refresh(); },

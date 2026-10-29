@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.6.1
+
+- **DMs reach you when Fightcade is in the background:** a DM, a friend request or a call used to show
+  only inside Fightcade, so you missed it while you were in a match or another app. Now Windows shows a
+  notification (click it to open the DM), the Fightcade taskbar button flashes, and its icon gets a red
+  count of unread DMs and requests, like Discord. Settings → Friends & DMs → Windows notifications turns
+  it off; Do not disturb and streamer mode keep it quiet.
+- **Mentions look right:** a message that @mentions you is one gold band again. With a chat background,
+  the hovered line had its own rounded box inside the band.
+
 ## 3.6.0
 
 - **Friends, for real:** send a friend request to any Fightcord player with their Fightcade name (or star

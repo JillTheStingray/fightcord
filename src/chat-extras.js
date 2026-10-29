@@ -320,7 +320,21 @@ function showBar(line) {
     barLine = line;
 }
 
+// a mention's band covers its name row and first line as one: hovering either lights both (Discord's
+// one highlighted message), instead of the line lighting up alone like a box of its own
+let hovHead = [];
+function mentionHover(t) {
+    const msg = t && t.closest && t.closest('.chatContent .message.chat.fcx-mention-head');
+    const first = msg && msg.querySelector('.line');
+    const on = msg && first && (t.closest('header') || t.closest('.line') === first) ? [msg.querySelector(':scope > header'), first].filter(Boolean) : [];
+    if (on[0] === hovHead[0] && on[1] === hovHead[1]) return;
+    hovHead.forEach(el => el.classList.remove('fcx-hov'));
+    hovHead = on;
+    on.forEach(el => el.classList.add('fcx-hov'));
+}
+
 function onMouseOver(e) {
+    mentionHover(e.target);
     if (!cfg.hoverActions) return;
     const t = e.target;
     if (bar && bar.contains(t)) return;
@@ -960,8 +974,10 @@ const CSS = `
 .messageWrapper.motd.fcx-motd:not(.fcx-motd-shut) > .fcxMotd { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention,
 html body .chatContent .messageWrapper.chat .message.chat.fcx-mention-head > header {
-    background: rgba(250,168,26,.12) !important; box-shadow: inset 2px 0 0 #f0b232 !important; }
-html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention:hover { background: rgba(250,168,26,.17) !important; }
+    background: rgba(250,168,26,.12) !important; box-shadow: inset 2px 0 0 #f0b232 !important; border-radius: 0 !important; transition: background-color .12s; }
+html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention:hover,
+html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention.fcx-hov,
+html body .chatContent .messageWrapper.chat .message.chat.fcx-mention-head > header.fcx-hov { background: rgba(250,168,26,.17) !important; }
 
 /* ---- chat polish ---- */
 @keyframes fcxIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

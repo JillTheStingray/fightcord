@@ -1125,6 +1125,7 @@ function ringIn(L, at) {
         actions: [{ label: T('Join'), fn: () => { ringOff(L); openLobby(id); voiceJoin(id); } },
             { label: T('Decline'), kind: 'sec', fn: () => { ringOff(L); post(L, { t: 'nope', to: L.lb.dm.pk }, true); } }]
     });
+    if (D && D.away) D.away(T('{name} is calling you', { name }), T('Voice call · Fightcord'), () => openLobby(id), { n: name, g: L.lb.dm.g, tag: 'fccall-' + id });
     let n = 0;
     const ring = () => { if (!ringing || ringing.id !== id || n++ > 8) return; fc.sound.tone([[660, 0, .12], [880, .16, .12], [660, .32, .12]], { volume: .45 }); ringing.timer = setTimeout(ring, 3000); };
     ringing = { id, toast, timer: 0 };

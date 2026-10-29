@@ -2568,8 +2568,66 @@ const ui = {
         coreStore.save();
         emit('dnd:changed', { on: !!on });
         return !!on;
+    },
+
+    // 3.6.1: Fightcade isn't in front (a match, another app, minimised), so a toast inside it is never seen
+    away() {
+        if (!hasDom()) return false;
+        const w = fcWin();
+        try { if (w) return !w.isFocused() || w.isMinimized(); } catch (e) { /* remote gone */ }
+        return !(document.hasFocus && document.hasFocus());
+    },
+    // flash the taskbar button and show a Windows notification; clicking it brings Fightcade back
+    // fc.ui.attention(title, { body, icon (a picture URL), tag, onClick, notify: false (flash only) })
+    attention(title, o) {
+        const p = o || {};
+        if (!ui.away()) return false;
+        const w = fcWin();
+        try {
+            if (w) {
+                w.flashFrame(true);
+                if (!flashOff) { flashOff = () => { try { w.flashFrame(false); } catch (e) { /* closed */ } }; window.addEventListener('focus', flashOff); }
+            }
+        } catch (e) { LOG.warn('flash', e); }
+        if (p.notify === false || typeof Notification !== 'function') return true;
+        try {
+            const n = new Notification(tr(title), { body: tr(p.body || ''), icon: p.icon || '', tag: p.tag || '', silent: true });
+            n.onclick = () => {
+                try { if (w) { if (w.isMinimized()) w.restore(); w.show(); w.focus(); } } catch (e) { /* closed */ }
+                if (p.onClick) { try { p.onClick(); } catch (err) { LOG.warn('notification click', err); } }
+                n.close();
+            };
+        } catch (e) { LOG.warn('notification', e); }
+        return true;
+    },
+    // a red count on Fightcade's taskbar icon, like Discord (0 clears it)
+    taskbar(n) {
+        n = Math.max(0, n | 0);
+        if (!hasDom() || n === taskN) return;
+        const w = fcWin();
+        if (!w) return;
+        taskN = n;
+        try {
+            if (!n) { w.setOverlayIcon(null, ''); return; }
+            const c = document.createElement('canvas');
+            c.width = c.height = 32;
+            const g = c.getContext('2d');
+            g.fillStyle = '#f23f43';
+            g.beginPath(); g.arc(16, 16, 15, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#fff';
+            g.font = 'bold ' + (n > 9 ? 17 : 21) + 'px "Segoe UI", sans-serif';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(n > 9 ? '9+' : String(n), 16, 17);
+            const { remote } = require('electron');
+            w.setOverlayIcon(remote.nativeImage.createFromDataURL(c.toDataURL()), tr('{n} unread', { n }));
+        } catch (e) { taskN = -1; LOG.warn('taskbar', e); }
     }
 };
+let flashOff = null, taskN = 0, winRef;
+function fcWin() {
+    if (winRef === undefined) { try { winRef = require('electron').remote.getCurrentWindow(); } catch (e) { winRef = null; } }
+    return winRef;
+}
 
 /* ================================================================ channel header */
 

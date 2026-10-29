@@ -2146,5 +2146,8 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "The file also holds your Fightcord ID (for friends, DMs and lobbies): keep it to yourself, like a password. To use Fightcord on a second PC, Friends & DMs → Link a PC is easier.": "El archivo también guarda tu ID de Fightcord (para amigos, MD y lobbies): guárdalo solo para ti, como una contraseña. Para usar Fightcord en un segundo PC, Amigos y MD → Vincular un PC es más fácil.",
     "That isn’t a link code": "Eso no es un código de vínculo",
     "No answer: is the code still showing on your other PC?": "Sin respuesta: ¿el código sigue en pantalla en tu otro PC?",
-    "This was {name}’s old PC. Write to them in their new DM.": "Este era el PC anterior de {name}. Escríbele en su MD nuevo."
+    "This was {name}’s old PC. Write to them in their new DM.": "Este era el PC anterior de {name}. Escríbele en su MD nuevo.",
+    "Windows notifications": "Notificaciones de Windows",
+    "When Fightcade is behind a match or another app: a notification, the taskbar button flashes, and a red count on its icon": "Cuando Fightcade está detrás de una partida o de otra app: una notificación, el botón de la barra de tareas parpadea y un número rojo en su icono",
+    "{n} unread": "{n} sin leer"
 } };
