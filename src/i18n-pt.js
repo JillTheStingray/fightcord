@@ -2168,7 +2168,7 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "GIFs play when someone hovers your avatar or card.": "GIFs tocam quando alguém passa o mouse no seu avatar ou cartão.",
     "Still uploading…": "Ainda enviando…",
     "Uploading… {n}%": "Enviando… {n}%",
-    "Uploads aren’t available (Pictures in chat is off)": "Envios indisponíveis (Imagens no chat está desligado)",
+    "Uploads aren’t available": "Envios indisponíveis",
     "Only pictures: png, jpg, webp or gif": "Só imagens: png, jpg, webp ou gif",
     "Animated pictures: up to {mb} MB": "Imagens animadas: até {mb} MB",
     "That picture didn’t open": "Essa imagem não abriu",

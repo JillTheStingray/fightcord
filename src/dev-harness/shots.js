@@ -308,6 +308,30 @@ const SCENES = [
     { name: 'profile-edit', snap: CHANNEL, run: `
         fightcord.modules.get('presence').setProfile({ s: 'Grinding 3rd Strike tonight, FT5s welcome', a: 'Yun main from the Netherlands. Working on my parry timing, always up for long sets.', b: fightcord.app.activeGameId() });
         fightcord.modules.get('profile-card')._edit(); await sleep(900);` },
+    // 3.7: Edit profile with a look (made-up pictures from static/looks), and a match result card
+    { name: 'looks-edit', snap: CHANNEL, run: `
+        window.__fcLocalPics = true;
+        const o = location.origin.replace('127.0.0.1', 'localhost') + '/dev-harness/static/looks/';
+        fightcord.modules.get('presence').setProfile({ s: 'Grinding 3rd Strike tonight, FT5s welcome', a: 'Yun main. Working on my parry timing, always up for long sets.', b: fightcord.app.activeGameId(),
+            av: { u: o + 'av-kai.svg' }, bn: { u: o + 'bn-sunset.svg' }, th: ['#ff7a59', '#7c3aed'], fr: 'flame', pn: 'they/them' });
+        fightcord.modules.get('profile-card')._edit(); await sleep(1800);` },
+    { name: 'result-card', snap: CHANNEL, wait: 7000, run: `
+        window.__fcLocalPics = true;
+        const o = location.origin.replace('127.0.0.1', 'localhost') + '/dev-harness/static/looks/';
+        const me = fightcord.app.me(), opp = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n) && !fightcord.app.playing(n))[5];
+        fightcord.modules.get('presence').setProfile({ av: { u: o + 'av-kai.svg' }, fr: 'flame' });
+        fightcord.modules.get('presence')._profile(opp, { s: '', av: { u: o + 'av-mira.svg' }, fr: 'neon' });
+        const quark = '1793300094615-4242';
+        fightcord.history.add({ opp, quark, at: Date.now() - 60000, rom: 'sfiii3nr1', channel: fightcord.app.activeChannelId(), myChar: 'Ken', oppChar: 'Chun-Li', mine: 3, theirs: 2, ft: 3, result: 'won', ranked: true });
+        const list = fightcord.app.channelElement().querySelector('.chatContent .messageWrapper:last-child').parentNode;
+        const row = document.createElement('div'); row.className = 'messageWrapper endgame';
+        row.innerHTML = '<div class="endgameMessageWrapper"><h3>Ranked match result</h3></div>';
+        row.firstChild.__vue__ = { data: { endgame: { name: me, opponent: { name: opp }, playerId: 0, scores: [3, 2], ranked: 3, initialElo: 1488, finalElo: 1503, replayUrl: 'https://replay.fightcade.com/fbneo/sfiii3nr1/' + quark } } };
+        list.appendChild(row);
+        fightcord.modules.get('result-card').refresh();
+        await sleep(4000);
+        const cw = fightcord.app.channelElement(); cw.querySelectorAll('.chatContent, .chatContent *').forEach(el => { if (el.scrollHeight > el.clientHeight + 20) el.scrollTop = el.scrollHeight; });
+        await sleep(500);` },
     // the website: someone's profile on their scout card; the member list with search, a lobby group, folded groups and the ⚔
     { name: 'site-profiles', snap: CHANNEL, run: `
         const n = Object.keys(fightcord.app.users()).filter(x => !fightcord.app.isMe(x) && !fightcord.app.playing(x))[5];

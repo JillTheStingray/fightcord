@@ -228,8 +228,12 @@ html .chatContent .messageWrapper.endgame.fcrc-on { padding: 4px 16px 4px 72px !
 .fcrcFace span { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 3px 3px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.85));
     font: 700 10px/12px var(--fc-font); text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcrcFace.none img { display: none; }
-.fcrcSide.hasFace .fcrcAv { position: absolute; right: -9px; bottom: -6px; line-height: 0; }
-.fcrcSide.r.hasFace .fcrcAv { right: auto; left: -9px; }
+.fcrcSide.hasFace .fcrcFace span { padding-right: 16px; text-align: left; }
+.fcrcSide.r.hasFace .fcrcFace span { padding: 10px 3px 3px 16px; text-align: right; }
+.fcrcSide.hasFace .fcrcAv { position: absolute; right: -15px; bottom: -8px; line-height: 0; }
+.fcrcSide.r.hasFace .fcrcAv { right: auto; left: -15px; }
+.fcrcSide.hasFace .fcrcWho { margin-left: 22px; }
+.fcrcSide.r.hasFace .fcrcWho { margin: 0 22px 0 0; }
 .fcrcWho { min-width: 0; margin: 0 0 0 14px; }
 .fcrcSide.r .fcrcWho { margin: 0 14px 0 0; }
 .fcrcName { display: block; font: 800 15px/20px var(--fc-font); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.1
+
+- **Fixed: profile pictures wouldn't upload.** Edit profile → Change avatar / Change banner said "Uploads
+  aren't available". They upload now, also with Pictures in chat switched off.
+- **Fixed:** on result cards with character art, your avatar covered the character's name.
+
 ## 3.7.0
 
 - **Edit your profile, like Discord:** click your avatar (bottom-left) → Edit profile. Pick your own

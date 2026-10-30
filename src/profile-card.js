@@ -225,8 +225,14 @@ function cropDialog(img, kind) {
     });
 }
 
+// uploads.js's exports (uploadRetry lives there, not on the API mod('uploads') gives); they work
+// even with Pictures in chat switched off
+function uploadsLib() {
+    try { return require(require('path').join(__dirname, 'uploads.js')); } catch (e) { return null; }
+}
+
 function editProfile() {
-    const pr = mod('presence'), up = mod('uploads'), lk = mod('profile-looks');
+    const pr = mod('presence'), up = uploadsLib(), lk = mod('profile-looks');
     if (!pr || !pr.rawProfile) return;
     const me = fc.app.me() || '';
     const draft = JSON.parse(JSON.stringify(pr.rawProfile()));
@@ -303,12 +309,12 @@ function editProfile() {
     // (async all the way: anything that throws ends up in take's catch, never a stuck "Uploading…")
     const send = async (kind, blob, type, onPct) => {
         const data = Buffer.from(await blob.arrayBuffer());
-        const job = up.uploadRetry(data, type, (f) => onPct(Math.round(f * 100)), { fallback: false });
+        const job = up.uploadRetry(data, type, (f) => onPct(Math.round(f * 100)), { fallback: false, blossom: fc.data.BLOSSOM });
         if (busy[kind]) busy[kind].job = job;
         return (await job.promise).url;
     };
     async function take(kind, file) {
-        if (!up || !up.uploadRetry) { fail(T('Uploads aren’t available (Pictures in chat is off)')); return; }
+        if (!up || !up.uploadRetry) { fail(T('Uploads aren’t available')); return; }
         const type = String(file.type || '').toLowerCase();
         if (PIC_TYPES.indexOf(type) < 0) { fail(T('Only pictures: png, jpg, webp or gif')); return; }
         if (file.size > PIC_MAX) { fail(T('Too big: up to {mb} MB', { mb: PIC_MAX / 1048576 })); return; }
