@@ -574,7 +574,11 @@ function toggleSessionCard(anchor) {
         const mark = s.result === 'won' ? '<b class="w">W</b>' : s.result === 'lost' ? '<b class="l">L</b>'
             : s.result === 'draw' ? '<b>D</b>' : '<b class="u">?</b>';
         const score = (s.mine != null && s.theirs != null) ? s.mine + '–' + s.theirs : '—';
-        return `<tr><td>${mark}</td><td class="o">${E(s.opp || '?')}</td><td class="s">${score}</td><td class="t">${fmtClock(s.at)}</td></tr>`;
+        // their rank at the time (older sets: what Fightcade shows for them in that game now)
+        const u = s.opp && !s.oppRank ? fc.app.users()[s.opp] : null;
+        const rank = s.oppRank || +((u && u.channelRank && u.channelRank[s.channel]) || 0);
+        const tip = rank ? [T('Rank {rank}', { rank: fc.data.rankLetter(rank) }), s.oppElo ? fc.fmt.num(s.oppElo) + ' ELO' : ''].filter(Boolean).join(' · ') : '';
+        return `<tr><td>${mark}</td><td class="o">${rank ? fc.ui.tag(rank, tip, 16) : ''}${E(s.opp || '?')}</td><td class="s">${score}</td><td class="t">${fmtClock(s.at)}</td></tr>`;
     }).join('');
     const streak = st.n >= 2 ? `<span class="st ${st.kind === 'won' ? 'hot' : 'cold'}">${st.kind === 'won' ? fc.ui.ic('flame', 'fill') + E(T('{n} win streak', { n: st.n })) : E(T('{n} losses in a row', { n: st.n }))}</span>` : '';
     const nightly = nightHtml(sessionSets());
@@ -1141,6 +1145,7 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
 #fcmsSession td { padding: 4px 0; font-size: 13px; }
 #fcmsSession td:first-child { width: 20px; }
 #fcmsSession td.o { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+#fcmsSession td.o .fc-tag { margin-right: 6px; vertical-align: -3px; }
 #fcmsSession td.s { width: 44px; text-align: right; color: var(--fc-head); }
 #fcmsSession td.t { width: 70px; text-align: right; color: var(--fc-muted); font-size: 12px; }
 #fcmsSession b.w { color: var(--fc-success); } #fcmsSession b.l { color: var(--fc-danger); } #fcmsSession b.u { color: #80848e; }

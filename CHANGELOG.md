@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.3
+
+- **Ranks in Tonight:** every set in the Tonight card (the trophy W–L in the top bar) shows your opponent's
+  rank badge next to their name; hover it for the rank and their ELO. Sets from before this show the rank
+  Fightcade gives them now. (Thanks Mushn1k.)
+
 ## 3.7.2
 
 - **Select an Image, like Discord:** Change avatar / Change banner in Edit profile now opens a picker first:
