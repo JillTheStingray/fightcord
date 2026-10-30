@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.2
+
+- **Select an Image, like Discord:** Change avatar / Change banner in Edit profile now opens a picker first:
+  Upload Image, Choose GIF (search KLIPY or pick one of your favorite GIFs; it stays animated) and your
+  6 most recent avatars or banners, which you can put back with one click, without uploading again.
+
 ## 3.7.1
 
 - **Fixed: profile pictures wouldn't upload.** Edit profile → Change avatar / Change banner said "Uploads

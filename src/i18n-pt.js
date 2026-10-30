@@ -2199,5 +2199,15 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "Your ELO: {elo}": "Seu ELO: {elo}",
     "Match result cards": "Cartões de resultado",
     "After your sets: the score, the characters you both played, Watch replay, Rematch and Copy link": "Depois dos seus sets: o placar, os personagens que vocês jogaram, Ver replay, Revanche e Copiar link",
-    "Your notes on {name}": "Suas notas sobre {name}"
+    "Your notes on {name}": "Suas notas sobre {name}",
+    "Select an Image": "Escolha uma imagem",
+    "Upload Image": "Enviar imagem",
+    "Choose GIF": "Escolher GIF",
+    "Recent avatars": "Avatares recentes",
+    "Recent banners": "Banners recentes",
+    "Your {n} most recent avatar uploads.": "Seus {n} avatares enviados mais recentes.",
+    "Your {n} most recent banner uploads.": "Seus {n} banners enviados mais recentes.",
+    "Search for a GIF to use.": "Busque um GIF para usar.",
+    "GIF search isn’t available": "Busca de GIFs indisponível",
+    "Search KLIPY": "Buscar no KLIPY"
 } };

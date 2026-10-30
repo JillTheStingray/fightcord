@@ -158,7 +158,9 @@ function klipyPick(it, type) {
     const ok = (u) => /^https:\/\/([a-z0-9-]+\.)*klipy\.com\//.test(u || '');
     if (!it || !it.slug || !(ok(anim) || ok(vid))) return null;
     const link = 'https://klipy.com/' + (type || 'gifs') + '/' + it.slug, name = String(it.title || '').slice(0, 80);
-    if (ok(anim)) return { link, src: anim, still: ok(still) ? still : '', kind: 'image', name };
+    // a bigger animated webp too, when there is one (a profile picture is drawn larger than a chat tile)
+    const big = ['hd', 'md'].map(k => (f[k] || {}).webp).find(w => w && ok(w.url) && w.url !== anim && !(w.size > 8 * 1024 * 1024));
+    if (ok(anim)) return Object.assign({ link, src: anim, still: ok(still) ? still : '', kind: 'image', name }, big ? { big: big.url } : {});
     return { link, src: vid, still: ok(still) ? still : '', kind: 'gifv', name };
 }
 // a KLIPY answer ({ result, data: { data: [...] } }) -> tiles

@@ -205,6 +205,10 @@ test('KLIPY: its links, its answers, search through it first', async () => {
     // with an animated webp: that, as a picture
     const wp = up.parseKlipy({ result: true, data: { data: [klipyItem('cat-2', { file: { sm: { mp4: { url: 'https://static.klipy.com/ii/a/c2.mp4' }, webp: { url: 'https://static.klipy.com/ii/a/c2.webp' }, jpg: { url: 'https://static.klipy.com/ii/a/c2.jpg' } } } })] } }, 'gifs');
     assert.deepEqual(wp, [{ link: 'https://klipy.com/gifs/cat-2', src: 'https://static.klipy.com/ii/a/c2.webp', still: 'https://static.klipy.com/ii/a/c2.jpg', kind: 'image', name: 'Cat cat-2' }]);
+    // a bigger webp (hd, else md, not over 8 MB) rides along as big
+    const bg = up.parseKlipy({ result: true, data: { data: [klipyItem('cat-3', { file: { sm: { webp: { url: 'https://static.klipy.com/ii/a/c3s.webp' } },
+        md: { webp: { url: 'https://static.klipy.com/ii/a/c3m.webp', size: 70000 } }, hd: { webp: { url: 'https://static.klipy.com/ii/a/c3h.webp', size: 9e6 } } } })] } }, 'gifs');
+    assert.equal(bg[0].big, 'https://static.klipy.com/ii/a/c3m.webp', 'hd too big: md');
     const got = [];
     const r = await up.searchGifs('happy cat', (url) => { got.push(url); return Promise.resolve(JSON.stringify({ result: true, data: { data: [klipyItem('happy-1')] } })); });
     assert.equal(r.source, 'klipy');

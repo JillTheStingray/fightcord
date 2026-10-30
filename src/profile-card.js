@@ -228,7 +228,43 @@ function cropDialog(img, kind) {
 // uploads.js's exports (uploadRetry lives there, not on the API mod('uploads') gives); they work
 // even with Pictures in chat switched off
 function uploadsLib() {
-    try { return require(require('path').join(__dirname, 'uploads.js')); } catch (e) { return null; }
+    try { return require(require('path').join(__dirname, 'uploads.js')); } catch (e) { return mod('uploads'); }
+}
+
+// your last 6 avatar / banner uploads (like Discord's Recent Avatars), kept on this PC
+const RECENT_MAX = 6;
+function recentPics(kind) {
+    const list = store('profile-card').data['recent_' + kind];
+    return Array.isArray(list) ? list.filter(p => p && typeof p.u === 'string') : [];
+}
+function addRecent(kind, pic) {
+    if (!pic || !pic.u) return;
+    const s = store('profile-card');
+    s.data['recent_' + kind] = [pic].concat(recentPics(kind).filter(p => p.u !== pic.u)).slice(0, RECENT_MAX);
+    s.save();
+}
+
+// a GIF from the search -> a File, uploaded like one you picked (profiles only take the picture hosts' links)
+function fetchPic(url) {
+    const typeOf = (t) => { t = String(t || '').split(';')[0].trim().toLowerCase(); return PIC_TYPES.indexOf(t) >= 0 ? t : /\.gif(\?|$)/i.test(url) ? 'image/gif' : 'image/webp'; };
+    let https = null;
+    try { https = require('https'); } catch (e) { /* the dev harness: the page's own fetch */ }
+    if (!https) return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); }).then(b => new File([b], 'gif', { type: typeOf(b.type) }));
+    return new Promise((resolve, reject) => {
+        const get = (u, n) => {
+            const req = https.get(u, { headers: { 'User-Agent': 'Fightcord' }, timeout: 20000 }, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && n < 3) { res.resume(); get(new URL(res.headers.location, u).href, n + 1); return; }
+                if (res.statusCode !== 200) { res.resume(); reject(new Error('HTTP ' + res.statusCode)); return; }
+                const parts = [];
+                let size = 0;
+                res.on('data', (c) => { size += c.length; if (size > GIF_MAX) req.destroy(new Error(T('Animated pictures: up to {mb} MB', { mb: GIF_MAX / 1048576 }))); else parts.push(c); });
+                res.on('end', () => resolve(new File([Buffer.concat(parts)], 'gif', { type: typeOf(res.headers['content-type']) })));
+            });
+            req.on('timeout', () => req.destroy(new Error('timed out')));
+            req.on('error', reject);
+        };
+        get(url, 0);
+    });
 }
 
 function editProfile() {
@@ -343,18 +379,89 @@ function editProfile() {
             const url = await send(kind, main, mainType, pct);
             const surl = still ? await send(kind, still, 'image/webp', () => {}) : '';
             draft[kind] = surl ? { u: url, s: surl } : { u: url };
+            addRecent(kind, draft[kind]);
         } catch (e) {
             if (e && e.message !== 'cancelled') fail(T('The upload didn’t work: {why}', { why: (e && e.message) || '?' }));
         }
         delete busy[kind];
         if (m.el.isConnected) prev();
     }
-    const pick = (kind) => {
+    const pickFile = (kind) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = PIC_TYPES.join(',');
         input.onchange = () => { const f = input.files && input.files[0]; if (f) take(kind, f); };
         input.click();
+    };
+    // "Select an Image" (like Discord's): Upload Image, Choose GIF, and your recent uploads
+    const pick = (kind) => {
+        const saved = pr.rawProfile()[kind];
+        if (saved && saved.u) addRecent(kind, saved);          // (pictures from before this list existed)
+        const recent = recentPics(kind);
+        const ck = fc.ui.modal({ title: T('Select an Image'), body: '<div class="pcPickBox"></div>', width: 560 });
+        ck.el.addEventListener('keydown', (e) => e.stopPropagation());
+        ck.el.addEventListener('keypress', (e) => e.stopPropagation());
+        const box = ck.body.querySelector('.pcPickBox');
+        const title = ck.el.querySelector('.fc-modal-h > span');
+        let gifs = [], ask = 0, timer = 0, getting = false;
+        const home = () => {
+            title.textContent = T('Select an Image');
+            box.innerHTML = `<div class="pcPick"><div class="pcPickT" data-pk="upload">${fc.ui.icon('image')}<b>${E(T('Upload Image'))}</b></div>` +
+                `<div class="pcPickT gif" data-pk="gif"><div class="pcPickBg"></div><i>GIF</i><b>${fc.ui.icon('search')}${E(T('Choose GIF'))}</b></div></div>` +
+                (recent.length ? `<div class="pcPickH">${E(kind === 'av' ? T('Recent avatars') : T('Recent banners'))}</div>` +
+                    `<div class="pcPickSub">${E(kind === 'av' ? T('Your {n} most recent avatar uploads.', { n: recent.length }) : T('Your {n} most recent banner uploads.', { n: recent.length }))}</div>` +
+                    `<div class="pcRecent ${kind}">${recent.map((p, i) => `<img data-pk="recent" data-i="${i}" src="${E(p.s || p.u)}" alt="">`).join('')}</div>` : '');
+            // the GIF tile's background: your favourite GIFs, else a search
+            const bg = box.querySelector('.pcPickBg');
+            const fill = (list) => { const seen = new Set(); if (bg.isConnected) bg.innerHTML = list.filter(g => !seen.has(g.src) && seen.add(g.src)).slice(0, 4).map(g => `<img src="${E(g.still || g.src)}" alt="">`).join(''); };
+            const favs = up && up.favorites ? up.favorites().filter(g => g.kind === 'image') : [];
+            if (favs.length >= 4 || !up || !up.searchGifs) fill(favs);
+            else up.searchGifs('fighting game').then(r => fill(favs.concat(r.results.filter(g => g.kind === 'image'))), () => fill(favs));
+        };
+        const drawGifs = (html) => { const l = box.querySelector('.pcGifList'); if (l) l.innerHTML = html; };
+        const tiles = (list) => `<div class="pcGifGrid">${list.map((g, i) => `<img data-pk="pick-gif" data-i="${i}" src="${E(g.src)}" alt="" loading="lazy">`).join('')}</div>`;
+        const showFavs = () => {
+            gifs = up && up.favorites ? up.favorites().filter(g => g.kind === 'image') : [];
+            drawGifs(gifs.length ? `<div class="pcPickH">${E(T('Favorites'))}</div>` + tiles(gifs) : `<div class="pcGifMsg">${E(T('Search for a GIF to use.'))}</div>`);
+        };
+        const gifView = () => {
+            if (!up || !up.searchGifs) { fail(T('GIF search isn’t available')); return; }
+            title.textContent = T('Choose GIF');
+            box.innerHTML = `<div class="pcGifTop">${fc.ui.btn('', { kind: 'ghost', icon: 'arrowLeft', attrs: 'data-pk="back"', title: T('Back') })}` +
+                `<input class="fc-input" placeholder="${E(T('Search KLIPY'))}"></div><div class="pcGifList"></div><div class="pcGifBy">Powered by KLIPY</div>`;
+            const q = box.querySelector('input');
+            q.addEventListener('input', () => {
+                clearTimeout(timer);
+                const words = q.value.trim(), me_ = ++ask;
+                if (!words) { showFavs(); return; }
+                drawGifs(`<div class="pcGifMsg">${E(T('Searching GIFs…'))}</div>`);
+                timer = setTimeout(() => up.searchGifs(words).then(r => {
+                    if (me_ !== ask) return;
+                    gifs = r.results.filter(g => g.kind === 'image');
+                    drawGifs(gifs.length ? tiles(gifs) : `<div class="pcGifMsg">${E(T('No GIFs found'))}</div>`);
+                }, (e) => { if (me_ === ask) drawGifs(`<div class="pcGifMsg bad">${E(T('Couldn’t search GIFs ({error})', { error: e.message }))}</div>`); }), 350);
+            });
+            showFavs();
+            setTimeout(() => q.focus(), 30);
+        };
+        box.addEventListener('click', (e) => {
+            const t = e.target.closest('[data-pk]');
+            if (!t || getting) return;
+            const pk = t.dataset.pk;
+            if (pk === 'upload') { pickFile(kind); ck.close(); }
+            else if (pk === 'gif') gifView();
+            else if (pk === 'back') { ask++; home(); }
+            else if (pk === 'recent') { draft[kind] = Object.assign({}, recent[+t.dataset.i]); ck.close(); prev(); }
+            else if (pk === 'pick-gif') {
+                const g = gifs[+t.dataset.i];
+                if (!g) return;
+                getting = true;
+                t.classList.add('wait');
+                fetchPic(g.big || g.src).then((file) => { ck.close(); if (!busy[kind]) take(kind, file); },
+                    (e) => { getting = false; t.classList.remove('wait'); fail(T('The upload didn’t work: {why}', { why: e.message })); });
+            }
+        });
+        home();
     };
 
     m.body.addEventListener('click', (e) => {
@@ -522,6 +629,39 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 .pcPrevB { padding: 0 16px 16px; }
 .pcPrevB .fc-cmsg { margin-top: 12px; pointer-events: none; }
 .pcEdHint { margin-top: 8px; }
+.pcPick { display: flex; }
+.pcPickT { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; border-radius: 8px;
+    overflow: hidden; cursor: pointer; background: var(--fc-s4); color: var(--fc-head); transition: filter var(--fc-fast); }
+.pcPickT + .pcPickT { margin-left: 12px; }
+.pcPickT:hover { filter: brightness(1.2); }
+.pcPickT > .fc-ic { width: 28px; height: 28px; margin-bottom: 10px; }
+.pcPickT b { position: relative; display: flex; align-items: center; font: 600 15px/1.2 var(--fc-font); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.pcPickT b .fc-ic { width: 18px; height: 18px; margin-right: 6px; }
+.pcPickBg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-wrap: wrap; background: var(--fc-s1); }
+.pcPickBg img { width: 50%; height: 50%; object-fit: cover; }
+.pcPickT.gif::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); transition: background var(--fc-fast); }
+.pcPickT.gif:hover::after { background: rgba(0,0,0,.35); }
+.pcPickT.gif b, .pcPickT.gif i { z-index: 1; }
+.pcPickT.gif i { position: relative; margin-bottom: 8px; padding: 2px 5px; border-radius: 4px; background: rgba(255,255,255,.9); color: #111; font: 800 11px/1.2 var(--fc-font); font-style: normal; }
+.pcPickH { margin: 18px 0 2px; font: 600 15px/1.3 var(--fc-font); color: var(--fc-head); }
+.pcPickSub { font-size: 13px; color: var(--fc-muted); }
+.pcRecent { display: flex; flex-wrap: wrap; margin-top: 10px; }
+.pcRecent img { margin: 0 10px 10px 0; object-fit: cover; cursor: pointer; background: var(--fc-s1); transition: transform var(--fc-fast), box-shadow var(--fc-fast); }
+.pcRecent img:hover { transform: scale(1.06); box-shadow: 0 0 0 2px var(--fc-accent); }
+.pcRecent.av img { width: 64px; height: 64px; border-radius: 50%; }
+.pcRecent.bn img { width: 150px; height: 60px; border-radius: 6px; }
+.pcGifTop { display: flex; align-items: center; margin-bottom: 10px; }
+.pcGifTop .fc-btn { margin-right: 8px; }
+.pcGifTop input { flex: 1; }
+.pcGifList { height: 340px; overflow-x: hidden; overflow-y: auto; }
+.pcGifList .pcPickH { margin-top: 0; margin-bottom: 8px; }
+.pcGifGrid { columns: 3; margin-right: -8px; }
+.pcGifGrid img { display: block; width: calc(100% - 8px); margin-bottom: 8px; border-radius: 6px; cursor: pointer; background: var(--fc-s1); break-inside: avoid; }
+.pcGifGrid img:hover { box-shadow: 0 0 0 2px var(--fc-accent); }
+.pcGifGrid img.wait { opacity: .4; cursor: progress; }
+.pcGifMsg { padding: 40px 8px; text-align: center; font-size: 13px; color: var(--fc-muted); }
+.pcGifMsg.bad { color: var(--fc-danger); }
+.pcGifBy { margin-top: 6px; text-align: right; font: 600 10px/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-muted); }
 .pcCrop { display: flex; flex-direction: column; align-items: center; }
 .pcCropView { position: relative; overflow: hidden; border-radius: 8px; background: #000; cursor: grab; }
 .pcCropView:active { cursor: grabbing; }
