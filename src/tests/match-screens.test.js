@@ -63,3 +63,15 @@ test('the set game by game, from the emulator’s score', () => {
     const late = ms.charStep(ms.charStep(null, side(2, 1, 'Ken', 'Yun')), side(3, 1, 'Ken', 'Yun'));
     assert.deepEqual(late.games.map(g => g.w), [1]);
 });
+
+test('the set score from Fightcade’s end-of-set row: your side, their name, nothing played (issue #2)', () => {
+    const e = (o) => Object.assign({ name: 'Me', opponent: { name: 'Zig' }, playerId: 0, scores: [3, 1], ranked: 3 }, o);
+    assert.deepEqual(ms.scoreOf(e({}), 'Zig'), { mine: 3, theirs: 1 });
+    assert.deepEqual(ms.scoreOf(e({ playerId: 1 }), 'zig'), { mine: 1, theirs: 3 }, 'you as player 2');
+    assert.deepEqual(ms.scoreOf(e({ ranked: 0, scores: [2, 2] }), 'Zig'), { mine: 2, theirs: 2 }, 'casual sets too');
+    assert.equal(ms.scoreOf(e({}), 'Someone else'), null, 'another set’s row');
+    assert.equal(ms.scoreOf(e({ scores: [0, 0] }), 'Zig'), null, 'no games played');
+    assert.equal(ms.scoreOf(e({ scores: null }), 'Zig'), null);
+    assert.equal(ms.scoreOf(null, 'Zig'), null);
+    assert.deepEqual(ms.scoreOf(e({}), ''), { mine: 3, theirs: 1 }, 'opponent unknown: still counts');
+});

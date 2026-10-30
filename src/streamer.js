@@ -34,7 +34,7 @@ const NAMES = [
     '.challengeError .title', '.notification-challenge .challenger .name', '.notification-mention .header',
     '.floatingNotificationsWrapper .content',
     '.ccP.them b', '.fcsc-name', '.hcName', '.hcPlay b', '.fdName', '.frName', '.fcdLiveN b', '.fcdGSide b',
-    '.fcsSet .o', '.fcsStats .who .nm', '.fcm-live', '.fcinF', '#fcmsSession td.o', '.fcfmName', '.ntEditWho'
+    '.fcsSet .o', '.fcsStats .who .nm', '.fcm-live', '.fcinF', '#fcmsSession td.o', '.fcfmName', '.ntEditWho', '.fcrcSide.r .fcrcName'
 ];
 const AVATARS = ['img.avatar', '.avatarWrapper img', '.fc-avatar img', '.matchItem img.image', '.pcFriends img'];
 const OPP = ['#fcmsOverlay .player .pname', '#fcmsOverlay .sub'];

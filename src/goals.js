@@ -353,6 +353,7 @@ function start(f) {
     fc.settings.section('goals', 'Goals', 'target', 65);
     fc.settings.block({ id: 'goals', section: 'goals', order: 10, render: wire, refresh: render });
     fc.on('set:recorded', () => setTimeout(check, 50));
+    fc.on('set:updated', () => setTimeout(check, 50));          // a result found late (3.7)
     fc.on('history:merged', check);
     fc.watch(refreshPill, { selector: '.channelToolbar' });
     fc.tick(check, 60000);                         // a new day / week starts on its own

@@ -3101,6 +3101,8 @@ const api = {
     leaveVoice: () => voiceLeave(),
     // friends + DMs (3.6): the DMs module drives these
     myId: () => { const id = myId(); return id ? id.pk : ''; },
+    // 3.7: your profile's looks are signed with your ID (a 32-byte hash in, the signature's hex out)
+    signId: (msg) => { const id = myId(); return id && V && V.sign && crypto ? V.sign(msg, id.sk, crypto.randomBytes(32)).toString('hex') : ''; },
     setDms(on) { dmsOn = !!on; if (dmsOn) boot(); else { rooms.forEach(L => { if (L.lb.dm && L.sub) { L.sub.close(); L.sub = null; } }); if (view.mode === 'dm' && view.page) view.page.close(); } },
     dmFor: (pk, n, g, o) => { const lb = dmFor(pk, n, g, o); return lb ? lb.id : ''; },
     dmOf: (pk) => { const lb = dmOf(pk); return lb ? lb.id : ''; },

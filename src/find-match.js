@@ -121,8 +121,10 @@ function rowHtml(c) {
     const rec = !h ? `<span class="fcfmNew">${E(T('New'))}</span>` : `<span class="fcfmRec" title="${E(T('You vs them'))}">${h.w}–${h.l}</span>`;
     const odds = typeof c.odds === 'number' ? Math.round(c.odds * 100) : null;
     const conn = fc.fmt.conn({ ping: c.ping, wlan: c.wlan, proxy: c.proxy });
+    const nt = mod('notes');
+    const dots = nt && nt.dots ? nt.dots(c.name) : '';
     return `<div class="fcfmRow" data-name="${E(c.name)}">${fc.ui.avatar(c.name, { size: 32, status: 'auto' })}
-        <div class="fcfmWho"><b class="fcfmName" data-scout="${E(c.name)}" title="${E(T('Open the scout card'))}">${fc.ui.flag(c.cc)}${E(c.name)}</b>
+        <div class="fcfmWho"><b class="fcfmName" data-scout="${E(c.name)}" title="${E(T('Open the scout card'))}">${fc.ui.flag(c.cc)}${E(c.name)}${dots}</b>
             <span>${c.rank ? fc.ui.tag(fc.data.rankLetter(c.rank)) + ' ' : ''}${E(conn || T('ping unknown'))}</span></div>
         ${rec}
         ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
@@ -157,13 +159,34 @@ function open(anchor) {
     box.className = 'fcfmPop';
     render(box);
     box.addEventListener('click', (e) => onClick(box, e));
-    const me = pop = fc.ui.popover(anchor || { x: window.innerWidth - 420, y: 60 }, box, { width: 400, cls: 'fc-pop-card', onClose: () => { if (pop === me) pop = null; } });
+    box.addEventListener('mouseover', onRowHover);
+    box.addEventListener('mouseleave', hideNote);
+    const me = pop = fc.ui.popover(anchor || { x: window.innerWidth - 420, y: 60 }, box, { width: 400, cls: 'fc-pop-card', onClose: () => { hideNote(); if (pop === me) pop = null; } });
     // better odds once the leaderboard is in, better head-to-head once your sets are
     const ctx = context();
     const again = () => { if (pop === me && box.isConnected) render(box); };
     if (ctx && ctx.rom && !fc.api.cachedBoard(ctx.rom)) fc.api.leaderboard(ctx.rom).then(again).catch(() => {});
     const scout = mod('scout');
     if (!api_h2h && scout && scout.recentOpponents) scout.recentOpponents().then(m => { api_h2h = m; again(); }).catch(() => {});
+}
+
+// 3.7 (Mushn1k's idea): your notes and tags on a player, beside their row while you hover it
+let noteTip = null, noteFor = '';
+function hideNote() { if (noteTip) noteTip.remove(); noteTip = null; noteFor = ''; }
+function onRowHover(e) {
+    const row = e.target.closest && e.target.closest('.fcfmRow[data-name]');
+    const name = row ? row.dataset.name : '';
+    if (name === noteFor) return;
+    hideNote();
+    const nt = mod('notes');
+    const html = name && nt && nt.chips ? nt.chips(name) : '';
+    if (!html) return;
+    noteFor = name;
+    noteTip = document.createElement('div');
+    noteTip.className = 'fcfmNote';
+    noteTip.innerHTML = `<div class="h">${fc.ui.ic('note')}<span>${E(T('Your notes on {name}', { name }))}</span></div>${html}`;
+    document.body.appendChild(noteTip);
+    fc.ui.place(noteTip, row.getBoundingClientRect(), 'left');
 }
 
 function onClick(box, e) {
@@ -217,6 +240,11 @@ const CSS = `
 .fcfmPill svg { width: 16px; height: 16px; margin-right: 6px; }
 .fcfmRow { display: flex; align-items: center; padding: 6px 4px; border-radius: 8px; }
 .fcfmRow:hover { background: rgba(255,255,255,.04); }
+.fcfmNote { position: fixed; z-index: var(--fc-z-pop); width: 230px; padding: 10px 12px; border-radius: 10px; pointer-events: none; box-sizing: border-box;
+    background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); font: 13px/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
+.fcfmNote .h { display: flex; align-items: center; margin-bottom: 6px; font: 700 11px/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fcfmNote .h .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
+.fcfmNote .h span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcfmRow .fc-avatar { flex: none; margin-right: 10px; }
 .fcfmWho { flex: 1; min-width: 0; }
 .fcfmWho b { display: block; font-size: 14px; font-weight: 600; color: var(--fc-head); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -239,7 +267,7 @@ function start(f) {
     store = fc.config('find-match', { enabled: true, pill: true, maxPing: 120, window: '1' });
     cfg = store.data;
     fc.ui.style('fcfmStyle', CSS);
-    fc.own(() => { fc.ui.style('fcfmStyle', null); document.querySelectorAll('.fcfmPill').forEach(p => p.remove()); if (pop) pop.close(); });
+    fc.own(() => { fc.ui.style('fcfmStyle', null); document.querySelectorAll('.fcfmPill').forEach(p => p.remove()); hideNote(); if (pop) pop.close(); });
     fc.watch(refreshPill, { selector: '.channelToolbar' });
     fc.cmd('find', 'Find someone to play: free, near your rank, good ping', () => { if (cfg.enabled) open(document.querySelector('.fcfmPill')); });
     fc.settings.block({

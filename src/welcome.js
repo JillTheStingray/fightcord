@@ -144,6 +144,10 @@ const NEWS = [
     { v: '3.6', title: 'Fightcord 3.6', items: [
         ['users', N_('Friends, for real'), N_('Send a friend request to any Fightcord player. Once they accept, you\'re friends on both sides.')],
         ['chat', N_('DMs'), N_('Message your friends with pictures and GIFs, call them, and challenge them to a set. The chat bubble at the top of the server list.')]
+    ] },
+    { v: '3.7', title: 'Fightcord 3.7', items: [
+        ['user', N_('Edit your profile'), N_('Your own avatar and banner (GIFs too), theme colours, an avatar frame and pronouns. Click your avatar, bottom-left, then Edit profile.')],
+        ['eye', N_('Seen everywhere'), N_('Fightcord players see your look on your cards, in the chat and the member list, even while you\'re offline.')]
     ] }
 ];
 

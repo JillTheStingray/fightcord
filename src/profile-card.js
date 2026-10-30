@@ -164,11 +164,73 @@ function cardHtml() {
         </div></div>`;
 }
 
-// the profile editor: status, About me, banner game (+ the badges you'd show)
+// the profile editor (3.7, like Discord's): your avatar and banner pictures, theme colours, a frame,
+// pronouns, status, About me and the banner game, with your card as others will see it on the right
+const PIC = {
+    av: { w: 256, h: 256, round: true, label: N_('Avatar') },
+    bn: { w: 960, h: 384, round: false, label: N_('Banner') }
+};
+const GIF_MAX = 8 * 1024 * 1024, PIC_MAX = 25 * 1024 * 1024;
+const PIC_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+// an animated WebP has an ANIM chunk near the start
+function isAnimatedWebp(bytes) {
+    const n = Math.min(bytes.length, 65536);
+    for (let i = 12; i < n - 4; i++) if (bytes[i] === 0x41 && bytes[i + 1] === 0x4e && bytes[i + 2] === 0x49 && bytes[i + 3] === 0x4d) return true;
+    return false;
+}
+const loadImg = (url) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('not a picture')); i.src = url; });
+const toBlob = (c, type, q) => new Promise(res => c.toBlob(res, type, q));
+// a picture drawn to w x h (zoom z >= 1 over "cover", x/y: where the middle is, 0..1)
+function drawCrop(img, w, h, z, x, y) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const k = Math.max(w / img.naturalWidth, h / img.naturalHeight) * (z || 1);
+    const dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+    const cx = x == null ? 0.5 : x, cy = y == null ? 0.5 : y;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, Math.min(0, Math.max(w - dw, w / 2 - cx * dw)), Math.min(0, Math.max(h - dh, h / 2 - cy * dh)), dw, dh);
+    return c;
+}
+
+// still pictures: drag to move, slider (or the wheel) to zoom -> a Blob, or null
+function cropDialog(img, kind) {
+    const spec = PIC[kind];
+    const vw = kind === 'av' ? 300 : 440, vh = Math.round(vw * spec.h / spec.w);
+    return new Promise(done => {
+        let z = 1, x = 0.5, y = 0.5, result = null, off = () => {};
+        const body = `<div class="pcCrop"><div class="pcCropView${spec.round ? ' round' : ''}" style="width:${vw}px;height:${vh}px"><canvas width="${vw * 2}" height="${vh * 2}"></canvas></div>
+            <div class="pcCropZoom">${fc.ui.ic('image')}<input type="range" min="1" max="4" step="0.01" value="1">${fc.ui.ic('image')}</div>
+            <p class="fc-note">${E(T('Drag to move it, zoom with the slider or the mouse wheel.'))}</p></div>`;
+        const m = fc.ui.modal({
+            title: kind === 'av' ? T('Crop your avatar') : T('Crop your banner'), body, width: vw + 48,
+            actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Apply'), fn: () => { result = drawCrop(img, spec.w, spec.h, z, x, y); } }],
+            onClose: () => { off(); if (result) toBlob(result, 'image/webp', 0.9).then(done); else done(null); }
+        });
+        const cv = m.body.querySelector('canvas'), range = m.body.querySelector('input[type=range]');
+        const draw = () => { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(drawCrop(img, cv.width, cv.height, z, x, y), 0, 0); };
+        // how much of the picture one pixel of the view moves (so the spot under the mouse follows it)
+        const step = () => { const k = Math.max(vw / img.naturalWidth, vh / img.naturalHeight) * z; return [1 / (img.naturalWidth * k), 1 / (img.naturalHeight * k)]; };
+        let drag = null;
+        cv.addEventListener('mousedown', (e) => { e.preventDefault(); drag = { sx: e.clientX, sy: e.clientY, x, y }; });
+        const move = (e) => { if (!drag) return; const [kx, ky] = step(); x = Math.min(1, Math.max(0, drag.x - (e.clientX - drag.sx) * kx)); y = Math.min(1, Math.max(0, drag.y - (e.clientY - drag.sy) * ky)); draw(); };
+        const up = () => { drag = null; };
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+        off = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+        range.addEventListener('input', () => { z = +range.value; draw(); });
+        cv.addEventListener('wheel', (e) => { e.preventDefault(); z = Math.min(4, Math.max(1, z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); range.value = z; draw(); }, { passive: false });
+        draw();
+    });
+}
+
 function editProfile() {
-    const pr = mod('presence');
+    const pr = mod('presence'), up = mod('uploads'), lk = mod('profile-looks');
     if (!pr || !pr.rawProfile) return;
-    const cur = pr.rawProfile();
+    const me = fc.app.me() || '';
+    const draft = JSON.parse(JSON.stringify(pr.rawProfile()));
+    const busy = {};                                   // kind -> { job, pct, local }
     // games to pick a banner from: your channels and what you've played most
     const games = new Map();
     fc.app.joinedChannels().forEach(c => { if (c.gameid) games.set(c.gameid, shortName(c.name || c.id)); });
@@ -178,29 +240,157 @@ function editProfile() {
         if (!games.has(rom)) { const s = fc.history.all().find(x => x.rom === rom); games.set(rom, shortName((s && (s.channel || s.game)) || rom)); }
     });
     const opts = '<option value="">' + E(T('My main game')) + '</option>' + [...games.entries()].map(([rom, n]) =>
-        `<option value="${E(rom)}"${rom === cur.b ? ' selected' : ''}>${E(n)}</option>`).join('');
+        `<option value="${E(rom)}"${rom === draft.b ? ' selected' : ''}>${E(n)}</option>`).join('');
     const mine = pr.myProfile();
-    const body = `<div class="pcEdit">
-        <label><span>${E(T('Status'))}</span><input class="fc-input" data-f="s" maxlength="80" placeholder="${E(T('Grinding 3rd Strike, FT5s welcome'))}" value="${E(cur.s)}"></label>
-        <label><span>${E(T('About me'))}</span><textarea class="fc-input" data-f="a" maxlength="190" placeholder="${E(T('Mains, where you play from, what you’re working on…'))}">${E(cur.a)}</textarea><small class="cnt"></small></label>
-        <label><span>${E(T('Banner'))}</span><select class="fc-select" data-f="b">${opts}</select></label>
+    const frames = lk ? lk.frameNames() : {};
+    const themes = lk ? lk.themes() : [];
+    const u = fc.app.user(me)[1] || fc.app.localUser() || {};
+    const plainAv = fc.data.avatarUrl(me, u.gravatar, 160, true);
+    // N_('Avatar') N_('Banner') N_('Profile theme') N_('Avatar frame')
+    const sec = (title, inner, extra) => `<div class="pcEdSec"${extra || ''}><div class="pcEdH">${E(T(title))}</div>${inner}</div>`;
+    const body = `<div class="pcEd"><div class="pcEdL pcEdit">
+        ${sec('Avatar', `<div class="pcEdRow" data-drop="av">${fc.ui.btn('Change avatar', { size: 'sm', attrs: 'data-ed="pick-av"' })}${fc.ui.btn('Remove', { size: 'sm', kind: 'ghost', attrs: 'data-ed="rm-av"' })}<span class="pcEdUp" data-up="av"></span></div>`, ' data-drop="av"')}
+        ${sec('Banner', `<div class="pcEdRow">${fc.ui.btn('Change banner', { size: 'sm', attrs: 'data-ed="pick-bn"' })}${fc.ui.btn('Remove', { size: 'sm', kind: 'ghost', attrs: 'data-ed="rm-bn"' })}<span class="pcEdUp" data-up="bn"></span></div>
+            <label class="pcEdGame"><span>${E(T('No picture: a game’s art'))}</span><select class="fc-select" data-f="b">${opts}</select></label>`, ' data-drop="bn"')}
+        ${sec('Profile theme', `<div class="pcEdTheme"><label class="pcEdCol"><input type="color" data-ed="th0"><small>${E(T('Top'))}</small></label><label class="pcEdCol"><input type="color" data-ed="th1"><small>${E(T('Bottom'))}</small></label>
+            <div class="pcEdPresets">${themes.map((t, i) => `<i data-ed="preset" data-i="${i}" style="background:linear-gradient(180deg,${t[0]},${t[1]})" title="${E(t.join(' → '))}"></i>`).join('')}</div>
+            ${fc.ui.btn('None', { size: 'sm', kind: 'ghost', attrs: 'data-ed="th-none"' })}</div>`)}
+        ${sec('Avatar frame', `<div class="pcEdFrames"><div class="pcEdFr" data-ed="fr" data-fr="" title="${E(T('No frame'))}"><span class="fc-avatar" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T('None'))}</small></div>` +
+            Object.keys(frames).map(k => `<div class="pcEdFr" data-ed="fr" data-fr="${k}" title="${E(T(frames[k]))}"><span class="fc-avatar" data-fcfr="${k}" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T(frames[k]))}</small></div>`).join('') + '</div>')}
+        <label><span>${E(T('Pronouns'))}</span><input class="fc-input" data-f="pn" maxlength="40" placeholder="${E(T('Add your pronouns'))}" value="${E(draft.pn || '')}"></label>
+        <label><span>${E(T('Status'))}</span><input class="fc-input" data-f="s" maxlength="80" placeholder="${E(T('Grinding 3rd Strike, FT5s welcome'))}" value="${E(draft.s || '')}"></label>
+        <label><span>${E(T('About me'))}</span><textarea class="fc-input" data-f="a" maxlength="190" placeholder="${E(T('Mains, where you play from, what you’re working on…'))}">${E(draft.a || '')}</textarea><small class="cnt"></small></label>
         ${(mine.bd || []).length ? `<div class="pcEditBadges"><span>${E(T('Your badges'))}</span>${pr.badgesHtml(mine, true)}</div>` : ''}
-        <p class="fc-note">${E(pr.sharing() ? T('Fightcord players see your profile on your hover and scout cards. Turn it off in Settings → Voice chat → Share my profile.')
-            : T('Sharing is off, so only you see this (Settings → Voice chat → Share my profile).'))}</p></div>`;
+        <p class="fc-note">${E(pr.sharing() ? T('Fightcord players see your profile everywhere they see you. Pictures go on public file hosts: anyone with the link can see them.')
+            : T('Sharing is off, so only you see this (Settings → Voice chat → Share my profile).'))}</p>
+        </div><div class="pcEdR"><div class="pcEdH">${E(T('Preview'))}</div><div class="pcPrev fclkPrev"></div><p class="fc-note pcEdHint">${E(T('GIFs play when someone hovers your avatar or card.'))}</p></div></div>`;
     const m = fc.ui.modal({
-        title: T('Edit profile'), body, width: 460,
-        actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Save'), fn: (b) => {
-            pr.setProfile({ s: b.querySelector('[data-f="s"]').value, a: b.querySelector('[data-f="a"]').value, b: b.querySelector('[data-f="b"]').value });
+        title: T('Edit profile'), body, width: 820,
+        actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Save'), fn: () => {
+            if (Object.keys(busy).length) { fc.ui.toast(T('Still uploading…'), { icon: 'image' }); return false; }
+            pr.setProfile(draft);
+            if (lk) lk.refresh();
             fc.ui.toast(T('Profile saved'), { icon: 'check', kind: 'success' });
-        } }]
+        } }],
+        onClose: () => Object.keys(busy).forEach(k => { try { busy[k].job.cancel(); } catch (e) { /* done */ } })
     });
     m.el.addEventListener('keydown', (e) => e.stopPropagation());
     m.el.addEventListener('keypress', (e) => e.stopPropagation());
-    const ta = m.body.querySelector('textarea'), cnt = m.body.querySelector('.cnt');
+    const $ = (sel) => m.body.querySelector(sel);
+    const saveBtn = m.el.querySelector('.fc-modal-f [data-i="1"]');
+
+    // the right column: your card as others will see it
+    const prev = () => {
+        const pic = (k) => (busy[k] && busy[k].local) || (draft[k] && draft[k].u) || '';
+        const bn = pic('bn');
+        const banner = bn ? `url(&quot;${E(bn)}&quot;) center/cover` : draft.b ? fc.ui.cardBanner(draft.b, fc.data.hashColor(me)) : fc.ui.cardBanner('', fc.data.hashColor(me));
+        const av = fc.ui.avatar(me, { size: 80, status: 'on', ring: 'var(--fc-s0)' }).replace(/ data-av="[^"]*"/, draft.fr ? ` data-fcfr="${E(draft.fr)}"` : '')
+            .replace(/src="[^"]*"/, `src="${E(pic('av') || plainAv)}"`);
+        const box = $('.pcPrev');
+        box.innerHTML = fc.ui.cardHead({ name: me || T('You'), banner, avatar: av, status: draft.s || '', pn: draft.pn || '', meta: `<span>${E(T('Online'))}</span>` }) +
+            `<div class="pcPrevB">${draft.a ? `<div class="fc-ch-sec"><div class="fcProfA"><b>${E(T('About me'))}</b>${E(draft.a)}</div></div>` : ''}` +
+            `${fc.ui.cardMsg(me || 'you', 'data-none', T('Message @{name}', { name: me || 'you' }))}</div>`;
+        if (lk) lk.applyTheme(box, draft.th || null);
+        ['av', 'bn'].forEach(k => { const el = m.body.querySelector(`[data-up="${k}"]`); el.textContent = busy[k] ? T('Uploading… {n}%', { n: busy[k].pct }) : ''; });
+        if (saveBtn) saveBtn.disabled = !!Object.keys(busy).length;
+        m.body.querySelectorAll('.pcEdFr').forEach(el => el.classList.toggle('on', (el.dataset.fr || '') === (draft.fr || '')));
+        const th = draft.th || ['#5865f2', '#eb459e'];
+        $('[data-ed="th0"]').value = th[0]; $('[data-ed="th1"]').value = th[1];
+        m.body.querySelector('.pcEdTheme').classList.toggle('none', !draft.th);
+    };
+
+    const fail = (msg) => fc.ui.toast(msg, { kind: 'danger', icon: 'warn' });
+    // (async all the way: anything that throws ends up in take's catch, never a stuck "Uploading…")
+    const send = async (kind, blob, type, onPct) => {
+        const data = Buffer.from(await blob.arrayBuffer());
+        const job = up.uploadRetry(data, type, (f) => onPct(Math.round(f * 100)), { fallback: false });
+        if (busy[kind]) busy[kind].job = job;
+        return (await job.promise).url;
+    };
+    async function take(kind, file) {
+        if (!up || !up.uploadRetry) { fail(T('Uploads aren’t available (Pictures in chat is off)')); return; }
+        const type = String(file.type || '').toLowerCase();
+        if (PIC_TYPES.indexOf(type) < 0) { fail(T('Only pictures: png, jpg, webp or gif')); return; }
+        if (file.size > PIC_MAX) { fail(T('Too big: up to {mb} MB', { mb: PIC_MAX / 1048576 })); return; }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const moving = type === 'image/gif' || (type === 'image/webp' && isAnimatedWebp(bytes));
+        if (moving && file.size > GIF_MAX) { fail(T('Animated pictures: up to {mb} MB', { mb: GIF_MAX / 1048576 })); return; }
+        const local = URL.createObjectURL(file);
+        let img;
+        try { img = await loadImg(local); } catch (e) { URL.revokeObjectURL(local); fail(T('That picture didn’t open')); return; }
+        const spec = PIC[kind];
+        let main = null, still = null, mainType = 'image/webp';
+        if (moving) {
+            // as it is (it moves), and its first frame for everyone not hovering it
+            main = file; mainType = type;
+            still = await toBlob(drawCrop(img, spec.w, spec.h, 1, 0.5, 0.5), 'image/webp', 0.88);
+        } else {
+            main = await cropDialog(img, kind);
+            if (!main) { URL.revokeObjectURL(local); return; }
+        }
+        const shown = moving ? local : URL.createObjectURL(main);
+        if (!moving) URL.revokeObjectURL(local);
+        busy[kind] = { pct: 0, local: shown, job: { cancel() {} } };
+        prev();
+        try {
+            const pct = (n) => { if (busy[kind]) { busy[kind].pct = n; prev(); } };
+            const url = await send(kind, main, mainType, pct);
+            const surl = still ? await send(kind, still, 'image/webp', () => {}) : '';
+            draft[kind] = surl ? { u: url, s: surl } : { u: url };
+        } catch (e) {
+            if (e && e.message !== 'cancelled') fail(T('The upload didn’t work: {why}', { why: (e && e.message) || '?' }));
+        }
+        delete busy[kind];
+        if (m.el.isConnected) prev();
+    }
+    const pick = (kind) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = PIC_TYPES.join(',');
+        input.onchange = () => { const f = input.files && input.files[0]; if (f) take(kind, f); };
+        input.click();
+    };
+
+    m.body.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-ed]');
+        if (!t) return;
+        const ed = t.dataset.ed;
+        if (ed === 'pick-av' || ed === 'pick-bn') { if (!busy[ed.slice(5)]) pick(ed.slice(5)); }
+        else if (ed === 'rm-av' || ed === 'rm-bn') { const k = ed.slice(3); if (busy[k]) { busy[k].job.cancel(); delete busy[k]; } delete draft[k]; }
+        else if (ed === 'preset') draft.th = themes[+t.dataset.i].slice();
+        else if (ed === 'th-none') delete draft.th;
+        else if (ed === 'fr') { if (t.dataset.fr) draft.fr = t.dataset.fr; else delete draft.fr; }
+        else return;
+        prev();
+    });
+    ['th0', 'th1'].forEach((k, i) => $(`[data-ed="${k}"]`).addEventListener('input', (e) => {
+        const th = (draft.th || ['#5865f2', '#eb459e']).slice();
+        th[i] = e.target.value.toLowerCase();
+        draft.th = th;
+        prev();
+    }));
+    m.body.addEventListener('input', (e) => {
+        const f = e.target.dataset && e.target.dataset.f;
+        if (!f) return;
+        if (e.target.value) draft[f] = e.target.value; else delete draft[f];
+        prev();
+    });
+    m.body.addEventListener('change', (e) => { if (e.target.dataset && e.target.dataset.f === 'b') { draft.b = e.target.value; prev(); } });
+    // drop a picture on the avatar or banner part
+    m.body.addEventListener('dragover', (e) => { if (e.target.closest('[data-drop]')) e.preventDefault(); });
+    m.body.addEventListener('drop', (e) => {
+        const z = e.target.closest('[data-drop]');
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!z || !f) return;
+        e.preventDefault();
+        if (!busy[z.dataset.drop]) take(z.dataset.drop, f);
+    });
+    const ta = $('textarea'), cnt = $('.cnt');
     const count = () => { cnt.textContent = (190 - ta.value.length) + ''; };
     ta.addEventListener('input', count);
     count();
-    setTimeout(() => { const i = m.body.querySelector('input'); if (i) i.focus(); }, 30);
+    prev();
+    setTimeout(() => { const i = $('[data-f="pn"]'); if (i) i.focus(); }, 30);
 }
 
 function redraw() { const c = document.getElementById('pcCard'); if (c) c.innerHTML = cardHtml(); }
@@ -298,6 +488,43 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 .pcEdit textarea { height: 70px; padding: 8px 10px; resize: none; line-height: 1.4; }
 .pcEdit .cnt { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: var(--fc-muted); }
 .pcEditBadges > span { display: block; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+/* 3.7: the editor, fields on the left and your card on the right (no flex gap: Chromium 80) */
+.pcEd { display: flex; align-items: flex-start; }
+.pcEdL { flex: 1; min-width: 0; padding-right: 4px; }
+.pcEdR { flex: none; width: 300px; margin-left: 18px; position: sticky; top: 0; }
+.pcEdH { margin-bottom: 8px; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdSec { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--fc-divider); }
+.pcEdRow { display: flex; align-items: center; flex-wrap: wrap; }
+.pcEdRow > .fc-btn { margin-right: 8px; }
+.pcEdUp { font-size: 12px; color: var(--fc-muted); }
+.pcEdit label.pcEdGame { margin: 10px 0 0; }
+.pcEdit label.pcEdGame > span { text-transform: none; font-weight: 600; letter-spacing: 0; }
+.pcEdTheme { display: flex; align-items: center; flex-wrap: wrap; }
+.pcEdit label.pcEdCol { display: flex; flex-direction: column; align-items: center; margin: 0 10px 0 0; }
+.pcEdCol input { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.pcEdCol small { margin-top: 3px; font-size: 11px; color: var(--fc-muted); }
+.pcEdTheme.none .pcEdCol input { opacity: .45; }
+.pcEdPresets { display: flex; flex-wrap: wrap; max-width: 190px; margin-right: 8px; }
+.pcEdPresets > i { width: 22px; height: 22px; margin: 0 6px 6px 0; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
+.pcEdPresets > i:hover { transform: scale(1.12); }
+.pcEdFrames { display: flex; flex-wrap: wrap; margin-right: -8px; }
+.pcEdFr { display: flex; flex-direction: column; align-items: center; width: 64px; margin: 0 8px 8px 0; padding: 10px 0 6px; border-radius: 8px; background: var(--fc-s2); cursor: pointer; }
+.pcEdFr:hover { background: var(--fc-s3); }
+.pcEdFr.on { box-shadow: inset 0 0 0 2px var(--fc-accent); }
+.pcEdFr small { margin-top: 8px; font-size: 11px; color: var(--fc-text); }
+.pcPrev { position: relative; overflow: hidden; border-radius: 10px; background: var(--fc-s0); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh2, 0 4px 14px rgba(0,0,0,.3)); }
+.pcPrevB { padding: 0 16px 16px; }
+.pcPrevB .fc-cmsg { margin-top: 12px; pointer-events: none; }
+.pcEdHint { margin-top: 8px; }
+.pcCrop { display: flex; flex-direction: column; align-items: center; }
+.pcCropView { position: relative; overflow: hidden; border-radius: 8px; background: #000; cursor: grab; }
+.pcCropView:active { cursor: grabbing; }
+.pcCropView canvas { width: 100%; height: 100%; display: block; }
+.pcCropView.round::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background: radial-gradient(circle closest-side, transparent 98%, rgba(0,0,0,.6) 100%); }
+.pcCropZoom { display: flex; align-items: center; width: 100%; margin-top: 12px; color: var(--fc-muted); }
+.pcCropZoom input { flex: 1; margin: 0 10px; }
+.pcCropZoom .fc-ic:first-child { width: 13px; height: 13px; }
+.pcCropZoom .fc-ic:last-child { width: 19px; height: 19px; }
 #pcCard .fc-stat > small .fc-ic { margin-right: 3px; color: var(--fc-warning); }
 #pcCard .pcSec { margin-top: 10px; }
 #pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: 11px; }

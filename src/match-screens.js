@@ -672,6 +672,29 @@ function verdict(mine, theirs) {
 // position, so clearing the chat mid-match doesn't hide the new one.
 const endgameRows = () => [...document.querySelectorAll('.chatContent .messageWrapper.endgame')];
 
+// 3.7: the set's score from that row's own data (Fightcade sends it whether or not it shows ELO,
+// and even if you closed the emulator the moment the set ended): { mine, theirs } or null
+function scoreOf(e, opp) {
+    if (!e || typeof e !== 'object' || !Array.isArray(e.scores)) return null;
+    const them = String((e.opponent && e.opponent.name) || '');
+    if (opp && them && them.toLowerCase() !== String(opp).toLowerCase()) return null;     // another set's row
+    const side = e.playerId === 1 ? 1 : 0;
+    const mine = e.scores[side], theirs = e.scores[1 - side];
+    if (typeof mine !== 'number' || typeof theirs !== 'number' || !(mine + theirs > 0)) return null;
+    return { mine, theirs };
+}
+function endgameScore(before, opp) {
+    const fresh = endgameRows().filter(r => !before.has(r));
+    for (let i = fresh.length - 1; i >= 0; i--) {
+        const box = fresh[i].querySelector('.endgameMessageWrapper');
+        const vm = box && box.__vue__;
+        const s = vm && vm.data ? scoreOf(vm.data.endgame, opp) : null;
+        if (s) return s;
+    }
+    return null;
+}
+
+// (the won/lost line is about ELO points; a fallback when the row has no score)
 function endgameVerdict(before) {
     const fresh = endgameRows().filter(r => !before.has(r));
     for (let i = fresh.length - 1; i >= 0; i--) {
@@ -723,8 +746,10 @@ async function resolveResult(m) {
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
             Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar, games, rank: m.myRank, rom: m.rom })), 60000);
     };
-    // 1. Fightcade's own end-of-match message (up to ~8 s)
+    // 1. Fightcade's own end-of-match message (up to ~8 s): its score, else its won/lost line
     for (let i = 0; i < 16; i++) {
+        const s = endgameScore(m.endgameBefore, m.opp);
+        if (s) return finish(verdict(s.mine, s.theirs), s.mine, s.theirs);
         const v = endgameVerdict(m.endgameBefore);
         if (v && v !== 'seen') return finish(v, null, null);
         if (v === 'seen') break;
@@ -740,6 +765,29 @@ async function resolveResult(m) {
     }
     fc.log('result unknown for', m.quark, '- no screen');
     finish(null, null, null);                   // still counts as a set played tonight
+    lateResult(m);
+}
+
+// 3.7 (issue #2): still unknown -- Fightcade's row can come late, the API can take minutes. Keep
+// looking for 5 minutes and fill the result in (streaks, goals and stats follow set:updated)
+async function lateResult(m) {
+    const me = fc.app.me();
+    const fill = (mine, theirs) => {
+        const v = verdict(mine, theirs);
+        if (!v || !H().update(m.quark, { result: v, mine, theirs })) return false;
+        fc.log('late result for', m.quark, v, mine + '-' + theirs);
+        refreshSessionPill();
+        return true;
+    };
+    for (const wait of [10000, 20000, 30000, 60000, 90000, 90000]) {
+        await sleep(wait);
+        if (!cfg || !cfg.enabled) return;
+        const s = endgameScore(m.endgameBefore, m.opp);
+        if (s && fill(s.mine, s.theirs)) return;
+        const q = await quarkResult(m.quark, me, m.opp);
+        if (q && q.mine != null && q.theirs != null && (q.mine || q.theirs) && fill(q.mine, q.theirs)) return;
+    }
+    fc.log('no result for', m.quark, 'after 5 minutes');
 }
 
 /* --------------------------------------------------------------- detection */
@@ -1188,5 +1236,5 @@ const api = {
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start, nightStats };
+module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start, nightStats, scoreOf };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

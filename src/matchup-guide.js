@@ -665,6 +665,8 @@ const CSS = `
 .fc-mu-face img.art { object-position: 50% 0; transform: scale(1.6); transform-origin: var(--fo, 50% 8%); }
 .fc-mu-face b { display: none; color: #fff; font-weight: 800; font-size: calc(var(--s) * .44); line-height: 1; }
 .fc-mu-face.nof b { display: block; }
+/* (the initial only without a picture: screens that style their own <b>, like the VS name plates, mustn't bring it back) */
+.fc-mu-face:not(.nof) > b { display: none !important; }
 .fc-mu-card > * + * { margin-top: 12px; }
 .fc-mu-head { display: flex; align-items: center; }
 .fc-mu-head > .fc-mu-face { margin-right: 10px; }

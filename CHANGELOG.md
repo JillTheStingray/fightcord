@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.7.0
+
+- **Edit your profile, like Discord:** click your avatar (bottom-left) → Edit profile. Pick your own
+  avatar and banner (still pictures get a crop with zoom; GIFs work too), two theme colours for your
+  card, an avatar frame (Flame, Neon, Gold, Sakura, Frost, Lightning, Pixel, Hearts, Shadow, Rainbow) and
+  your pronouns. A live preview shows your card as others will see it.
+- **Seen everywhere Fightcord players see you:** your avatar and frame show in Fightcade's chat, the
+  member list, Find match, DMs and lobbies; your banner, colours and pronouns on your cards. GIFs stay
+  still until someone hovers them, so a busy lobby doesn't lag. Players without Fightcord see plain
+  Fightcade.
+- **Profiles stay while you're offline:** Fightcord remembers the profiles it has seen, so your card
+  still looks right when you're away (and right after it starts).
+- **Nobody can wear your look:** your profile's pictures are signed with your Fightcord ID, and a name's
+  pictures only count from the ID that's known for it (your friend's, or the first one seen), so
+  someone else using your name can't put their avatar on it.
+- **Match result cards:** Fightcade's end-of-set line ("Ranked match result - … FT2 …" and its long replay
+  link) is now a scoreboard: both players with the characters you played (their art from the wiki, when
+  Fightcord saw the picks), the score big in the middle, WIN / LOSS, Ranked · FT pill, the game's art behind,
+  and Watch replay, Rematch and Copy link buttons. Unfinished ranked sets keep Fightcade's warning.
+  Settings → Chat → Match result cards turns it back to Fightcade's line.
+- **Your notes in Find match:** hover a player in Find match and your notes and tags on them show beside
+  the row; coloured dots by their name show who you have notes on. (Thanks Mushn1k.)
+- **Results no longer go missing (issue #2):** leaving the game right after a set (or not getting Fightcade's
+  ELO line) could leave the set as "?" in your streak, tonight's record and Stats. Fightcord now reads the
+  score from Fightcade's own end-of-set message, and a set it still can't settle is looked up again for
+  5 minutes and filled in. (Thanks Mushn1k.)
+- **Fixed:** the VS screen showed a letter over the character art (Akuma's "A", Ryu's "R").
+- Settings → Voice chat → "Show other players' pictures" turns everyone else's avatars and banners off
+  (Hide their profile still works per player). Pictures go on the same public file hosts as pictures in
+  chat: anyone with the link can see them.
+
 ## 3.6.2
 
 - **Notes & tags opens on screen:** from a player's card (Find match → a player → ⋯ → Notes & tags, or

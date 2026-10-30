@@ -746,6 +746,7 @@ function start(f) {
     fc.on('notes:changed', reH2H);
     fc.on('friends:changed', reH2H);
     fc.on('set:recorded', () => { if (page) render(); });
+    fc.on('set:updated', () => { if (page) render(); });
     fc.tick(() => { if (page && fc.app.activeChannelId() !== openedOn) close(); }, 500);
     return api;
 }

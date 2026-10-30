@@ -154,6 +154,7 @@ const PALETTE = ['#5865f2', '#3ba55c', '#faa61a', '#ed4245', '#eb459e', '#1abc9c
 // Rank letters stand for 300-point ELO bands (S is open-ended; 2300 caps the estimate).
 const ELO_BANDS = { 1: [400, 700], 2: [700, 1000], 3: [1000, 1300], 4: [1300, 1600], 5: [1600, 1900], 6: [1900, 2300] };
 const FC_ORIGIN = 'https://web.fightcade.com/';
+let avatarHook = null, lookHook = null;                 // 3.7: profile-looks.js
 
 const data = {
     RANKS, RANK_COLOR, PALETTE, ELO_BANDS, FC_ORIGIN,
@@ -216,6 +217,11 @@ const data = {
     // Fightcade's rank badge: rank0.png = unknown, rank1-6 = E-S
     rankImg(r) { return data.staticUrl('ranks/rank' + data.rankNum(r) + '.png'); },
 
+    // 3.7: fn(name) -> a picture URL or '' (profile-looks.js); null takes it away
+    setAvatarHook(fn) { avatarHook = typeof fn === 'function' ? fn : null; },
+    // 3.7: fn(name, what) -> what a card shows of their looks ('pn': pronouns)
+    setLookHook(fn) { lookHook = typeof fn === 'function' ? fn : null; },
+
     // the same name always gets the same colour
     hashColor(name, palette) {
         const p = palette || PALETTE;
@@ -224,7 +230,10 @@ const data = {
         return p[h % p.length];
     },
 
-    avatarUrl(name, gravatar, size) {
+    avatarUrl(name, gravatar, size, plain) {
+        // 3.7: the avatar a Fightcord player picked (profile-looks.js), for everyone with Fightcord (plain: Fightcade's)
+        const own = avatarHook && name && !plain ? avatarHook(name) : '';
+        if (own) return own;
         const s = size || 64;
         return gravatar
             ? 'https://www.gravatar.com/avatar/' + encodeURIComponent(gravatar) + '?s=' + s + '&d=retro&r=g'
@@ -2002,6 +2011,7 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 20px/26px var(--fc-font); color: var(--fc-head); }
 .fc-ch-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-ch-name > *:not(span) { flex: none; margin-left: 6px; }
+.fc-ch-pn { margin-top: 1px; font: 500 13px/17px var(--fc-font); color: var(--fc-text); }
 .fc-ch-meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 13px; color: var(--fc-muted); }
 .fc-ch-meta .fc-flag { margin-right: 6px; }
 .fc-ch-meta .fc-tag { margin-right: 6px; }
@@ -2167,7 +2177,8 @@ const ui = {
         const [, u] = app.user(name);
         let st = p.status || '';
         if (st === 'auto') st = !u ? 'off' : (u.playing && u.playing.quarkId) ? 'playing' : u.away ? 'away' : 'on';
-        return `<span class="fc-avatar" style="--sz:${p.size || 32}px${p.ring ? ';--ring:' + p.ring : ''}"><img src="${fmt.esc(data.avatarUrl(name, u && u.gravatar, (p.size || 32) * 2))}" alt="" loading="lazy">` +
+        // (data-av: whose it is, for their frame: profile-looks.js)
+        return `<span class="fc-avatar"${name ? ` data-av="${fmt.esc(name)}"` : ''} style="--sz:${p.size || 32}px${p.ring ? ';--ring:' + p.ring : ''}"><img src="${fmt.esc(data.avatarUrl(name, u && u.gravatar, (p.size || 32) * 2))}" alt="" loading="lazy">` +
             (st ? `<i class="st ${st}"></i>` : '') + '</span>';
     },
     tile(value, caption, o) {
@@ -2478,13 +2489,16 @@ const ui = {
     // Card building blocks (2.13), so every card looks the same. Values are HTML (escape your own text).
     // The top of a player card: banner, avatar over its edge, name (+ marks), one meta line, one sub line
     //   fc.ui.cardHead({ name, banner, avatar, marks, meta, sub, status, close })   (status: text, a bubble by the avatar)
+    // (3.7: data-fclook = whose card, for their theme colours; pn = pronouns, else what the looks hook says)
     cardHead(o) {
         const p = o || {};
-        return `<div class="fc-ch${p.status ? ' has-bub' : ''}"><div class="fc-ch-banner" style="background:${p.banner || 'var(--fc-s3)'}"></div>` +
+        const pn = p.pn != null ? p.pn : lookHook && p.name ? lookHook(p.name, 'pn') : '';
+        return `<div class="fc-ch${p.status ? ' has-bub' : ''}"${p.name ? ` data-fclook="${fmt.esc(p.name)}"` : ''}><div class="fc-ch-banner" style="background:${p.banner || 'var(--fc-s3)'}"></div>` +
             (p.close ? ui.btn('', { kind: 'ghost', size: 'sm', icon: 'close', act: 'close', title: 'Close', cls: 'fc-ch-x' }) : '') +
             `<div class="fc-ch-body"><div class="fc-ch-av">${p.avatar || ''}</div>` +
             (p.status ? `<div class="fc-ch-bub" title="${fmt.esc(p.status)}"><span>${fmt.esc(p.status)}</span></div>` : '') +
             `<div class="fc-ch-name"><span title="${fmt.esc(p.name || '')}">${fmt.esc(p.name || '')}</span>${p.marks || ''}</div>` +
+            (pn ? `<div class="fc-ch-pn">${fmt.esc(pn)}</div>` : '') +
             (p.meta ? `<div class="fc-ch-meta">${p.meta}</div>` : '') + (p.sub ? `<div class="fc-ch-sub">${p.sub}</div>` : '') + '</div></div>';
     },
     // a row of stat boxes: [{ label, value, sub, tone: 'up'|'down', title }] (2 or 4 = a 2-column grid)
