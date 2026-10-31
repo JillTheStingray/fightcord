@@ -25,6 +25,7 @@ let fc = null;
 let store = null, cfg = null;
 const T = (s, v) => fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : m));
 const E = (s) => fc.fmt.esc(s);
+const N_ = (s) => s;
 
 const API = 'https://catbox.moe/user/api.php';
 const MAX = 200 * 1024 * 1024;
@@ -707,6 +708,24 @@ function searchGifs(q, get) {
         return keep({ source: 'klipy', results: parseKlipy(json, 'gifs') });
     }).catch(e => { if (typeof fc !== 'undefined' && fc) fc.log('KLIPY search failed, trying Tenor:', e.message); return fromTenor(); });
 }
+// 3.8: KLIPY's stickers (a search, or what's trending when there's none) -> { source: 'klipy', results }
+function searchStickers(q, get) {
+    const words = String(q || '').trim().replace(/\s+/g, ' ');
+    const key = 's:' + words.toLowerCase();
+    const hit = searchCache.get(key);
+    if (hit && Date.now() - hit.at < 30 * 60000) return Promise.resolve(hit);
+    const fetch_ = get || (typeof window !== 'undefined' && window.__fcupGet) || getPage;
+    const who = '&customer_id=' + (cfg ? klipyUser() : 'test') + '&content_filter=medium';
+    const url = KLIPY + '/stickers/' + (words ? 'search?page=1&per_page=40&q=' + encodeURIComponent(words) : 'trending?page=1&per_page=40') + who;
+    return fetch_(url).then(text => {
+        const json = JSON.parse(text);
+        if (!json || json.result !== true) throw new Error('KLIPY said no');
+        const r = { at: Date.now(), source: 'klipy', results: parseKlipy(json, 'stickers') };
+        searchCache.set(key, r);
+        if (searchCache.size > 40) searchCache.delete(searchCache.keys().next().value);
+        return r;
+    });
+}
 // KLIPY asks apps to say when one of its GIFs is shared (helps their ranking); fire and forget
 function klipyShared(link, q) {
     const k = klipySlug(link);
@@ -775,13 +794,33 @@ function favHtml(f, i) {
 }
 
 let picker = null;
-function openPicker(btn, input) {
+// the GIF picker; type 'stickers' opens it on KLIPY's stickers (3.8)
+function openPicker(btn, input, type) {
     if (picker) { picker.close(); return; }
     const box = document.createElement('div');
     box.className = 'fcupPicker';
-    let shown = [], found = null, busy = false, err = '', timer = 0, ask = 0;
+    let shown = [], found = null, busy = false, err = '', timer = 0, ask = 0, kind = type === 'stickers' ? 'stickers' : 'gifs';
+    // stickers: KLIPY's (trending until you search)
+    const drawStickers = () => {
+        const list = found ? found.results : [];
+        shown = list;
+        let html = '';
+        if (list.length) html = `<div class="fcupSec">${E(search.value.trim() ? T('Stickers') : T('Trending stickers'))}</div><div class="fcupGrid st">${list.map((x, k) => favHtml(x, k)).join('')}</div>`;
+        else if (busy) html = `<div class="fcupMsg">${E(T('Searching stickers…'))}</div>`;
+        else if (err) html = `<div class="fcupMsg bad">${E(T('Couldn’t search stickers ({error})', { error: err }))}</div>`;
+        else if (found) html = fc.ui.empty({ icon: 'search', title: T('No stickers found') });
+        box.querySelector('.fcupList').innerHTML = html;
+    };
+    const runStickers = () => {
+        const mine = ++ask;
+        found = null; err = ''; busy = true;
+        drawStickers();
+        searchStickers(search.value.trim()).then(r => { if (mine !== ask) return; found = r; busy = false; drawStickers(); })
+            .catch(e => { if (mine !== ask) return; busy = false; err = e.message; drawStickers(); });
+    };
     // the list: favourites matching the search, then (for a search) Tenor's results
     const draw = () => {
+        if (kind === 'stickers') { drawStickers(); return; }
         const q = search.value.trim();
         const favs = searchFavs(cfg.favorites, q);
         const more = q && found ? found.results.filter(r => !favs.some(x => x.link === r.link)) : [];
@@ -799,6 +838,7 @@ function openPicker(btn, input) {
         box.querySelector('.fcupList').innerHTML = html;
     };
     const run = () => {
+        if (kind === 'stickers') { runStickers(); return; }
         const q = search.value.trim();
         const mine = ++ask;
         found = null; err = ''; busy = !!q;
@@ -807,12 +847,28 @@ function openPicker(btn, input) {
         searchGifs(q).then(r => { if (mine !== ask) return; found = r; busy = false; draw(); })
             .catch(e => { if (mine !== ask) return; busy = false; err = e.message; draw(); });
     };
-    box.innerHTML = fc.ui.popHead({ icon: 'star', title: T('GIFs'), sub: E(fc.t.plural(cfg.favorites.length, '{n} favorite', '{n} favorites')) }) +
-        `<div class="fc-pb"><input class="fc-input fcupSearch" placeholder="${E(T('Search KLIPY and your favorites'))}"><div class="fcupList"></div><div class="fcupBy">Powered by KLIPY</div></div>`;
+    const head = () => fc.ui.popHead({ icon: kind === 'stickers' ? 'sticker' : 'star', title: kind === 'stickers' ? T('Stickers') : T('GIFs'),
+        sub: kind === 'stickers' ? '' : E(fc.t.plural(cfg.favorites.length, '{n} favorite', '{n} favorites')) });
+    box.innerHTML = `<div class="fcupHd">${head()}</div>` +
+        `<div class="fc-pb"><div class="fcupKinds">${fc.ui.tabs([['gifs', N_('GIFs')], ['stickers', N_('Stickers')]], kind)}</div>` +
+        `<input class="fc-input fcupSearch" placeholder="${E(kind === 'stickers' ? T('Search KLIPY stickers') : T('Search KLIPY and your favorites'))}"><div class="fcupList"></div><div class="fcupBy">Powered by KLIPY</div></div>`;
     const search = box.querySelector('.fcupSearch');
-    draw();
+    // GIFs or stickers: the tabs on top
+    box.querySelector('.fcupKinds').addEventListener('click', (e) => {
+        const t = e.target.closest('.fc-tab[data-tab]');
+        if (!t || t.dataset.tab === kind) return;
+        e.stopPropagation();
+        kind = t.dataset.tab;
+        ask++; found = null; err = ''; busy = false;
+        box.querySelector('.fcupHd').innerHTML = head();
+        box.querySelectorAll('.fcupKinds .fc-tab').forEach(x => x.classList.toggle('on', x.dataset.tab === kind));
+        search.placeholder = kind === 'stickers' ? T('Search KLIPY stickers') : T('Search KLIPY and your favorites');
+        if (kind === 'stickers') runStickers(); else { draw(); if (search.value.trim()) run(); }
+        search.focus();
+    });
+    if (kind === 'stickers') runStickers(); else draw();
     // favourites filter as you type; Tenor once you stop typing
-    search.addEventListener('input', () => { clearTimeout(timer); found = null; err = ''; busy = !!search.value.trim(); draw(); timer = setTimeout(run, 450); });
+    search.addEventListener('input', () => { clearTimeout(timer); found = null; err = ''; busy = kind === 'stickers' || !!search.value.trim(); draw(); timer = setTimeout(run, 450); });
     search.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && shown[0]) { sendFav(shown[0]); } });
     search.addEventListener('keypress', (e) => e.stopPropagation());
     box.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -851,6 +907,12 @@ const CSS = `
 .fcupMsg.bad { color: var(--fc-danger); }
 .fcupBy { margin-top: 6px; text-align: right; font: 600 10px/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-faint, var(--fc-muted)); }
 .fcupGrid .fc-empty { column-span: all; }
+.fcupKinds { margin: -4px 0 8px; }
+.fcupKinds .fc-tabs { border-bottom: 0; }
+.fcupKinds .fc-tab { margin-right: 14px; }
+.fcupGrid.st { column-count: 3; }
+.fcupGrid.st .fcupFav { background: transparent; }
+.fcupGrid.st .fcupFav:hover { background: var(--fc-hover); }
 .fcupFav { position: relative; margin-bottom: 8px; border-radius: 6px; overflow: hidden; cursor: pointer; line-height: 0; background: var(--fc-s1); break-inside: avoid; }
 .fcupFav img, .fcupFav video { width: 100%; height: auto; display: block; }
 .fcupFav:hover { box-shadow: 0 0 0 2px var(--fc-accent); }
@@ -944,9 +1006,10 @@ const api = {
     isFav: (link) => !!cfg && isFav(link),
     toggleFav: (item) => toggleFav(item),
     favorites: () => (cfg ? cfg.favorites.slice() : []),
-    openPicker: (btn, input) => openPicker(btn, input),
+    openPicker: (btn, input, type) => openPicker(btn, input, type),
     pick: (input) => pick(input),
     searchGifs: (q, get) => searchGifs(q, get),
+    searchStickers: (q, get) => searchStickers(q, get),
     _tray: () => tray
 };
 

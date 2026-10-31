@@ -26,9 +26,11 @@ const SHOW = 8;
 /* ------------------------------------------------------------------- picking */
 
 // window: max rank letters away from yours (null = any rank); maxPing in ms
-// -> the people worth listing, best first: [{name, rank, ping, wlan, proxy, cc, h2h, odds, score}]
-// users: Fightcade's globalUsers; opts: { me, channel, channelName, myRank, window, maxPing,
+// -> the people worth listing, best first: [{name, rank, ping, wlan, proxy, cc, ranked, h2h, odds, score}]
+// users: Fightcade's globalUsers; opts: { me, channel, channelName, myRank, window, maxPing, rankedOnly,
 //        skip(name) -> bool, h2h(name) -> {w, l} | null, odds(name, rank) -> 0..1 | null }
+// ranked: their Fightcade "ranked" setting is on (3.8.1, Mushn1k): Fightcade only lets you pick an FT
+// (a ranked set) when the channel is ranked and you both have it on; otherwise it's a casual set
 function candidates(users, opts) {
     const o = opts || {};
     const me = String(o.me || '').toLowerCase();
@@ -44,12 +46,14 @@ function candidates(users, opts) {
         if (o.window != null && o.myRank) {
             if (!rank || Math.abs(rank - o.myRank) > o.window) return;
         }
+        const ranked = !!(u.settings && u.settings.ranked);
+        if (o.rankedOnly && !ranked) return;
         const ping = typeof u.ping === 'number' && u.ping > 0 ? u.ping : null;
         if (ping != null && o.maxPing && ping > o.maxPing) return;
         if (o.skip && o.skip(name)) return;
         const h2h = o.h2h ? o.h2h(name) : null;
         const odds = o.odds ? o.odds(name, rank) : null;
-        const c = { name, rank, ping, wlan: !!u.wlan, proxy: !!u.proxy,
+        const c = { name, rank, ping, wlan: !!u.wlan, proxy: !!u.proxy, ranked,
             cc: String((u.country && u.country.iso_code) || '').toLowerCase(), h2h, odds };
         c.score = score(c, { myRank: o.myRank, maxPing: o.maxPing });
         out.push(c);
@@ -87,8 +91,13 @@ function context() {
     if (!ch || !fc.app.isGameChannel(ch.id)) return null;
     const meName = fc.app.me();
     const meInfo = fc.app.userInfo(meName);
-    return { ch, me: meName, myRank: (meInfo && meInfo.rank) || 0, rom: ch.gameid || fc.app.activeGameId() };
+    const meUser = fc.app.users()[meName] || {};
+    // a ranked channel (Fightcade's own flag, else its RANKED badge in the header) and your ranked setting
+    const chRanked = ch.ranked != null ? !!ch.ranked : !!document.querySelector('.channelToolbar .channelInfo .rankedWrapper');
+    return { ch, me: meName, myRank: (meInfo && meInfo.rank) || 0, rom: ch.gameid || fc.app.activeGameId(), chRanked, meRanked: !!(meUser.settings && meUser.settings.ranked) };
 }
+// ranked sets are on offer here at all (a ranked channel, your setting on)
+const rankedHere = (ctx) => !!(ctx && ctx.chRanked && ctx.meRanked);
 
 function list(ctx) {
     const filters = mod('challenge-filters');
@@ -100,6 +109,7 @@ function list(ctx) {
         me: ctx.me, channel: ctx.ch.id, channelName: ctx.ch.name, myRank: ctx.myRank,
         window: win != null && win > 2 ? null : win,
         maxPing: (+cfg.maxPing || 120) + widened * 60,
+        rankedOnly: !!cfg.rankedOnly && rankedHere(ctx),
         // whatever your challenge filters would decline (except the FT, which you pick)
         skip: (name) => !!(filters && filters._check && filters._check(name, ctx.ch.name, 0).some(r => r.mode === 'decline' && r.rule !== 'ft')),
         h2h: (name) => {
@@ -116,7 +126,7 @@ function list(ctx) {
     });
 }
 
-function rowHtml(c) {
+function rowHtml(c, ctx) {
     const h = c.h2h;
     const rec = !h ? `<span class="fcfmNew">${E(T('New'))}</span>` : `<span class="fcfmRec" title="${E(T('You vs them'))}">${h.w}–${h.l}</span>`;
     const odds = typeof c.odds === 'number' ? Math.round(c.odds * 100) : null;
@@ -125,10 +135,11 @@ function rowHtml(c) {
     const dots = nt && nt.dots ? nt.dots(c.name) : '';
     return `<div class="fcfmRow" data-name="${E(c.name)}">${fc.ui.avatar(c.name, { size: 32, status: 'auto' })}
         <div class="fcfmWho"><b class="fcfmName" data-scout="${E(c.name)}" title="${E(T('Open the scout card'))}">${fc.ui.flag(c.cc)}${E(c.name)}${dots}</b>
-            <span>${c.rank ? fc.ui.tag(fc.data.rankLetter(c.rank)) + ' ' : ''}${E(conn || T('ping unknown'))}</span></div>
+            <span>${c.rank ? fc.ui.tag(c.rank) + ' ' : ''}${rankedHere(ctx) ? (c.ranked ? `<i class="fcfmRk" title="${E(T('Ranked sets on: you pick the FT when you challenge'))}">${E(T('Ranked'))}</i>`
+                : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}${E(conn || T('ping unknown'))}</span></div>
         ${rec}
         ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
-        ${fc.ui.btn('Challenge', { kind: 'success', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"` })}</div>`;
+        ${fc.ui.btn('Challenge', { kind: 'success', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;
 }
 
 function render(box) {
@@ -144,8 +155,12 @@ function render(box) {
         win == null || win > 2 || !rankTxt ? T('any rank') : T('near your rank ({rank})', { rank: rankTxt }),
         T('up to {ms} ms', { ms: (+cfg.maxPing || 120) + widened * 60 })
     ].join(' · ');
+    // ranked only: a switch on top (only where ranked sets exist); why there's no FT when your setting is off
+    const rk = rankedHere(ctx) ? `<div class="fcfmTop"><label class="fcfmSw" data-act="ranked-only"><input type="checkbox" class="fc-switch-in"${cfg.rankedOnly ? ' checked' : ''}><i class="fc-switch"></i>` +
+        `<span>${E(T('Only players who take ranked sets'))}</span></label></div>`
+        : ctx.chRanked && !ctx.meRanked ? `<div class="fcfmTop note">${fc.ui.ic('info')}<span>${E(T('Your ranked setting is off, so every set here is casual (Fightcade’s Settings → Ranked).'))}</span></div>` : '';
     box.innerHTML = fc.ui.popHead({ icon: 'target', title: T('Find a match'), sub: E(sub) + ' · ' + E(shortName(ctx.ch.name)) }) +
-        `<div class="fc-pb">${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(rowHtml).join('')}</div>`
+        `<div class="fc-pb">${rk}${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(c => rowHtml(c, ctx)).join('')}</div>`
             : `${fc.ui.empty({ title: T('Nobody fits right now.'), sub: T('Free players in this channel show up here.'), icon: 'target' })}${widened < 2 ? `<div class="fcfmWiden">${fc.ui.btn('Widen the search', { kind: 'sec', size: 'sm', icon: 'search', act: 'widen' })}</div>` : ''}`}</div>` +
         fc.ui.popFoot(all.length > SHOW ? E(T('{n} more', { n: all.length - SHOW })) : '',
             fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'refresh', title: 'Refresh' }) + fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', act: 'settings', title: 'Settings' }));
@@ -199,6 +214,7 @@ function onClick(box, e) {
     const a = e.target.closest('[data-act]');
     const act = a && a.getAttribute('data-act');
     if (!act) return;
+    if (act === 'ranked-only') { e.preventDefault(); cfg.rankedOnly = !cfg.rankedOnly; store.save(); render(box); return; }
     if (act === 'refresh') render(box);
     else if (act === 'widen') { widened++; render(box); }
     else if (act === 'settings') { if (pop) pop.close(); const st = mod('fightcord'); if (st && st.open) st.open('challenges'); }
@@ -258,13 +274,22 @@ const CSS = `
 .fcfmOdds.good { color: var(--fc-success); } .fcfmOdds.bad { color: var(--fc-danger); }
 .fcfmRow .fc-btn { flex: none; margin-left: 8px; }
 .fcfmWiden { display: flex; justify-content: center; margin-top: 4px; }
+/* 3.8.1: ranked or casual only */
+.fcfmWho span i { flex: none; margin-right: 6px; padding: 0 5px; border-radius: 4px; font: 700 10px/16px var(--fc-font); font-style: normal; letter-spacing: .02em; text-transform: uppercase; }
+.fcfmRk { background: rgba(240,178,50,.16); color: var(--fc-warning); }
+.fcfmCas { background: rgba(255,255,255,.07); color: var(--fc-muted); }
+.fcfmTop { display: flex; align-items: center; margin: -2px 0 8px; padding: 0 4px 8px; border-bottom: 1px solid var(--fc-divider); color: var(--fc-text); font: 13px/1.35 var(--fc-font); }
+.fcfmTop.note { color: var(--fc-muted); }
+.fcfmTop.note .fc-ic { flex: none; margin-right: 6px; }
+.fcfmSw { display: flex; align-items: center; cursor: pointer; }
+.fcfmSw .fc-switch { margin-right: 8px; }
 `;
 
 /* ------------------------------------------------------------------- module */
 
 function start(f) {
     fc = f;
-    store = fc.config('find-match', { enabled: true, pill: true, maxPing: 120, window: '1' });
+    store = fc.config('find-match', { enabled: true, pill: true, maxPing: 120, window: '1', rankedOnly: false });
     cfg = store.data;
     fc.ui.style('fcfmStyle', CSS);
     fc.own(() => { fc.ui.style('fcfmStyle', null); document.querySelectorAll('.fcfmPill').forEach(p => p.remove()); hideNote(); if (pop) pop.close(); });
@@ -278,7 +303,8 @@ function start(f) {
             { key: 'pill', type: 'switch', label: 'Button in the channel header', hint: 'Or type /find', show: (d) => d.enabled, onChange: refreshPill },
             { key: 'maxPing', type: 'slider', label: 'Highest ping', min: 40, max: 250, step: 10, unit: ' ms', show: (d) => d.enabled },
             { key: 'window', type: 'select', label: 'Rank range', show: (d) => d.enabled,
-                options: [['0', 'Your rank only'], ['1', 'One rank up or down'], ['2', 'Two ranks up or down'], ['any', 'Any rank']] }
+                options: [['0', 'Your rank only'], ['1', 'One rank up or down'], ['2', 'Two ranks up or down'], ['any', 'Any rank']] },
+            { key: 'rankedOnly', type: 'switch', label: 'Only players who take ranked sets', hint: 'Players with Fightcade’s ranked setting off only get a casual set (no FT to pick)', show: (d) => d.enabled }
         ]
     });
     return api;

@@ -1,5 +1,44 @@
 # Changelog
 
+## 3.8.0
+
+DMs get most of what Discord's DMs do. Everyone in a chat needs Fightcord 3.8 for edits, deletes, pins in
+DMs, group DMs, video and screen share; on 3.7 they still see the messages.
+
+- **Group DMs:** you and up to 9 friends in one chat. The + next to Direct messages (or Add friends to DM
+  in a DM's top bar) opens Select Friends: one friend opens your DM with them, two or more make a group.
+  Anyone in it can add their friends, name it and give it an icon; whoever made it can remove people
+  (everyone left gets a new key, so they read nothing new). Group calls ring everyone.
+- **Video calls and screen share:** in a DM, a group DM or a lobby's voice room, turn your camera on or
+  share a screen or a window (Applications / Screens, smoother video or sharper text). A call shows
+  everyone's camera or picture; click a tile to watch it big, or full screen. Your camera and screen
+  pause by themselves while you're in a match, so your netplay keeps all of your upload (Settings →
+  Private lobbies to change that).
+- **Edit and delete your messages:** hover your message → the pencil, or ↑ in an empty box to edit your
+  last one (Esc cancels, Enter saves, "(edited)" shows). Delete Message asks first; the relays are asked
+  to drop it too. In lobbies the owner and moderators can delete members' messages.
+- **"is typing…"** under the box (and in the DM list), in DMs, group DMs and lobbies.
+- **The message menu:** the ⋯ on a message, or right-click it: Add Reaction, Edit, Reply, Forward, Copy
+  Text, Pin, Mark Unread, Copy Message Link, Delete.
+- **Pins in DMs:** either of you can pin a message; the pin in the top bar lists them.
+- **Forward** a message to up to 5 chats at once (DMs, group DMs, lobbies), with a note if you like; it
+  shows as Forwarded, with who wrote it and when.
+- **Message links:** Copy Message Link, paste it in any chat: it shows as a chip that jumps to the message
+  (for anyone in that chat).
+- **Search** a DM, group DM or lobby from the box in its top bar: words, from:name, has:link / image /
+  video / file / sticker. Results on the right; click one to jump to it.
+- **Friend nicknames:** your own name for a friend (right-click them → Add Friend Nickname, or the DM's
+  profile). Only you see it; your other PCs get it too.
+- **The DM list:** right-click a DM (or its ⋯): Mark As Read, Pin to the top, Mute for 15 minutes up to
+  until you turn it back on (no pop-ups, sounds or badge), Call, Close. A "New" line in the chat shows
+  where you stopped reading.
+- **Ranked or casual, before you challenge:** Find a match marks every player RANKED or CASUAL ONLY.
+  Fightcade only lets you pick an FT when both of you have its ranked setting on, so a casual-only player
+  just gets a casual set. A switch at the top (also in Settings → Find a match) lists only players who
+  take ranked sets. (Thanks Mushn1k.)
+- **Stickers:** the sticker button next to GIF (and a Stickers tab in the GIF picker) searches KLIPY's
+  stickers; they show big and without a box, like Discord's.
+
 ## 3.7.3
 
 - **Ranks in Tonight:** every set in the Tonight card (the trophy W–L in the top bar) shows your opponent's

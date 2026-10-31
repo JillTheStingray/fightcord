@@ -24,6 +24,13 @@ const USERS = {
 };
 const base = { me: 'Me', channel: CH, channelName: NAME, myRank: 4, window: 1, maxPing: 120 };
 
+test('find a match: who takes ranked sets (their Fightcade setting), and ranked-only leaves the rest out', () => {
+    const us = { Me: user(4, 0), Rk: user(4, 40, { settings: { ranked: true } }), Cas: user(4, 40, { settings: { ranked: false } }), Old: user(4, 40) };
+    const all = fm.candidates(us, base);
+    assert.deepEqual(all.map(c => [c.name, c.ranked]).sort(), [['Cas', false], ['Old', false], ['Rk', true]]);
+    assert.deepEqual(fm.candidates(us, Object.assign({}, base, { rankedOnly: true })).map(c => c.name), ['Rk']);
+});
+
 test('find a match: only free players in this channel, in range, on a good ping', () => {
     const names = fm.candidates(USERS, Object.assign({}, base, { skip: (n) => n === 'Blocked' })).map(c => c.name).sort();
     assert.deepEqual(names, ['Close', 'NoPing', 'OneUp']);

@@ -183,7 +183,7 @@ const SCENES = [
     { name: 'dm-pending', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ tab: 'pending' }); await sleep(900);` },
     { name: 'dm-add', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ tab: 'add' }); await sleep(900);` },
     { name: 'dm-chat', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: 'dm' }); await sleep(5000);` },
-    { name: 'dm-req', snap: CHANNEL, run: `const ids = fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('lobbies').open(ids[4]); await sleep(2500);` },
+    { name: 'dm-req', snap: CHANNEL, run: `const ids = fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('lobbies').open(ids[ids.length - 1]); await sleep(2500);` },
     { name: 'dm-link', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('dms').linkShow(); await sleep(900);` },
     { name: 'dm-link-in', snap: CHANNEL, run: `fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('dms').linkEnter(); await sleep(900);` },
     { name: 'dm-ring', snap: CHANNEL, keepToasts: true, run: `const ids = fightcord.modules.get('dms')._demo({ open: false }); fightcord.modules.get('lobbies')._ring(ids[0]); await sleep(900);` },

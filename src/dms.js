@@ -33,6 +33,8 @@ const DEFAULTS = {
     hi: {},                  // pk -> when you first wrote to them (a message request went out)
     seen: {},                // presence hash -> { dk, at }: Fightcord IDs heard lately
     syncAt: {},              // pk -> when that player last changed (here or on your other PC)
+    nicks: {},               // pk -> your nickname for them (3.8; only you see it)
+    left: {},                // group id -> when you left it (an old invite doesn't put you back, 3.8)
     done: []                 // inbox event ids already handled (they come back on every start)
 };
 const T = (s, v) => (fc ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g, (m, k) => (v && v[k] != null ? v[k] : m)));
@@ -62,11 +64,21 @@ function onInbox(s, m, o) {
     if (!b || !isPk(m.from) || !m.id) return out;
     if ((s.done || []).indexOf(m.id) >= 0 || find(s.blocked, m.from)) return out;
     s.done = (s.done || []).concat(m.id).slice(-DONE_MAX);
+    const pk = m.from, at = +m.at || 0;
+    const fr = find(s.friends, pk);
+    // 3.8: a group DM's key: from a friend (they added you), or your other PC (you made / joined it there)
+    if (b.t === 'gi') {
+        const mine = !!(o && o.me && pk === o.me);
+        if (!fr && !mine) return out;
+        const left = (s.left || {})[b.id];
+        if (left && left > at) return out;
+        out.what = 'group';
+        out.group = { s: b.s, prev: b.prev, o: b.o, id: b.id, nm: b.nm, by: mine ? '' : fr.n, mine };
+        return out;
+    }
     // a note from your own other PC: what changed there
     if (o && o.me && m.from === o.me) return onSync(s, m, out);
-    const pk = m.from, at = +m.at || 0;
     const n = cleanName(b.n), g = cleanG(b.g);
-    const fr = find(s.friends, pk);
     if (b.t === 'fr') {
         if (!n) return out;
         // someone you're friends with, from another Fightcord: a new PC (or someone pretending): ask
@@ -128,11 +140,22 @@ function onInbox(s, m, o) {
 // your other PCs (the same ID) tell each other what they changed, through your own inbox:
 //   b: { t: 'sync', op, pk, n, g, was }. The newest change per player wins (s.syncAt), so the order
 //   the notes arrive in doesn't matter. -> out with what: 'sync', dm / drop / retire for lobbies.js
-const SYNC_OPS = ['friend', 'unfriend', 'out', 'cancel', 'decline', 'block', 'unblock', 'reqok', 'reqno', 'replace'];
+const SYNC_OPS = ['friend', 'unfriend', 'out', 'cancel', 'decline', 'block', 'unblock', 'reqok', 'reqno', 'replace', 'nick'];
 function onSync(s, m, out) {
     const b = m.b, pk = b.pk, at = +m.at || 0;
     if (b.t !== 'sync' || !isPk(pk) || SYNC_OPS.indexOf(b.op) < 0) return out;
     s.syncAt = s.syncAt || {};
+    // a nickname (3.8) has its own clock: it doesn't race the friend changes
+    if (b.op === 'nick') {
+        const k = 'n:' + pk;
+        if ((s.syncAt[k] || 0) >= at) return out;
+        s.syncAt[k] = at;
+        s.nicks = s.nicks || {};
+        const n = cleanName(b.n).slice(0, 32);
+        if (n) s.nicks[pk] = n; else delete s.nicks[pk];
+        out.what = 'sync';
+        return out;
+    }
     if ((s.syncAt[pk] || 0) >= at) return out;
     s.syncAt[pk] = at;
     const n = cleanName(b.n), g = cleanG(b.g);
@@ -227,7 +250,7 @@ const myPk = () => { const lb = L(); return lb && lb.myId ? lb.myId() : ''; };
 function syncOut(op, pk, x) {
     const me = myPk(), lb = L();
     if (!me || !isPk(pk)) return;
-    cfg.syncAt[pk] = now();
+    cfg.syncAt[op === 'nick' ? 'n:' + pk : pk] = now();
     if (lb && lb.inboxSend) lb.inboxSend(me, Object.assign({ t: 'sync', op, pk, n: '', g: '' }, x || {}));
 }
 
@@ -305,6 +328,134 @@ function block(pk) {
     fc.ui.toast(T('Blocked {name}', { name: known.n || '?' }), { icon: 'ban', sub: T('They can’t message or call you, and their requests don’t reach you.') });
 }
 function unblock(pk) { cfg.blocked = drop(cfg.blocked, pk); syncOut('unblock', pk); save(); }
+
+// 3.8: your own name for a friend (only you see it; your other PCs get it too)
+const nickOf = (pk) => (cfg && cfg.nicks && cfg.nicks[pk]) || '';
+const callName = (pk, n) => nickOf(pk) || n;
+function setNick(pk, nick) {
+    const n = cleanName(nick).slice(0, 32);
+    if (n) cfg.nicks[pk] = n; else delete cfg.nicks[pk];
+    syncOut('nick', pk, { n });
+    save();
+}
+function nickModal(pk) {
+    const lb = L();
+    const who = find(cfg.friends, pk) || (lb ? lb.dmList().find(x => x.pk === pk) : null);
+    if (!who) return;
+    const m = fc.ui.modal({
+        title: nickOf(pk) ? T('Edit Friend Nickname') : T('Add Friend Nickname'), width: 420,
+        body: `<div class="fclbForm"><label><span>${E(T('Friend nickname'))}</span><input class="fc-input" data-f="nick" maxlength="32" value="${E(nickOf(pk))}" placeholder="${E(who.n)}"></label>` +
+            `<p class="fc-note">${E(T('Only you see it: {name} shows up as this in your DMs, group DMs and friends list.', { name: who.n }))}</p></div>`,
+        actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Save'), fn: (b) => setNick(pk, b.querySelector('[data-f="nick"]').value) }]
+    });
+    ['keydown', 'keypress', 'keyup'].forEach(ev => m.el.addEventListener(ev, (e) => {
+        e.stopPropagation();
+        if (ev === 'keydown' && e.key === 'Enter') { setNick(pk, m.body.querySelector('input').value); m.close(); }
+    }));
+    setTimeout(() => { const i = m.body.querySelector('input'); if (i) { i.focus(); i.select(); } }, 30);
+}
+
+// 3.8: a DM's / group DM's own settings: pinned to the top of the list, muted for a while
+const MUTES = [[15, N_('For 15 Minutes')], [60, N_('For 1 Hour')], [180, N_('For 3 Hours')], [480, N_('For 8 Hours')], [1440, N_('For 24 Hours')], [-1, N_('Until I turn it back on')]];
+function muteFor(id, mins) {
+    const lb = L();
+    if (!lb || !lb.dmSet) return;
+    lb.dmSet(id, { mute: mins < 0 ? -1 : now() + mins * 60000 });
+    renderRail();
+}
+function muteMenu(anchor, id) {
+    fc.ui.menu(anchor, MUTES.map(([mins, label]) => ({ label: T(label), icon: mins < 0 ? 'bellOff' : 'clock', fn: () => muteFor(id, mins) })), { side: 'right' });
+}
+// right-click (or ⋯) on a DM in the list
+function rowMenu(anchor, id) {
+    const lb = L();
+    const d = lb ? lb.dmList().find(x => x.id === id) : null;
+    if (!d) return;
+    const items = [];
+    if (d.unread) items.push({ label: T('Mark As Read'), icon: 'check', fn: () => { lb.markRead(id); renderRail(); refresh(); } });
+    items.push({ label: d.top ? T('Unpin from the top') : T('Pin to the top'), icon: 'pin', fn: () => lb.dmSet(id, { top: !d.top }) });
+    if (d.muted) items.push({ label: d.group ? T('Unmute Group') : T('Unmute Conversation'), icon: 'bell', fn: () => { lb.dmSet(id, { mute: 0 }); renderRail(); } });
+    else items.push({ label: d.group ? T('Mute Group…') : T('Mute Conversation…'), icon: 'bellOff', fn: () => setTimeout(() => muteMenu(anchor, id), 0) });
+    items.push('sep');
+    if (d.group) {
+        items.push({ label: T('Edit Group'), icon: 'edit', fn: () => lb.groupEdit(id) });
+        items.push({ label: T('Add friends to the group'), icon: 'userPlus', fn: () => groupPicker(anchor, { into: id }) });
+        items.push('sep');
+        items.push({ label: T('Leave Group'), icon: 'logout', danger: true, fn: () => lb.groupLeave(id) });
+    } else {
+        const f = find(cfg.friends, d.pk);
+        const sc = mod('scout');
+        if (sc && sc.openCard) items.push({ label: T('Scout card'), icon: 'search', fn: () => sc.openCard(d.n, anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null, 'beside') });
+        if (f && !d.old) items.push({ label: T('Call'), icon: 'phone', fn: () => { lb.dmFor(d.pk, f.n, f.g, { show: true }); lb.call(d.pk); } });
+        if (f) items.push({ label: nickOf(d.pk) ? T('Edit Friend Nickname') : T('Add Friend Nickname'), icon: 'edit', fn: () => nickModal(d.pk) });
+        items.push('sep');
+        items.push({ label: T('Close DM'), icon: 'close', fn: () => lb.dmHide(d.pk) });
+    }
+    fc.ui.menu(anchor, items, { side: 'right' });
+}
+
+// "Select Friends": a new DM (one friend) or group DM (two or more); o.with: who the DM is with already
+// (adding friends to a DM makes a new group with them in it), o.into: a group to add friends to
+function groupPicker(anchor, o) {
+    const lb = L();
+    if (!lb || !lb.createGroup) return;
+    const p = o || {};
+    const inGroup = p.into ? lb.groupMembers(p.into).map(x => x.pk) : [];
+    const base = (p.with || []).filter(isPk);
+    const room = p.into ? Math.max(0, 10 - inGroup.length) : 10 - 1 - base.length;
+    const pool = cfg.friends.filter(f => inGroup.indexOf(f.pk) < 0 && base.indexOf(f.pk) < 0 && !isBlocked(f.pk))
+        .sort((a, b) => lc(callName(a.pk, a.n)).localeCompare(lc(callName(b.pk, b.n))));
+    const picked = new Set();
+    const box = document.createElement('div');
+    box.className = 'fcdmPick';
+    const label = () => (p.into ? T('Add') : picked.size + base.length >= 2 ? T('Create Group DM') : T('Create DM'));
+    const draw = () => {
+        const q = lc(box.querySelector('.fcdmPickQ').value);
+        const list = pool.filter(f => !q || lc(callName(f.pk, f.n)).indexOf(q) >= 0 || lc(f.n).indexOf(q) >= 0);
+        const left = room - picked.size;
+        fc.ui.setHtml(box.querySelector('.sub'), E(left > 0 ? fc.t.plural(left, 'You can add {n} more friend.', 'You can add {n} more friends.') : T('This group has no room for more friends.')));
+        fc.ui.setHtml(box.querySelector('.l'), list.length ? list.map(f => {
+            const st = statusFor(f.pk, f.n);
+            return `<div class="r${picked.has(f.pk) ? ' on' : ''}" data-pick="${E(f.pk)}">${avatarOf(f.n, f.g, 32, st.on ? st.st : 'off')}<span class="nm"><b>${E(callName(f.pk, f.n))}</b>` +
+                (nickOf(f.pk) ? `<small>${E(f.n)}</small>` : '') + `</span><i class="ck">${fc.ui.icon('check')}</i></div>`;
+        }).join('') : `<div class="none">${E(pool.length ? T('No friends found') : p.into ? T('All your friends are in this group already') : T('Add friends first: a group DM is you and your Fightcord friends.'))}</div>`);
+        const b = box.querySelector('.go');
+        b.disabled = !picked.size && !base.length;
+        b.textContent = label();
+    };
+    box.innerHTML = fc.ui.popHead({ icon: 'users', title: T('Select Friends'), sub: '' }) +
+        `<div class="fc-pb"><div class="sub"></div><input class="fc-input fcdmPickQ" maxlength="40" placeholder="${E(T('Type the name of a friend'))}" spellcheck="false"><div class="l"></div>` +
+        `<button type="button" class="fc-btn brand go">${E(label())}</button></div>`;
+    box.addEventListener('click', (e) => {
+        const r = e.target.closest('[data-pick]');
+        if (r) {
+            const pk = r.dataset.pick;
+            if (picked.has(pk)) picked.delete(pk); else if (picked.size < room) picked.add(pk);
+            else fc.ui.toast(T('A group DM can have {n} people', { n: 10 }), { icon: 'users' });
+            draw();
+            return;
+        }
+        if (!e.target.closest('.go')) return;
+        const people = [...base, ...picked].map(pk => find(cfg.friends, pk)).filter(Boolean).map(f => ({ pk: f.pk, n: f.n, g: f.g || '' }));
+        pop.close();
+        if (p.into) {
+            const why = people.map(x => lb.addToGroup(p.into, x)).filter(Boolean);
+            if (why.length) fc.ui.toast(why[0], { icon: 'users', kind: 'warning' });
+            return;
+        }
+        if (people.length === 1) { openDm(people[0].pk); return; }
+        const id = lb.createGroup(people);
+        if (!id) { fc.ui.toast(T('Couldn’t make the group'), { kind: 'warning', icon: 'users' }); return; }
+        lb.open(id);
+    });
+    const q = box.querySelector('.fcdmPickQ');
+    q.addEventListener('input', draw);
+    ['keydown', 'keypress', 'keyup'].forEach(ev => q.addEventListener(ev, (e) => e.stopPropagation()));
+    box.addEventListener('mousedown', (e) => e.stopPropagation());
+    const pop = fc.ui.popover(anchor, box, { side: 'bottom', width: 440, cls: 'fc-pop-card fcdmPickPop' });
+    draw();
+    setTimeout(() => q.focus(), 30);
+}
 // a message request: write back (not friends, just the DM)
 function acceptReq(pk) {
     const r = find(cfg.reqs, pk);
@@ -371,6 +522,17 @@ function onInboxMsg(m) {
     const lb = L();
     const r = onInbox(cfg, m, { from: cfg.from, me: myPk(), hasDm: (pk) => !!(lb && lb.dmOf(pk)) });
     if (!r.what && !r.send.length) { store.save(); return; }
+    // 3.8: a friend added you to a group DM (or you made / joined one on your other PC)
+    if (r.what === 'group') {
+        store.save();
+        const id = lb && lb.joinGroup ? lb.joinGroup(r.group) : '';
+        if (!id || r.group.mine || !(m.at > bootAt - 60000) || !cfg.popups || quiet()) return;
+        const title = T('{name} added you to a group', { name: callName(m.from, r.group.by) });
+        fc.ui.toast(title, { icon: 'users', sub: r.group.nm || '', actions: [{ label: T('Open'), fn: () => lb.open(id) }] });
+        away(title, r.group.nm || '', () => lb.open(id), { n: r.group.by, tag: 'fcgi-' + id });
+        if (cfg.sound) fc.sound.play('ping');
+        return;
+    }
     r.send.forEach(x => send(x.to, x.t));
     (r.retire || []).forEach(pk => { if (lb && lb.dmRetire) lb.dmRetire(pk); });
     (r.drop || []).forEach(pk => { if (lb && lb.dmDrop) lb.dmDrop(pk); });
@@ -426,10 +588,23 @@ function onMessage(pk, m) {
     if (!d || d.req) return;                                 // a message request stays quiet
     if (!isFriendPk(pk) && cfg.from === 'friends') return;
     renderRail();
-    if (quiet() || (fc.ui.dnd && fc.ui.dnd())) return;
-    const text = fc.fmt.short(String(m.x || ''), 120);
-    if (cfg.popups) fc.ui.toast(d.n, { icon: 'chat', sub: text, actions: [{ label: T('Reply'), fn: () => openDm(pk) }] });
-    away(d.n, text, () => openDm(pk), { n: d.n, g: d.g, tag: 'fcdm-' + pk });
+    if (d.muted || quiet() || (fc.ui.dnd && fc.ui.dnd())) return;
+    const text = fc.fmt.short(String(m.x || ''), 120), name = callName(pk, d.n);
+    if (cfg.popups) fc.ui.toast(name, { icon: 'chat', sub: text, actions: [{ label: T('Reply'), fn: () => openDm(pk) }] });
+    away(name, text, () => openDm(pk), { n: d.n, g: d.g, tag: 'fcdm-' + pk });
+    if (cfg.sound && (cfg.popups || cfg.desktop)) fc.sound.tone([[988, 0, .06], [1319, .07, .09]], { volume: .45 });
+}
+// a group DM's message (lobbies.js: not on screen right now)
+function onGroupMessage(id, m) {
+    const lb = L();
+    const d = lb ? lb.dmList().find(x => x.id === id) : null;
+    if (!d || isBlocked(m.pk)) return;
+    renderRail();
+    if (d.muted || quiet() || (fc.ui.dnd && fc.ui.dnd())) return;
+    const who = callName(m.pk, m.n);
+    const text = fc.fmt.short(who + ': ' + String(m.x || ''), 120);
+    if (cfg.popups) fc.ui.toast(d.n, { icon: 'users', sub: text, actions: [{ label: T('Reply'), fn: () => lb.open(id) }] });
+    away(d.n, text, () => lb.open(id), { n: m.n, g: m.g || '', tag: 'fcgp-' + id });
     if (cfg.sound && (cfg.popups || cfg.desktop)) fc.sound.tone([[988, 0, .06], [1319, .07, .09]], { volume: .45 });
 }
 // 3.6.1: Fightcade is behind a match or another app: flash the taskbar and tell Windows too
@@ -458,21 +633,30 @@ function statusFor(pk, name) {
 
 function sideHtml(active) {
     const lb = L();
-    const list = lb ? lb.dmList().filter(d => !d.hidden && !d.req && !isBlocked(d.pk)) : [];
+    const list = lb ? lb.dmList().filter(d => !d.hidden && !d.req && (d.group || !isBlocked(d.pk))) : [];
     const pend = cfg.in.length, reqs = cfg.reqs.length;
     const home = lb && active === lb.HOME;
     const nav = (tab, icon, label, n) => `<div class="fcdmNav${home && (tab === 'reqs' ? homeTab === 'reqs' : homeTab !== 'reqs') ? ' on' : ''}" data-dmx="${tab}">${fc.ui.icon(icon)}<span>${E(label)}</span>${n ? `<b>${n}</b>` : ''}</div>`;
+    const row = (d) => {
+        const st = d.group || d.old ? { on: false, st: 'off', sub: '' } : statusFor(d.pk, d.n);
+        const name = d.group ? d.n : callName(d.pk, d.n);
+        const sub = d.typing ? T('typing…') : d.old ? T('Their old PC') : d.voice ? T('In a call')
+            : d.group ? fc.t.plural(d.members, '{n} member', '{n} members')
+                : st.on ? st.sub : d.last ? (d.last.mine ? T('You: {text}', { text: d.last.x }) : d.last.x) : '';
+        const pic = d.group ? d.icon : avatarOf(d.n, d.g, 32, st.on ? st.st : 'off');
+        const marks = (d.top ? `<i class="mk" title="${E(T('Pinned to the top'))}">${fc.ui.icon('pin')}</i>` : '') + (d.muted ? `<i class="mk" title="${E(muteText(d))}">${fc.ui.icon('bellOff')}</i>` : '');
+        return `<div class="fcdmRow${d.id === active ? ' on' : ''}${d.unread && !d.muted ? ' unread' : ''}${d.old ? ' old' : ''}${d.muted ? ' muted' : ''}${d.typing ? ' typ' : ''}" data-dm="${E(d.id)}" data-pk="${E(d.pk)}">${pic}` +
+            `<span class="tx"><b><span>${E(name)}</span>${marks}</b>${sub ? `<small>${E(fc.fmt.short(sub.replace(/\s+/g, ' '), 60))}</small>` : ''}</span>` +
+            (d.unread && !d.muted ? `<em>${d.unread > 9 ? '9+' : d.unread}</em>` : '') +
+            `<i class="x more" data-dmx="rowmore" title="${E(T('More'))}">${fc.ui.icon('more')}</i>` +
+            (d.group ? '' : `<i class="x" data-dmx="hide" title="${E(T('Close DM'))}">${fc.ui.icon('close')}</i>`) + '</div>';
+    };
     return `<div class="fcdmFind" data-dmx="add">${E(T('Find or start a conversation'))}</div>` +
         nav('friends', 'users', T('Friends'), pend) + (reqs ? nav('reqs', 'chat', T('Message requests'), reqs) : '') +
-        `<div class="fcdmCat"><span>${E(T('Direct messages'))}</span><i data-dmx="add" title="${E(T('Add friend'))}">${fc.ui.icon('plus')}</i></div>` +
-        (list.length ? list.map(d => {
-            const st = d.old ? { on: false, st: 'off', sub: '' } : statusFor(d.pk, d.n);
-            const sub = d.old ? T('Their old PC') : d.voice ? T('In a call') : st.on ? st.sub : d.last ? (d.last.mine ? T('You: {text}', { text: d.last.x }) : d.last.x) : '';
-            return `<div class="fcdmRow${d.id === active ? ' on' : ''}${d.unread ? ' unread' : ''}${d.old ? ' old' : ''}" data-dm="${E(d.id)}" data-pk="${E(d.pk)}">${avatarOf(d.n, d.g, 32, st.on ? st.st : 'off')}` +
-                `<span class="tx"><b>${E(d.n)}</b>${sub ? `<small>${E(fc.fmt.short(sub.replace(/\s+/g, ' '), 60))}</small>` : ''}</span>` +
-                (d.unread ? `<em>${d.unread > 9 ? '9+' : d.unread}</em>` : '') + `<i class="x" data-dmx="hide" title="${E(T('Close DM'))}">${fc.ui.icon('close')}</i></div>`;
-        }).join('') : `<div class="fcdmNone">${E(T('Your DMs show up here.'))}</div>`);
+        `<div class="fcdmCat"><span>${E(T('Direct messages'))}</span><i data-dmx="newdm" title="${E(T('Create DM'))}">${fc.ui.icon('plus')}</i></div>` +
+        (list.length ? list.map(row).join('') : `<div class="fcdmNone">${E(T('Your DMs show up here.'))}</div>`);
 }
+const muteText = (d) => (d.mute === -1 ? T('Muted') : T('Muted until {time}', { time: new Date(d.mute).toLocaleTimeString(fc.t.locale ? fc.t.locale() : undefined, { hour: 'numeric', minute: '2-digit' }) }));
 
 function homeTopHtml() {
     const tabs = [['online', N_('Online')], ['all', N_('All')], ['pending', N_('Pending'), cfg.in.length || null], ['blocked', N_('Blocked')]];
@@ -483,7 +667,7 @@ function homeTopHtml() {
 function friendRow(f) {
     const st = statusFor(f.pk, f.n);
     const warn = warning(f.pk);
-    return `<div class="fcdmF" data-pk="${E(f.pk)}">${avatarOf(f.n, f.g, 36, st.on ? st.st : 'off')}<span class="tx"><b>${E(f.n)}${warn ? `<i class="w" title="${E(warn)}">${fc.ui.icon('warn')}</i>` : ''}</b><small>${E(st.sub)}</small></span>` +
+    return `<div class="fcdmF" data-pk="${E(f.pk)}"${nickOf(f.pk) ? ` title="${E(f.n)}"` : ''}>${avatarOf(f.n, f.g, 36, st.on ? st.st : 'off')}<span class="tx"><b>${E(callName(f.pk, f.n))}${warn ? `<i class="w" title="${E(warn)}">${fc.ui.icon('warn')}</i>` : ''}</b><small>${E(st.sub)}</small></span>` +
         `<span class="ac"><i data-dmx="msg" title="${E(T('Message'))}">${fc.ui.icon('chat')}</i><i data-dmx="call" title="${E(T('Start a voice call'))}">${fc.ui.icon('phone')}</i>` +
         `<i data-dmx="more" title="${E(T('More'))}">${fc.ui.icon('more')}</i></span></div>`;
 }
@@ -493,7 +677,7 @@ function homeHtml() {
     if (homeTab === 'pending') return pendingHtml();
     if (homeTab === 'blocked') return blockedHtml();
     if (homeTab === 'reqs') return reqsHtml();
-    const all = cfg.friends.slice().sort((a, b) => lc(a.n).localeCompare(lc(b.n)));
+    const all = cfg.friends.slice().sort((a, b) => lc(callName(a.pk, a.n)).localeCompare(lc(callName(b.pk, b.n))));
     const rows = homeTab === 'online' ? all.filter(f => statusFor(f.pk, f.n).on) : all;
     const head = (t) => `<div class="fcdmH">${E(t)}</div>`;
     let html = '';
@@ -583,10 +767,12 @@ function profileHtml(pk) {
     const warn = warning(pk);
     const rel = f ? T('Friends since {date}', { date: new Date(f.since).toLocaleDateString(fc.t.locale ? fc.t.locale() : undefined, { year: 'numeric', month: 'short', day: 'numeric' }) })
         : find(cfg.out, pk) ? T('Friend request sent') : T('Not friends');
-    return `<div class="fcdmProf">${fc.ui.cardHead({ name, banner, avatar: avatarOf(name, g, 80, st.on ? st.st : 'off'), marks: '', meta: `<span>${E(st.sub)}</span>` })}` +
+    const nk = nickOf(pk);
+    return `<div class="fcdmProf">${fc.ui.cardHead({ name: nk || name, banner, avatar: avatarOf(name, g, 80, st.on ? st.st : 'off'), marks: '', meta: (nk ? `<span>${E(name)}</span> · ` : '') + `<span>${E(st.sub)}</span>` })}` +
         `<div class="fcdmProfB">${warn ? `<div class="fcdmWarn">${fc.ui.icon('warn')}<span>${E(warn)}</span></div>` : ''}${prof}` +
         `<div class="fcdmRel">${fc.ui.icon(f ? 'users' : 'user')}<span>${E(rel)}</span></div>` +
         `<div class="fcdmProfA">${!f && !find(cfg.out, pk) && !isBlocked(pk) ? fc.ui.btn('Add friend', { kind: 'success', size: 'sm', icon: 'userPlus', act: 'none', attrs: 'data-dmx="add-pk"' }) : ''}` +
+        (f ? fc.ui.btn(nk ? 'Edit nickname' : 'Add nickname', { kind: 'sec', size: 'sm', icon: 'edit', act: 'none', attrs: 'data-dmx="nick-pk"' }) : '') +
         fc.ui.btn('Scout card', { kind: 'sec', size: 'sm', icon: 'search', act: 'none', attrs: 'data-dmx="scout-pk"' }) + '</div></div></div>';
 }
 
@@ -606,6 +792,8 @@ function pageClick(e, viewId) {
         if (what === 'reqs') { openHome('reqs'); return true; }
         if (what === 'add') { addMsg = null; openHome('add'); focusAdd(); return true; }
         if (what === 'hide' && pk) { e.stopPropagation(); lb.dmHide(pk); return true; }
+        if (what === 'rowmore') { e.stopPropagation(); const r = x.closest('[data-dm]'); if (r) rowMenu(x, r.dataset.dm); return true; }
+        if (what === 'newdm') { groupPicker(x, {}); return true; }
         if (what === 'send-req') { submitAdd(); return true; }
         if (what === 'msg' && pk) { openDm(pk); return true; }
         if (what === 'call' && pk) { const f = find(cfg.friends, pk); if (f) { lb.dmFor(pk, f.n, f.g, { show: true }); lb.call(pk); } return true; }
@@ -617,6 +805,7 @@ function pageClick(e, viewId) {
         if (what === 'unblock' && pk) { unblock(pk); return true; }
         if (what === 'req-ok' && pk) { acceptReq(pk); openDm(pk); return true; }
         if (what === 'req-no' && pk) { ignoreReq(pk); return true; }
+        if (what === 'nick-pk' && pk) { nickModal(pk); return true; }
         if (what === 'add-pk' && pk) { const d = lb.dmList().find(y => y.pk === pk); if (d) { const r = request(d.n); fc.ui.toast(r.text, { icon: 'userPlus', kind: r.ok ? '' : 'warning' }); } return true; }
         if (what === 'scout-pk' && pk) { const d = lb.dmList().find(y => y.pk === pk) || find(cfg.friends, pk); const sc = mod('scout'); if (d && sc && sc.openCard) sc.openCard(d.n, x.getBoundingClientRect(), 'beside'); return true; }
         if (what === 'star-req') { const n = e.target.closest('[data-name]'); if (n) { const r = request(n.dataset.name); fc.ui.toast(r.text, { icon: 'userPlus', kind: r.ok ? '' : 'warning' }); } return true; }
@@ -628,6 +817,15 @@ function pageClick(e, viewId) {
     if (dm && dm.dataset.dm && (dm.classList.contains('fcdmRow') || dm.classList.contains('fcdmF'))) { lb.open(dm.dataset.dm); return true; }
     const fr = e.target.closest('.fcdmF[data-pk], .fcdmCard[data-pk]');
     if (fr && find(cfg.friends, fr.dataset.pk)) { openDm(fr.dataset.pk); return true; }
+    return false;
+}
+// a right-click: a DM in the list, a friend in the Friends view -> true
+function pageContext(e) {
+    const at = { x: e.clientX, y: e.clientY };
+    const r = e.target.closest('.fcdmRow[data-dm]');
+    if (r) { rowMenu(at, r.dataset.dm); return true; }
+    const f = e.target.closest('.fcdmF[data-pk]');
+    if (f && find(cfg.friends, f.dataset.pk)) { friendMenu(at, f.dataset.pk); return true; }
     return false;
 }
 function pageKey(e) {
@@ -654,12 +852,15 @@ function friendMenu(anchor, pk) {
     const f = find(cfg.friends, pk);
     if (!f) return;
     const sc = mod('scout');
-    const items = [{ label: T('Message'), icon: 'chat', fn: () => openDm(pk) }, { label: T('Start a voice call'), icon: 'phone', fn: () => { const lb = L(); lb.dmFor(pk, f.n, f.g, { show: true }); lb.call(pk); } }];
-    if (sc && sc.openCard) items.push({ label: T('Scout card'), icon: 'search', fn: () => sc.openCard(f.n, anchor.getBoundingClientRect(), 'beside') });
+    const rect = anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y, width: 0, height: 0 };
+    const items = [{ label: T('Message'), icon: 'chat', fn: () => openDm(pk) }, { label: T('Start a voice call'), icon: 'phone', fn: () => { const lb = L(); lb.dmFor(pk, f.n, f.g, { show: true }); lb.call(pk); } },
+        { label: T('Start a video call'), icon: 'video', fn: () => { const lb = L(); lb.dmFor(pk, f.n, f.g, { show: true }); lb.call(pk, true); } }];
+    if (sc && sc.openCard) items.push({ label: T('Scout card'), icon: 'search', fn: () => sc.openCard(f.n, rect, 'beside') });
+    items.push({ label: nickOf(pk) ? T('Edit Friend Nickname') : T('Add Friend Nickname'), icon: 'edit', fn: () => nickModal(pk) });
     items.push('sep');
     items.push({ label: T('Remove friend'), icon: 'close', danger: true, fn: () => fc.ui.confirm(T('Remove {name}?', { name: f.n }), T('You won’t be friends on either side any more. Your DM stays.'), { ok: T('Remove friend'), danger: true }).then(ok => { if (ok) unfriend(pk); }) });
     items.push({ label: T('Block'), icon: 'ban', danger: true, fn: () => confirmBlock(pk) });
-    fc.ui.menu(anchor, items, { side: 'left' });
+    fc.ui.menu(anchor, items, { side: anchor.getBoundingClientRect ? 'left' : 'right' });
 }
 // lobbies.js's DM box buttons (request bar, "add friend")
 function act(what, pk) {
@@ -682,7 +883,7 @@ function linkShow() {
         fc.ui.confirm(T('Send your Fightcord to the other PC?'), T('A PC typed your code. Only say yes if it’s yours: it gets your friends, DMs and lobbies, and can talk as you.'), { ok: T('Send it') })
             .then(ok => {
                 if (!ok) { asked = false; return; }
-                yes({ dms: { friends: cfg.friends, out: cfg.out, in: cfg.in, reqs: cfg.reqs, blocked: cfg.blocked, hi: cfg.hi, syncAt: cfg.syncAt } });
+                yes({ dms: { friends: cfg.friends, out: cfg.out, in: cfg.in, reqs: cfg.reqs, blocked: cfg.blocked, hi: cfg.hi, syncAt: cfg.syncAt, nicks: cfg.nicks, left: cfg.left } });
                 const st = m.body.querySelector('.fcdmLinkSt');
                 if (st) st.innerHTML = `<div class="ok">${fc.ui.icon('check')}${E(T('Sent. Your other PC uses this Fightcord now: friends, DMs and lobbies on both.'))}</div>`;
             });
@@ -734,6 +935,9 @@ function adoptAll(p) {
     cfg.friends = list(d.friends); cfg.out = list(d.out); cfg.in = list(d.in); cfg.reqs = list(d.reqs); cfg.blocked = list(d.blocked);
     cfg.hi = d.hi && typeof d.hi === 'object' ? d.hi : {};
     cfg.syncAt = d.syncAt && typeof d.syncAt === 'object' ? d.syncAt : {};
+    const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+    cfg.nicks = {}; Object.keys(obj(d.nicks)).forEach(pk => { const n = isPk(pk) && cleanName(d.nicks[pk]).slice(0, 32); if (n) cfg.nicks[pk] = n; });
+    cfg.left = obj(d.left);
     cfg.done = [];
     cfg.friends.forEach(f => star(f.n));
     save();
@@ -741,7 +945,8 @@ function adoptAll(p) {
 
 /* ===================================================================== the rail */
 
-const unreadDms = (list) => list.filter(d => d.unread && !d.req && !d.hidden && !isBlocked(d.pk) && (isFriendPk(d.pk) || cfg.from !== 'friends'));
+// (a muted DM or group DM still counts as unread in its row, not in the badges, like Discord)
+const unreadDms = (list) => list.filter(d => d.unread && !d.req && !d.hidden && !d.muted && (d.group || (!isBlocked(d.pk) && (isFriendPk(d.pk) || cfg.from !== 'friends'))));
 const railCount = (list) => cfg.in.length + cfg.reqs.length + unreadDms(list).reduce((n, d) => n + d.unread, 0);
 
 // a chat bubble at the top of the server rail (the DM page), then unread DMs as avatars, like Discord
@@ -755,8 +960,8 @@ function railHtml() {
     const badge = railCount(list);
     return `<div class="fclbIco fcdmHome${onPage ? ' on' : ''}" data-dmr="home" title="${E(T('Direct messages and friends'))}">${fc.ui.icon('chat')}` +
         (badge ? `<b class="bd">${badge > 9 ? '9+' : badge}</b>` : '') + '</div>' +
-        unread.slice(0, 5).map(d => `<div class="fclbIco hasPic fcdmBub${d.id === shown ? ' on' : ''} unread" data-dmr="${E(d.id)}" title="${E(d.n)}">` +
-            `<img class="pic" src="${E(fc.data.avatarUrl(d.n, d.g, 80))}" alt=""><b class="bd">${d.unread > 9 ? '9+' : d.unread}</b></div>`).join('') +
+        unread.slice(0, 5).map(d => `<div class="fclbIco hasPic fcdmBub${d.id === shown ? ' on' : ''}${d.group ? ' gp' : ''} unread" data-dmr="${E(d.id)}" title="${E(d.group ? d.n : callName(d.pk, d.n))}">` +
+            (d.group ? d.icon.replace(/--s:\d+px/, '--s:40px') : `<img class="pic" src="${E(fc.data.avatarUrl(d.n, d.g, 80))}" alt="">`) + `<b class="bd">${d.unread > 9 ? '9+' : d.unread}</b></div>`).join('') +
         '<div class="fclbSep"></div>';
 }
 function renderRail() {
@@ -802,7 +1007,7 @@ function start(f) {
     store = fc.config('dms', DEFAULTS);
     cfg = store.data;
     ['friends', 'out', 'in', 'reqs', 'blocked', 'done'].forEach(k => { if (!Array.isArray(cfg[k])) cfg[k] = []; });
-    ['hi', 'seen', 'syncAt'].forEach(k => { if (!cfg[k] || typeof cfg[k] !== 'object') cfg[k] = {}; });
+    ['hi', 'seen', 'syncAt', 'nicks', 'left'].forEach(k => { if (!cfg[k] || typeof cfg[k] !== 'object' || Array.isArray(cfg[k])) cfg[k] = {}; });
     fc.ui.style('fcdmStyle', CSS);
     const lb = L();
     if (lb && lb.setDms) lb.setDms(cfg.enabled);
@@ -818,6 +1023,8 @@ function start(f) {
     fc.on('lobbies:changed', renderRail);
     fc.on('presence:changed', () => { if (L() && L().shown()) refresh(); });
     fc.on('presence:id', onPresenceId);
+    // you left a group DM: an old invite to it (the inbox keeps 30 days) doesn't put you back
+    fc.on('group:left', (x) => { if (x && x.id) { cfg.left[x.id] = now(); store.save(); } });
     // you wrote to someone who isn't your friend: they get a message request (once)
     fc.on('dm:sent', (x) => {
         if (!x || !isPk(x.pk) || isFriendPk(x.pk) || cfg.hi[x.pk]) return;
@@ -964,6 +1171,32 @@ const CSS = `
 .fcdmLinkSt .bad { color: var(--fc-danger, #f23f43); }
 .fcdmLinkSt .fc-ic { width: 16px; height: 16px; margin-right: 6px; flex: none; }
 .fcdmProfA .fc-btn { margin: 0 8px 8px 0; }
+/* 3.8: group DMs, pinned / muted DMs, typing, the Select Friends picker */
+.fcdmRow .tx b { display: flex; align-items: center; }
+.fcdmRow .tx b > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcdmRow .tx b .mk { display: flex; flex: none; margin-left: 4px; color: var(--fc-muted); }
+.fcdmRow .tx b .mk .fc-ic { width: 12px; height: 12px; }
+.fcdmRow.muted { opacity: .6; }
+.fcdmRow.muted:hover, .fcdmRow.muted.on { opacity: 1; }
+.fcdmRow.typ .tx small { color: var(--fc-text); font-style: italic; }
+.fcdmRow > .fclbGi { flex: none; }
+.fcdmRow .x.more { margin-left: 2px; }
+.fcdmBub.gp .fclbGi { width: 40px; height: 40px; border-radius: inherit; }
+.fcdmBub.gp img.fclbGi { position: absolute; left: 0; top: 0; }
+.fcdmPick .sub { margin: -2px 0 10px; color: var(--fc-muted); font: 12px/1.3 var(--fc-font); }
+.fcdmPickQ { width: 100%; box-sizing: border-box; }
+.fcdmPick .l { height: 260px; margin: 10px -6px; overflow-y: auto; }
+.fcdmPick .r { display: flex; align-items: center; height: 44px; padding: 0 8px; border-radius: 6px; cursor: pointer; }
+.fcdmPick .r:hover { background: var(--fc-hover); }
+.fcdmPick .r .fc-avatar { margin-right: 10px; flex: none; }
+.fcdmPick .r .nm { flex: 1; min-width: 0; }
+.fcdmPick .r .nm b { display: block; color: var(--fc-head); font: 500 15px/1.2 var(--fc-font); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcdmPick .r .nm small { display: block; color: var(--fc-muted); font: 12px/1.2 var(--fc-font); }
+.fcdmPick .r .ck { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 2px var(--fc-muted); color: transparent; }
+.fcdmPick .r.on .ck { background: var(--fc-accent); box-shadow: none; color: #fff; }
+.fcdmPick .r .ck .fc-ic { width: 14px; height: 14px; stroke-width: 3; }
+.fcdmPick .none { padding: 24px 12px; color: var(--fc-muted); font: 13px/1.45 var(--fc-font); text-align: center; }
+.fcdmPick .go { width: 100%; justify-content: center; }
 `;
 
 const api = {
@@ -984,6 +1217,15 @@ const api = {
     sideHtml: (active) => sideHtml(active), homeTopHtml: () => homeTopHtml(), homeHtml: () => homeHtml(), activeHtml: () => activeHtml(),
     profileHtml: (pk) => profileHtml(pk), pageClick: (e, id) => pageClick(e, id), pageKey: (e) => pageKey(e), act: (what, pk) => act(what, pk),
     onMessage: (pk, m) => onMessage(pk, m),
+    onGroupMessage: (id, m) => onGroupMessage(id, m),
+    pageContext: (e) => pageContext(e),
+    // 3.8: your nicknames for friends; the names lobbies.js shows in DMs and group DMs
+    nick: (pk) => nickOf(pk),
+    nameFor: (pk) => { if (!cfg) return ''; const f = find(cfg.friends, pk); return nickOf(pk) || (f ? f.n : ''); },
+    setNick: (pk, n) => setNick(pk, n),
+    isFriendPk: (pk) => !!cfg && isFriendPk(pk),
+    groupPicker: (anchor, o) => groupPicker(anchor, o),
+    rowMenu: (anchor, id) => rowMenu(anchor, id),
     away: (title, body, open, who) => away(title, body, open, who || {}),
     _onInbox: (m) => onInboxMsg(m),
     linkShow: () => linkShow(), linkEnter: () => linkEnter(), _adopt: (p) => adoptAll(p),
@@ -1001,16 +1243,21 @@ const api = {
         cfg.reqs = [{ pk: pk('9'), n: 'GenieDive', g: '', at: t - 15 * 60000 }];
         cfg.blocked = [];
         const lb = L();
+        cfg.nicks = p.nicks || { [pk('d')]: 'Sensei' };
         const ids = lb._demoDms(p.dms || [
-            { pk: pk('a'), n: 'ParryKing', st: 'on', unread: 2, msgs: [['them', 'gg last night, that game 5 was crazy', 600], ['me', 'that parry into SA though 😭', 590], ['them', 'running it back tonight?', 12], ['them', 'FT10, no excuses', 11],
+            { pk: pk('a'), n: 'ParryKing', st: 'on', unread: 2, top: true, typing: p.typing ? [pk('a')] : null, msgs: [['them', 'gg last night, that game 5 was crazy', 600, 'g5', { rx: [['me', '🔥']] }], ['me', 'that parry into SA though 😭', 590],
+                ['them', 'running it back tonight?', 12], ['them', 'FT10, no excuses', 11, 'ft', { ed: 'FT10, no excuses. winner picks the stage', pin: true }],
                 ['me', 'you\'re on https://static.klipy.com/ii/4e7bea9f7a3371424e6c16ebc93252fe/4b/32/O9HFXrmoebzGM3.gif', 2]] },
+            { group: { members: [[pk('a'), 'ParryKing'], [pk('b'), 'UrienMain'], [pk('c'), 'DashKaiser']], name: 'Friday crew', live: [[pk('a'), 'on'], [pk('b'), 'playing']] }, unread: 1,
+                msgs: [[pk('b'), 'who\'s bracket is it this week', 90], [pk('c'), 'mine. same rules as last time', 80, 'rules', { pin: true }],
+                    ['me', 'the stream overlay is pinned in the lobby too', 60, '', { fw: { n: 'OroSensei', at: now() - 26 * 3600000 } }], [pk('a'), 'I\'m warming up, 10 min', 5, '', { re: 'rules' }]] },
             { pk: pk('b'), n: 'UrienMain', st: 'playing', msgs: [['me', 'how do you even block the aegis loop', 200], ['them', 'you don\'t, you just pray 🙏', 190]] },
-            { pk: pk('c'), n: 'DashKaiser', st: 'away', msgs: [['them', 'check this out https://example.com/clip', 3000]] },
+            { pk: pk('c'), n: 'DashKaiser', st: 'away', mute: -1, msgs: [['them', 'check this out https://example.com/clip', 3000]] },
             { pk: pk('d'), n: 'OroSensei', msgs: [['them', 'ty for the sets!', 4000]] },
             { pk: pk('9'), n: 'GenieDive', req: true, msgs: [['them', 'hey, saw you in the 3S channel. want some FT5s sometime?', 15]] }
         ]);
         homeTab = p.tab || 'online';
-        if (p.open === 'dm') lb.open(ids[0]); else if (p.open !== false) openHome();
+        if (p.open === 'dm') lb.open(ids[0]); else if (p.open === 'group') lb.open(ids[1]); else if (p.open !== false) openHome();
         renderRail();
         return ids;
     },
