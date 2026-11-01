@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.8.2
+
+- **Casual sets count again:** when Fightcade's end-of-set message wasn't in the chat you had open, Fightcord
+  asked Fightcade's site for the score, and for casual sets the site can say 0-0. The set was then dropped
+  (or saved as a 0-0 draw), so your wins and losses didn't go up. It now uses the emulator's own count of
+  the games instead, and a 0-0 is never a draw.
+
 ## 3.8.1
 
 - **Ragequitter tag:** a new tag in your player notes, and Fightcord puts it on by itself when someone

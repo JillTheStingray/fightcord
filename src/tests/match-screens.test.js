@@ -75,3 +75,18 @@ test('the set score from Fightcade’s end-of-set row: your side, their name, no
     assert.equal(ms.scoreOf(null, 'Zig'), null);
     assert.deepEqual(ms.scoreOf(e({}), ''), { mine: 3, theirs: 1 }, 'opponent unknown: still counts');
 });
+
+test('casual sets the site lists as 0-0 count from the emulator’s own games (3.8.2)', () => {
+    const site = (mine, theirs, games) => ({ mine, theirs, games });
+    const emu = (mine, theirs) => ({ mine, theirs });
+    assert.deepEqual(ms.siteOrEmu(site(1, 3, 4), emu(1, 2)), { mine: 1, theirs: 3 }, 'the site has it: the site');
+    assert.deepEqual(ms.siteOrEmu(site(0, 0, 0), emu(4, 2)), { mine: 4, theirs: 2 }, 'was thrown away as "no games played"');
+    assert.deepEqual(ms.siteOrEmu(site(0, 0, 6), emu(4, 2)), { mine: 4, theirs: 2 }, 'was saved as a 0-0 draw');
+    assert.equal(ms.siteOrEmu(site(0, 0, 0), emu(0, 0)), 'none', 'really nothing played');
+    assert.equal(ms.siteOrEmu(site(0, 0, 0), null), 'none');
+    assert.equal(ms.siteOrEmu(site(0, 0, 3), null), null, 'played, score unknown yet: ask again');
+    assert.equal(ms.siteOrEmu(null, emu(2, 1)), null, 'the site not answering yet: ask again first');
+    assert.equal(ms.verdict(0, 0), null, '0-0 is not a draw');
+    assert.equal(ms.verdict(2, 2), 'draw');
+    assert.equal(ms.verdict(3, 1), 'won');
+});

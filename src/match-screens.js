@@ -678,9 +678,21 @@ async function quarkResult(quarkId, me, opp) {
     return row ? scoreFromRow(row, me, opp) : null;
 }
 
+// 0-0 is nothing played, not a draw
+const played = (s) => !!s && typeof s.mine === 'number' && typeof s.theirs === 'number' && s.mine + s.theirs > 0;
 function verdict(mine, theirs) {
-    if (mine == null || theirs == null) return null;
+    if (!played({ mine, theirs })) return null;
     return mine > theirs ? 'won' : mine < theirs ? 'lost' : 'draw';
+}
+
+// 3.8.2: the site's score for the set (s) and the emulator's own count of its games (e) -> the score
+// to record, 'none' (no games were played) or null (ask the site again). For casual sets the site often
+// says 0-0 -- and that's all there is when Fightcade's end-of-set message wasn't in the chat you had open
+function siteOrEmu(s, e) {
+    if (played(s)) return { mine: s.mine, theirs: s.theirs };
+    if (s && played(e)) return { mine: e.mine, theirs: e.theirs };
+    if (s && s.games === 0) return 'none';
+    return null;
 }
 
 // Fightcade's own end-of-match row, when it states the result (.wrapUpWrapper.won/.lost/.same).
@@ -740,7 +752,7 @@ async function resolveResult(m) {
     const finish = (v, mine, theirs) => {
         trackEmu(m);
         const es = m.emuScore;
-        if (mine == null && es && es.mine != null && es.theirs != null && (!v || verdict(es.mine, es.theirs) === v)) {
+        if (mine == null && played(es) && (!v || verdict(es.mine, es.theirs) === v)) {
             mine = es.mine; theirs = es.theirs; v = v || verdict(mine, theirs);
         }
         const myChar = m.chars ? fc.data.mainChar(m.chars.mine, m.chars.lastMine) : '';
@@ -771,13 +783,14 @@ async function resolveResult(m) {
         if (v === 'seen') break;
         await sleep(500);
     }
-    // 2. the set score from the API, retried while it shows up
+    // 2. the set score from the API, retried while it shows up (0-0 there: the emulator's count)
     for (const wait of [2000, 6000, 12000]) {
         await sleep(wait);
         const s = await quarkResult(m.quark, me, m.opp);
-        if (s && s.games === 0 && s.mine === 0 && s.theirs === 0) { fc.log('no games played'); return; }
-        const v = s && verdict(s.mine, s.theirs);
-        if (v) return finish(v, s.mine, s.theirs);
+        trackEmu(m);
+        const r = siteOrEmu(s, m.emuScore);
+        if (r === 'none') { fc.log('no games played'); return; }
+        if (r) return finish(verdict(r.mine, r.theirs), r.mine, r.theirs);
     }
     fc.log('result unknown for', m.quark, '- no screen');
     finish(null, null, null);                   // still counts as a set played tonight
@@ -1259,5 +1272,5 @@ const api = {
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start, nightStats, scoreOf };
+module.exports = { id: 'match-screens', name: 'Match screens & session tracker', start, nightStats, scoreOf, siteOrEmu, verdict };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));
