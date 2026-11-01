@@ -154,6 +154,12 @@ function paintRow(row, now) {
     let r = row.__fcrc;
     if (!r || r.sig !== sig) r = row.__fcrc = { at: now, sig, data: readRow(row) };
     if (!r.data) { unpaint(row); row.__fcrc = r; return; }
+    // 3.8.1: a ranked set they left unfinished while behind: the notes count it (once per replay)
+    const d = r.data, nt = mod('notes');
+    if (!r.rq && d.quit && d.opp && d.my != null && d.their != null && d.their < d.my && nt && nt.quitEvidence) {
+        r.rq = true;
+        nt.quitEvidence(d.opp, { onYou: d.replay || d.quark || [d.opp, d.ft, d.my, d.their].join('-') });
+    }
     const set = setFor(fc.history.all(), r.data, now);
     const key = set ? [set.quark, set.myChar, set.oppChar, set.mine, set.theirs].join('|') : '';
     let card = row.querySelector(':scope > .fcrc');

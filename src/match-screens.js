@@ -240,12 +240,21 @@ function playerHtml(p, side, o) {
     return `<div class="player ${side}">
         <div class="av"><img class="avatar" src="${E(p.avatar)}"></div>
         <div class="plate"><span class="pname">${E(p.name)}</span></div>
+        ${o.rq ? rqBadge(o.rq) : ''}
         <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
             `${o.ping ? `<span class="ping">${E(o.ping + ' ms')}</span>` : ''}${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
         ${o.char ? `<div class="cplate">${o.charNote ? `<small>${E(o.charNote)}</small>` : ''}${o.face || ''}<b>${E(o.char)}</b></div>` : ''}
         ${picks}
     </div>`;
 }
+
+// 3.8.1: the heads-up that they often leave ranked sets (the Ragequitter tag in your notes)
+function rqFor(name) {
+    const nt = fc.modules.get('notes');
+    if (!nt || !nt.isRagequitter || !nt.isRagequitter(name)) return '';
+    return (nt.rqWhy && nt.rqWhy(nt.get(name).rq)) || T('Tagged in your notes');
+}
+const rqBadge = (why) => `<div class="rqb" title="${E(why)}">${fc.ui.ic('warn')}<b>${E(T('Ragequitter'))}</b><small>${E(why)}</small></div>`;
 
 // the matchup guide's tips against their character (your own matchup note first)
 function tipsHtml(rom, myChar, oppChar, n) {
@@ -284,7 +293,7 @@ function showVs(meName, oppName) {
         <div class="half r" style="--c:${opp.color}"></div>
         ${playerHtml(me, 'l', { char: myChar, face: faceOf(rom, myChar), charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
         ${playerHtml(opp, 'r', { char: oppChar, face: faceOf(rom, oppChar), charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
-            picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0 })}
+            picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0, rq: rqFor(oppName) })}
         <div class="sparks">${sparks}</div><div class="vsword">VS</div><div class="ring"></div>
         <div class="tape">${tapeHtml(tapeOf(face), me, opp)}</div>
         ${tips}
@@ -299,6 +308,9 @@ function showVs(meName, oppName) {
         scout.scoutData(oppName).then(d => {
             const ov = document.getElementById('fcmsOverlay');
             if (!d || d.error || !ov || ov.dataset.opp !== oppName || ov.classList.contains('out')) return;
+            // the scout just tagged them (their recent sets): the badge, late
+            const rq = rqFor(oppName), plate = ov.querySelector('.player.r .plate');
+            if (rq && plate && !ov.querySelector('.player.r .rqb')) plate.insertAdjacentHTML('afterend', rqBadge(rq));
             const exact = (e) => (e && !e.est ? e : null);
             if (!exact(d.elo) && !exact(d.myElo)) return;
             const fresh = Object.assign({}, face, { myElo: exact(d.myElo) || face.myElo, oppElo: exact(d.elo) || face.oppElo });
@@ -954,6 +966,12 @@ const CSS = `
 #fcmsOverlay .pmeta { display: flex; align-items: center; justify-content: center; margin-top: 1.6vmin; color: rgba(255,255,255,.9); font-size: 2.4vmin; font-weight: 700;
     text-shadow: 0 .3vmin .8vmin rgba(0,0,0,.6); }
 #fcmsOverlay .pmeta > img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; margin-right: 1vmin; }
+#fcmsOverlay .rqb { position: relative; display: flex; flex-direction: column; align-items: center; margin: 1.2vmin auto 0; padding: .8vmin 1.8vmin; max-width: 36vmin;
+    border-radius: 1vmin; background: rgba(255,106,43,.92); color: #fff; box-shadow: 0 .6vmin 2vmin rgba(0,0,0,.4); animation: fcms-rq .5s .9s cubic-bezier(.2,1.4,.4,1) both; }
+#fcmsOverlay .rqb .fc-ic { position: absolute; left: 1.2vmin; top: 1vmin; width: 2.4vmin; height: 2.4vmin; }
+#fcmsOverlay .rqb b { font-size: 2.4vmin; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+#fcmsOverlay .rqb small { margin-top: .3vmin; font-size: 1.5vmin; font-weight: 600; opacity: .9; text-align: center; }
+@keyframes fcms-rq { from { opacity: 0; transform: scale(1.6) rotate(-4deg); } }
 #fcmsOverlay .pmeta .ping { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; background: rgba(0,0,0,.45); font-size: 2vmin; }
 #fcmsOverlay .rank { display: inline-flex; align-items: center; margin-left: 1.2vmin; }
 #fcmsOverlay .rank .fc-tag { --sz: 4.4vmin; }

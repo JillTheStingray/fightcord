@@ -2937,13 +2937,31 @@ function onLogScroll(e) {
 
 // the toolbar (and the hover shade behind the message) follow the mouse over messages: moved, not
 // re-made, so nothing new goes into the page
+let tbWait = 0;
 function onPageOver(e) {
     if (!view.page) return;
     const tb = view.page.body.querySelector('.fclbTb');
-    if (!tb || e.target.closest('.fclbTb')) return;
-    const ln = e.target.closest('.fclbLog .ln[data-mid]');
-    if (!ln || ln.classList.contains('editing')) { hideTb(); return; }
-    if (tb.dataset.mid === ln.dataset.mid) return;
+    if (!tb) return;
+    if (e.target.closest('.fclbTb')) { clearTimeout(tbWait); return; }
+    let ln = e.target.closest('.fclbLog .ln[data-mid]');
+    if (ln && ln.classList.contains('editing')) ln = null;
+    const cur = tb.dataset.mid && [...view.page.body.querySelectorAll('.fclbLog .ln[data-mid]')].find(x => x.dataset.mid === tb.dataset.mid);
+    // the name line, avatar or reply of the message on show: still that message
+    if (!ln && cur && cur.closest('.fclbG') === e.target.closest('.fclbLog .fclbG')) { clearTimeout(tbWait); return; }
+    if (ln && ln === cur) { clearTimeout(tbWait); return; }
+    clearTimeout(tbWait);
+    // 3.8.1 (Mushn1k): the toolbar sits above its message, over the line before it. On the way up to it the
+    // mouse crosses that line (and the name line): when it's in the toolbar's column (heading for it), a
+    // moment's grace before the toolbar follows, so it's still there to click. Anywhere else it follows at once
+    const tr = tb.classList.contains('on') ? tb.getBoundingClientRect() : null;
+    if (cur && tr && e.clientX >= tr.left - 40 && e.clientX <= tr.right + 8 && (!ln || ln.getBoundingClientRect().top < cur.getBoundingClientRect().top)) {
+        tbWait = setTimeout(() => { if (ln && ln.isConnected) placeTb(tb, ln); else hideTb(); }, 450);
+        return;
+    }
+    if (ln) placeTb(tb, ln); else hideTb();
+}
+function placeTb(tb, ln) {
+    if (!view.page || !tb.isConnected) return;
     const main = tb.parentNode, r = ln.getBoundingClientRect(), mr = main.getBoundingClientRect();
     const log = main.querySelector('.fclbLog').getBoundingClientRect();
     // the first message of a group takes its name line (and reply) along
@@ -2966,6 +2984,7 @@ function onPageOver(e) {
     if (ed) ed.classList.toggle('hid', !ln.dataset.own);
 }
 function hideTb() {
+    clearTimeout(tbWait);
     if (!view.page) return;
     const tb = view.page.body.querySelector('.fclbTb');
     if (tb) { tb.classList.remove('on'); tb.dataset.mid = ''; }

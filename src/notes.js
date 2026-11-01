@@ -8,6 +8,10 @@
  * member hover card and the head-to-head page. Edit them from any of those (Notes),
  * or /note <name> in chat. Event: notes:changed (name).
  *
+ * Ragequitter (3.8.1): a tag Fightcord puts on by itself (and takes off again) from what it sees: their
+ * recent ranked sets left unfinished (the scout), or ranked sets with you they left while behind (the
+ * result card). A heads-up, not a block: it says why, and if you take it off it stays off.
+ *
  * Matchup notes (2.10): one note per game + opponent character ("parry the dive kick"). When the
  * emulator shows who they picked, a card in the lobby says your record vs that character and the
  * note; Analytics lists every matchup with its note. Same file, key "<rom>|<character>".
@@ -23,8 +27,10 @@ const DEFAULT_TAGS = [
     { id: 'rival', label: 'Rival', color: '#a35cf6' },
     { id: 'laggy', label: 'Laggy', color: '#f0a232' },
     { id: 'mash', label: 'Mashes', color: '#f23f43' },
-    { id: 'avoid', label: 'Avoid', color: '#80848e' }
+    { id: 'avoid', label: 'Avoid', color: '#80848e' },
+    { id: 'rq', label: 'Ragequitter', color: '#ff6a2b' }
 ];
+const RQ = 'rq';
 
 const E = (s) => fc.fmt.esc(s);
 const T = (s, v) => fc.t(s, v);
@@ -38,7 +44,7 @@ function get(name) {
     if (!cfg) return { name, note: '', tags: [] };
     const p = cfg.people[key(name)] || {};
     const tags = (p.tags || []).map(id => cfg.tags.find(t => t.id === id)).filter(Boolean);
-    return { name: p.name || name, note: p.note || '', tags };
+    return { name: p.name || name, note: p.note || '', tags, rq: p.rq || null };
 }
 
 const has = (name) => { const p = get(name); return !!(p.note || p.tags.length); };
@@ -54,14 +60,65 @@ function set(name, patch) {
     const k = key(name);
     const p = Object.assign({ name, note: '', tags: [] }, cfg.people[k], patch, { name });
     p.note = String(p.note || '').slice(0, 500);
-    if (!p.note && !(p.tags || []).length) delete cfg.people[k];
+    if (!p.note && !(p.tags || []).length && !p.rq && !p.rqOff) delete cfg.people[k];
     else cfg.people[k] = p;
     changed(name);
 }
 
 function toggleTag(name, id) {
     const cur = (cfg.people[key(name)] || {}).tags || [];
-    set(name, { tags: cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id) });
+    const on = !cur.includes(id);
+    // your call on Ragequitter sticks: taken off, Fightcord doesn't put it back
+    set(name, Object.assign({ tags: on ? cur.concat(id) : cur.filter(x => x !== id) }, id === RQ ? { rqOff: !on, rqAuto: false } : {}));
+}
+
+/* --------------------------------------------------------------- ragequitter */
+
+// enough to call it: 2+ of 4+ recent ranked sets left unfinished (1 in 5 or more), or 2 left on you while behind
+function rqVerdict(rq) {
+    if (!rq) return false;
+    return (rq.total >= 4 && rq.n >= 2 && rq.n / rq.total >= 0.2) || (rq.you || 0) >= 2;
+}
+// what Fightcord learned: { scout: { ranked, unfinished, behind } } (their recent sets) or { onYou: id } (a
+// ranked set with you they left while behind; id = its replay / quark, counted once)
+function quitEvidence(name, ev) {
+    if (!cfg || !name || !ev) return;
+    const k = key(name);
+    const p = Object.assign({ name, note: '', tags: [] }, cfg.people[k]);
+    const rq = Object.assign({ n: 0, total: 0, behind: 0, you: 0, ids: [] }, p.rq);
+    if (ev.scout) {
+        const q = ev.scout;
+        if (!(q.ranked > 0)) return;
+        rq.n = q.unfinished || 0; rq.total = q.ranked; rq.behind = q.behind || 0;
+    }
+    if (ev.onYou) {
+        if (rq.ids.indexOf(String(ev.onYou)) >= 0) return;
+        rq.ids = rq.ids.concat(String(ev.onYou)).slice(-20);
+        rq.you++;
+    }
+    const same = p.rq && p.rq.n === rq.n && p.rq.total === rq.total && p.rq.behind === rq.behind && p.rq.you === rq.you;
+    const tagged = (p.tags || []).includes(RQ), want = rqVerdict(rq);
+    const canTag = cfg.autoRq !== false && cfg.tags.some(t => t.id === RQ);
+    let tags = p.tags || [];
+    if (canTag && want && !tagged && !p.rqOff) { tags = tags.concat(RQ); p.rqAuto = true; }
+    // it put the tag on, and they've cleaned up since: it comes off
+    else if (canTag && !want && tagged && p.rqAuto) { tags = tags.filter(x => x !== RQ); p.rqAuto = false; }
+    if (same && tags === p.tags) return;
+    // nothing to say about someone who's never left a set (no entry for them)
+    if (!rq.n && !rq.you && !cfg.people[k]) return;
+    rq.at = Date.now();
+    p.rq = rq;
+    p.tags = tags;
+    cfg.people[k] = p;
+    changed(name);
+}
+// why someone has the tag, in words
+function rqWhy(rq) {
+    if (!rq) return '';
+    const bits = [];
+    if (rq.total && rq.n) bits.push(rq.behind ? T('left {n} of {total} recent ranked sets unfinished ({behind} while behind)', rq) : T('left {n} of {total} recent ranked sets unfinished', rq));
+    if (rq.you) bits.push(T.plural(rq.you, 'left {n} ranked set with you while behind', 'left {n} ranked sets with you while behind'));
+    return bits.join(' · ');
 }
 
 /* ------------------------------------------------------------------ matchups */
@@ -150,14 +207,16 @@ function onMuClick(e) {
 
 /* ------------------------------------------------------------------- display */
 
-const tagChip = (t, extra) => `<span class="ntChip${extra || ''}" data-tag="${E(t.id)}" style="--c:${E(t.color)}">${E(t.label)}</span>`;
+const tagChip = (t, extra, title) => `<span class="ntChip${t.id === RQ ? ' rq' : ''}${extra || ''}" data-tag="${E(t.id)}" style="--c:${E(t.color)}"${title ? ` title="${E(title)}"` : ''}>${E(t.label)}</span>`;
 
 // tag chips + the note, for cards
 function chips(name, opts) {
     const p = get(name);
     const o = opts || {};
     if (!p.tags.length && !p.note) return o.empty || '';
-    return `<div class="ntChips">${p.tags.map(t => tagChip(t)).join('')}</div>` +
+    const why = p.tags.some(t => t.id === RQ) ? rqWhy(p.rq) : '';
+    return `<div class="ntChips">${p.tags.map(t => tagChip(t, '', t.id === RQ && why ? why + '. ' + T('Could also be disconnects.') : '')).join('')}</div>` +
+        (why && !o.noWhy ? `<div class="ntWhy">${fc.ui.ic('warn')}<span>${E(why)}</span></div>` : '') +
         (p.note && !o.noNote ? `<div class="ntNote">“${E(p.note)}”</div>` : '');
 }
 
@@ -165,8 +224,11 @@ function chips(name, opts) {
 function dots(name) {
     const p = get(name);
     if (!p.tags.length && !p.note) return '';
-    const ds = p.tags.slice(0, 2).map(t => `<i style="background:${E(t.color)}"></i>`).join('') || '<i class="n"></i>';
-    return `<span class="ntDots" title="${E(p.tags.map(t => t.label).concat(p.note ? ['“' + p.note + '”'] : []).join(' · '))}">${ds}</span>`;
+    // (Ragequitter first: it's the heads-up)
+    const tags = p.tags.slice().sort((a, b) => (b.id === RQ) - (a.id === RQ));
+    const ds = tags.slice(0, 2).map(t => `<i style="background:${E(t.color)}"></i>`).join('') || '<i class="n"></i>';
+    const why = p.tags.some(t => t.id === RQ) ? rqWhy(p.rq) : '';
+    return `<span class="ntDots" title="${E(tags.map(t => t.label).concat(why ? [why] : [], p.note ? ['“' + p.note + '”'] : []).join(' · '))}">${ds}</span>`;
 }
 
 /* -------------------------------------------------------------------- editor */
@@ -271,17 +333,22 @@ const CSS = `
 .ntTagRow .fc-input[type="text"] { width: 180px; margin-left: 8px; height: 30px; }
 .ntTagRow .fc-color { height: 30px; }
 .ntAddRow { margin-top: 10px; }
+.ntChip.rq { background: rgba(255,106,43,.16); color: #ffb08a; box-shadow: inset 0 0 0 1px rgba(255,106,43,.35); }
+.ntWhy { display: flex; align-items: flex-start; margin-top: 3px; color: #ffb08a; font: 12px/1.35 var(--fc-font); }
+.ntWhy .fc-ic { flex: none; margin: 1px 5px 0 0; }
 `;
 
 /* -------------------------------------------------------------------- module */
 
 function start(f) {
     fc = f;
-    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {}, matchupToast: false });
+    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {}, matchupToast: false, autoRq: true });
     cfg = store.data;
     if (!cfg.people || typeof cfg.people !== 'object') cfg.people = {};
     if (!Array.isArray(cfg.tags) || !cfg.tags.length) cfg.tags = DEFAULT_TAGS.map(t => Object.assign({}, t));
     if (!cfg.matchups || typeof cfg.matchups !== 'object') cfg.matchups = {};
+    // 3.8.1: the Ragequitter tag joins your tags once (deleted after that, it stays deleted)
+    if (!cfg.rqTag) { if (!cfg.tags.some(t => t.id === RQ)) cfg.tags.push(Object.assign({}, DEFAULT_TAGS.find(t => t.id === RQ))); cfg.rqTag = true; store.save(); }
     fc.on('match:character', onCharacter);
     if (typeof document !== 'undefined') {
         document.addEventListener('click', onMuClick, true);
@@ -295,6 +362,9 @@ function start(f) {
     fc.cmd('notes', 'Notes & tags on a player', (arg, ctx) => { if (arg) edit(arg.split(/\s+/)[0], ctx.input ? ctx.input.getBoundingClientRect() : null); }, { args: '<name>' });
 
     fc.settings.block({ id: 'notes', section: 'members', order: 30, render: wireTags, refresh: renderTags });
+    fc.settings.block({ id: 'notes-rq', section: 'members', title: 'Ragequitters', hint: '— a heads-up, not a block', store, order: 31,
+        fields: [{ key: 'autoRq', type: 'switch', label: 'Tag ragequitters for me',
+            hint: 'The Ragequitter tag goes on players who often leave ranked sets unfinished (their recent sets, or two with you while behind), and off again when they stop. Take it off a player and it stays off' }] });
     fc.settings.block({ id: 'notes-matchups', section: 'match', title: 'Matchup notes', hint: '— your notes per character', store, order: 40,
         fields: [{ key: 'matchupToast', type: 'switch', label: 'Pop-up when your opponent picks a character', hint: 'Your record and note against that character, during the match' }] });
     fc.log('ready,', Object.keys(cfg.people).length, 'players noted');
@@ -302,11 +372,12 @@ function start(f) {
 }
 
 const api = {
-    get, has, set, toggleTag, chips, dots, edit,
+    get, has, set, toggleTag, chips, dots, edit, quitEvidence, rqWhy,
+    isRagequitter: (name) => get(name).tags.some(t => t.id === RQ),
     matchup, setMatchup, matchupRecord, editMatchup, _onCharacter: (ev) => onCharacter(ev),
     tags: () => (cfg ? cfg.tags : DEFAULT_TAGS),
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'notes', name: 'Player notes & tags', start };
+module.exports = { id: 'notes', name: 'Player notes & tags', start, rqVerdict };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

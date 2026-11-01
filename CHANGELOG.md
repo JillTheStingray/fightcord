@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.8.1
+
+- **Ragequitter tag:** a new tag in your player notes, and Fightcord puts it on by itself when someone
+  often leaves ranked sets unfinished: in their recent sets (2 or more, 1 in 5 or more), or 2 ranked sets
+  with you that they left while behind. It's a heads-up, not a block: it shows as a dot next to their
+  name, on their cards (with why), and on the VS screen when your match starts. It comes off again when
+  they stop. Take it off someone and it stays off; Settings → Ragequitters turns the auto-tag off.
+  (Could also be disconnects, so it says what it saw.)
+- **Reactions on the second line are clickable again:** in lobbies and DMs the toolbar sits above the message
+  you're on, over the line before it; on the way up the mouse crossed that line and the toolbar jumped to
+  it (or vanished over the name line). It still follows the mouse straight away, but when you head up
+  toward its buttons it waits a moment, so it's still there to click. (Thanks Mushn1k.)
+
 ## 3.8.0
 
 DMs get most of what Discord's DMs do. Everyone in a chat needs Fightcord 3.8 for edits, deletes, pins in

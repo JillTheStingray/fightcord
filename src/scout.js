@@ -148,6 +148,9 @@ async function loadScout(name) {
         }
         const rows = fc.data.pickRows(quarkJson);
         if (rows.length) Object.assign(out, summariseQuarks(rows, name, me));
+        // 3.8.1: what their recent ranked sets say goes to the notes (the Ragequitter tag)
+        const nt = mod('notes');
+        if (rows.length && nt && nt.quitEvidence && cfg.showQuits !== false) nt.quitEvidence(name, { scout: out.quits });
     } catch (e) {
         return { error: e.message };
     }

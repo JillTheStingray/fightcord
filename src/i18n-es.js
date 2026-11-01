@@ -2356,5 +2356,15 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "A casual set: their ranked setting is off": "Un set casual: tiene el ranked desactivado",
     "Only players who take ranked sets": "Solo jugadores que aceptan sets ranked",
     "Your ranked setting is off, so every set here is casual (Fightcade’s Settings → Ranked).": "Tu ranked está desactivado, así que todos los sets aquí son casuales (Ajustes de Fightcade → Ranked).",
-    "Players with Fightcade’s ranked setting off only get a casual set (no FT to pick)": "Los jugadores con el ranked de Fightcade desactivado solo reciben un set casual (sin FT que elegir)"
+    "Players with Fightcade’s ranked setting off only get a casual set (no FT to pick)": "Los jugadores con el ranked de Fightcade desactivado solo reciben un set casual (sin FT que elegir)",
+    "Tagged in your notes": "Etiquetado en tus notas",
+    "Ragequitter": "Ragequitter",
+    "left {n} of {total} recent ranked sets unfinished ({behind} while behind)": "dejó {n} de {total} sets ranked recientes sin terminar ({behind} yendo abajo)",
+    "left {n} of {total} recent ranked sets unfinished": "dejó {n} de {total} sets ranked recientes sin terminar",
+    "left {n} ranked set with you while behind": "abandonó {n} set ranked contigo yendo abajo",
+    "left {n} ranked sets with you while behind": "abandonó {n} sets ranked contigo yendo abajo",
+    "Ragequitters": "Ragequitters",
+    "— a heads-up, not a block": "— un aviso, no un bloqueo",
+    "Tag ragequitters for me": "Etiquetar ragequitters por mí",
+    "The Ragequitter tag goes on players who often leave ranked sets unfinished (their recent sets, or two with you while behind), and off again when they stop. Take it off a player and it stays off": "La etiqueta Ragequitter se pone a quien suele dejar sets ranked sin terminar (sus sets recientes, o dos contigo yendo abajo) y se quita cuando deja de hacerlo. Si se la quitas a un jugador, no vuelve"
 } };
