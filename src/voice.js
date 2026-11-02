@@ -623,9 +623,9 @@ function setBlocked(name, on) {
 
 const CSS = `
 .fcvPill { display: inline-flex; align-items: center; height: 32px; padding: 0 4px 0 8px; margin-right: 8px; border-radius: var(--fc-r1, 8px);
-    background: var(--fc-btn); color: #fff; font: 600 13px/1 var(--fc-font); user-select: none; box-shadow: inset 0 0 0 1px rgba(35,165,90,.45); transition: box-shadow .12s; }
+    background: var(--fc-btn); color: #fff; font: 600 var(--fc-fs-ui)/1 var(--fc-font); user-select: none; box-shadow: inset 0 0 0 1px rgba(35,165,90,.45); transition: box-shadow var(--fc-fast); }
 .fcvPill { text-transform: none; letter-spacing: 0; }
-.fcvDev label > span, .fcvMeter > span, .fcvBlocked > span:first-child { font-size: 14px; font-weight: 500; color: var(--fc-head); }
+.fcvDev label > span, .fcvMeter > span, .fcvBlocked > span:first-child { font-size: var(--fc-fs-md); font-weight: 500; color: var(--fc-head); }
 .fcvPill .ic { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; margin-right: 6px; background: rgba(35,165,90,.25); color: var(--fc-success); }
 .fcvPill .ic .fc-ic { width: 13px; height: 13px; }
 .fcvPill.them { box-shadow: inset 0 0 0 2px var(--fc-success), 0 0 12px rgba(35,165,90,.45); }
@@ -634,7 +634,7 @@ const CSS = `
 .fcvPill.bad { box-shadow: inset 0 0 0 1px rgba(242,63,67,.5); }
 .fcvPill .tx { display: flex; flex-direction: column; line-height: 1.1; margin-right: 6px; max-width: 170px; }
 .fcvPill .tx b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fcvPill .tx small { font-size: 10.5px; font-weight: 500; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcvPill .tx small { font-size: var(--fc-fs-2xs); font-weight: 500; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fcvPill .b { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; margin-left: 2px; border-radius: 6px; cursor: pointer; color: var(--fc-text); }
 .fcvPill .b:hover { background: var(--fc-btn-h); }
 .fcvPill .b .fc-ic { width: 14px; height: 14px; }
@@ -644,7 +644,7 @@ const CSS = `
 .fcvDev label .fc-select { max-width: 320px; }
 .fcvMeter { display: flex; align-items: center; padding: 8px 0; }
 .fcvMeter > span { width: 120px; color: var(--fc-text); }
-.fcvMeter > i { position: relative; flex: 1; height: 8px; margin-right: 12px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+.fcvMeter > i { position: relative; flex: 1; height: 8px; margin-right: 12px; border-radius: var(--fc-r1); background: var(--fc-tint-3); overflow: hidden; }
 .fcvMeter > i > u { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--fc-muted); transition: width .05s; }
 .fcvMeter > i > u.open { background: var(--fc-success); }
 .fcvMeter > i > b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fc-warning); }

@@ -120,7 +120,7 @@ test('reactions and replies', () => {
     r.apply({ id: id(), pk: 'own1', at: 222, b: { t: 'react', m: 'mx', e: '👍', on: true } });
     r.apply({ id: id(), pk: 'own1', at: 230, b: { t: 'react', m: 'mx', e: '👍', on: false } });
     r.apply({ id: id(), pk: 'own1', at: 225, b: { t: 'react', m: 'mx', e: '👍', on: true } });     // older, arriving late
-    assert.deepEqual(r.reactions('mx'), [{ e: '🔥', pks: ['bb', 'own1'] }]);
+    assert.deepEqual(r.reactions('mx'), [{ e: '🔥', sp: false, pks: ['bb', 'own1'] }]);
     assert.equal(r.apply({ id: id(), pk: 'aa', at: 240, b: { t: 'react', m: 'mx', e: '<img>', on: true } }), '', 'not an emoji');
     for (let i = 0; i < 40; i++) r.apply({ id: id(), pk: 'aa', at: 300 + i, b: { t: 'react', m: 'mx', e: 'e' + i, on: true } });
     assert.equal(r.reactions('mx').length, 30, 'at most 30 kinds per message');

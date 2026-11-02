@@ -223,7 +223,7 @@ function onListClick(e) {
 
 const CSS = `
 .evBell { position: absolute; top: 8px; right: 8px; z-index: 3; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; cursor: pointer; background: rgba(0,0,0,.55); color: #fff; opacity: .75; transition: opacity var(--fc-fast), background var(--fc-fast); }
+    justify-content: center; cursor: pointer; background: var(--fc-scrim-4); color: #fff; opacity: .75; transition: opacity var(--fc-fast), background var(--fc-fast); }
 .evBell:hover { opacity: 1; }
 .evBell.on { opacity: 1; background: var(--fc-accent); }
 .evBell .fc-ic { width: 15px; height: 15px; }
@@ -233,8 +233,8 @@ const CSS = `
 .evRow + .evRow { border-top: 1px solid var(--fc-divider); }
 .evRow > .fc-ic { flex: none; width: 16px; height: 16px; margin-right: 10px; color: var(--fc-accent); }
 .evRow .tx { flex: 1; min-width: 0; }
-.evRow b { display: block; color: var(--fc-head); font-size: 13.5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.evRow span { font-size: 12px; color: var(--fc-muted); }
+.evRow b { display: block; color: var(--fc-head); font-size: var(--fc-fs-md); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.evRow span { font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .evPop { width: 340px; }
 .evPop .fc-pb { max-height: 360px; overflow-y: auto; }
 `;

@@ -100,19 +100,19 @@ function decorate() {
 }
 
 const CSS = `
-.mask > .menu.fccm { padding: 6px 8px !important; border-radius: 8px !important; min-width: 200px !important;
+.mask > .menu.fccm { padding: 6px 8px !important; border-radius: var(--fc-r2) !important; min-width: 200px !important;
     background: var(--fc-s0) !important; background-image: none !important; border: 0 !important;
-    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 24px rgba(0,0,0,.5) !important;
+    box-shadow: 0 0 0 1px var(--fc-tint-2), 0 8px 24px var(--fc-scrim-3) !important;
     font-family: var(--fc-font) !important; animation: fccmIn .12s ease-out both; }
 @keyframes fccmIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 .mask > .menu.fccm::before, .mask > .menu.fccm::after { display: none !important; }
 .mask > .menu.fccm .contextMenuItemsWrapper { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; }
 .mask > .menu.fccm .contextMenuItemsWrapper > *, .mask > .menu.fccm .challengeButtonWrapper > * {
     position: relative !important; display: flex !important; align-items: center !important; min-height: 32px !important;
-    margin: 2px 0 !important; padding: 6px 8px 6px 34px !important; border-radius: 4px !important; border: 0 !important;
-    font-size: 14px !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important;
+    margin: 2px 0 !important; padding: 6px 8px 6px 34px !important; border-radius: var(--fc-r1) !important; border: 0 !important;
+    font-size: var(--fc-fs-md) !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important;
     color: var(--fc-text) !important; background: none !important; background-image: none !important; box-shadow: none !important;
-    text-shadow: none !important; cursor: pointer !important; transition: background-color .08s ease, color .08s ease !important; }
+    text-shadow: none !important; cursor: pointer !important; transition: background-color var(--fc-fast) ease, color var(--fc-fast) ease !important; }
 .mask > .menu.fccm .contextMenuItemsWrapper > *::before, .mask > .menu.fccm .challengeButtonWrapper > *::before {
     content: '' !important; position: absolute !important; left: 10px !important; top: 50% !important;
     width: 16px !important; height: 16px !important; margin-top: -8px !important; opacity: .85 !important;
@@ -128,8 +128,8 @@ ${['user', 'swords', 'ban', 'at', 'copy', 'star', 'star-fill', 'edit', 'handshak
 .mask > .menu.fccm .fccmFirst { margin-top: 8px !important; }
 .mask > .menu.fccm .fccmFirst::after { content: '' !important; position: absolute !important; top: -5px !important; left: 4px !important; right: 4px !important;
     height: 1px !important; background: var(--fc-divider) !important; }
-.mask > .menu.fccm .fccmDanger { color: #f23f43 !important; }
-.mask > .menu.fccm .fccmDanger:hover { background: #f23f43 !important; color: #fff !important; }
+.mask > .menu.fccm .fccmDanger { color: var(--fc-danger) !important; }
+.mask > .menu.fccm .fccmDanger:hover { background: var(--fc-danger) !important; color: #fff !important; }
 .mask > .menu.fccm .contextMenuItemsWrapper > * input[type="checkbox"] { margin-left: auto !important; }
 .mask > .menu.fccm [disabled], .mask > .menu.fccm .disabled { opacity: .45 !important; cursor: default !important; }
 `;

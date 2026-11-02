@@ -158,54 +158,54 @@ const CSS = `
     height: auto !important; display: flex !important; align-items: center !important; }
 .channelWrapper > .channelToolbar.cbn-merged.cbn-slim > .channelActions { top: 8px !important; }
 .channelWrapper > .channelToolbar.cbn-merged > .channelActions .button-alt {
-    background: rgba(0,0,0,.35) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14) !important; }
-.channelWrapper > .channelToolbar.cbn-merged > .channelActions .button-alt:hover { background: rgba(0,0,0,.55) !important; }
+    background: var(--fc-scrim-2) !important; box-shadow: inset 0 0 0 1px var(--fc-tint-4) !important; }
+.channelWrapper > .channelToolbar.cbn-merged > .channelActions .button-alt:hover { background: var(--fc-scrim-4) !important; }
 .cbnBanner { position: relative; flex: none; overflow: hidden; height: 96px; display: flex; align-items: center; padding: 0 16px;
-    background: var(--fc-s2); color: var(--fc-text); font: 14px/1.3 var(--fc-font);
-    box-shadow: 0 1px 0 rgba(0,0,0,.25); transition: height .25s ease; z-index: 1; }
+    background: var(--fc-s2); color: var(--fc-text); font: var(--fc-fs-md)/1.3 var(--fc-font);
+    box-shadow: 0 1px 0 var(--fc-scrim-1); transition: height var(--fc-med) ease; z-index: 1; }
 .cbnBg { position: absolute; top: -30px; left: -30px; right: -30px; bottom: -30px; background-size: cover; background-position: center;
     filter: blur(22px) saturate(1.4) brightness(.55); opacity: 0; transition: opacity .6s ease; }
 .cbnBanner.art .cbnBg { opacity: 1; }
 .cbnShade { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     background: linear-gradient(90deg, rgba(10,10,14,.35) 0%, rgba(10,10,14,.55) 45%, rgba(10,10,14,.75) 100%),
                 radial-gradient(ellipse at 12% 120%, var(--fc-accent-soft), transparent 60%); }
-.cbnArt { position: relative; flex: none; width: 88px; height: 66px; border-radius: 8px; background: var(--fc-s1) center / cover no-repeat;
-    image-rendering: pixelated; box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 16px rgba(0,0,0,.45); transition: width .25s ease, height .25s ease, opacity .2s ease; }
+.cbnArt { position: relative; flex: none; width: 88px; height: 66px; border-radius: var(--fc-r2); background: var(--fc-s1) center / cover no-repeat;
+    image-rendering: pixelated; box-shadow: 0 0 0 1px var(--fc-tint-4), 0 6px 16px var(--fc-scrim-3); transition: width var(--fc-med) ease, height var(--fc-med) ease, opacity var(--fc-med) ease; }
 .cbnText { position: relative; flex: 1; min-width: 0; margin-left: 14px; }
-.cbnName { font-size: 20px; font-weight: 800; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-shadow: 0 2px 10px rgba(0,0,0,.5); }
-.cbnLine { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; font-size: 13px; color: rgba(255,255,255,.82); }
+.cbnName { font-size: var(--fc-fs-xl); font-weight: 800; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-shadow: 0 2px 10px var(--fc-scrim-3); }
+.cbnLine { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; font-size: var(--fc-fs-ui); color: rgba(255,255,255,.82); }
 .cbnLine .on { display: inline-flex; align-items: center; }
-.cbnLine .on i { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #23a55a; box-shadow: 0 0 8px #23a55a; }
+.cbnLine .on i { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--fc-success); box-shadow: 0 0 8px var(--fc-success); }
 .cbnLine .dot { margin: 0 8px; opacity: .45; }
 /* your rank: big enough to read, without making the line taller */
 .cbnLine .cbnRk { display: inline-flex; align-items: center; }
 .cbnLine .cbnRk .fc-tag { margin: -6px 0 -6px 5px; }
 .cbnLine b { color: #fff; }
-.cbnRanked { display: inline-block; margin-left: 10px; padding: 1px 7px; border-radius: 4px; vertical-align: 3px; font-size: 10px; font-weight: 800;
-    letter-spacing: .06em; color: #f0b232; background: rgba(240,178,50,.16); text-shadow: none; }
+.cbnRanked { display: inline-block; margin-left: 10px; padding: 1px 7px; border-radius: var(--fc-r1); vertical-align: 3px; font-size: var(--fc-fs-2xs); font-weight: 800;
+    letter-spacing: .06em; color: var(--fc-warning); background: rgba(240,178,50,.16); text-shadow: none; }
 .cbnRight { position: relative; flex: none; align-self: stretch; display: flex; align-items: flex-end; justify-content: flex-end;
     min-width: var(--cbn-act, 0px); margin-left: 14px; padding: 0 34px 12px 0; box-sizing: content-box; }
 .cbnFriends { position: relative; flex: none; display: flex; align-items: center; margin-right: 6px; height: 30px; }
-.cbnFriends .lbl { margin-right: 8px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.cbnFriends .lbl { margin-right: 8px; font-size: var(--fc-fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.6); }
 .cbnFriends img { width: 28px; height: 28px; margin-left: -6px; border-radius: 50%; cursor: pointer; background: var(--fc-s1);
-    box-shadow: 0 0 0 2px #f0b232; transition: transform .12s ease; }
+    box-shadow: 0 0 0 2px var(--fc-warning); transition: transform var(--fc-fast) ease; }
 .cbnFriends img:first-of-type { margin-left: 0; }
 .cbnFriends img:hover { transform: translateY(-2px); z-index: 1; }
-.cbnFriends .more { margin-left: 6px; font-size: 12px; color: rgba(255,255,255,.7); }
+.cbnFriends .more { margin-left: 6px; font-size: var(--fc-fs-sm); color: rgba(255,255,255,.7); }
 .cbnBtns { position: relative; flex: none; display: flex; }
 .cbnBtn { width: 30px; height: 30px; margin-left: 6px; padding: 0; justify-content: center; border-radius: 6px; display: inline-flex; align-items: center; cursor: pointer;
-    font-size: 13px; font-weight: 600; color: #fff; background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
-    transition: background-color .12s ease; white-space: nowrap; }
+    font-size: var(--fc-fs-ui); font-weight: 600; color: #fff; background: var(--fc-tint-4); box-shadow: inset 0 0 0 1px var(--fc-tint-4);
+    transition: background-color var(--fc-fast) ease; white-space: nowrap; }
 .cbnBtn:hover { background: rgba(255,255,255,.22); }
 .cbnFold { position: absolute; right: 12px; bottom: 14px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; cursor: pointer; color: rgba(255,255,255,.7); font-size: 14px; transition: transform .25s ease, background-color .12s ease; }
-.cbnFold:hover { background: rgba(255,255,255,.12); color: #fff; }
+    justify-content: center; cursor: pointer; color: rgba(255,255,255,.7); font-size: var(--fc-fs-md); transition: transform var(--fc-med) ease, background-color var(--fc-fast) ease; }
+.cbnFold:hover { background: var(--fc-tint-4); color: #fff; }
 .cbnBanner.slim { height: 48px; padding-right: calc(var(--cbn-act, 0px) + 56px); }
 .cbnBanner.slim .cbnRight { display: none; }
 .cbnBanner.slim .cbnFold { bottom: auto; top: 11px; right: calc(var(--cbn-act, 0px) + 24px); }
 .cbnBanner.slim .cbnArt { width: 0; height: 0; opacity: 0; }
 .cbnBanner.slim .cbnText { margin-left: 0; display: flex; align-items: center; }
-.cbnBanner.slim .cbnName { font-size: 14px; flex: 0 1 auto; margin-right: 12px; }
+.cbnBanner.slim .cbnName { font-size: var(--fc-fs-md); flex: 0 1 auto; margin-right: 12px; }
 .cbnBanner.slim .cbnLine { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
 .cbnBanner.slim .cbnFold { transform: rotate(180deg); }
 @media (max-width: 1300px) { .cbnFriends .lbl { display: none; } }

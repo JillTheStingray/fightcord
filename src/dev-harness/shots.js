@@ -605,7 +605,7 @@ function cdp(wsUrl) {
     const br = await launch();
     let bad = 0;
     try {
-        for (const sc of SCENES.filter(s => !ONLY || s.name === ONLY)) {
+        for (const sc of SCENES.filter(s => !ONLY || String(ONLY).split(',').includes(s.name))) {
             const t = await (await fetch(`http://127.0.0.1:${br.port}/json/new?about:blank`, { method: 'PUT' })).json();
             const c = await cdp(t.webSocketDebuggerUrl);
             await c.send('Page.enable');

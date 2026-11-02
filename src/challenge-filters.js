@@ -197,11 +197,11 @@ function wireBlock(el) {
 }
 
 const CSS = `
-.fcfWarn { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-weight: 600;
+.fcfWarn { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: var(--fc-r1); font-size: var(--fc-fs-sm); font-weight: 600;
     color: var(--fc-warning); background: rgba(240,178,50,.14); vertical-align: middle; }
 .fcfRules[hidden] { display: none; }
-.fcfRule > .fc-input, .fcfRule > .fc-select { height: 30px; margin-left: 8px; font-size: 13px; }
-.fcfRule .fcfUnit { margin-left: 4px; font-size: 12px; color: var(--fc-muted); }
+.fcfRule > .fc-input, .fcfRule > .fc-select { height: 30px; margin-left: 8px; font-size: var(--fc-fs-ui); }
+.fcfRule .fcfUnit { margin-left: 4px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcfFt { padding: 6px 0 8px; border-bottom: 1px solid var(--fc-divider); }
 .fcfFt .fc-chip { margin: 0 6px 4px 0; }
 .fcfLog { max-height: 140px; overflow-y: auto; }

@@ -539,18 +539,18 @@ const CSS = `
 .fcesPrev { position: relative; height: 50px; margin: 6px 0 2px; border-radius: 6px; overflow: hidden;
     background: repeating-linear-gradient(45deg, #3b2a52 0 10px, #2c3a5a 10px 20px); }
 .fcesPrev img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; image-rendering: auto; }
-.fcesLine { position: absolute; left: 0; right: 0; top: 0; line-height: 50px; text-align: center; font-size: 22px; white-space: nowrap; }
+.fcesLine { position: absolute; left: 0; right: 0; top: 0; line-height: 50px; text-align: center; font-size: var(--fc-fs-2xl); white-space: nowrap; }
 .fcesLine span, .fcesFont .smp span { text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000; }
 .fcesLine span { margin: 0 12px; }
 .fcesFonts { display: flex; flex-wrap: wrap; margin: 8px -4px 0; }
-.fcesFont { width: calc(33.333% - 8px); margin: 4px; padding: 6px 6px 8px; border-radius: 8px; box-sizing: border-box; cursor: pointer;
-    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); transition: box-shadow .12s, background .12s; }
+.fcesFont { width: calc(33.333% - 8px); margin: 4px; padding: 6px 6px 8px; border-radius: var(--fc-r2); box-sizing: border-box; cursor: pointer;
+    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px var(--fc-tint-2); transition: box-shadow var(--fc-fast), background var(--fc-fast); }
 .fcesFont:hover { background: var(--fc-hover, rgba(255,255,255,.07)); }
 .fcesFont.on { box-shadow: inset 0 0 0 2px var(--fc-blurple, #5865f2), 0 0 14px rgba(88,101,242,.25); }
 .fcesFont .smp { height: 34px; border-radius: 5px; background-size: 100% 100%; overflow: hidden; text-align: center; line-height: 34px; white-space: nowrap; }
-.fcesFont .smp span { color: #fff; font-size: 17px; }
-.fcesFont b { display: block; margin-top: 6px; font-size: 13px; color: var(--fc-head, #fff); }
-.fcesFont small { display: block; font-size: 11.5px; color: var(--fc-muted, #949ba4); }
+.fcesFont .smp span { color: #fff; font-size: var(--fc-fs-lg); }
+.fcesFont b { display: block; margin-top: 6px; font-size: var(--fc-fs-ui); color: var(--fc-head, #fff); }
+.fcesFont small { display: block; font-size: var(--fc-fs-sm); color: var(--fc-muted, #949ba4); }
 @media (max-width: 760px) { .fcesFont { width: calc(50% - 8px); } }
 `;
 

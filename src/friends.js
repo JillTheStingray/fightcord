@@ -300,22 +300,22 @@ function close() { if (page) page.close(); }
 const CSS = `
 #frPage .frAddRow { display: flex; align-items: center; margin-bottom: 8px; }
 #frPage .frInput { width: 280px; margin-right: 8px; }
-#frPage .frNote { margin-left: 12px; font-size: 13px; color: var(--fc-success); }
-#frPage h4 { margin: 18px 0 6px; font: 700 12px/1.2 var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+#frPage .frNote { margin-left: 12px; font-size: var(--fc-fs-ui); color: var(--fc-success); }
+#frPage h4 { margin: 18px 0 6px; font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 #frPage .frRow { display: flex; align-items: center; min-height: 60px; padding: 8px 10px; margin: 0 -10px; border-radius: var(--fc-r2);
     border-top: 1px solid var(--fc-divider); transition: background-color var(--fc-fast); }
 #frPage .frRow:hover { background: var(--fc-hover); }
 #frPage .frRow > .fc-avatar { margin-right: 12px; }
 #frPage .frRow > .fc-btn { margin-left: 8px; }
 #frPage .frText { flex: 1; min-width: 0; }
-#frPage .frName { font-size: 15px; font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#frPage .frName { font-size: var(--fc-fs-chat); font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #frPage .frName .fc-flag { margin-right: 6px; }
-#frPage .frSub { margin-top: 2px; font-size: 13px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#frPage .frSub { margin-top: 2px; font-size: var(--fc-fs-ui); color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #frPage .frSub .live { color: var(--fc-danger); font-weight: 700; }
 #frPage .frX { opacity: 0; }
 #frPage .frRow:hover .frX { opacity: 1; }
 #frPage .frX:hover { color: var(--fc-danger); }
-#frPage .frMuted { padding: 6px 0; font-size: 13px; }
+#frPage .frMuted { padding: 6px 0; font-size: var(--fc-fs-ui); }
 `;
 
 /* -------------------------------------------------------------------- module */

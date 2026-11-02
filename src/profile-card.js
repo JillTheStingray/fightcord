@@ -286,9 +286,14 @@ function editProfile() {
     const mine = pr.myProfile();
     const frames = lk ? lk.frameNames() : {};
     const themes = lk ? lk.themes() : [];
+    // 3.9: decorations (decorations.js) and name styles
+    const dcm = mod('decorations'), decos = dcm && dcm.names ? dcm.names() : null;
+    const nameStyles = lk && lk.nameStyles ? lk.nameStyles() : {};
+    const COLOURED = ['gradient', 'neon', 'shimmer', 'toon'];
+    const nsCols = () => (draft.ns && Array.isArray(draft.ns.c) ? draft.ns.c : ['#ff73fa', '#7af0ff']);
     const u = fc.app.user(me)[1] || fc.app.localUser() || {};
     const plainAv = fc.data.avatarUrl(me, u.gravatar, 160, true);
-    // N_('Avatar') N_('Banner') N_('Profile theme') N_('Avatar frame')
+    // N_('Avatar') N_('Banner') N_('Profile theme') N_('Avatar frame') N_('Avatar decoration') N_('Name style')
     const sec = (title, inner, extra) => `<div class="pcEdSec"${extra || ''}><div class="pcEdH">${E(T(title))}</div>${inner}</div>`;
     const body = `<div class="pcEd"><div class="pcEdL pcEdit">
         ${sec('Avatar', `<div class="pcEdRow" data-drop="av">${fc.ui.btn('Change avatar', { size: 'sm', attrs: 'data-ed="pick-av"' })}${fc.ui.btn('Remove', { size: 'sm', kind: 'ghost', attrs: 'data-ed="rm-av"' })}<span class="pcEdUp" data-up="av"></span></div>`, ' data-drop="av"')}
@@ -299,6 +304,12 @@ function editProfile() {
             ${fc.ui.btn('None', { size: 'sm', kind: 'ghost', attrs: 'data-ed="th-none"' })}</div>`)}
         ${sec('Avatar frame', `<div class="pcEdFrames"><div class="pcEdFr" data-ed="fr" data-fr="" title="${E(T('No frame'))}"><span class="fc-avatar" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T('None'))}</small></div>` +
             Object.keys(frames).map(k => `<div class="pcEdFr" data-ed="fr" data-fr="${k}" title="${E(T(frames[k]))}"><span class="fc-avatar" data-fcfr="${k}" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T(frames[k]))}</small></div>`).join('') + '</div>')}
+        ${decos ? sec('Avatar decoration', `<div class="pcEdFrames pcEdDcs"><div class="pcEdFr pcEdDc" data-ed="dc" data-dc="" title="${E(T('No decoration'))}"><span class="fc-avatar" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T('None'))}</small></div>` +
+            Object.keys(decos).map(k => `<div class="pcEdFr pcEdDc" data-ed="dc" data-dc="${k}" title="${E(T(decos[k]))}"><span class="fc-avatar" data-fcdc="${k}" style="--sz:40px"><img src="${E(plainAv)}" alt=""></span><small>${E(T(decos[k]))}</small></div>`).join('') + '</div>') : ''}
+        ${sec('Name style', `<div class="pcEdNs"><span class="pcEdN" data-ed="ns" data-ns="">${E(me || T('You'))}<small>${E(T('None'))}</small></span>` +
+            Object.keys(nameStyles).map(k => `<span class="pcEdN" data-ed="ns" data-ns="${k}"><b data-fcns="${k}">${E(me || T('You'))}</b><small>${E(T(nameStyles[k]))}</small></span>`).join('') + '</div>' +
+            `<div class="pcEdTheme pcEdNsCol"><label class="pcEdCol"><input type="color" data-ed="ns0"><small>${E(T('Colour 1'))}</small></label><label class="pcEdCol"><input type="color" data-ed="ns1"><small>${E(T('Colour 2'))}</small></label>` +
+            `<span class="pcEdNsWarn">${fc.ui.ic('warn')}${E(T('Too dark to read on Fightcade’s dark panels: pick a lighter colour'))}</span></div>`)}
         <label><span>${E(T('Pronouns'))}</span><input class="fc-input" data-f="pn" maxlength="40" placeholder="${E(T('Add your pronouns'))}" value="${E(draft.pn || '')}"></label>
         <label><span>${E(T('Status'))}</span><input class="fc-input" data-f="s" maxlength="80" placeholder="${E(T('Grinding 3rd Strike, FT5s welcome'))}" value="${E(draft.s || '')}"></label>
         <label><span>${E(T('About me'))}</span><textarea class="fc-input" data-f="a" maxlength="190" placeholder="${E(T('Mains, where you play from, what you’re working on…'))}">${E(draft.a || '')}</textarea><small class="cnt"></small></label>
@@ -310,6 +321,7 @@ function editProfile() {
         title: T('Edit profile'), body, width: 820,
         actions: [{ label: T('Cancel'), kind: 'ghost' }, { label: T('Save'), fn: () => {
             if (Object.keys(busy).length) { fc.ui.toast(T('Still uploading…'), { icon: 'image' }); return false; }
+            if (draft.ns && draft.ns.c && pr.readable && !draft.ns.c.every(c => pr.readable(c))) { fc.ui.toast(T('Pick lighter name colours first'), { icon: 'warn', kind: 'warning' }); return false; }
             pr.setProfile(draft);
             if (lk) lk.refresh();
             fc.ui.toast(T('Profile saved'), { icon: 'check', kind: 'success' });
@@ -326,16 +338,29 @@ function editProfile() {
         const pic = (k) => (busy[k] && busy[k].local) || (draft[k] && draft[k].u) || '';
         const bn = pic('bn');
         const banner = bn ? `url(&quot;${E(bn)}&quot;) center/cover` : draft.b ? fc.ui.cardBanner(draft.b, fc.data.hashColor(me)) : fc.ui.cardBanner('', fc.data.hashColor(me));
-        const av = fc.ui.avatar(me, { size: 80, status: 'on', ring: 'var(--fc-s0)' }).replace(/ data-av="[^"]*"/, draft.fr ? ` data-fcfr="${E(draft.fr)}"` : '')
+        const av = fc.ui.avatar(me, { size: 80, status: 'on', ring: 'var(--fc-s0)' })
+            .replace(/ data-av="[^"]*"/, (draft.fr ? ` data-fcfr="${E(draft.fr)}"` : '') + (draft.dc ? ` data-fcdc="${E(draft.dc)}"` : ''))
             .replace(/src="[^"]*"/, `src="${E(pic('av') || plainAv)}"`);
         const box = $('.pcPrev');
         box.innerHTML = fc.ui.cardHead({ name: me || T('You'), banner, avatar: av, status: draft.s || '', pn: draft.pn || '', meta: `<span>${E(T('Online'))}</span>` }) +
             `<div class="pcPrevB">${draft.a ? `<div class="fc-ch-sec"><div class="fcProfA"><b>${E(T('About me'))}</b>${E(draft.a)}</div></div>` : ''}` +
             `${fc.ui.cardMsg(me || 'you', 'data-none', T('Message @{name}', { name: me || 'you' }))}</div>`;
         if (lk) lk.applyTheme(box, draft.th || null);
+        if (lk && lk.setName) {
+            lk.setName(box.querySelector('.fc-ch-name > span'), draft.ns || null);
+            // the style picker shows your name in the colours you picked
+            m.body.querySelectorAll('.pcEdN b[data-fcns]').forEach(b => lk.setName(b, { s: b.dataset.fcns, c: nsCols() }));
+        }
+        m.body.querySelectorAll('.pcEdN').forEach(el => el.classList.toggle('on', (el.dataset.ns || '') === ((draft.ns && draft.ns.s) || '')));
+        m.body.querySelectorAll('.pcEdDc').forEach(el => el.classList.toggle('on', (el.dataset.dc || '') === (draft.dc || '')));
+        const nc = nsCols(), colOn = !!(draft.ns && COLOURED.indexOf(draft.ns.s) >= 0);
+        const nsBox = m.body.querySelector('.pcEdNsCol');
+        nsBox.classList.toggle('none', !colOn);
+        $('[data-ed="ns0"]').value = nc[0]; $('[data-ed="ns1"]').value = nc[1];
+        nsBox.classList.toggle('dark', colOn && pr.readable && !nc.every(c => pr.readable(c)));
         ['av', 'bn'].forEach(k => { const el = m.body.querySelector(`[data-up="${k}"]`); el.textContent = busy[k] ? T('Uploading… {n}%', { n: busy[k].pct }) : ''; });
         if (saveBtn) saveBtn.disabled = !!Object.keys(busy).length;
-        m.body.querySelectorAll('.pcEdFr').forEach(el => el.classList.toggle('on', (el.dataset.fr || '') === (draft.fr || '')));
+        m.body.querySelectorAll('.pcEdFr:not(.pcEdDc)').forEach(el => el.classList.toggle('on', (el.dataset.fr || '') === (draft.fr || '')));
         const th = draft.th || ['#5865f2', '#eb459e'];
         $('[data-ed="th0"]').value = th[0]; $('[data-ed="th1"]').value = th[1];
         m.body.querySelector('.pcEdTheme').classList.toggle('none', !draft.th);
@@ -473,9 +498,17 @@ function editProfile() {
         else if (ed === 'preset') draft.th = themes[+t.dataset.i].slice();
         else if (ed === 'th-none') delete draft.th;
         else if (ed === 'fr') { if (t.dataset.fr) draft.fr = t.dataset.fr; else delete draft.fr; }
+        else if (ed === 'dc') { if (t.dataset.dc) draft.dc = t.dataset.dc; else delete draft.dc; }
+        else if (ed === 'ns') { if (t.dataset.ns) draft.ns = COLOURED.indexOf(t.dataset.ns) >= 0 ? { s: t.dataset.ns, c: nsCols().slice() } : { s: t.dataset.ns }; else delete draft.ns; }
         else return;
         prev();
     });
+    ['ns0', 'ns1'].forEach((k, i) => $(`[data-ed="${k}"]`).addEventListener('input', (e) => {
+        const c = nsCols().slice();
+        c[i] = e.target.value.toLowerCase();
+        draft.ns = Object.assign({}, draft.ns || { s: 'gradient' }, { c });
+        prev();
+    }));
     ['th0', 'th1'].forEach((k, i) => $(`[data-ed="${k}"]`).addEventListener('input', (e) => {
         const th = (draft.th || ['#5865f2', '#eb459e']).slice();
         th[i] = e.target.value.toLowerCase();
@@ -579,7 +612,7 @@ function poll() {
 const CSS = `
 html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; pointer-events: none !important; }
 #pcCard { position: fixed; bottom: 12px; z-index: calc(var(--fc-z-pop) + 4); width: 320px; max-height: calc(100vh - 24px); overflow-x: hidden; overflow-y: auto;
-    border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
+    border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
     box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); transform-origin: left bottom; }
 #pcCard .fc-ch-banner { image-rendering: pixelated; }
 #pcCard .fc-ch-sec > :first-child { margin-top: 0; }
@@ -589,65 +622,79 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 #pcCard .pcBody { padding: 0 16px 12px; }
 #pcCard .fcProf { margin-top: 10px; }
 #pcCard .pcSetStatus { display: flex; align-items: center; margin-top: 0; padding: 6px 9px; border-radius: var(--fc-r2); border: 1px dashed var(--fc-divider);
-    color: var(--fc-muted); font-size: 13px; cursor: pointer; }
+    color: var(--fc-muted); font-size: var(--fc-fs-ui); cursor: pointer; }
 #pcCard .pcSetStatus:hover { color: var(--fc-text); border-color: var(--fc-muted); }
 #pcCard .pcSetStatus .fc-ic { width: 13px; height: 13px; margin-right: 7px; }
 #pcCard .pcProfRow { display: flex; align-items: center; margin-top: 8px; }
-#pcCard .pcShare { flex: 1; font-size: 11.5px; color: var(--fc-muted); }
+#pcCard .pcShare { flex: 1; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 #pcCard .pcShare.on { color: var(--fc-success); }
 .pcEdit label { display: block; margin-bottom: 12px; position: relative; }
-.pcEdit label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdit label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
 .pcEdit .fc-input, .pcEdit .fc-select { width: 100%; box-sizing: border-box; }
 .pcEdit textarea { height: 70px; padding: 8px 10px; resize: none; line-height: 1.4; }
-.pcEdit .cnt { position: absolute; right: 8px; bottom: 6px; font-size: 11px; color: var(--fc-muted); }
-.pcEditBadges > span { display: block; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdit .cnt { position: absolute; right: 8px; bottom: 6px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
+.pcEditBadges > span { display: block; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
 /* 3.7: the editor, fields on the left and your card on the right (no flex gap: Chromium 80) */
 .pcEd { display: flex; align-items: flex-start; }
 .pcEdL { flex: 1; min-width: 0; padding-right: 4px; }
 .pcEdR { flex: none; width: 300px; margin-left: 18px; position: sticky; top: 0; }
-.pcEdH { margin-bottom: 8px; color: var(--fc-muted); font: 700 12px/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdH { margin-bottom: 8px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
 .pcEdSec { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--fc-divider); }
 .pcEdRow { display: flex; align-items: center; flex-wrap: wrap; }
 .pcEdRow > .fc-btn { margin-right: 8px; }
-.pcEdUp { font-size: 12px; color: var(--fc-muted); }
+.pcEdUp { font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .pcEdit label.pcEdGame { margin: 10px 0 0; }
 .pcEdit label.pcEdGame > span { text-transform: none; font-weight: 600; letter-spacing: 0; }
 .pcEdTheme { display: flex; align-items: center; flex-wrap: wrap; }
 .pcEdit label.pcEdCol { display: flex; flex-direction: column; align-items: center; margin: 0 10px 0 0; }
-.pcEdCol input { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: none; cursor: pointer; }
-.pcEdCol small { margin-top: 3px; font-size: 11px; color: var(--fc-muted); }
+.pcEdCol input { width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--fc-r2); background: none; cursor: pointer; }
+.pcEdCol small { margin-top: 3px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 .pcEdTheme.none .pcEdCol input { opacity: .45; }
 .pcEdPresets { display: flex; flex-wrap: wrap; max-width: 190px; margin-right: 8px; }
 .pcEdPresets > i { width: 22px; height: 22px; margin: 0 6px 6px 0; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
 .pcEdPresets > i:hover { transform: scale(1.12); }
 .pcEdFrames { display: flex; flex-wrap: wrap; margin-right: -8px; }
-.pcEdFr { display: flex; flex-direction: column; align-items: center; width: 64px; margin: 0 8px 8px 0; padding: 10px 0 6px; border-radius: 8px; background: var(--fc-s2); cursor: pointer; }
+.pcEdFr { display: flex; flex-direction: column; align-items: center; width: 64px; margin: 0 8px 8px 0; padding: 10px 0 6px; border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer; }
 .pcEdFr:hover { background: var(--fc-s3); }
-.pcEdFr.on { box-shadow: inset 0 0 0 2px var(--fc-accent); }
-.pcEdFr small { margin-top: 8px; font-size: 11px; color: var(--fc-text); }
+.pcEdFr.on { box-shadow: var(--fc-ring-in); }
+.pcEdFr small { margin-top: 8px; font-size: var(--fc-fs-xs); color: var(--fc-text); }
+/* 3.9: decorations stick out of the avatar: more room on top */
+.pcEdDc { padding-top: 18px; }
+.pcEdDc small { margin-top: 12px; }
+.pcEdNs { display: flex; flex-wrap: wrap; margin: 0 -8px 6px 0; }
+.pcEdN { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 90px; max-width: 140px; height: 56px; margin: 0 8px 8px 0; padding: 0 10px;
+    box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s2); color: var(--fc-head); font: 700 var(--fc-fs-chat)/1.2 var(--fc-font); cursor: pointer; overflow: hidden; }
+.pcEdN b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.pcEdN small { margin-top: 4px; font-size: var(--fc-fs-xs); font-weight: 500; color: var(--fc-muted); }
+.pcEdN:hover { background: var(--fc-s3); }
+.pcEdN.on { box-shadow: var(--fc-ring-in); }
+.pcEdNsCol.none { display: none; }
+.pcEdNsWarn { display: none; align-items: center; font-size: var(--fc-fs-sm); color: var(--fc-warning); }
+.pcEdNsWarn .fc-ic { margin-right: 6px; }
+.pcEdNsCol.dark .pcEdNsWarn { display: flex; }
 .pcPrev { position: relative; overflow: hidden; border-radius: 10px; background: var(--fc-s0); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh2, 0 4px 14px rgba(0,0,0,.3)); }
 .pcPrevB { padding: 0 16px 16px; }
 .pcPrevB .fc-cmsg { margin-top: 12px; pointer-events: none; }
 .pcEdHint { margin-top: 8px; }
 .pcPick { display: flex; }
-.pcPickT { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; border-radius: 8px;
+.pcPickT { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; border-radius: var(--fc-r2);
     overflow: hidden; cursor: pointer; background: var(--fc-s4); color: var(--fc-head); transition: filter var(--fc-fast); }
 .pcPickT + .pcPickT { margin-left: 12px; }
 .pcPickT:hover { filter: brightness(1.2); }
 .pcPickT > .fc-ic { width: 28px; height: 28px; margin-bottom: 10px; }
-.pcPickT b { position: relative; display: flex; align-items: center; font: 600 15px/1.2 var(--fc-font); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.pcPickT b { position: relative; display: flex; align-items: center; font: 600 var(--fc-fs-chat)/1.2 var(--fc-font); text-shadow: 0 1px 3px var(--fc-scrim-4); }
 .pcPickT b .fc-ic { width: 18px; height: 18px; margin-right: 6px; }
 .pcPickBg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-wrap: wrap; background: var(--fc-s1); }
 .pcPickBg img { width: 50%; height: 50%; object-fit: cover; }
-.pcPickT.gif::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); transition: background var(--fc-fast); }
-.pcPickT.gif:hover::after { background: rgba(0,0,0,.35); }
+.pcPickT.gif::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--fc-scrim-3); transition: background var(--fc-fast); }
+.pcPickT.gif:hover::after { background: var(--fc-scrim-2); }
 .pcPickT.gif b, .pcPickT.gif i { z-index: 1; }
-.pcPickT.gif i { position: relative; margin-bottom: 8px; padding: 2px 5px; border-radius: 4px; background: rgba(255,255,255,.9); color: #111; font: 800 11px/1.2 var(--fc-font); font-style: normal; }
-.pcPickH { margin: 18px 0 2px; font: 600 15px/1.3 var(--fc-font); color: var(--fc-head); }
-.pcPickSub { font-size: 13px; color: var(--fc-muted); }
+.pcPickT.gif i { position: relative; margin-bottom: 8px; padding: 2px 5px; border-radius: var(--fc-r1); background: rgba(255,255,255,.9); color: #111; font: 800 var(--fc-fs-xs)/1.2 var(--fc-font); font-style: normal; }
+.pcPickH { margin: 18px 0 2px; font: 600 var(--fc-fs-chat)/1.3 var(--fc-font); color: var(--fc-head); }
+.pcPickSub { font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 .pcRecent { display: flex; flex-wrap: wrap; margin-top: 10px; }
 .pcRecent img { margin: 0 10px 10px 0; object-fit: cover; cursor: pointer; background: var(--fc-s1); transition: transform var(--fc-fast), box-shadow var(--fc-fast); }
-.pcRecent img:hover { transform: scale(1.06); box-shadow: 0 0 0 2px var(--fc-accent); }
+.pcRecent img:hover { transform: scale(1.06); box-shadow: var(--fc-ring); }
 .pcRecent.av img { width: 64px; height: 64px; border-radius: 50%; }
 .pcRecent.bn img { width: 150px; height: 60px; border-radius: 6px; }
 .pcGifTop { display: flex; align-items: center; margin-bottom: 10px; }
@@ -657,33 +704,33 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 .pcGifList .pcPickH { margin-top: 0; margin-bottom: 8px; }
 .pcGifGrid { columns: 3; margin-right: -8px; }
 .pcGifGrid img { display: block; width: calc(100% - 8px); margin-bottom: 8px; border-radius: 6px; cursor: pointer; background: var(--fc-s1); break-inside: avoid; }
-.pcGifGrid img:hover { box-shadow: 0 0 0 2px var(--fc-accent); }
+.pcGifGrid img:hover { box-shadow: var(--fc-ring); }
 .pcGifGrid img.wait { opacity: .4; cursor: progress; }
-.pcGifMsg { padding: 40px 8px; text-align: center; font-size: 13px; color: var(--fc-muted); }
+.pcGifMsg { padding: 40px 8px; text-align: center; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 .pcGifMsg.bad { color: var(--fc-danger); }
-.pcGifBy { margin-top: 6px; text-align: right; font: 600 10px/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-muted); }
+.pcGifBy { margin-top: 6px; text-align: right; font: 600 var(--fc-fs-2xs)/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-muted); }
 .pcCrop { display: flex; flex-direction: column; align-items: center; }
-.pcCropView { position: relative; overflow: hidden; border-radius: 8px; background: #000; cursor: grab; }
+.pcCropView { position: relative; overflow: hidden; border-radius: var(--fc-r2); background: #000; cursor: grab; }
 .pcCropView:active { cursor: grabbing; }
 .pcCropView canvas { width: 100%; height: 100%; display: block; }
-.pcCropView.round::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background: radial-gradient(circle closest-side, transparent 98%, rgba(0,0,0,.6) 100%); }
+.pcCropView.round::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; background: radial-gradient(circle closest-side, transparent 98%, var(--fc-scrim-4) 100%); }
 .pcCropZoom { display: flex; align-items: center; width: 100%; margin-top: 12px; color: var(--fc-muted); }
 .pcCropZoom input { flex: 1; margin: 0 10px; }
 .pcCropZoom .fc-ic:first-child { width: 13px; height: 13px; }
 .pcCropZoom .fc-ic:last-child { width: 19px; height: 19px; }
 #pcCard .fc-stat > small .fc-ic { margin-right: 3px; color: var(--fc-warning); }
 #pcCard .pcSec { margin-top: 10px; }
-#pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: 11px; }
+#pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: var(--fc-fs-xs); }
 #pcCard .fcglSum { margin-top: 6px; }
 #pcCard .pcFriends { display: flex; align-items: center; }
 #pcCard .pcFriends img { width: 28px; height: 28px; margin-right: -6px; border-radius: 50%; box-shadow: 0 0 0 3px var(--fc-s0); background: var(--fc-s1); }
-#pcCard .pcFriends em { margin-left: 12px; font-style: normal; font-size: 12px; color: var(--fc-muted); }
+#pcCard .pcFriends em { margin-left: 12px; font-style: normal; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 #pcCard .pcFoot { display: flex; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--fc-divider); }
 #pcCard .pcFoot > .fc-btn { margin-left: 2px; }
 #pcCard .pcFoot > .pcOut:hover { background: var(--fc-danger); color: #fff; }
 #pcCard .pcSeg { display: flex; flex: 1; margin-right: 6px; padding: 2px; border-radius: var(--fc-r2); background: var(--fc-s1); }
 #pcCard .pcSeg > span { display: flex; align-items: center; justify-content: center; flex: 1; height: 26px; border-radius: 6px; cursor: pointer;
-    font-size: 12.5px; font-weight: 600; color: var(--fc-muted); }
+    font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-muted); }
 #pcCard .pcSeg > span:hover { color: var(--fc-text); }
 #pcCard .pcSeg > span.on { background: var(--fc-s3); color: var(--fc-head); }
 #pcCard .pcSeg .dot { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
@@ -691,14 +738,14 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 
 /* quick settings (also in the ⋯ menu pop-up) */
 .qsLooks { display: flex; margin-bottom: 8px; }
-.qsLook { width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+.qsLook { width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px var(--fc-tint-4);
     transition: transform var(--fc-fast); }
 .qsLook:hover { transform: scale(1.1); }
 .qsLook.on { box-shadow: 0 0 0 2px var(--fc-s0), 0 0 0 4px var(--fc-accent); }
 .qsTgs { display: flex; flex-wrap: wrap; margin: 0 -3px; }
 .qsTg + .qsTg { margin-top: 0; }
 .qsTg { display: flex; align-items: center; flex: 1 1 100%; min-width: 0; box-sizing: border-box; margin: 3px; padding: 6px 8px;
-    border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--fc-text); user-select: none; }
+    border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer; font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-text); user-select: none; }
 .qsTg:hover { background: var(--fc-s3); }
 .qsTg > .fc-ic { width: 15px; height: 15px; flex: none; margin-right: 6px; color: var(--fc-muted); }
 .qsTg > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

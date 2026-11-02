@@ -443,44 +443,44 @@ function closeTour() {
 const CSS = `
 #wlcScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal); display: flex; align-items: center; justify-content: center;
     background: radial-gradient(ellipse at 30% 0%, rgba(79,99,240,.35), transparent 60%), radial-gradient(ellipse at 90% 100%, rgba(139,92,246,.3), transparent 55%), rgba(8,9,20,.88);
-    font: 14px/1.45 var(--fc-font); color: var(--fc-text); animation: fcIn var(--fc-med) var(--fc-ease) both; }
+    font: var(--fc-fs-md)/1.45 var(--fc-font); color: var(--fc-text); animation: fcIn var(--fc-med) var(--fc-ease) both; }
 #wlcScreen .wlcCard { width: 720px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
     border-radius: var(--fc-r4); background: var(--fc-s0); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3), 0 0 80px rgba(79,99,240,.25);
     animation: fcPop var(--fc-slow) var(--fc-ease) both; }
 #wlcScreen .wlcHead { display: flex; align-items: center; padding: 20px 20px 12px 24px; }
 #wlcScreen .wlcLogo { width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex: none;
-    background: linear-gradient(135deg, #4f63f0, #8b5cf6); color: #fff; box-shadow: 0 0 24px rgba(34,227,242,.25); }
+    background: linear-gradient(135deg, var(--fc-blurple), var(--fc-violet)); color: #fff; box-shadow: 0 0 24px rgba(34,227,242,.25); }
 #wlcScreen .wlcLogo .fc-ic { width: 24px; height: 24px; }
 #wlcScreen .wlcTitle { flex: 1; min-width: 0; }
-#wlcScreen .wlcTitle b { display: block; font-size: 20px; color: var(--fc-head); }
-#wlcScreen .wlcTitle span { color: var(--fc-muted); font-size: 13px; }
+#wlcScreen .wlcTitle b { display: block; font-size: var(--fc-fs-xl); color: var(--fc-head); }
+#wlcScreen .wlcTitle span { color: var(--fc-muted); font-size: var(--fc-fs-ui); }
 #wlcScreen .wlcDots { display: flex; padding: 0 24px 14px; border-bottom: 1px solid var(--fc-divider); }
-#wlcScreen .wlcDots span { flex: 1; margin-right: 8px; padding-top: 8px; border-top: 3px solid var(--fc-s4); font-size: 12px; font-weight: 600; color: var(--fc-faint); cursor: pointer; }
+#wlcScreen .wlcDots span { flex: 1; margin-right: 8px; padding-top: 8px; border-top: 3px solid var(--fc-s4); font-size: var(--fc-fs-sm); font-weight: 600; color: var(--fc-faint); cursor: pointer; }
 #wlcScreen .wlcDots span:last-child { margin-right: 0; }
 #wlcScreen .wlcDots span.done { border-top-color: var(--fc-accent-soft); color: var(--fc-muted); }
 #wlcScreen .wlcDots span.on { border-top-color: var(--fc-accent); color: var(--fc-head); }
 #wlcScreen .wlcBody { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; }
 #wlcScreen .wlcStep { animation: fcRise var(--fc-med) var(--fc-ease) both; }
-#wlcScreen h2 { margin: 0 0 4px; font-size: 18px; color: var(--fc-head); }
-#wlcScreen h3 { margin: 18px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--fc-muted); }
+#wlcScreen h2 { margin: 0 0 4px; font-size: var(--fc-fs-h3); color: var(--fc-head); }
+#wlcScreen h3 { margin: 18px 0 8px; font-size: var(--fc-fs-sm); text-transform: uppercase; letter-spacing: .04em; color: var(--fc-muted); }
 #wlcScreen .lead { margin: 0 0 16px; color: var(--fc-muted); }
 #wlcScreen .wlcGrid { display: flex; flex-wrap: wrap; margin: 0 -6px; }
 #wlcScreen .wlcPick { width: calc(25% - 12px); margin: 0 6px 12px; padding: 8px; border-radius: var(--fc-r3); background: var(--fc-s1); cursor: pointer;
-    box-shadow: inset 0 0 0 1px var(--fc-divider); transition: box-shadow var(--fc-fast), transform var(--fc-fast); box-sizing: border-box; }
+    box-shadow: var(--fc-edge); transition: box-shadow var(--fc-fast), transform var(--fc-fast); box-sizing: border-box; }
 #wlcScreen .wlcGrid.three .wlcPick { width: calc(33.33% - 12px); }
 #wlcScreen .wlcPick:hover { transform: translateY(-2px); }
-#wlcScreen .wlcPick.on { box-shadow: inset 0 0 0 2px var(--fc-accent); }
+#wlcScreen .wlcPick.on { box-shadow: var(--fc-ring-in); }
 #wlcScreen .wlcPick > span { display: block; margin-top: 6px; font-weight: 600; color: var(--fc-head); }
 #wlcScreen .wlcPick.big { padding: 14px; }
 #wlcScreen .wlcPick.big .fc-ic { width: 24px; height: 24px; color: var(--fc-accent); }
-#wlcScreen .wlcPick.big b { display: block; margin: 8px 0 4px; font-size: 15px; color: var(--fc-head); }
-#wlcScreen .wlcPick.big span { font-weight: 400; margin: 0; color: var(--fc-muted); font-size: 13px; }
+#wlcScreen .wlcPick.big b { display: block; margin: 8px 0 4px; font-size: var(--fc-fs-chat); color: var(--fc-head); }
+#wlcScreen .wlcPick.big span { font-weight: 400; margin: 0; color: var(--fc-muted); font-size: var(--fc-fs-ui); }
 #wlcScreen .wlcPrev { position: relative; display: flex; height: 64px; border-radius: var(--fc-r2); overflow: hidden; }
 #wlcScreen .wlcPrev i { flex: 1; }
 #wlcScreen .wlcPrev i:last-of-type { flex: 3; }
 #wlcScreen .wlcPrev b { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 12px; border-radius: 6px; }
 #wlcScreen .wlcSwatches { display: flex; }
-#wlcScreen .wlcSw { width: 32px; height: 32px; margin-right: 10px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(0,0,0,.2); }
+#wlcScreen .wlcSw { width: 32px; height: 32px; margin-right: 10px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 2px var(--fc-scrim-1); }
 #wlcScreen .wlcSw.on { box-shadow: 0 0 0 2px var(--fc-s0), 0 0 0 4px var(--fc-head); }
 #wlcScreen .wlcList { border-radius: var(--fc-r2); background: var(--fc-s1); overflow: hidden; }
 #wlcScreen .wlcRow { display: flex; align-items: center; height: 40px; padding: 0 12px; cursor: pointer; }
@@ -489,15 +489,15 @@ const CSS = `
 #wlcScreen .wlcRow .fc-ic { width: 16px; height: 16px; margin-right: 10px; color: var(--fc-muted); }
 #wlcScreen .wlcBtns { margin-top: 12px; }
 #wlcScreen .wlcBtns.center { text-align: center; margin: 24px 0; }
-#wlcScreen .wlcNote { min-height: 18px; color: var(--fc-muted); font-size: 13px; }
+#wlcScreen .wlcNote { min-height: 18px; color: var(--fc-muted); font-size: var(--fc-fs-ui); }
 #wlcScreen .wlcNote.ok { color: var(--fc-success); }
 .wlcTip { display: flex; align-items: flex-start; padding: 10px 0; }
 .wlcTip > .fc-ic { flex: none; width: 22px; height: 22px; margin: 1px 14px 0 0; color: var(--fc-accent); }
 .wlcTip b { display: block; color: var(--fc-head); }
-.wlcTip span { color: var(--fc-muted); font-size: 13px; }
-#wlcScreen .wlcKeys { display: flex; justify-content: center; color: var(--fc-muted); font-size: 13px; }
+.wlcTip span { color: var(--fc-muted); font-size: var(--fc-fs-ui); }
+#wlcScreen .wlcKeys { display: flex; justify-content: center; color: var(--fc-muted); font-size: var(--fc-fs-ui); }
 #wlcScreen .wlcKeys span { margin: 0 12px; }
-#wlcScreen kbd, #wlcBubble kbd { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--fc-s4); color: var(--fc-head); font: 600 12px var(--fc-font); }
+#wlcScreen kbd, #wlcBubble kbd { display: inline-block; padding: 1px 6px; border-radius: var(--fc-r1); background: var(--fc-s4); color: var(--fc-head); font: 600 var(--fc-fs-sm) var(--fc-font); }
 #wlcScreen .wlcFoot, #wlcBubble .wlcFoot { display: flex; align-items: center; }
 #wlcScreen .wlcFoot { padding: 14px 20px; border-top: 1px solid var(--fc-divider); }
 .wlcFoot .sp { flex: 1; }
@@ -505,10 +505,10 @@ const CSS = `
     box-shadow: 0 0 0 2px var(--fc-accent), 0 0 0 9999px rgba(5,6,14,.72); transition: left var(--fc-med) var(--fc-ease), top var(--fc-med) var(--fc-ease), width var(--fc-med) var(--fc-ease), height var(--fc-med) var(--fc-ease); }
 #wlcSpot.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; box-shadow: 0 0 0 9999px rgba(5,6,14,.72); }
 #wlcBubble { position: fixed; z-index: calc(var(--fc-z-modal) + 1); width: 300px; padding: 14px 16px 12px; border-radius: var(--fc-r3);
-    background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); font: 14px/1.45 var(--fc-font); }
-#wlcBubble .n { font-size: 11px; font-weight: 700; color: var(--fc-accent); text-transform: uppercase; letter-spacing: .05em; }
-#wlcBubble b { display: block; margin: 2px 0 4px; font-size: 16px; color: var(--fc-head); }
-#wlcBubble p { margin: 0 0 12px; color: var(--fc-muted); font-size: 13px; }
+    background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); font: var(--fc-fs-md)/1.45 var(--fc-font); }
+#wlcBubble .n { font-size: var(--fc-fs-xs); font-weight: 700; color: var(--fc-accent); text-transform: uppercase; letter-spacing: .05em; }
+#wlcBubble b { display: block; margin: 2px 0 4px; font-size: var(--fc-fs-lg); color: var(--fc-head); }
+#wlcBubble p { margin: 0 0 12px; color: var(--fc-muted); font-size: var(--fc-fs-ui); }
 `;
 
 /* ------------------------------------------------------------------ module */

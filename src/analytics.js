@@ -235,8 +235,7 @@ function tabHtml(ctx) {
 }
 
 const CSS = `
-.fcsTab .fcsCard svg.fc-chart { width: 100%; height: auto; }
-.anMu { display: flex; align-items: center; padding: 7px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.anMu { display: flex; align-items: center; padding: 7px 8px; margin: 0 -8px; border-radius: 6px; cursor: pointer; font-size: var(--fc-fs-md); }
 .anMu:hover { background: var(--fc-hover); }
 .anMu b { flex: none; width: 120px; color: var(--fc-head); font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .anMu .r { flex: none; width: 64px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -245,15 +244,15 @@ const CSS = `
 .anMu .n.empty { font-style: normal; color: var(--fc-muted); }
 .anMu .anMuFace { margin-right: 8px; }
 .anMu .anMuFace + b { width: 100px; }
-.anIns { display: flex; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--fc-divider); font-size: 14px; }
+.anIns { display: flex; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--fc-divider); font-size: var(--fc-fs-md); }
 .anIns:first-of-type { border-top: 0; }
 .anIns .fc-ic { flex: none; width: 18px; height: 18px; margin: 1px 10px 0 0; color: var(--fc-accent); }
 .anIns.tilt .fc-ic { color: var(--fc-danger); }
 .anHeat { overflow-x: auto; }
 .anHeat .row { display: flex; align-items: center; height: 18px; margin-bottom: 3px; }
-.anHeat .row b { flex: none; width: 36px; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
-.anHeat .row i { flex: 1 1 0; min-width: 10px; height: 16px; margin-right: 3px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--fc-divider); }
-.anHeat .row.hours span { flex: 3 1 0; font-size: 10px; color: var(--fc-muted); }
+.anHeat .row b { flex: none; width: 36px; font-size: var(--fc-fs-xs); font-weight: 600; color: var(--fc-muted); }
+.anHeat .row i { flex: 1 1 0; min-width: 10px; height: 16px; margin-right: 3px; border-radius: 3px; box-shadow: var(--fc-edge); }
+.anHeat .row.hours span { flex: 3 1 0; font-size: var(--fc-fs-2xs); color: var(--fc-muted); }
 `;
 
 /* -------------------------------------------------------------------- nudge */

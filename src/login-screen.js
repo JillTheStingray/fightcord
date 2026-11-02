@@ -237,56 +237,56 @@ ${L} .formWrapper > :last-child { margin-bottom: auto; }
     background: radial-gradient(ellipse at 20% 15%, rgba(79,99,240,.45), transparent 55%), radial-gradient(ellipse at 85% 85%, rgba(139,92,246,.4), transparent 55%),
     linear-gradient(180deg, rgba(7,8,19,.35), rgba(7,8,19,.85)); }
 #fclBack .w { width: 120%; height: 120%; left: -10%; top: -10%; border-radius: 45%; filter: blur(50px); opacity: .22; }
-#fclBack .w1 { background: radial-gradient(ellipse at 30% 70%, #22e3f2, transparent 50%); }
-#fclBack .w2 { background: radial-gradient(ellipse at 70% 30%, #8b5cf6, transparent 50%); }
+#fclBack .w1 { background: radial-gradient(ellipse at 30% 70%, var(--fc-cyan), transparent 50%); }
+#fclBack .w2 { background: radial-gradient(ellipse at 70% 30%, var(--fc-violet), transparent 50%); }
 #fclBack .scan { top: 0; left: 0; right: 0; bottom: 0; opacity: .5; background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0, rgba(255,255,255,.035) 1px, transparent 1px, transparent 3px); }
 #fclBack .vig { top: 0; left: 0; right: 0; bottom: 0; box-shadow: inset 0 0 220px rgba(0,0,0,.85); }
 
 #fclTop { position: relative; margin: auto 0 6px; text-align: center; }
 #fclTop img { width: 190px; height: 190px; filter: drop-shadow(0 0 22px rgba(79,99,240,.55)); }
-#fclTop .word { font: 900 52px/1 var(--fc-font); color: #4f63f0; text-shadow: 0 0 30px rgba(79,99,240,.7); }
+#fclTop .word { font: 900 52px/1 var(--fc-font); color: var(--fc-blurple); text-shadow: 0 0 30px rgba(79,99,240,.7); }
 
-${L} .formWrapper h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: .24em; color: #a8aed6; }
-${L} .formWrapper .form { position: relative; width: 420px; max-width: calc(100vw - 32px); margin: 0 0 18px; padding: 26px 30px 20px; border-radius: 16px; text-align: left;
+${L} .formWrapper h2 { margin: 0 0 12px; font-size: var(--fc-fs-ui); letter-spacing: .24em; color: #a8aed6; }
+${L} .formWrapper .form { position: relative; width: 420px; max-width: calc(100vw - 32px); margin: 0 0 18px; padding: 26px 30px 20px; border-radius: var(--fc-r4); text-align: left;
     background: rgba(13,15,31,.88); box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 24px 60px rgba(0,0,0,.6), 0 0 70px rgba(79,99,240,.22); }
 ${L} .formWrapper .form::before { content: ''; position: absolute; top: 0; left: 24px; right: 24px; height: 2px; border-radius: 2px;
-    background: linear-gradient(90deg, transparent, #22e3f2, #4f63f0, #8b5cf6, transparent); }
-${L} .formWrapper .form > .title.error { margin: 0 0 12px; font-size: 13px; text-align: center; }
+    background: linear-gradient(90deg, transparent, var(--fc-cyan), var(--fc-blurple), var(--fc-violet), transparent); }
+${L} .formWrapper .form > .title.error { margin: 0 0 12px; font-size: var(--fc-fs-ui); text-align: center; }
 ${L} .formWrapper .form .input-area { margin: 0 0 16px; }
-${L} .formWrapper .form .input-area .title { margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; }
-${L} .formWrapper .form .input-area .title span { display: inline; color: #8a90b8; }
-${L} .formWrapper .form .input-area .title span:last-child { margin-left: 8px; color: #f24b5a; font-size: 11.5px; letter-spacing: 0; }
-${L} .formWrapper .form .input-area input { height: 44px; padding: 0 14px; border: 1px solid #272c55; border-radius: 10px; text-align: left; font-size: 15px;
-    color: #fff; background: #0a0c1a; transition: border-color .15s ease, box-shadow .15s ease; }
+${L} .formWrapper .form .input-area .title { margin: 0 0 6px; font-size: var(--fc-fs-xs); letter-spacing: .08em; }
+${L} .formWrapper .form .input-area .title span { display: inline; color: var(--fc-arc-muted); }
+${L} .formWrapper .form .input-area .title span:last-child { margin-left: 8px; color: #f24b5a; font-size: var(--fc-fs-sm); letter-spacing: 0; }
+${L} .formWrapper .form .input-area input { height: 44px; padding: 0 14px; border: 1px solid #272c55; border-radius: 10px; text-align: left; font-size: var(--fc-fs-chat);
+    color: #fff; background: #0a0c1a; transition: border-color var(--fc-fast) ease, box-shadow var(--fc-fast) ease; }
 ${L} .formWrapper .form .input-area input:hover { border-color: #3a4180; }
-${L} .formWrapper .form .input-area input:focus { border-color: #4f63f0; box-shadow: 0 0 0 3px rgba(79,99,240,.28); }
+${L} .formWrapper .form .input-area input:focus { border-color: var(--fc-blurple); box-shadow: 0 0 0 3px rgba(79,99,240,.28); }
 ${L} .formWrapper .form .input-area .error ~ input { border-color: #f24b5a; box-shadow: 0 0 0 3px rgba(242,75,90,.2); }
 ${L} .formWrapper .form .button-generic { display: flex; align-items: center; justify-content: center; width: 100%; height: 46px; margin: 6px 0 0; padding: 0;
-    border: 0; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
-    background: linear-gradient(135deg, #4f63f0, #8b5cf6); background-size: 200% 100%; box-shadow: 0 8px 26px rgba(79,99,240,.45); transition: filter .15s ease, transform .15s ease; }
+    border: 0; border-radius: 10px; color: #fff; font-size: var(--fc-fs-chat); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+    background: linear-gradient(135deg, var(--fc-blurple), var(--fc-violet)); background-size: 200% 100%; box-shadow: 0 8px 26px rgba(79,99,240,.45); transition: filter var(--fc-fast) ease, transform var(--fc-fast) ease; }
 ${L} .formWrapper .form .button-generic:hover { filter: brightness(1.12); transform: translateY(-1px); }
-html.fcl-on.fcl-working #app .login .formWrapper .form .button-generic { background: linear-gradient(90deg, #4f63f0, #22e3f2, #8b5cf6, #4f63f0); background-size: 300% 100%; }
-${L} .formWrapper .form .forgotPassword { margin: 12px 0 0; text-align: center; font-size: 12.5px; }
-${L} .formWrapper .form .forgotPassword a { color: #8a90b8; }
+html.fcl-on.fcl-working #app .login .formWrapper .form .button-generic { background: linear-gradient(90deg, var(--fc-blurple), var(--fc-cyan), var(--fc-violet), var(--fc-blurple)); background-size: 300% 100%; }
+${L} .formWrapper .form .forgotPassword { margin: 12px 0 0; text-align: center; font-size: var(--fc-fs-ui); }
+${L} .formWrapper .form .forgotPassword a { color: var(--fc-arc-muted); }
 ${L} .formWrapper .form .forgotPassword a:hover { color: #fff; }
-${L} .coc { margin: 14px 0 0; text-align: center; font-size: 12px; color: #6f7cd6; }
-${L} .coc a { color: #22e3f2; }
-${L} .formWrapper > h3 { margin: 4px 0 8px; font-size: 13px; font-weight: 600; color: #a8aed6; }
-${L} .formWrapper > .button-generic { height: 34px; line-height: 34px; padding: 0 18px; border: 1px solid #272c55; border-radius: 999px; font-size: 12.5px;
-    color: #dde1f5; background: rgba(13,15,31,.75); box-shadow: none; }
-${L} .formWrapper > .button-generic:hover { border-color: #4f63f0; color: #fff; }
-${L} .formWrapper .notificationWrapper { border-radius: 12px; background: #15182f; box-shadow: 0 0 0 1px #272c55, 0 12px 30px rgba(0,0,0,.5); }
+${L} .coc { margin: 14px 0 0; text-align: center; font-size: var(--fc-fs-sm); color: #6f7cd6; }
+${L} .coc a { color: var(--fc-cyan); }
+${L} .formWrapper > h3 { margin: 4px 0 8px; font-size: var(--fc-fs-ui); font-weight: 600; color: #a8aed6; }
+${L} .formWrapper > .button-generic { height: 34px; line-height: 34px; padding: 0 18px; border: 1px solid #272c55; border-radius: var(--fc-pill); font-size: var(--fc-fs-ui);
+    color: var(--fc-arc-text); background: rgba(13,15,31,.75); box-shadow: none; }
+${L} .formWrapper > .button-generic:hover { border-color: var(--fc-blurple); color: #fff; }
+${L} .formWrapper .notificationWrapper { border-radius: var(--fc-r3); background: #15182f; box-shadow: 0 0 0 1px #272c55, 0 12px 30px rgba(0,0,0,.5); }
 
 #fclHello { display: flex; align-items: center; margin: 0 0 18px; padding: 0 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
-#fclHello .ava { width: 44px; height: 44px; margin-right: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #4f63f0; }
+#fclHello .ava { width: 44px; height: 44px; margin-right: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--fc-blurple); }
 #fclHello .tx { flex: 1; min-width: 0; }
-#fclHello b { display: block; font-size: 16px; font-weight: 800; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#fclHello span { display: block; margin-top: 2px; font-size: 12.5px; color: #8a90b8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fclHello b { display: block; font-size: var(--fc-fs-lg); font-weight: 800; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fclHello span { display: block; margin-top: 2px; font-size: var(--fc-fs-ui); color: var(--fc-arc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fclHello .fc-tag { margin-left: 10px; }
 
-#fclFoot { position: fixed; left: 0; right: 0; bottom: 14px; z-index: 2; text-align: center; font: 12px/1.4 var(--fc-font); color: rgba(168,174,214,.65); pointer-events: none; }
+#fclFoot { position: fixed; left: 0; right: 0; bottom: 14px; z-index: 2; text-align: center; font: var(--fc-fs-sm)/1.4 var(--fc-font); color: rgba(168,174,214,.65); pointer-events: none; }
 #fclFoot .v { margin-right: 10px; color: rgba(168,174,214,.4); }
-#fclSlam { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 2147483000; pointer-events: none;
+#fclSlam { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); pointer-events: none;
     background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.9), rgba(79,99,240,.6) 30%, transparent 70%); }
 `) + `
 html.fcl-on:not(.fc-still) #fclBack .art.on { animation: fclKen 16s ease-in-out both; }

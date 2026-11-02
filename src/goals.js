@@ -303,13 +303,13 @@ function wire(el) {
 }
 
 const CSS = `
-.fcglMore { margin-top: 4px; font-size: 12px; color: var(--fc-muted); }
+.fcglMore { margin-top: 4px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcglPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px 0 6px; margin-right: 8px; border-radius: var(--fc-r1);
-    background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; }
+    background: var(--fc-btn); color: #fff; font: 600 var(--fc-fs-md)/32px var(--fc-font); cursor: pointer; user-select: none; }
 .fcglPill:hover { background: var(--fc-btn-h); }
 .fcglPill .fc-ring { margin-right: 6px; }
 .fcglBars { display: inline-flex; flex-direction: column; justify-content: center; height: 32px; margin-right: 8px; }
-.fcglBars > i { position: relative; display: block; width: 46px; height: 4px; margin: 1.5px 0; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
+.fcglBars > i { position: relative; display: block; width: 46px; height: 4px; margin: 1.5px 0; border-radius: 2px; background: var(--fc-tint-4); overflow: hidden; }
 .fcglBars > i > u { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--fc-accent); transition: width .6s cubic-bezier(.2,.8,.2,1); }
 .fcglBars > i.done > u { background: var(--fc-success); }
 .fcglBars > i.up { animation: fcglUp 1.4s ease-out; }
@@ -319,22 +319,22 @@ const CSS = `
 html.fc-still .fcglBars > i { animation: none !important; }
 .fcglNum { font-variant-numeric: tabular-nums; }
 /* the HUD: tonight's record and the goals as one joined strip */
-.fcglPill.fcgl-joined { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 rgba(255,255,255,.08); }
+.fcglPill.fcgl-joined { margin-left: -8px; border-top-left-radius: 0; border-bottom-left-radius: 0; box-shadow: inset 1px 0 0 var(--fc-tint-3); }
 
 .fcglRow { display: flex; align-items: center; padding: 6px 0; }
 .fcglRow .fc-ring { flex: none; margin-right: 10px; }
 .fcglRow .tx { flex: 1; min-width: 0; }
-.fcglRow b { display: block; font-size: 14px; font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fcglRow span { display: block; font-size: 12px; color: var(--fc-muted); }
+.fcglRow b { display: block; font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcglRow span { display: block; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcglRow.done b { color: var(--fc-success); }
 .fcglList { margin: 6px 0; }
 .fcglSuggest { display: flex; flex-wrap: wrap; margin: 8px 0 4px; }
 .fcglSuggest .fc-chip { margin: 0 6px 6px 0; }
-.fcglAdd > * { margin-right: 6px; height: 30px; font-size: 13px; }
+.fcglAdd > * { margin-right: 6px; height: 30px; font-size: var(--fc-fs-ui); }
 .fcglAdd input[type="number"] { width: 70px; }
 .fcglAdd [hidden] { display: none; }
 .fcglSum { margin-top: 10px; }
-.fcglSum > span { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+.fcglSum > span { font-size: var(--fc-fs-2xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 .fcglSum .fcglRow { padding: 3px 0; }
 `;
 

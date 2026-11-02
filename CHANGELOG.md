@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.9.0
+
+Fightcord gets more fun to look at.
+
+- **Name styles:** give your name a style: Gradient, Neon, Shimmer, Toon, Fire or Rainbow, in two colours you
+  pick (too-dark colours are refused, so names stay readable). Other Fightcord players see it in chat, the
+  member list and on your card. It moves when someone hovers your message or opens your card.
+- **Avatar decorations:** a crown, halo, horns, cat ears, headphones, sparkles, snow, flames, hearts or
+  lightning on your avatar, next to the frames from 3.7. Both are in Edit profile, and like your pictures they're
+  signed with your Fightcord ID, so nobody can put them on your name. Players on 3.8 still see your pictures and
+  frame; they just don't see the new bits.
+- **Super reactions** in lobbies and DMs: the sparkle button on a message (or right-click → Add Super Reaction).
+  A super reaction gets its own glowing pill, and when one lands the emoji pops up big over the message with a
+  burst of sparks (it plays again when you hover it). The big emoji is Google's animated Noto emoji when there
+  is one (Settings → Private lobbies → Animated emoji turns that off and loads nothing). Players on 3.8 see it as
+  a normal reaction.
+- **Big emoji:** a message of only emoji (up to 10) is drawn big, like Discord, and each one plays its animated
+  version when you hover it.
+- **Celebrations** (only on your screen): a small moment, top right, for a 3 / 5 / 10 win streak in a session
+  (and your name burns in chat and the member list while it lasts), a new best ELO, a goal done, and your first
+  set win against someone who had beaten you 3 times or more. A new badge (100 / 500 / 1,000 sets, long win
+  streaks) gets the full-screen one. Never during a match, one per set at most, each one has its own switch
+  (Settings → Match screens → Celebrations).
+- **Fightcord Wrapped:** your month (or year) on Fightcade as a story: sets, record, hours, your main, your
+  rival, your nemesis, your best night, your longest streak, your ELO climb, your comebacks and your prime time,
+  then a card to share (Save PNG or Copy image). Stats → Wrapped for any month with 5 sets or more, and a
+  pop-up in the first week of the month when last month's is ready.
+- **Everything matches better:** Fightcord's 47 parts now share one set of sizes and colours: one text-size
+  scale (it was 61 different sizes), the same corner rounding, overlays and selection rings everywhere, and the
+  theme's own colours where colours used to be typed in by hand, so more of Fightcord follows your theme preset.
+  Hover and fade timings now all follow Settings → Animations (Subtle used to miss most of them). Buttons show
+  an outline when you move to them with Tab.
+- **In-game chat off:** if you mute chat in the emulator (FBNeo games), opponents with Fightcord see "In-game chat
+  off, GGs in the lobby after" on their VS screen, so nobody thinks you're ignoring them. For opponents without
+  Fightcord there's an optional line in the lobby chat, off by default (Settings → Voice chat → Fightcord players).
+- **Cleaner screens:** charts now fit their card, with labels you can actually read at any window size (they
+  used to come out huge on Progress and tiny on Analytics). The best ever tile on Progress shows your peak ELO.
+  Playing now rows are calmer, with a Watch button that lights up when you point at it. Find a match shows one
+  green Challenge button at a time, on the row you're pointing at. Rankings has gold, silver and bronze medals
+  for the top three.
+
 ## 3.8.2
 
 - **Casual sets count again:** when Fightcade's end-of-set message wasn't in the chat you had open, Fightcord

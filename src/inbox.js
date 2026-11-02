@@ -140,23 +140,23 @@ function render() {
 const CSS = `
 html.fcin-on .notificationsWrapper .notificationsSection { padding: 104px 10px 12px !important; width: 440px !important;
     background: var(--fc-s2) !important; background-image: none !important; text-transform: none !important;
-    box-shadow: 0 0 0 1px rgba(255,255,255,.04), 8px 0 24px rgba(0,0,0,.4) !important; font-family: var(--fc-font) !important; }
-html.fcin-on .notificationsWrapper .notificationsMaskBg { background: rgba(0,0,0,.35) !important; }
+    box-shadow: 0 0 0 1px var(--fc-tint-1), 8px 0 24px var(--fc-scrim-2) !important; font-family: var(--fc-font) !important; }
+html.fcin-on .notificationsWrapper .notificationsMaskBg { background: var(--fc-scrim-2) !important; }
 #fcInbox { position: absolute; top: 0; left: 0; z-index: 3; box-sizing: border-box; padding: 14px 14px 0; height: 96px;
     background: var(--fc-s2); border-bottom: 1px solid var(--fc-divider);
     color: var(--fc-text); font-family: var(--fc-font); text-transform: none; }
 .notificationsWrapper:not(.active) > #fcInbox, .notificationsWrapper:not(.active) > #fcInboxFriends, .notificationsWrapper:not(.active) > #fcInboxEmpty { display: none; }
-#fcInbox .ttl { display: flex; align-items: center; font-size: 18px; font-weight: 800; color: var(--fc-head); }
+#fcInbox .ttl { display: flex; align-items: center; font-size: var(--fc-fs-h3); font-weight: 800; color: var(--fc-head); }
 #fcInbox .tabs { display: flex; margin-top: 12px; }
-#fcInbox .tab { position: relative; display: inline-flex; align-items: center; margin-right: 6px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
-    font-size: 13px; font-weight: 600; color: var(--fc-muted); transition: background-color .1s ease, color .1s ease; }
+#fcInbox .tab { position: relative; display: inline-flex; align-items: center; margin-right: 6px; padding: 6px 10px; border-radius: var(--fc-r1); cursor: pointer;
+    font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-muted); transition: background-color var(--fc-fast) ease, color var(--fc-fast) ease; }
 #fcInbox .tab:hover { background: var(--fc-hover); color: var(--fc-text); }
 #fcInbox .tab.on { background: var(--fc-s4); color: var(--fc-head); }
-#fcInbox .tab b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; font-size: 11px;
-    line-height: 16px; text-align: center; color: var(--fc-text); background: rgba(255,255,255,.1); }
+#fcInbox .tab b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--fc-r2); font-size: var(--fc-fs-xs);
+    line-height: 16px; text-align: center; color: var(--fc-text); background: var(--fc-tint-4); }
 #fcInbox .tab b:empty { display: none; }
 #fcInbox .tab b.hot { color: #fff; background: var(--fc-danger); }
-#fcInbox .msg { position: absolute; right: 14px; bottom: 6px; font-size: 11px; color: var(--fc-danger); }
+#fcInbox .msg { position: absolute; right: 14px; bottom: 6px; font-size: var(--fc-fs-xs); color: var(--fc-danger); }
 html.fcin-on .notificationsWrapper.fcin-tab-mentions .notification-challenge,
 html.fcin-on .notificationsWrapper.fcin-tab-challenges .notification-mention,
 html.fcin-on .notificationsWrapper.fcin-tab-friends .notificationsSection > * { display: none !important; }
@@ -164,23 +164,23 @@ html.fcin-on .notificationsWrapper:not(.fcin-tab-all) .notifications-empty { dis
 #fcInboxFriends { position: absolute; top: 104px; left: 0; bottom: 0; z-index: 2; box-sizing: border-box; padding: 0 10px 12px; overflow-y: auto; display: none;
     color: var(--fc-text); font-family: var(--fc-font); }
 .notificationsWrapper.fcin-tab-friends > #fcInboxFriends { display: block; }
-#fcInboxEmpty { position: absolute; top: 150px; left: 0; z-index: 2; display: none; text-align: center; font-size: 14px; color: var(--fc-muted);
+#fcInboxEmpty { position: absolute; top: 150px; left: 0; z-index: 2; display: none; text-align: center; font-size: var(--fc-fs-md); color: var(--fc-muted);
     font-family: var(--fc-font); pointer-events: none; }
 #fcInboxEmpty.on { display: block; }
 /* entries as cards */
 html.fcin-on .notificationsSection .notification-mention, html.fcin-on .notificationsSection .notification-challenge, #fcInboxFriends .fcinF {
-    position: relative !important; margin: 0 0 8px !important; padding: 10px 12px 10px 14px !important; border-radius: 8px !important;
+    position: relative !important; margin: 0 0 8px !important; padding: 10px 12px 10px 14px !important; border-radius: var(--fc-r2) !important;
     background: var(--fc-s3) !important; background-image: none !important; border: 0 !important;
-    box-shadow: 0 0 0 1px var(--fc-divider) !important; cursor: pointer !important;
-    transition: background-color .1s ease, transform .1s ease !important; }
+    box-shadow: var(--fc-edge-out) !important; cursor: pointer !important;
+    transition: background-color var(--fc-fast) ease, transform var(--fc-fast) ease !important; }
 html.fcin-on .notificationsSection .notification-mention:hover, html.fcin-on .notificationsSection .notification-challenge:hover, #fcInboxFriends .fcinF:hover {
     background: var(--fc-hover) !important; transform: translateX(2px) !important; }
-html.fcin-on .notificationsSection .notification-mention { box-shadow: inset 3px 0 0 #f0b232, 0 0 0 1px var(--fc-divider) !important; }
-html.fcin-on .notificationsSection .notification-challenge { box-shadow: inset 3px 0 0 #23a55a, 0 0 0 1px var(--fc-divider) !important; }
-html.fcin-on .notificationsSection .header { margin: 0 0 4px !important; padding: 0 !important; background: none !important; font-size: 12px !important;
+html.fcin-on .notificationsSection .notification-mention { box-shadow: inset 3px 0 0 var(--fc-warning), 0 0 0 1px var(--fc-divider) !important; }
+html.fcin-on .notificationsSection .notification-challenge { box-shadow: inset 3px 0 0 var(--fc-success), 0 0 0 1px var(--fc-divider) !important; }
+html.fcin-on .notificationsSection .header { margin: 0 0 4px !important; padding: 0 !important; background: none !important; font-size: var(--fc-fs-sm) !important;
     font-weight: 600 !important; text-transform: none !important; color: var(--fc-muted) !important; white-space: nowrap !important;
     overflow: hidden !important; text-overflow: ellipsis !important; }
-html.fcin-on .notificationsSection .content { padding: 0 !important; background: none !important; font-size: 14px !important; font-weight: 400 !important;
+html.fcin-on .notificationsSection .content { padding: 0 !important; background: none !important; font-size: var(--fc-fs-md) !important; font-weight: 400 !important;
     text-transform: none !important; color: var(--fc-text) !important; }
 html.fcin-on .notificationsSection .content .name { font-weight: 700 !important; color: var(--fc-head) !important; }
 html.fcin-on .notificationsSection .fcin-new::after, #fcInboxFriends .fcinF.fcin-new::after {
@@ -189,13 +189,13 @@ html.fcin-on .notificationsSection .fcin-new::after, #fcInboxFriends .fcinF.fcin
 html.fcin-on .notificationsSection .notifications-empty { font-size: 0 !important; }
 html.fcin-on .notificationsSection .notifications-empty > * { display: none !important; }
 html.fcin-on .notificationsSection .notifications-empty::before { content: ''; width: 44px; height: 44px; margin-bottom: 10px; background: var(--fc-muted); -webkit-mask: var(--fc-i-bell) center / contain no-repeat; }
-html.fcin-on .notificationsSection .notifications-empty::after { content: 'You\\'re all caught up'; font-size: 16px; font-weight: 600; color: var(--fc-muted); }
+html.fcin-on .notificationsSection .notifications-empty::after { content: 'You\\'re all caught up'; font-size: var(--fc-fs-lg); font-weight: 600; color: var(--fc-muted); }
 #fcInboxFriends .fcinF { display: flex; align-items: center; }
 #fcInboxFriends .fcinF .tx { flex: 1; min-width: 0; }
-#fcInboxFriends .fcinF .t { font-size: 14px; font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#fcInboxFriends .fcinF .s { margin-top: 2px; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fcInboxFriends .fcinF .t { font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fcInboxFriends .fcinF .s { margin-top: 2px; font-size: var(--fc-fs-sm); color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcInboxFriends .fcinF.fcin-new::after { right: 84px; }
-#fcInboxFriends .fcinNone { margin: 40px 20px; text-align: center; font-size: 14px; line-height: 1.5; color: var(--fc-muted); }
+#fcInboxFriends .fcinNone { margin: 40px 20px; text-align: center; font-size: var(--fc-fs-md); line-height: 1.5; color: var(--fc-muted); }
 #fcInboxFriends .fcinNone .big { font-size: 40px; }
 #fcInbox .ttl .ic { width: 20px; height: 20px; }
 #fcInbox .clr { margin-left: auto; color: var(--fc-link); }

@@ -353,12 +353,12 @@ const CSS = `
 .fdPill { user-select: none; }
 #fdPanel { position: fixed; top: 56px; right: 12px; bottom: 12px; width: 360px; z-index: calc(var(--fc-z-page) + 5); display: flex; flex-direction: column;
     border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3);
-    font: 14px/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; }
+    font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; }
 #fdPanel .fdHead { display: flex; align-items: center; padding: 14px 12px 8px 16px; }
 #fdPanel .fdHead > .fc-ic { color: var(--fc-accent); margin-right: 10px; }
 #fdPanel .fdHead .tt { flex: 1; min-width: 0; }
-#fdPanel .fdHead b { display: block; font-size: 16px; color: var(--fc-head); }
-#fdPanel .fdHead .ch { display: block; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fdPanel .fdHead b { display: block; font-size: var(--fc-fs-lg); color: var(--fc-head); }
+#fdPanel .fdHead .ch { display: block; font-size: var(--fc-fs-sm); color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fdPanel .fdFilters { display: flex; padding: 0 16px 8px; border-bottom: 1px solid var(--fc-divider); }
 #fdPanel .fdFilters .fc-chip { margin-right: 6px; }
 #fdPanel .fdBody { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 8px 12px; }
@@ -372,11 +372,11 @@ const CSS = `
 #fdPanel .fdItem.friend > .fc-ic { color: var(--fc-warning); }
 #fdPanel .fdItem .tx { flex: 1; min-width: 0; }
 #fdPanel .fdItem .t { color: var(--fc-text); }
-#fdPanel .fdItem .s { margin-top: 2px; font-size: 11px; color: var(--fc-faint); }
+#fdPanel .fdItem .s { margin-top: 2px; font-size: var(--fc-fs-xs); color: var(--fc-faint); }
 #fdPanel .fdItem > .fc-btn { margin-left: 8px; }
 #fdPanel .fdName { color: var(--fc-head); cursor: pointer; }
 #fdPanel .fdName:hover { text-decoration: underline; }
-#fdPanel .fdTag { display: inline-block; padding: 0 5px; border-radius: 4px; font-size: 11px; font-weight: 700; background: var(--fc-s4); color: var(--fc-text); }
+#fdPanel .fdTag { display: inline-block; padding: 0 5px; border-radius: var(--fc-r1); font-size: var(--fc-fs-xs); font-weight: 700; background: var(--fc-s4); color: var(--fc-text); }
 #fdPanel .fdHot { font-weight: 800; color: var(--fc-warning); }
 `;
 

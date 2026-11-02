@@ -225,62 +225,62 @@ function preview() {
 }
 
 const CSS = `
-#ccStack { position: fixed; top: 64px; left: 50%; z-index: 100002; width: 420px; margin-left: -210px; pointer-events: none; }
+#ccStack { position: fixed; top: 64px; left: 50%; z-index: var(--fc-z-stack); width: 420px; margin-left: -210px; pointer-events: none; }
 .ccCard { position: relative; overflow: hidden; margin-bottom: 12px; padding: 14px 16px 16px; border-radius: var(--fc-r4); pointer-events: auto;
-    background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 18px 48px rgba(0,0,0,.6), 0 0 42px var(--fc-accent-soft);
-    opacity: 0; transform: translateY(-18px) scale(.96); transition: opacity .22s ease, transform .26s cubic-bezier(.2,.9,.3,1.2); }
+    background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
+    box-shadow: 0 0 0 1px var(--fc-tint-3), 0 18px 48px var(--fc-scrim-4), 0 0 42px var(--fc-accent-soft);
+    opacity: 0; transform: translateY(-18px) scale(.96); transition: opacity var(--fc-med) ease, transform var(--fc-med) cubic-bezier(.2,.9,.3,1.2); }
 .ccCard.in { opacity: 1; transform: none; }
-.ccCard.out { opacity: 0; transform: translateY(-10px) scale(.97); transition: opacity .2s ease, transform .2s ease; }
+.ccCard.out { opacity: 0; transform: translateY(-10px) scale(.97); transition: opacity var(--fc-med) ease, transform var(--fc-med) ease; }
 .ccGlow { position: absolute; top: -60px; left: -40px; right: -40px; height: 140px; pointer-events: none;
     background: radial-gradient(ellipse at center, var(--fc-accent-soft), transparent 70%); }
-.ccHead { position: relative; display: flex; align-items: center; font-size: 12px; color: var(--fc-muted); }
+.ccHead { position: relative; display: flex; align-items: center; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .ccHead .ccIco { width: 14px; height: 14px; margin-right: 6px; color: var(--fc-head); }
 .ccTitle { font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-head); }
 .ccGame { flex: 1; min-width: 0; margin-left: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ccQueue { flex: none; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: var(--fc-accent-soft); color: var(--fc-head); }
 .ccQueue[hidden] { display: none; }
-.ccFt { flex: none; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: rgba(255,255,255,.08); color: var(--fc-text); }
+.ccFt { flex: none; margin-left: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: var(--fc-tint-3); color: var(--fc-text); }
 .ccFt.ranked { background: rgba(240,178,50,.16); color: var(--fc-warning); }
 .ccHead .ccX { margin-left: 6px; }
 .ccVs { position: relative; display: flex; align-items: center; justify-content: space-between; margin: 14px 4px 10px; }
 .ccP { width: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
 .ccP.me .fc-avatar { margin: 6px 0; opacity: .8; }
-.ccP b { margin-top: 6px; max-width: 150px; font-size: 16px; font-weight: 800; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ccP b { margin-top: 6px; max-width: 150px; font-size: var(--fc-fs-lg); font-weight: 800; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ccP b .fc-flag { margin-right: 6px; }
-.ccP.me b { font-size: 13px; font-weight: 600; color: var(--fc-muted); }
+.ccP.me b { font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-muted); }
 .ccRing { position: relative; line-height: 0; border-radius: 50%; padding: 3px; background: var(--fc-accent); }
 .ccRing::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; animation: ccPulse 1.4s ease-out infinite; }
 @keyframes ccPulse { 0% { box-shadow: 0 0 0 0 var(--fc-accent); opacity: .9; } 100% { box-shadow: 0 0 0 16px var(--fc-accent); opacity: 0; } }
 .ccStar { color: var(--fc-warning); }
-.ccMeta { margin-top: 3px; display: flex; align-items: center; font-size: 12px; color: var(--fc-muted); }
+.ccMeta { margin-top: 3px; display: flex; align-items: center; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .ccMeta .fc-tag { margin-right: 6px; }
-.ccVoice { display: inline-flex; align-items: center; margin-top: 4px; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600;
+.ccVoice { display: inline-flex; align-items: center; margin-top: 4px; padding: 1px 7px; border-radius: 10px; font-size: var(--fc-fs-xs); font-weight: 600;
     color: var(--fc-success); background: rgba(35,165,90,.14); }
 .ccVoice .fc-ic { width: 11px; height: 11px; margin-right: 4px; }
 .ccVsTxt { font-size: 28px; font-weight: 900; font-style: italic; color: var(--fc-head); text-shadow: 0 0 18px var(--fc-accent); }
 .ccStats { position: relative; display: flex; margin: 0 -4px; }
-.ccStat { flex: 1; margin: 0 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); min-width: 0; }
-.ccStat span { display: block; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
-.ccStat b { display: block; margin-top: 2px; font-size: 16px; font-weight: 800; color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ccStat { flex: 1; margin: 0 4px; padding: 8px 10px; border-radius: 10px; background: var(--fc-tint-2); min-width: 0; }
+.ccStat span { display: block; font-size: var(--fc-fs-xs); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.ccStat b { display: block; margin-top: 2px; font-size: var(--fc-fs-lg); font-weight: 800; color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ccStat .ccChar[data-mu] { cursor: pointer; }
 .ccStat .ccChar .fc-ic { width: 11px; height: 11px; vertical-align: -1px; }
-.ccStat .ccChar { display: block; margin-top: 1px; font-size: 11px; font-style: normal; font-weight: 700; color: var(--fc-cyan, #22e3f2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ccStat .ccChar { display: block; margin-top: 1px; font-size: var(--fc-fs-xs); font-style: normal; font-weight: 700; color: var(--fc-cyan, #22e3f2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ccStat.good b { color: var(--fc-success); } .ccStat.bad b { color: var(--fc-danger); }
 .ccBar { height: 4px; margin-top: 4px; border-radius: 2px; background: rgba(242,63,67,.35); overflow: hidden; }
 .ccBar i { display: block; height: 100%; width: 0; background: var(--fc-success); transition: width .5s ease; }
 .ccNotes { margin-top: 10px; }
 .ccNotes:empty { display: none; }
-.ccWarn { margin-top: 10px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: 12.5px; font-weight: 600; color: var(--fc-warning); background: rgba(240,178,50,.12); }
+.ccWarn { margin-top: 10px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-warning); background: rgba(240,178,50,.12); }
 .ccBtns { position: relative; display: flex; margin-top: 14px; }
 .ccBtn { flex: 1; height: 40px; margin-right: 8px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-    font-weight: 800; font-size: 14px; color: #fff; user-select: none; transition: transform .12s ease, filter .12s ease, box-shadow .12s ease; }
+    font-weight: 800; font-size: var(--fc-fs-md); color: #fff; user-select: none; transition: transform var(--fc-fast) ease, filter var(--fc-fast) ease, box-shadow var(--fc-fast) ease; }
 .ccBtn:last-child { margin-right: 0; }
 .ccBtn:hover { transform: translateY(-1px); filter: brightness(1.1); }
 .ccBtn.accept { flex: 1.5; background: linear-gradient(180deg, #2dc770, #1f8b4c); box-shadow: 0 0 18px rgba(35,165,90,.45); }
 .ccBtn.decline { background: rgba(242,63,67,.14); color: var(--fc-danger); box-shadow: inset 0 0 0 1.5px rgba(242,63,67,.6); }
 .ccBtn.decline:hover { background: var(--fc-danger); color: #fff; }
-.ccBtn.ghost { flex: .8; background: rgba(255,255,255,.08); color: var(--fc-text); }
+.ccBtn.ghost { flex: .8; background: var(--fc-tint-3); color: var(--fc-text); }
 `;
 
 /* -------------------------------------------------------------------- module */

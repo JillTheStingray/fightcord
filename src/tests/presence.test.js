@@ -18,12 +18,17 @@ test('the book: news only when something changed, gone after the TTL', () => {
     assert.equal(b.heard('a', 0, 0), true);             // new
     assert.equal(b.heard('a', 0, 500), false);          // same, still fresh
     assert.equal(b.heard('a', 1, 600), true);           // voice turned on
-    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0, dk: '', lv: '' });
+    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0, dk: '', lv: '', xv: '', mc: false });
     assert.equal(b.heard('a', 1, 650, 'abcd1234'), true, 'a new profile version is news');
     assert.equal(b.heard('a', 1, 660, 'abcd1234'), false);
     assert.equal(b.heard('a', 1, 670, 'not-a-pv'), true, 'a broken version counts as none');
     assert.equal(b.get('a', 1700), null);               // not heard for too long
     assert.equal(b.heard('a', 1, 1700), true);          // back = news
+    assert.equal(b.heard('a', 1, 1710, '', 0, '', '', '', 1), true, 'muting in-game chat is news');
+    assert.equal(b.get('a', 1710).mc, true);
+    assert.equal(b.heard('a', 1, 1720, '', 0, '', '', '', 1), false);
+    assert.equal(b.heard('a', 1, 1730, '', 0, '', '', '', 'yes'), true, 'only a 1 counts');
+    assert.equal(b.get('a', 1730).mc, false);
     assert.equal(b.count(1700), 1);
     assert.equal(b.gone('a'), true);
     assert.equal(b.get('a', 1700), null);

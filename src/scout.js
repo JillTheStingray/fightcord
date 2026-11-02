@@ -335,29 +335,29 @@ const CSS = `
 .fcsc-notes { margin-top: 10px; }
 .fcsc-body .fc-ch-sec > :first-child, .fcsc-body .fc-ch-sec .fcsc-panel:first-child > .fc-stats { margin-top: 0; }
 .fcsc-panel > .fc-stats { margin-top: 10px; }
-.fcsc-wait { padding: 16px 0 4px; font-size: 13px; }
+.fcsc-wait { padding: 16px 0 4px; font-size: var(--fc-fs-ui); }
 .fcsc-skel .fc-skel { display: flex; flex-wrap: wrap; margin: 0 -4px; }
 .fcsc-skel .fc-skel i { flex: 1 1 calc(50% - 8px); margin: 0 4px 8px; }
-.fcsc-panel .fc-stat em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--fc-muted); }
+.fcsc-panel .fc-stat em { font-style: normal; font-size: var(--fc-fs-xs); font-weight: 600; color: var(--fc-muted); }
 .fcsc-panel .fc-stat .fc-tag { vertical-align: -2px; }
 .fcsc b.up { color: var(--fc-success); }
 .fcsc b.down { color: var(--fc-danger); }
-.fcsc-recent { margin-top: 8px; font-size: 13px; }
-.fcsc-recent > summary { cursor: pointer; font: 700 11px/18px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); outline: none; }
+.fcsc-recent { margin-top: 8px; font-size: var(--fc-fs-ui); }
+.fcsc-recent > summary { cursor: pointer; font: 700 var(--fc-fs-xs)/18px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); outline: none; }
 .fcsc-recent > summary:hover { color: var(--fc-text); }
 .fcsc-sets { width: 100%; margin-top: 4px; border-collapse: collapse; table-layout: fixed; }
 .fcsc-sets td { padding: 3px 0; }
 .fcsc-sets .m { width: 16px; font-weight: 700; }
 .fcsc-sets .o { padding-right: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fcsc-sets .s { width: 40px; text-align: right; color: var(--fc-head); }
-.fcsc-sets .d { width: 70px; padding-left: 8px; text-align: right; font-size: 12px; color: var(--fc-muted); }
+.fcsc-sets .d { width: 70px; padding-left: 8px; text-align: right; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcsc-acts { display: flex; margin-top: 12px; }
 .fcsc-acts > .fc-grow { flex: 1; }
 .fcsc-acts > .fc-btn + .fc-btn { margin-left: 8px; }
 .fcScoutBadge { cursor: pointer; opacity: .35; margin-left: 4px; }
 .fcScoutBadge .fc-ic { width: 11px; height: 11px; vertical-align: -1px; }
 .fcScoutBadge:hover { opacity: .9; }
-.fcScoutOdds { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; vertical-align: middle; }
+.fcScoutOdds { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: var(--fc-r1); font-size: var(--fc-fs-sm); font-weight: 600; vertical-align: middle; }
 .fcScoutOdds.up { color: var(--fc-success); background: rgba(35,165,90,.14); }
 .fcScoutOdds.down { color: var(--fc-danger); background: rgba(242,63,67,.14); }
 `;

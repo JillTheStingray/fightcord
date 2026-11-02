@@ -202,8 +202,8 @@ function onScroll(e) {
 
 const CSS = `
 #hcCard { position: fixed; z-index: 100001; width: 300px; overflow: hidden; border-radius: var(--fc-r3); pointer-events: auto;
-    background: var(--fc-s0); color: var(--fc-text); font: 14px/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.55); transform-origin: left center; }
+    background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
+    box-shadow: 0 0 0 1px var(--fc-tint-2), 0 12px 32px var(--fc-scrim-4); transform-origin: left center; }
 #hcCard .hcBody { padding: 0 14px 14px; }
 #hcCard .fc-ch-sec > :first-child { margin-top: 0; }
 #hcCard .hcStar { color: var(--fc-warning); display: inline-flex; }
@@ -211,17 +211,17 @@ const CSS = `
 #hcCard .fc-ch-meta > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
 #hcCard .hcPlay { position: relative; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: rgba(242,63,67,.1);
     box-shadow: inset 3px 0 0 var(--fc-danger); }
-#hcCard .hcPlay .t { font-size: 12px; font-weight: 700; color: var(--fc-danger); text-transform: uppercase; letter-spacing: .03em; }
+#hcCard .hcPlay .t { font-size: var(--fc-fs-sm); font-weight: 700; color: var(--fc-danger); text-transform: uppercase; letter-spacing: .03em; }
 #hcCard .hcPlay .t b { color: var(--fc-head); text-transform: none; letter-spacing: 0; }
-#hcCard .hcPlay .g { margin-top: 2px; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 70px; }
-#hcCard .hcWatch { position: absolute; right: 8px; top: 50%; margin-top: -13px; height: 26px; padding: 0 10px; border-radius: 4px;
-    display: flex; align-items: center; font-size: 12px; font-weight: 700; color: #fff; background: var(--fc-danger); cursor: pointer; }
+#hcCard .hcPlay .g { margin-top: 2px; font-size: var(--fc-fs-ui); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 70px; }
+#hcCard .hcWatch { position: absolute; right: 8px; top: 50%; margin-top: -13px; height: 26px; padding: 0 10px; border-radius: var(--fc-r1);
+    display: flex; align-items: center; font-size: var(--fc-fs-sm); font-weight: 700; color: #fff; background: var(--fc-danger); cursor: pointer; }
 #hcCard .hcVs { display: flex; align-items: baseline; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: var(--fc-s2); }
-#hcCard .hcVs span { flex: 1; font-size: 12px; color: var(--fc-muted); }
-#hcCard .hcVs b { font-size: 16px; font-weight: 800; color: var(--fc-head); }
+#hcCard .hcVs span { flex: 1; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
+#hcCard .hcVs b { font-size: var(--fc-fs-lg); font-weight: 800; color: var(--fc-head); }
 #hcCard .hcVs b.up { color: var(--fc-success); }
 #hcCard .hcVs b.down { color: var(--fc-danger); }
-#hcCard .hcVs small { margin-left: 6px; font-size: 11px; color: var(--fc-muted); }
+#hcCard .hcVs small { margin-left: 6px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 #hcCard .hcNotes { margin-top: 10px; }
 #hcCard .hcBtns { display: flex; margin-top: 12px; }
 #hcCard .hcBtns > .fc-btn { margin-left: 6px; }

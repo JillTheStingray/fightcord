@@ -72,6 +72,37 @@ function applyTheme(el, th) {
     el.classList.toggle('fclkTheme', !!vars);
 }
 const setFrame = (el, fr) => { if (!el) return; const v = fr && FRAME_NAMES[fr] ? fr : ''; if ((el.dataset.fcfr || '') !== v) { if (v) el.dataset.fcfr = v; else delete el.dataset.fcfr; } };
+// 3.9: an avatar decoration (decorations.js draws them) and a name style
+const setDeco = (el, dc) => { if (!el) return; const v = typeof dc === 'string' && /^[a-z]{2,16}$/.test(dc) ? dc : ''; if ((el.dataset.fcdc || '') !== v) { if (v) el.dataset.fcdc = v; else delete el.dataset.fcdc; } };
+const NAME_STYLES = { gradient: N_('Gradient'), neon: N_('Neon'), shimmer: N_('Shimmer'), toon: N_('Toon'), fire: N_('Fire'), rainbow: N_('Rainbow') };
+function setName(el, ns) {
+    if (!el) return;
+    const s = ns && NAME_STYLES[ns.s] ? ns.s : '';
+    const c = s && Array.isArray(ns.c) ? ns.c : null;
+    if ((el.dataset.fcns || '') !== s) { if (s) el.dataset.fcns = s; else delete el.dataset.fcns; }
+    if (c) { el.style.setProperty('--ns1', c[0]); el.style.setProperty('--ns2', c[1]); }
+    else if (el.style.getPropertyValue('--ns1')) { el.style.removeProperty('--ns1'); el.style.removeProperty('--ns2'); }
+}
+// the name inside one of Fightcade's rows (a chat message, a member)
+const rowName = (row) => row.querySelector(':scope > .message > header .author, header .author, .playerName');
+
+// 3.9: whose row it is. an older plugin used to put data-current-user on Fightcade's chat messages and member
+// rows, and Fightcord leaned on it (looks, the streak name, streamer mode); Fightcade itself never sets it.
+// So Fightcord stamps it from the name on the row -- again every time, as Vue re-uses rows for other
+// players -- and marks its own (data-fcown) so one somebody else set is left alone.
+function ownerOf(row) {
+    const el = row.classList.contains('userItem') ? row.querySelector('.playerName') : row.querySelector('header .author');
+    const t = el && el.firstChild && el.firstChild.nodeType === 3 ? el.firstChild.textContent : el ? el.getAttribute('title') || '' : '';
+    return String(t || '').trim();
+}
+function stampOwners() {
+    document.querySelectorAll('.chatContent .messageWrapper.chat, .userItem').forEach(row => {
+        if (row.hasAttribute('data-current-user') && !row.hasAttribute('data-fcown')) return;
+        const n = ownerOf(row);
+        if (!n) { if (row.hasAttribute('data-fcown')) { row.removeAttribute('data-current-user'); row.removeAttribute('data-fcown'); } return; }
+        if (row.getAttribute('data-current-user') !== n) { row.setAttribute('data-current-user', n); row.setAttribute('data-fcown', ''); }
+    });
+}
 
 // gravatar hash -> name, for the pictures Fightcade draws (rebuilt when its user list changes)
 let byHash = new Map(), usersSig = '';
@@ -110,6 +141,7 @@ function swapImg(img, name) {
 
 function paint() {
     if (typeof document === 'undefined' || !P()) return;
+    stampOwners();
     const map = hashMap();
     // what Fightcord draws (it knows whose)
     document.querySelectorAll('.fc-avatar[data-av]').forEach(el => {
@@ -117,6 +149,16 @@ function paint() {
         if (img) { if (!img.__fcMine && !img.__fcSet && /^https:/.test(img.getAttribute('src') || '') && !/gravatar\.com/.test(img.getAttribute('src'))) img.__fcMine = img.getAttribute('src'); swapImg(img, name); }
         const l = look(name);
         setFrame(el, l && l.fr);
+        setDeco(el, l && l.dc);
+    });
+    // 3.9: names in Fightcade's chat and member list (each player looked up once per paint)
+    const seenNs = new Map();
+    document.querySelectorAll('[data-current-user]').forEach(row => {
+        const el = rowName(row);
+        if (!el) return;
+        const n = row.getAttribute('data-current-user');
+        if (!seenNs.has(n)) { const l = look(n); seenNs.set(n, l && l.ns); }
+        setName(el, seenNs.get(n));
     });
     // what Fightcade draws: its chat, lists and profile pictures
     document.querySelectorAll('img[src*="gravatar.com/avatar/"], img.fclkSwapped').forEach(img => {
@@ -131,17 +173,18 @@ function paint() {
         img.classList.toggle('fclkSwapped', !!img.__fcSet);
         const wrap = img.parentElement && img.parentElement.matches('.avatarWrapper, .userAvatarWrapper') ? img.parentElement : null;
         const l = look(name);
-        if (wrap) setFrame(wrap, l && l.fr);
+        if (wrap) { setFrame(wrap, l && l.fr); setDeco(wrap, l && l.dc); }
     });
     // you, bottom-left (layout3's panel)
     const mine = document.querySelector('.l3Av');
-    if (mine) { const l = look(fc.app.me()); setFrame(mine, l && l.fr); }
-    // cards in their owner's colours
+    if (mine) { const l = look(fc.app.me()); setFrame(mine, l && l.fr); setDeco(mine, l && l.dc); setName(document.querySelector('#l3Panel .l3Me .l3Who b'), l && l.ns); }
+    // cards in their owner's colours (and their name in its style)
     document.querySelectorAll('.fc-ch[data-fclook]').forEach(head => {
         const box = head.closest('.fc-cardpop, .fc-pop, .fcdmProf, #pcCard') || head.parentElement;
         if (box.classList.contains('fclkPrev')) return;          // the editor paints its own
         const l = look(head.dataset.fclook);
         applyTheme(box, l && l.th);
+        setName(head.querySelector('.fc-ch-name > span'), l && l.ns);
     });
 }
 
@@ -204,6 +247,20 @@ const CSS = `
 [data-fcfr]:hover::after, .fc-cardpop:hover [data-fcfr]::after, .fc-pop:hover [data-fcfr]::after, .fcdmProf:hover [data-fcfr]::after, .fclkPrev [data-fcfr]::after { animation: fclkSpin 4s linear infinite; }
 [data-fcfr="neon"]:hover::after, .fc-cardpop:hover [data-fcfr="neon"]::after, .fc-pop:hover [data-fcfr="neon"]::after, .fcdmProf:hover [data-fcfr="neon"]::after, .fclkPrev [data-fcfr="neon"]::after,
 [data-fcfr="pixel"]:hover::after, .fc-cardpop:hover [data-fcfr="pixel"]::after, .fc-pop:hover [data-fcfr="pixel"]::after, .fcdmProf:hover [data-fcfr="pixel"]::after, .fclkPrev [data-fcfr="pixel"]::after { animation: fclkPulse 1.4s ease-in-out infinite; }
+/* 3.9: name styles -- still in lists and chat, moving on hover, in cards and in the editor */
+[data-fcns] { -webkit-background-clip: text; background-clip: text; }
+[data-fcns="gradient"], [data-fcns="shimmer"], [data-fcns="fire"], [data-fcns="rainbow"] { color: transparent !important; -webkit-text-fill-color: transparent; }
+[data-fcns="gradient"] { background-image: linear-gradient(90deg, var(--ns1), var(--ns2)); }
+[data-fcns="shimmer"] { background-image: linear-gradient(90deg, var(--ns1), var(--ns2), #ffffff, var(--ns2), var(--ns1)); background-size: 300% 100%; background-position: 0 0; }
+[data-fcns="fire"] { background-image: linear-gradient(180deg, #ffe08a 10%, #ff9e2c 45%, #ff3d00 90%); filter: drop-shadow(0 0 3px rgba(255,109,0,.45)); }
+[data-fcns="rainbow"] { background-image: linear-gradient(90deg, #ff5f6d, #ffc371, #f9f871, #5ef38c, #3ec7ff, #a77bff, #ff5f6d); background-size: 200% 100%; }
+[data-fcns="neon"] { color: #fff !important; -webkit-text-fill-color: #fff; text-shadow: 0 0 2px var(--ns1), 0 0 6px var(--ns1), 0 0 12px var(--ns2); }
+[data-fcns="toon"] { color: var(--ns1) !important; -webkit-text-fill-color: var(--ns1); text-shadow: 1px 1px 0 var(--fc-s0), -1px -1px 0 var(--fc-s0), 1px -1px 0 var(--fc-s0), -1px 1px 0 var(--fc-s0), 2px 2px 0 var(--ns2); font-weight: 800; }
+@keyframes fclkShimmer { to { background-position: -200% 0; } }
+@keyframes fclkNeon { 50% { text-shadow: 0 0 3px var(--ns1), 0 0 10px var(--ns1), 0 0 20px var(--ns2); } }
+.messageWrapper:hover [data-fcns="shimmer"], .fc-ch-name [data-fcns="shimmer"], .pcEdNs [data-fcns="shimmer"], .l3Me:hover [data-fcns="shimmer"],
+.messageWrapper:hover [data-fcns="rainbow"], .fc-ch-name [data-fcns="rainbow"], .pcEdNs [data-fcns="rainbow"], .l3Me:hover [data-fcns="rainbow"] { animation: fclkShimmer 3s linear infinite; }
+.messageWrapper:hover [data-fcns="neon"], .fc-ch-name [data-fcns="neon"], .pcEdNs [data-fcns="neon"] { animation: fclkNeon 1.6s ease-in-out infinite; }
 /* the card in its owner's colours (the panels and text follow, from themeVars) */
 .fclkTheme { background: linear-gradient(180deg, var(--th1), var(--th2)) !important; }
 .fclkTheme .fc-ch-av { background: var(--th1); }
@@ -227,7 +284,7 @@ function start(f) {
     const soon = () => { clearTimeout(t); t = setTimeout(paint, 60); };
     fc.on('presence:profile', soon);
     fc.on('presence:changed', soon);
-    fc.watch(paint, { selector: 'img[src*="gravatar.com/avatar/"], .fc-avatar[data-av], .fc-ch[data-fclook]' });
+    fc.watch(paint, { selector: 'img[src*="gravatar.com/avatar/"], .fc-avatar[data-av], .fc-ch[data-fclook], .chatContent .messageWrapper, .userItem' });
     fc.tick(paint, 5000);
     return api;
 }
@@ -236,7 +293,10 @@ const api = {
     themeVars: (th) => themeVars(th),
     applyTheme: (el, th) => applyTheme(el, th),
     setFrame: (el, fr) => setFrame(el, fr),
+    setDeco: (el, dc) => setDeco(el, dc),
+    setName: (el, ns) => setName(el, ns),
     frameNames: () => Object.assign({}, FRAME_NAMES),
+    nameStyles: () => Object.assign({}, NAME_STYLES),
     themes: () => THEMES.map(x => x.slice()),
     refresh: () => paint()
 };

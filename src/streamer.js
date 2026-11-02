@@ -57,12 +57,12 @@ ${sel('fc-st-opp', OPP)} { ${blur} }
 html.fc-streamer .userEmail, html.fc-streamer .userEmailWrapper { filter: blur(8px) !important; }
 ${mine}
 .fcstPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px; margin-right: 8px; border-radius: var(--fc-r1);
-    background: #d83c3e; color: #fff; font: 800 12px/32px var(--fc-font); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; user-select: none; }
+    background: #d83c3e; color: #fff; font: 800 var(--fc-fs-sm)/32px var(--fc-font); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; user-select: none; }
 .fcstPill i { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: #fff; animation: fcstBlink 1.6s ease-in-out infinite; }
 @keyframes fcstBlink { 50% { opacity: .3; } }
 .fcstUrl { display: flex; align-items: center; }
-.fcstUrl code { flex: 1; min-width: 0; padding: 6px 8px; margin-right: 8px; border-radius: 6px; background: var(--fc-s2, rgba(0,0,0,.25)); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
-.fcstErr { margin-top: 6px; font-size: 12.5px; color: var(--fc-danger); }
+.fcstUrl code { flex: 1; min-width: 0; padding: 6px 8px; margin-right: 8px; border-radius: 6px; background: var(--fc-s2, rgba(0,0,0,.25)); font-size: var(--fc-fs-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: text; }
+.fcstErr { margin-top: 6px; font-size: var(--fc-fs-ui); color: var(--fc-danger); }
 `;
 }
 

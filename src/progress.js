@@ -9,7 +9,7 @@
  *   - a celebration when your rank goes up (and a quiet note when it goes down)
  *
  * ELO: Fightcade's own when it gives one, else an estimate from your rank and leaderboard
- * spot (marked "~"). Events: rank:changed {rom, from, to}.
+ * spot (marked "~"). Events: rank:changed {rom, from, to}, elo:best {rom, elo, prev} (3.9).
  */
 'use strict';
 
@@ -39,6 +39,16 @@ function mergePoint(points, p) {
     return { points: list, changed };
 }
 
+// 3.9: a new point above your best real ELO in that game (3 real points before it, so the first
+// days don't count) -> { rom, elo, prev } or null. Estimates ("~") never count.
+function bestElo(points, p) {
+    if (!p || p.est !== false || !(p.elo > 0)) return null;
+    const real = points.filter(x => x.rom === p.rom && x.est === false && x.elo > 0);
+    if (real.length < 3) return null;
+    const prev = Math.max(...real.map(x => x.elo));
+    return p.elo > prev ? { rom: p.rom, elo: p.elo, prev } : null;
+}
+
 // the facts for one game: latest, best ever, firsts
 function summary(points, rom) {
     const ps = points.filter(p => p.rom === rom).sort((a, b) => a.at - b.at);
@@ -46,7 +56,8 @@ function summary(points, rom) {
     const last = ps[ps.length - 1], first = ps[0];
     const best = ps.reduce((b, p) => (p.rank > b.rank || (p.rank === b.rank && (p.elo || 0) > (b.elo || 0))) ? p : b, ps[0]);
     const bestPos = ps.filter(p => p.pos).reduce((b, p) => (!b || p.pos < b.pos) ? p : b, null);
-    return { ps, last, first, best, bestPos, eloChange: last.elo != null && first.elo != null ? last.elo - first.elo : null,
+    const peak = ps.filter(p => p.elo != null).reduce((b, p) => (!b || p.elo > b.elo) ? p : b, null);
+    return { ps, last, first, best, bestPos, peak, eloChange: last.elo != null && first.elo != null ? last.elo - first.elo : null,
         matchesSince: (last.matches || 0) - (first.matches || 0) };
 }
 
@@ -85,6 +96,8 @@ async function snapshot(rom, why) {
     const spot = board && board.get(me.toLowerCase());
     const est = fc.data.eloFor(me, gi.rank, board, gi.elo || gi.rating || fc.elo.value(me, rom));
     const p = { at: t, rom, rank: gi.rank, elo: est ? est.elo : null, est: est ? est.est : true, matches: gi.num_matches || 0, pos: spot ? spot.pos : null };
+    const best = bestElo(points, p);
+    if (best) fc.emit('elo:best', best);
     const r = mergePoint(points, p);
     points = r.points;
     save();
@@ -102,6 +115,8 @@ function realPoint(e) {
     const board = fc.api.cachedBoard(e.rom);
     const spot = board && board.get(fc.app.me().toLowerCase());
     const p = { at: Date.now(), rom: e.rom, rank, elo: e.elo, est: false, matches: prev ? prev.matches : 0, pos: spot ? spot.pos : (prev ? prev.pos : null) };
+    const best = bestElo(points, p);
+    if (best) fc.emit('elo:best', best);
     const r = mergePoint(points, p);
     points = r.points;
     save();
@@ -179,7 +194,7 @@ function tabHtml(ctx) {
     const s = summary(points, tabRom);
     const L = (r) => fc.data.rankLetter(r);
     const elo = s.ps.filter(p => p.elo != null);
-    const chart = (pts, opts) => `<div class="prgChart">${fc.ui.chart.line([{ points: pts, area: true }], Object.assign({ w: 680, h: 180, dots: pts.length < 40 }, opts))}</div>`;
+    const chart = (pts, opts) => `<div class="prgChart">${fc.ui.chart.line([{ points: pts, area: true }], Object.assign({ h: 240, dots: pts.length < 40 }, opts))}</div>`;
     const day = (t) => new Date(t).toLocaleDateString(fc.t.locale(), { month: 'short', day: 'numeric' });
     const xl = (ps) => ps.length > 1 ? [[ps[0].at, day(ps[0].at)], [ps[ps.length - 1].at, day(ps[ps.length - 1].at)]] : [];
     const posPts = s.ps.filter(p => p.pos);
@@ -199,7 +214,7 @@ function tabHtml(ctx) {
             ${cfg.track ? fc.ui.btn('Check now', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'prg-now', title: 'Ask Fightcade for your rank in this game now' }) : ''}</div>
         <div class="fcsTop">
             <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.last.rank, '', 26)} ${s.last.elo != null ? (s.last.est ? '~' : '') + fc.fmt.num(s.last.elo) : ''}</div><div class="k">${T('now')}${s.last.elo != null ? ' · ELO' + (s.last.est ? ' ' + T('(estimated)') : '') : ''}</div></div>
-            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank, '', 26)}</div><div class="k">${T('best ever · {when}', { when: day(s.best.at) })}</div></div>
+            <div class="fc-tile fcsBig"><div class="v">${fc.ui.tag(s.best.rank, '', 26)} ${s.peak ? (s.peak.est ? '~' : '') + fc.fmt.num(s.peak.elo) : ''}</div><div class="k">${T('best ever · {when}', { when: day((s.peak || s.best).at) })}</div></div>
             <div class="fc-tile fcsBig${s.eloChange > 0 ? ' up' : s.eloChange < 0 ? ' down' : ''}"><div class="v">${s.eloChange == null ? '—' : (s.eloChange > 0 ? '+' : '') + s.eloChange}</div><div class="k">${T('ELO since {when}', { when: day(s.first.at) })}</div></div>
             <div class="fc-tile fcsBig"><div class="v">${s.last.pos ? '#' + s.last.pos : '—'}</div><div class="k">${T('leaderboard')}${s.bestPos ? ' · ' + T('best #{n}', { n: s.bestPos.pos }) : ''}</div></div>
             <div class="fc-tile fcsBig"><div class="v">${fc.fmt.num(s.matchesSince)}</div><div class="k">${T('matches since {when}', { when: day(s.first.at) })}</div></div>
@@ -235,10 +250,10 @@ const CSS = `
 .prgGames { display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
 .prgGames .fc-chip { margin: 0 6px 6px 0; }
 .prgGames .fc-btn { margin: 0 0 6px auto; }
-.prgChart svg { width: 100%; height: auto; }
+.prgChart { margin-top: 4px; }
 .prgRanks { display: flex; height: 28px; border-radius: var(--fc-r1); overflow: hidden; background: var(--fc-s1); }
-.prgRanks i { display: flex; align-items: center; justify-content: center; font: 800 12px var(--fc-font); font-style: normal; color: #111; min-width: 2px; }
-.prgAxis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--fc-muted); }
+.prgRanks i { display: flex; align-items: center; justify-content: center; font: 800 var(--fc-fs-sm) var(--fc-font); font-style: normal; color: #111; min-width: 2px; }
+.prgAxis { display: flex; justify-content: space-between; margin-top: 4px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 #fcCeleb .prgUp { display: flex; align-items: center; }
 #fcCeleb .prgUp .r { width: 14vmin; height: 14vmin; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 5vmin var(--c); }
 #fcCeleb .prgUp .r .fc-tag { --sz: 14vmin; }
@@ -283,5 +298,5 @@ const api = {
     _rankChanged: (rom, from, to) => rankChanged(rom, from, to)
 };
 
-module.exports = { id: 'progress', name: 'Rank & ELO history', needs: ['stats'], start, mergePoint, summarize: summary };
+module.exports = { id: 'progress', name: 'Rank & ELO history', needs: ['stats'], start, mergePoint, bestElo, summarize: summary };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

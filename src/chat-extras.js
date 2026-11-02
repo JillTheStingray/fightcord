@@ -962,19 +962,19 @@ const CSS = `
 /* the channel notice, folded to one line (2.13) */
 .messageWrapper.motd.fcx-motd-shut > .motd { display: none !important; }
 .messageWrapper.motd.fcx-motd-shut { border: 0 !important; box-shadow: none !important; background: none !important; padding: 0 !important; }
-.fcxMotd { display: flex; align-items: center; margin: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; user-select: none;
-    background: rgba(255,255,255,.045); color: var(--fc-muted); font: 500 13px/18px var(--fc-font); box-shadow: inset 3px 0 0 var(--fc-accent); }
-.fcxMotd:hover { background: rgba(255,255,255,.08); color: var(--fc-text); }
+.fcxMotd { display: flex; align-items: center; margin: 0; padding: 8px 12px; border-radius: var(--fc-r2); cursor: pointer; user-select: none;
+    background: var(--fc-tint-1); color: var(--fc-muted); font: 500 var(--fc-fs-ui)/18px var(--fc-font); box-shadow: inset 3px 0 0 var(--fc-accent); }
+.fcxMotd:hover { background: var(--fc-tint-3); color: var(--fc-text); }
 .fcxMotd > .fc-ic { width: 16px; height: 16px; flex: none; margin-right: 8px; color: var(--fc-accent); }
 .fcxMotd > b { flex: none; color: var(--fc-head); font-weight: 600; margin-right: 10px; }
 .fcxMotd > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fcxMotd > i { display: inline-flex; flex: none; margin-left: 8px; transition: transform .15s; }
+.fcxMotd > i { display: inline-flex; flex: none; margin-left: 8px; transition: transform var(--fc-fast); }
 .fcxMotd > i > .fc-ic { width: 16px; height: 16px; }
 .messageWrapper.motd.fcx-motd:not(.fcx-motd-shut) > .fcxMotd > i { transform: rotate(180deg); }
 .messageWrapper.motd.fcx-motd:not(.fcx-motd-shut) > .fcxMotd { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention,
 html body .chatContent .messageWrapper.chat .message.chat.fcx-mention-head > header {
-    background: rgba(250,168,26,.12) !important; box-shadow: inset 2px 0 0 #f0b232 !important; border-radius: 0 !important; transition: background-color .12s; }
+    background: rgba(250,168,26,.12) !important; box-shadow: inset 2px 0 0 var(--fc-warning) !important; border-radius: 0 !important; transition: background-color var(--fc-fast); }
 html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention:hover,
 html body .chatContent .messageWrapper.chat .message.chat .line.fcx-mention.fcx-hov,
 html body .chatContent .messageWrapper.chat .message.chat.fcx-mention-head > header.fcx-hov { background: rgba(250,168,26,.17) !important; }
@@ -987,69 +987,69 @@ html body .chatContent .messageWrapper.fcx-gap { position: relative !important; 
 html body .chatContent .messageWrapper.fcx-gap > .message::before {
     content: attr(data-fcx-gap) !important; position: absolute !important; top: -22px !important; left: 16px !important; right: 16px !important;
     height: 14px !important; display: block !important; text-align: center !important; pointer-events: none !important;
-    font: 600 11px/14px var(--fc-font) !important; color: var(--fc-muted) !important;
+    font: 600 var(--fc-fs-xs)/14px var(--fc-font) !important; color: var(--fc-muted) !important;
     background: linear-gradient(var(--fc-divider), var(--fc-divider)) left center / calc(50% - 44px) 1px no-repeat,
                 linear-gradient(var(--fc-divider), var(--fc-divider)) right center / calc(50% - 44px) 1px no-repeat !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper,
 html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title,
 html.fcx-syscards body .chatContent .messageWrapper.challengeError .message {
     display: inline-flex !important; align-items: center !important; height: 24px !important; padding: 0 10px 0 8px !important;
-    border-radius: 12px !important; font-size: 13px !important; font-weight: 600 !important; line-height: 24px !important; }
+    border-radius: var(--fc-r3) !important; font-size: var(--fc-fs-ui) !important; font-weight: 600 !important; line-height: 24px !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.accepted { color: #2dc770 !important; background: rgba(35,165,90,.14) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.accepted::before { content: '' !important; display: inline-block !important; width: 14px !important; height: 14px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-check) center / contain no-repeat !important; }
-html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined { color: #f23f43 !important; background: rgba(242,63,67,.12) !important; }
+html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined { color: var(--fc-danger) !important; background: rgba(242,63,67,.12) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.requestChallenge .wrapUpWrapper.declined::before { content: '' !important; display: inline-block !important; width: 14px !important; height: 14px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-close) center / contain no-repeat !important; }
 html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title {
     color: var(--fc-text) !important; background: var(--fc-accent-soft) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.challengeRequested .challengeWrapper .title::before { content: '' !important; display: inline-block !important; width: 15px !important; height: 15px !important; margin-right: 6px !important; vertical-align: -2px !important; background: currentColor !important; -webkit-mask: var(--fc-i-swords) center / contain no-repeat !important; }
-html.fcx-syscards body .chatContent .messageWrapper.challengeError .message { color: #f23f43 !important; background: rgba(242,63,67,.12) !important; }
+html.fcx-syscards body .chatContent .messageWrapper.challengeError .message { color: var(--fc-danger) !important; background: rgba(242,63,67,.12) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.endgame.fcx-won .endgameMessageWrapper {
-    border-left-color: #23a55a !important; background: linear-gradient(90deg, rgba(35,165,90,.14), transparent 70%), var(--fc-input) !important; }
+    border-left-color: var(--fc-success) !important; background: linear-gradient(90deg, rgba(35,165,90,.14), transparent 70%), var(--fc-input) !important; }
 html.fcx-syscards body .chatContent .messageWrapper.endgame.fcx-lost .endgameMessageWrapper {
-    border-left-color: #f23f43 !important; background: linear-gradient(90deg, rgba(242,63,67,.12), transparent 70%), var(--fc-input) !important; }
+    border-left-color: var(--fc-danger) !important; background: linear-gradient(90deg, rgba(242,63,67,.12), transparent 70%), var(--fc-input) !important; }
 
 html body .chatContent .messageWrapper.fcx-new-first { position: relative !important; margin-top: 26px !important; }
 html body .chatContent .messageWrapper.fcx-new-first::after {
     content: 'NEW' !important; position: absolute !important; top: -16px !important; left: 16px !important; right: 16px !important;
     height: 13px !important; display: flex !important; justify-content: flex-end !important; align-items: center !important;
-    padding: 0 4px !important; font: 700 10px/13px system-ui, sans-serif !important; color: #fff !important; letter-spacing: .02em !important;
-    background: linear-gradient(#f23f43, #f23f43) left center / calc(100% - 34px) 1px no-repeat,
-                linear-gradient(#f23f43, #f23f43) right center / 34px 13px no-repeat !important;
-    border-radius: 0 4px 4px 0 !important; pointer-events: none !important; }
+    padding: 0 4px !important; font: 700 var(--fc-fs-2xs)/13px system-ui, sans-serif !important; color: #fff !important; letter-spacing: .02em !important;
+    background: linear-gradient(var(--fc-danger), var(--fc-danger)) left center / calc(100% - 34px) 1px no-repeat,
+                linear-gradient(var(--fc-danger), var(--fc-danger)) right center / 34px 13px no-repeat !important;
+    border-radius: 0 var(--fc-r1) var(--fc-r1) 0 !important; pointer-events: none !important; }
 
-#fcxBar { position: fixed; z-index: 100000; display: none; padding: 0; height: 32px; border-radius: 8px;
+#fcxBar { position: fixed; z-index: var(--fc-z-float); display: none; padding: 0; height: 32px; border-radius: var(--fc-r2);
     background: var(--fc-s0); border: 1px solid var(--fc-divider);
-    box-shadow: 0 4px 12px rgba(0,0,0,.3); overflow: hidden; }
+    box-shadow: 0 4px 12px var(--fc-scrim-2); overflow: hidden; }
 #fcxBar .fcxBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;
     color: var(--dc-icon, #b5bac1); }
 #fcxBar .fcxBtn:hover { background: var(--fc-s4); color: var(--fc-head); }
 
 .fcxEmbed { display: block; max-width: 432px; margin: 4px 0 2px; padding: 8px 16px 12px 12px; box-sizing: border-box;
-    border-left: 4px solid var(--fc-accent); border-radius: 4px; background: var(--fc-input);
-    font-size: 14px; line-height: 1.375; white-space: normal; font-style: normal; }
-.fcxEmbed .fcxSite { font-size: 12px; color: var(--fc-muted); margin-top: 4px; }
-.fcxEmbed .fcxAuthor { font-size: 14px; font-weight: 600; color: var(--fc-head); margin-top: 6px; }
-.fcxEmbed .fcxTitle { display: block; margin-top: 6px; font-size: 15px; font-weight: 600; color: #00a8fc !important;
+    border-left: 4px solid var(--fc-accent); border-radius: var(--fc-r1); background: var(--fc-input);
+    font-size: var(--fc-fs-md); line-height: 1.375; white-space: normal; font-style: normal; }
+.fcxEmbed .fcxSite { font-size: var(--fc-fs-sm); color: var(--fc-muted); margin-top: 4px; }
+.fcxEmbed .fcxAuthor { font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); margin-top: 6px; }
+.fcxEmbed .fcxTitle { display: block; margin-top: 6px; font-size: var(--fc-fs-chat); font-weight: 600; color: var(--fc-link) !important;
     text-decoration: none; }
 .fcxEmbed .fcxTitle:hover { text-decoration: underline; }
 .fcxEmbed .fcxDesc { margin-top: 6px; color: var(--fc-text); white-space: pre-line; overflow: hidden;
     display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
 .fcxEmbed .fcxThumb { display: block; position: relative; margin-top: 12px; line-height: 0; }
 .fcxEmbed .fcxThumb img { width: 400px !important; max-width: 100%; height: auto !important; max-height: 225px;
-    object-fit: cover; border-radius: 4px; }
+    object-fit: cover; border-radius: var(--fc-r1); }
 .fcxEmbed .fcxVideo::after { content: ''; position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
-    margin: -24px 0 0 -24px; border-radius: 50%; background: rgba(0,0,0,.6)
+    margin: -24px 0 0 -24px; border-radius: 50%; background: var(--fc-scrim-4)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E") center / 26px no-repeat; }
-.fcxEmbed.fcxImage { position: relative; display: block; width: -webkit-fit-content; width: fit-content; padding: 0; background: none; border: 0; max-width: 400px; overflow: hidden; border-radius: 8px; line-height: 0; }
+.fcxEmbed.fcxImage { position: relative; display: block; width: -webkit-fit-content; width: fit-content; padding: 0; background: none; border: 0; max-width: 400px; overflow: hidden; border-radius: var(--fc-r2); line-height: 0; }
 .fcxEmbed.fcxImage img, .fcxEmbed.fcxImage video { width: auto !important; height: auto !important; max-width: 400px; max-height: 300px;
-    border-radius: 8px; display: block; cursor: zoom-in; background: rgba(0,0,0,.2); }
+    border-radius: var(--fc-r2); display: block; cursor: zoom-in; background: var(--fc-scrim-1); }
 .fcxEmbed.fcxImage video { cursor: default; }
 .fcxEmbed.fcxImage video.fcxGifv { cursor: zoom-in; }
 .fcxEmbed.fcxBlur img, .fcxEmbed.fcxBlur video { filter: blur(24px); transform: scale(1.06); cursor: pointer; }
-.fcxEmbed .fcxShow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 14px; border-radius: 16px; cursor: pointer;
-    background: rgba(0,0,0,.65); color: #fff; font: 600 13px/1.2 var(--fc-font); }
+.fcxEmbed .fcxShow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 6px 14px; border-radius: var(--fc-r4); cursor: pointer;
+    background: rgba(0,0,0,.65); color: #fff; font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .fcxEmbed .fcxFav { position: absolute; top: 6px; right: 6px; display: none; padding: 5px; border-radius: 50%; cursor: pointer; line-height: 0;
-    background: rgba(0,0,0,.6); color: #fff; }
+    background: var(--fc-scrim-4); color: #fff; }
 .fcxEmbed.fcxImage:hover .fcxFav { display: block; }
 .fcxEmbed .fcxFav.on { color: var(--fc-warning); }
 .fcxEmbed .fcxFav:hover { background: rgba(0,0,0,.8); }
@@ -1058,36 +1058,36 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .blocksContainer > .blocks.fcxUrlHid { display: none !important; }
 /* multi-line messages */
 .fcxMulti { position: absolute; z-index: 60; box-sizing: border-box; margin: 0; padding-top: 11px; padding-bottom: 11px; border: 0; outline: none; resize: none;
-    overflow-y: auto; white-space: pre-wrap; box-shadow: 0 0 0 1px var(--fc-accent), 0 -6px 18px rgba(0,0,0,.25); }
+    overflow-y: auto; white-space: pre-wrap; box-shadow: 0 0 0 1px var(--fc-accent), 0 -6px 18px var(--fc-scrim-1); }
 .fcxMulti.sending { opacity: .6; }
-.fcxMultiNote { position: absolute; z-index: 60; padding: 2px 8px; border-radius: 4px; font: 500 12px/18px var(--fc-font); color: var(--fc-muted);
+.fcxMultiNote { position: absolute; z-index: 60; padding: 2px 8px; border-radius: var(--fc-r1); font: 500 var(--fc-fs-sm)/18px var(--fc-font); color: var(--fc-muted);
     background: var(--fc-s1, rgba(0,0,0,.6)); pointer-events: none; white-space: nowrap; }
 /* audio files */
 .fcxEmbed.fcxAudio { border-left: 0; line-height: 1.3; user-select: none; }
-.fcxEmbed.fcxAudio { width: 400px; max-width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; }
+.fcxEmbed.fcxAudio { width: 400px; max-width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: var(--fc-r2); }
 .fcxAuTop { display: flex; align-items: center; min-width: 0; margin-bottom: 10px; }
 .fcxAuTop > .fc-ic { flex: none; width: 28px; height: 28px; margin-right: 10px; color: var(--fc-accent); }
-.fcxAuTop a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: #00a8fc !important; }
+.fcxAuTop a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--fc-link) !important; }
 .fcxAuCtl { display: flex; align-items: center; }
 .fcxEmbed .fcxPlay { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
     background: var(--fc-accent); color: #fff; }
 .fcxEmbed .fcxPlay:hover { filter: brightness(1.12); }
 .fcxEmbed .fcxPlay .fc-ic { width: 14px; height: 14px; }
-.fcxAuCtl .fcxTime { flex: none; margin: 0 12px; font-size: 12px; color: var(--fc-muted); font-variant-numeric: tabular-nums; }
-.fcxSeek { flex: 1; height: 6px; border-radius: 3px; cursor: pointer; background: rgba(255,255,255,.12); overflow: hidden; }
+.fcxAuCtl .fcxTime { flex: none; margin: 0 12px; font-size: var(--fc-fs-sm); color: var(--fc-muted); font-variant-numeric: tabular-nums; }
+.fcxSeek { flex: 1; height: 6px; border-radius: 3px; cursor: pointer; background: var(--fc-tint-4); overflow: hidden; }
 .fcxSeek > i { display: block; width: 0; height: 100%; background: var(--fc-accent); }
 #fcxView { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal, 100010); display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,.85); animation: fcIn var(--fc-med, .2s) ease both; }
 #fcxView .fcxViewIn { display: flex; flex-direction: column; align-items: flex-start; max-width: 90vw; }
-#fcxView img, #fcxView video { max-width: 90vw; max-height: 82vh; border-radius: 6px; display: block; box-shadow: 0 8px 40px rgba(0,0,0,.6); }
-#fcxView .fcxViewBar { display: flex; margin-top: 8px; font: 500 14px/1.2 var(--fc-font); }
+#fcxView img, #fcxView video { max-width: 90vw; max-height: 82vh; border-radius: 6px; display: block; box-shadow: 0 8px 40px var(--fc-scrim-4); }
+#fcxView .fcxViewBar { display: flex; margin-top: 8px; font: 500 var(--fc-fs-md)/1.2 var(--fc-font); }
 #fcxView .fcxViewBar a, #fcxView .fcxViewBar span { margin-right: 16px; color: rgba(255,255,255,.75) !important; cursor: pointer; text-decoration: none; }
 #fcxView .fcxViewBar a:hover, #fcxView .fcxViewBar span:hover { color: #fff !important; text-decoration: underline; }
 
 #fcxJump { position: fixed; z-index: 99990; display: none; align-items: center; justify-content: space-between;
-    height: 34px; padding: 0 12px; box-sizing: border-box; border-radius: 8px 8px 0 0;
-    background: var(--fc-accent); color: #fff; font: 500 14px/1 var(--fc-font); cursor: pointer;
-    box-shadow: 0 -2px 8px rgba(0,0,0,.2); }
+    height: 34px; padding: 0 12px; box-sizing: border-box; border-radius: var(--fc-r2) var(--fc-r2) 0 0;
+    background: var(--fc-accent); color: #fff; font: 500 var(--fc-fs-md)/1 var(--fc-font); cursor: pointer;
+    box-shadow: 0 -2px 8px var(--fc-scrim-1); }
 #fcxJump .fcxJumpBtn { font-weight: 700; }
 #fcxJump:hover { background: var(--fc-accent-h); }
 #fcxBar .fcxBtn > .fc-ic { width: 18px; height: 18px; }

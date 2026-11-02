@@ -1333,6 +1333,7 @@ async function apiFetch(job) {
 }
 
 let apiSeq = 0;
+let chartSeq = 0;
 // fc.api.request(body, { ttl (ms, default 5 min), timeout (ms), priority: 'high'|'normal'|'low', fresh,
 //   wait (ms: wait out a slow-down pause up to this long instead of failing -- for things you clicked) })
 function apiRequest(body, opts) {
@@ -1627,8 +1628,16 @@ const emuDir = () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator',
 // Fightcade's emulators, by process name (a running one = a match / training / replay)
 const EMU_PROCS = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/;
 let emuRunAt = 0, emuRunVal = null;
+// "bVidMuteChat 1" in fcadefbneo.ini = the emulator's Mute chat is on
+const iniMutesChat = (text) => /^\s*bVidMuteChat\s+1\s*$/m.test(String(text || ''));
 const emu = {
     dir: emuDir,
+    iniMutesChat,
+    // is FBNeo's in-game chat muted? -> Promise<boolean>; only reads its settings, false when there are none
+    chatMuted: () => new Promise((resolve) => {
+        const ini = path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'config', 'fcadefbneo.ini');
+        fs.readFile(ini, 'utf8', (e, text) => resolve(!e && iniMutesChat(text)));
+    }),
     // the folder FBNeo draws its in-game bar from (background.png, spectators.png, rank badges, flags)
     uiDir: () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'ui'),
     PROCS: EMU_PROCS,
@@ -1680,6 +1689,7 @@ const ICONS = {
     music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+    chatoff: '<path d="M4 5h16v11H9l-5 4zM3 3l18 18"/>',
     eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
     eyeOff: '<path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"/><path d="M10.7 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a13 13 0 0 1-1.7 2.7"/><path d="M6.6 6.6A13.5 13.5 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M2 2l20 20"/>',
     play: '<path d="M7 4v16l13-8z"/>',
@@ -1742,7 +1752,9 @@ const ICONS = {
     sticker: '<path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9.5L21 14.5V5a2 2 0 0 0-2-2z"/><path d="M14 21v-4a3 3 0 0 1 3-3h4M8 13h.01M16 9h.01M10 16s.8 1 2 1"/>',
     expand: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
     bellOff: '<path d="M8.7 3.9A6 6 0 0 1 18 9v5M18 18H4l2-2v-5a6 6 0 0 1 .3-1.8M10 20a2 2 0 0 0 4 0M2 2l20 20"/>',
-    unread: '<path d="M22 12a10 10 0 1 1-6-9.2"/><circle cx="19" cy="5" r="3"/>'
+    unread: '<path d="M22 12a10 10 0 1 1-6-9.2"/><circle cx="19" cy="5" r="3"/>',
+    sparkle: '<path d="M9.94 14.06 4 12l5.94-2.06L12 4l2.06 5.94L20 12l-5.94 2.06L12 20z"/><path d="M19 3v4M17 5h4M5 17v3M3.5 18.5h3"/>',
+    wrapped: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 13h18M12 8c-2-4-6-4-6-1.5S10 8 12 8zM12 8c2-4 6-4 6-1.5S14 8 12 8z"/>'
 };
 
 // an icon as a CSS url(): a mask (black) or a picture in one colour, for ::before / ::after and backgrounds
@@ -1768,7 +1780,18 @@ const STYLE = `
   --fc-text: var(--dc-text, #dbdee1); --fc-head: var(--dc-head, #f2f3f5); --fc-muted: var(--dc-muted, #949ba4); --fc-faint: var(--dc-faint, #6d6f78);
   --fc-r1: 4px; --fc-r2: 8px; --fc-r3: 12px; --fc-r4: 16px; --fc-pill: 999px;
   --fc-sh1: 0 1px 3px rgba(0,0,0,.3); --fc-sh2: 0 4px 14px rgba(0,0,0,.35); --fc-sh3: 0 12px 40px rgba(0,0,0,.5); --fc-glow: 0 0 24px rgba(79,99,240,.45);
-  --fc-z-page: 20; --fc-z-modal: 1000; --fc-z-pop: 100001; --fc-z-toast: 100004; --fc-z-top: 2147483000;
+  /* 3.9: outlines and selection rings (box-shadows that draw a border) */
+  --fc-edge: inset 0 0 0 1px var(--fc-divider); --fc-edge-out: 0 0 0 1px var(--fc-divider);
+  --fc-ring: 0 0 0 2px var(--fc-accent); --fc-ring-in: inset 0 0 0 2px var(--fc-accent);
+  /* see-through black (shades, shadows on pictures) and white (lifts on dark panels) */
+  --fc-scrim-1: rgba(0,0,0,.25); --fc-scrim-2: rgba(0,0,0,.35); --fc-scrim-3: rgba(0,0,0,.5); --fc-scrim-4: rgba(0,0,0,.6);
+  --fc-tint-1: rgba(255,255,255,.04); --fc-tint-2: rgba(255,255,255,.06); --fc-tint-3: rgba(255,255,255,.08); --fc-tint-4: rgba(255,255,255,.12);
+  /* the type scale: 15 is chat text, 13 most of the interface, 18+ headings */
+  --fc-fs-2xs: 10px; --fc-fs-xs: 11px; --fc-fs-sm: 12px; --fc-fs-ui: 13px; --fc-fs-md: 14px; --fc-fs-chat: 15px; --fc-fs-lg: 16px;
+  --fc-fs-h3: 18px; --fc-fs-xl: 20px; --fc-fs-2xl: 24px;
+  /* the arcade screens (VS / results, Wrapped, celebrations, log-in): always dark, never themed */
+  --fc-arc-bg: #0b0a0d; --fc-arc-gold: #ffd166; --fc-arc-gold-ink: #3a2400; --fc-arc-muted: #8a90b8; --fc-arc-text: #dde1f5; --fc-arc-win: #57f287; --fc-arc-lose: #ff6b6b;
+  --fc-z-page: 20; --fc-z-modal: 1000; --fc-z-float: 100000; --fc-z-pop: 100001; --fc-z-stack: 100002; --fc-z-toast: 100004; --fc-z-top: 2147483000;
   --fc-fast: .12s; --fc-med: .2s; --fc-slow: .35s; --fc-ease: cubic-bezier(.2,.8,.2,1);
   --fc-spring: cubic-bezier(.3,1.45,.5,1); --fc-out: 150ms; --fc-move: 1;
   --fc-font: var(--dc-font, 'gg sans', 'Noto Sans', 'Segoe UI', sans-serif);
@@ -1795,9 +1818,9 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 @keyframes fcSpin { to { transform: rotate(360deg); } }
 /* ui.celebrate: a full-screen moment with a burst of confetti (rank-ups, the thank-you for a new install) */
 #fcCeleb { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); display: flex; flex-direction: column; align-items: center;
-    justify-content: center; overflow: hidden; cursor: pointer; background: radial-gradient(ellipse at 50% 45%, #2a1d4a 0%, #0d0f1f 70%);
+    justify-content: center; overflow: hidden; cursor: pointer; background: radial-gradient(ellipse at 50% 45%, #2a1d4a 0%, var(--fc-navy) 70%);
     font-family: var(--fc-font); text-align: center; animation: fcIn .3s ease both; }
-#fcCeleb.out { opacity: 0; transition: opacity .4s ease; }
+#fcCeleb.out { opacity: 0; transition: opacity var(--fc-slow) ease; }
 #fcCeleb .glow { position: absolute; width: 70vmin; height: 70vmin; border-radius: 50%; background: radial-gradient(circle, var(--c), transparent 65%); opacity: .35;
     animation: fcCelebPulse 1.6s ease-in-out infinite alternate; }
 @keyframes fcCelebPulse { to { transform: scale(1.15); opacity: .55; } }
@@ -1811,18 +1834,33 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 #fcCeleb .hint { position: absolute; right: 2.4vmin; bottom: 2vmin; font-size: 1.6vmin; color: rgba(255,255,255,.35); }
 #fcCeleb .bit { position: absolute; left: 50%; top: 45%; width: 1.6vmin; height: 1.6vmin; border-radius: .3vmin; animation: fcCelebBurst 1.8s cubic-bezier(.1,.8,.3,1) both; }
 @keyframes fcCelebBurst { from { transform: translate(0,0) rotate(0); opacity: 1; } to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
+/* 3.9: the small one, top-right under the header (clear of the message box) */
+#fcCelebS { position: fixed; right: 24px; top: 72px; z-index: var(--fc-z-top); pointer-events: none; font-family: var(--fc-font); transition: opacity var(--fc-slow), transform var(--fc-slow); }
+#fcCelebS.out { opacity: 0; transform: translateY(-12px); }
+#fcCelebS .card { position: relative; display: flex; align-items: center; min-width: 240px; max-width: 360px; padding: 14px 18px 14px 14px; border-radius: 14px; pointer-events: auto; cursor: pointer;
+    background: linear-gradient(135deg, #2a1d4a, #121428); color: #fff; box-shadow: 0 12px 40px var(--fc-scrim-3), 0 0 0 1px var(--fc-tint-3), 0 0 28px -4px var(--c);
+    animation: fcCelebSIn .55s cubic-bezier(.2,1.5,.4,1) both; }
+@keyframes fcCelebSIn { from { opacity: 0; transform: translateY(-24px) scale(calc(1 - .3 * var(--fc-move))); } }
+#fcCelebS .ic { flex: none; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: 12px; border-radius: 50%;
+    background: var(--c); box-shadow: 0 0 16px var(--c); animation: fcCelebPunch .5s .15s cubic-bezier(.2,1.7,.4,1) both; }
+#fcCelebS .ic .fc-ic { width: 24px; height: 24px; color: #fff; }
+#fcCelebS .tx { display: flex; flex-direction: column; min-width: 0; }
+#fcCelebS .tx b { font-size: var(--fc-fs-lg); font-weight: 900; font-style: italic; letter-spacing: .02em; text-transform: uppercase; line-height: 1.15; }
+#fcCelebS .tx .mid { margin-top: 3px; font-size: var(--fc-fs-md); font-weight: 600; }
+#fcCelebS .tx small { margin-top: 3px; font-size: var(--fc-fs-ui); color: rgba(255,255,255,.7); }
+#fcCelebS .bit { position: absolute; left: 34px; top: 30px; width: 8px; height: 8px; border-radius: 2px; animation: fcCelebBurst 1.4s cubic-bezier(.1,.8,.3,1) both; pointer-events: none; }
 
 .fc-ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
 .fc-muted { color: var(--fc-muted); }
 .fc-row { display: flex; align-items: center; }
 .fc-row > * + * { margin-left: 8px; }
 .fc-grow { flex: 1; min-width: 0; }
-.fc-kbd { display: inline-block; padding: 0 5px; border-radius: 3px; font: 600 11px/16px var(--fc-font); background: var(--fc-s1); border: 1px solid var(--fc-divider); color: var(--fc-text); }
+.fc-kbd { display: inline-block; padding: 0 5px; border-radius: 3px; font: 600 var(--fc-fs-xs)/16px var(--fc-font); background: var(--fc-s1); border: 1px solid var(--fc-divider); color: var(--fc-text); }
 .fc-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--fc-s4); border-top-color: var(--fc-accent); animation: fcSpin .8s linear infinite; display: inline-block; }
 
 /* 3.3: Discord 2025 sizes -- 36 / 28 / 44 px, rounder corners */
 .fc-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 0; border-radius: var(--fc-r2);
-  font: 500 14px/1 var(--fc-font); color: #fff; background: var(--fc-accent); cursor: pointer; white-space: nowrap; user-select: none;
+  font: 500 var(--fc-fs-md)/1 var(--fc-font); color: #fff; background: var(--fc-accent); cursor: pointer; white-space: nowrap; user-select: none;
   transition: background var(--fc-fast), color var(--fc-fast), opacity var(--fc-fast), box-shadow var(--fc-fast); text-decoration: none; }
 .fc-btn:hover { background: var(--fc-accent-h); }
 .fc-btn:active { transform: translateY(1px); }
@@ -1832,21 +1870,29 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-btn.ghost { background: transparent; color: var(--fc-text); }
 .fc-btn.ghost:hover { background: var(--fc-hover); color: var(--fc-head); }
 .fc-btn.danger { background: var(--fc-danger); }
-.fc-btn.danger:hover { background: #da373c; }
+.fc-btn.danger:hover { background: var(--fc-danger); }
 .fc-btn.success { background: var(--fc-success); }
 .fc-btn.success:hover { background: #1a8d4b; }
 .fc-btn.brand { background: var(--fc-brand); box-shadow: var(--fc-glow); }
-.fc-btn.sm { height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12.5px; }
+.fc-btn.sm { height: 28px; padding: 0 10px; border-radius: 6px; font-size: var(--fc-fs-ui); }
 .fc-btn.sm > .fc-ic { width: 14px; height: 14px; margin-right: 4px; }
-.fc-btn.lg { height: 44px; padding: 0 22px; border-radius: 10px; font-size: 15px; }
+.fc-btn.lg { height: 44px; padding: 0 22px; border-radius: 10px; font-size: var(--fc-fs-chat); }
 .fc-btn.icon { width: 36px; padding: 0; }
 .fc-btn.icon > .fc-ic { margin: 0; }
 .fc-btn.sm.icon { width: 28px; }
 .fc-btn[disabled], .fc-btn.is-off { opacity: .5; cursor: default; transform: none !important; }
 .fc-btn[disabled]:hover { filter: none; }
+/* 3.9: keyboard focus (Tab) shows where you are; a mouse click doesn't */
+.fc-btn:focus { outline: none; }
+.fc-btn:focus-visible, .fc-chip[data-act]:focus-visible, .fc-select:focus-visible, [data-act][tabindex]:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--fc-accent); outline-offset: 2px; }
+/* an input with something wrong in it (class fc-bad, or aria-invalid) */
+.fc-input.fc-bad, .fc-input[aria-invalid="true"], .fc-select.fc-bad { box-shadow: inset 0 0 0 1px var(--fc-danger) !important; }
+.fc-input.fc-bad:focus, .fc-input[aria-invalid="true"]:focus { box-shadow: inset 0 0 0 2px var(--fc-danger) !important; }
+.fc-err { margin-top: 4px; font-size: var(--fc-fs-sm); color: var(--fc-danger); }
 
 .fc-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: var(--fc-pill); background: var(--fc-btn);
-  color: var(--fc-text); font: 600 12px/1 var(--fc-font); white-space: nowrap; cursor: default; }
+  color: var(--fc-text); font: 600 var(--fc-fs-sm)/1 var(--fc-font); white-space: nowrap; cursor: default; }
 .fc-chip[data-act] { cursor: pointer; }
 .fc-chip[data-act]:hover { background: var(--fc-btn-h); }
 .fc-chip.on { background: var(--fc-accent-soft); color: var(--fc-head); box-shadow: inset 0 0 0 1px var(--fc-accent); }
@@ -1854,38 +1900,38 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-tag { display: inline-block; flex: none; width: var(--sz, 18px); height: var(--sz, 18px); vertical-align: middle; line-height: 0; }
 .fc-tag > img { display: block; width: 100%; height: 100%; }
 .fc-tag.nf { width: auto; min-width: var(--sz, 18px); padding: 0 4px; border-radius: var(--fc-r1); text-align: center;
-  font: 800 11px/var(--sz, 18px) var(--fc-font); color: #111; background: var(--c, #9aa4b2); }
+  font: 800 var(--fc-fs-xs)/var(--sz, 18px) var(--fc-font); color: #111; background: var(--c, #9aa4b2); }
 .fc-tag.nf::before { content: attr(data-r); }
 .fc-ic.inl { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: .3em; }
 .fc-ic.fill { fill: currentColor; }
 .fc-flag { width: 20px !important; height: 14px !important; object-fit: cover; border-radius: 2px; vertical-align: -2px; }
 .fc-badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--fc-pill); text-align: center;
-  font: 700 11px/16px var(--fc-font); color: #fff; background: var(--fc-danger); }
+  font: 700 var(--fc-fs-xs)/16px var(--fc-font); color: #fff; background: var(--fc-danger); }
 
-.fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+.fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: var(--fc-edge); }
 .fc-card.raised { box-shadow: inset 0 0 0 1px var(--fc-divider), var(--fc-sh2); }
-.fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 700 12px/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
 .fc-card-h > .fc-ic { width: 14px; height: 14px; margin-right: 6px; }
-.fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r3); background: var(--fc-s1); box-shadow: inset 0 0 0 1px var(--fc-divider); }
-.fc-tile .v { font: 700 22px/1.1 var(--fc-font); color: var(--fc-head); }
-.fc-tile .k { margin-top: 4px; font: 700 11px/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
-.fc-tile .s { margin-top: 2px; font: 12px/1.3 var(--fc-font); color: var(--fc-muted); }
+.fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r3); background: var(--fc-s1); box-shadow: var(--fc-edge); }
+.fc-tile .v { font: 700 var(--fc-fs-2xl)/1.1 var(--fc-font); color: var(--fc-head); }
+.fc-tile .k { margin-top: 4px; font: 700 var(--fc-fs-xs)/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-tile .s { margin-top: 2px; font: var(--fc-fs-sm)/1.3 var(--fc-font); color: var(--fc-muted); }
 .fc-tile.up .v { color: var(--fc-success); }
 .fc-tile.down .v { color: var(--fc-danger); }
 
 .fc-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--fc-divider); }
-.fc-tab { position: relative; padding: 8px 2px; margin-right: 18px; font: 500 14px/1 var(--fc-font); color: var(--fc-muted); cursor: pointer; }
+.fc-tab { position: relative; padding: 8px 2px; margin-right: 18px; font: 500 var(--fc-fs-md)/1 var(--fc-font); color: var(--fc-muted); cursor: pointer; }
 .fc-tab:hover { color: var(--fc-text); }
 .fc-tab.on { color: var(--fc-head); }
 .fc-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: var(--fc-accent);
     animation: fcTabIn var(--fc-med) var(--fc-ease) both; }
 @keyframes fcTabIn { from { transform: scaleX(.3); opacity: 0; } to { transform: none; opacity: 1; } }
-.fc-tab .n { margin-left: 6px; font-size: 12px; color: var(--fc-faint); }
+.fc-tab .n { margin-left: 6px; font-size: var(--fc-fs-sm); color: var(--fc-faint); }
 
 .fc-switch-in { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
-.fc-switch { position: relative; flex: none; width: 40px; height: 24px; border-radius: 12px; background: #80848e; transition: background var(--fc-med); cursor: pointer; }
+.fc-switch { position: relative; flex: none; width: 40px; height: 24px; border-radius: var(--fc-r3); background: #80848e; transition: background var(--fc-med); cursor: pointer; }
 .fc-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
-  transition: transform var(--fc-med) var(--fc-spring), width var(--fc-fast) ease; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  transition: transform var(--fc-med) var(--fc-spring), width var(--fc-fast) ease; box-shadow: 0 1px 2px var(--fc-scrim-2); }
 /* the knob stretches a little while you press it, then springs across */
 .fc-switch:active::after { width: 22px; }
 .fc-switch-in:checked + .fc-switch:active::after { transform: translateX(12px); }
@@ -1893,30 +1939,30 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-switch-in:checked + .fc-switch::after { transform: translateX(16px); }
 .fc-switch-in:focus + .fc-switch { box-shadow: 0 0 0 2px var(--fc-link); }
 .fc-input, .fc-select { height: 38px; padding: 0 12px; border: 0; border-radius: var(--fc-r2); background: var(--fc-input); color: var(--fc-text);
-  font: 14px var(--fc-font); outline: none; box-sizing: border-box; }
-.fc-input:focus, .fc-select:focus { box-shadow: 0 0 0 2px var(--fc-accent); }
+  font: var(--fc-fs-md) var(--fc-font); outline: none; box-sizing: border-box; }
+.fc-input:focus, .fc-select:focus { box-shadow: var(--fc-ring); }
 .fc-input.fc-color { width: 48px; padding: 2px; cursor: pointer; }
 .fc-select { padding-right: 6px; cursor: pointer; }
 .fc-slider { -webkit-appearance: none; width: 160px; height: 6px; border-radius: 3px; background: var(--fc-s4); outline: none; cursor: pointer; }
 .fc-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 22px; border-radius: 3px; background: #fff; box-shadow: var(--fc-sh1); cursor: grab; }
-.fc-slider-v { flex: none; width: 44px; margin-left: 8px; text-align: right; font: 12px var(--fc-font); color: var(--fc-muted); }
+.fc-slider-v { flex: none; width: 44px; margin-left: 8px; text-align: right; font: var(--fc-fs-sm) var(--fc-font); color: var(--fc-muted); }
 
 .fc-set { color: var(--fc-text); font-family: var(--fc-font); }
-.fc-set-title { margin: 0 0 4px; font: 600 16px/1.3 var(--fc-font); color: var(--fc-head); }
+.fc-set-title { margin: 0 0 4px; font: 600 var(--fc-fs-lg)/1.3 var(--fc-font); color: var(--fc-head); }
 .fc-set-reset { float: right; margin: -2px 0 0 8px; color: var(--fc-muted); }
-.fc-set-title small { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--fc-muted); }
+.fc-set-title small { margin-left: 4px; font-size: var(--fc-fs-sm); font-weight: 400; color: var(--fc-muted); }
 .fc-set-row[hidden], .fc-set [hidden] { display: none !important; }
 .fc-field { position: relative; display: flex; align-items: center; min-height: 40px; padding: 8px 0; border-bottom: 1px solid var(--fc-divider); cursor: default; }
 label.fc-field { cursor: pointer; }
 .fc-set-row:last-child .fc-field { border-bottom: 0; }
 .fc-field-text { flex: 1; min-width: 0; margin-right: 12px; }
-.fc-field-text b { display: block; font: 500 14px/1.3 var(--fc-font); color: var(--fc-text); }
-.fc-field-text small { display: block; margin-top: 2px; font: 12px/1.35 var(--fc-font); color: var(--fc-muted); }
-.fc-new { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; vertical-align: 1px;
-  font: 800 10px/16px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--fc-danger); }
+.fc-field-text b { display: block; font: 500 var(--fc-fs-md)/1.3 var(--fc-font); color: var(--fc-text); }
+.fc-field-text small { display: block; margin-top: 2px; font: var(--fc-fs-sm)/1.35 var(--fc-font); color: var(--fc-muted); }
+.fc-new { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--fc-r2); vertical-align: 1px;
+  font: 800 var(--fc-fs-2xs)/16px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--fc-danger); }
 .fc-set-row.fc-changed .fc-field-text > b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; border-radius: 50%;
   vertical-align: 2px; background: var(--fc-accent); }
-.fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r2); background: var(--fc-s1); font: 12px/1.45 var(--fc-font); color: var(--fc-muted); }
+.fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r2); background: var(--fc-s1); font: var(--fc-fs-sm)/1.45 var(--fc-font); color: var(--fc-muted); }
 
 .fc-avatar { position: relative; display: inline-block; flex: none; width: var(--sz, 32px); height: var(--sz, 32px); vertical-align: middle; }
 .fc-avatar > img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: var(--fc-s4); display: block; }
@@ -1931,17 +1977,17 @@ label.fc-field { cursor: pointer; }
 .fc-ring { display: inline-block; vertical-align: middle; }
 .fc-ring .bg { stroke: var(--fc-s4); }
 .fc-ring .fg { stroke: var(--c, var(--fc-accent)); transition: stroke-dashoffset var(--fc-slow) var(--fc-ease); }
-.fc-ring text { fill: var(--fc-head); font: 700 11px var(--fc-font); }
+.fc-ring text { fill: var(--fc-head); font: 700 var(--fc-fs-xs) var(--fc-font); }
 
 .fc-empty { padding: 32px 16px; text-align: center; color: var(--fc-muted); font-family: var(--fc-font); }
 .fc-empty > .fc-ic { width: 40px; height: 40px; margin-bottom: 10px; stroke-width: 1.5; opacity: .7; }
-.fc-empty .t { font: 600 16px/1.3 var(--fc-font); color: var(--fc-head); }
-.fc-empty .s { margin-top: 4px; font: 13px/1.45 var(--fc-font); }
+.fc-empty .t { font: 600 var(--fc-fs-lg)/1.3 var(--fc-font); color: var(--fc-head); }
+.fc-empty .s { margin-top: 4px; font: var(--fc-fs-ui)/1.45 var(--fc-font); }
 .fc-empty .fc-btn { margin-top: 14px; }
 
 .fc-pop { position: fixed; z-index: var(--fc-z-pop); min-width: 180px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto;
   padding: 8px; border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3);
-  font: 14px/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; box-sizing: border-box; }
+  font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; box-sizing: border-box; }
 .fc-pop.fc-pop-card:not(.fc-out) { animation: fcCardIn var(--fc-slow) var(--fc-spring) both; }
 .fc-menu-item { display: flex; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--fc-text); }
 .fc-menu-item:hover { background: var(--fc-s4); color: var(--fc-head); }
@@ -1954,25 +2000,25 @@ label.fc-field { cursor: pointer; }
   background: rgba(0,0,0,.72); animation: fcIn var(--fc-med) ease both; }
 .fc-modal { width: var(--w, 440px); max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); display: flex; flex-direction: column;
   border-radius: var(--fc-r2); background: var(--fc-s3); color: var(--fc-text); box-shadow: var(--fc-sh3); overflow: hidden;
-  font: 14px/1.45 var(--fc-font); animation: fcPop var(--fc-med) var(--fc-ease) both; }
-.fc-modal-h { display: flex; align-items: center; padding: 16px 16px 8px; font: 700 20px/1.25 var(--fc-font); color: var(--fc-head); }
+  font: var(--fc-fs-md)/1.45 var(--fc-font); animation: fcPop var(--fc-med) var(--fc-ease) both; }
+.fc-modal-h { display: flex; align-items: center; padding: 16px 16px 8px; font: 700 var(--fc-fs-xl)/1.25 var(--fc-font); color: var(--fc-head); }
 .fc-modal-h .fc-btn.icon { margin-left: auto; }
 .fc-modal-b { padding: 8px 16px 16px; overflow: auto; }
 .fc-modal-f { display: flex; justify-content: flex-end; padding: 16px; background: var(--fc-s2); }
 .fc-modal-f > .fc-btn + .fc-btn { margin-left: 8px; }
 
 .fc-page { position: fixed; top: 0; bottom: 0; right: 0; left: var(--fcd-left, 72px); z-index: var(--fc-z-page); display: flex; flex-direction: column;
-  background: var(--fc-s3); color: var(--fc-text); font: 14px/1.45 var(--fc-font); animation: fcPageIn var(--fc-slow) var(--fc-ease) both; }
+  background: var(--fc-s3); color: var(--fc-text); font: var(--fc-fs-md)/1.45 var(--fc-font); animation: fcPageIn var(--fc-slow) var(--fc-ease) both; }
 @keyframes fcPageIn { from { opacity: 0; transform: translateY(calc(10px * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
 .fc-enter { animation: fcRise var(--fc-med) var(--fc-ease) both; }
-.fc-skel i { display: block; margin-bottom: 6px; border-radius: var(--fc-r2); background: linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.08), rgba(255,255,255,.03));
+.fc-skel i { display: block; margin-bottom: 6px; border-radius: var(--fc-r2); background: linear-gradient(90deg, rgba(255,255,255,.03), var(--fc-tint-3), rgba(255,255,255,.03));
   background-size: 200% 100%; animation: fcShim 1.2s linear infinite; }
 @keyframes fcShim { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 html.fc-still .fc-skel i { animation: none !important; }
 /* the Discover browse sidebar takes another 232px */
 html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-page-h { flex: none; display: flex; align-items: center; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--fc-divider); box-shadow: var(--fc-sh1); }
-.fc-page-h .t { display: flex; align-items: center; font: 600 16px/1 var(--fc-font); color: var(--fc-head); }
+.fc-page-h .t { display: flex; align-items: center; font: 600 var(--fc-fs-lg)/1 var(--fc-font); color: var(--fc-head); }
 .fc-page-h .t > .fc-ic { margin-right: 8px; color: var(--fc-muted); }
 .fc-page-h .tools { display: flex; align-items: center; margin-left: auto; }
 .fc-page-h .tools > * + * { margin-left: 8px; }
@@ -1981,59 +2027,76 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-toasts { position: fixed; right: 24px; bottom: 24px; z-index: var(--fc-z-toast); display: flex; flex-direction: column-reverse; align-items: flex-end; pointer-events: none; }
 .fc-toast { pointer-events: auto; width: 340px; max-width: calc(100vw - 48px); margin-top: 8px; padding: 12px 14px; box-sizing: border-box;
   border-radius: var(--fc-r2); border-left: 3px solid var(--c, var(--fc-accent)); background: var(--fc-s0); color: var(--fc-text);
-  box-shadow: var(--fc-sh3); font: 14px/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; cursor: pointer; }
+  box-shadow: var(--fc-sh3); font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; cursor: pointer; }
 .fc-toast.out { opacity: 0; transform: translateX(24px); transition: opacity var(--fc-med), transform var(--fc-med); }
 .fc-toast.success { --c: var(--fc-success); }
 .fc-toast.danger { --c: var(--fc-danger); }
 .fc-toast.warning { --c: var(--fc-warning); }
 .fc-toast .t { display: flex; align-items: center; font-weight: 600; color: var(--fc-head); }
 .fc-toast .t > .fc-ic { margin-right: 8px; color: var(--c, var(--fc-accent)); }
-.fc-toast .s { margin-top: 2px; font-size: 12px; color: var(--fc-muted); }
+.fc-toast .s { margin-top: 2px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fc-toast .a { display: flex; margin-top: 10px; }
 .fc-toast .a > .fc-btn + .fc-btn { margin-left: 8px; }
 
-.fc-chart { display: block; overflow: visible; font-family: var(--fc-font); }
-.fc-chart .grid { stroke: var(--fc-divider); stroke-width: 1; }
-.fc-chart .ln { fill: none; stroke: var(--c, var(--fc-accent)); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.fc-chart .area { fill: var(--c, var(--fc-accent)); opacity: .14; stroke: none; }
-.fc-chart .dot { fill: var(--c, var(--fc-accent)); stroke: var(--fc-s2); stroke-width: 2; }
-.fc-chart .bar { fill: var(--c, var(--fc-accent)); }
-.fc-chart text { fill: var(--fc-muted); font-size: 10px; }
-.fc-chart text.v { fill: var(--fc-head); font-weight: 700; }
+.fc-chart { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; width: 100%;
+    font-family: var(--fc-font); font-size: var(--fc-fs-xs); color: var(--fc-muted); font-variant-numeric: tabular-nums; }
+.fc-chart.has-y { grid-template-columns: 3.6em minmax(0, 1fr); }
+.fc-chart-plot { position: relative; grid-column: -2; grid-row: 1; margin: 8px 0; }
+.fc-chart-plot svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; }
+.fc-chart .grid { stroke: var(--fc-divider); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fc-chart .ln { fill: none; stroke: var(--c, var(--fc-accent)); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.fc-chart .g0 { stop-color: var(--c, var(--fc-accent)); stop-opacity: .3; }
+.fc-chart .g1 { stop-color: var(--c, var(--fc-accent)); stop-opacity: 0; }
+.fc-chart .dot { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--c, var(--fc-accent)); box-shadow: 0 0 0 2px var(--fc-s2); }
+.fc-chart-y { position: relative; grid-column: 1; grid-row: 1; margin: 8px 10px 8px 0; }
+.fc-chart-y span { position: absolute; right: 0; transform: translateY(-50%); line-height: 1; white-space: nowrap; }
+.fc-chart-x { position: relative; grid-column: -2; grid-row: 2; height: 1.5em; }
+.fc-chart-x span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+.fc-chart-x span.l { transform: none; }
+.fc-chart-x span.r { transform: translateX(-100%); }
+.fc-chart-bars { display: flex; align-items: stretch; justify-content: center; }
+.fc-chart-bars .col { flex: 1 1 0; min-width: 0; max-width: 72px; display: flex; flex-direction: column; }
+.fc-chart-bars .col + .col { margin-left: 8px; }
+.fc-chart-bars .track { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding-top: 18px; border-bottom: 1px solid var(--fc-tint-3); }
+.fc-chart-bars .bar { position: relative; display: block; min-height: 2px; font-style: normal; border-radius: var(--fc-r1) var(--fc-r1) 0 0; background: var(--c, var(--fc-accent));
+    transition: filter var(--fc-fast) ease; }
+.fc-chart-bars .col:hover .bar { filter: brightness(1.15); }
+.fc-chart-bars .v { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); padding-bottom: 3px; font-weight: 700; color: var(--fc-head); white-space: nowrap; }
+.fc-chart-bars .l { margin-top: 5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* card building blocks (ui.cardHead / ui.stats / ui.warn), 2.13; the Discord 2025 pop-out look, 3.2 */
 .fc-ch { position: relative; }
 .fc-ch-banner { height: 96px; }
-.fc-ch .fc-ch-x { position: absolute; top: 8px; right: 8px; color: #fff; background: rgba(0,0,0,.35); }
-.fc-ch .fc-ch-x:hover { background: rgba(0,0,0,.55); }
+.fc-ch .fc-ch-x { position: absolute; top: 8px; right: 8px; color: #fff; background: var(--fc-scrim-2); }
+.fc-ch .fc-ch-x:hover { background: var(--fc-scrim-4); }
 .fc-ch-body { position: relative; padding: 42px 16px 0; }
 .fc-ch-av { position: absolute; left: 12px; top: -50px; line-height: 0; padding: 5px; border-radius: 50%; background: var(--fc-s0); }
 .fc-ch-av .fc-avatar > .st { border-width: 4px; }
 /* the status as a speech bubble next to the avatar */
 .fc-ch-bub { position: absolute; left: 106px; right: 12px; top: 8px; display: flex; }
-.fc-ch-bub > span { position: relative; max-width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: 12px; background: var(--fc-s2);
-  font: 500 12.5px/16px var(--fc-font); color: var(--fc-text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-wrap: break-word;
-  box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.fc-ch-bub > span { position: relative; max-width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: var(--fc-r3); background: var(--fc-s2);
+  font: 500 var(--fc-fs-ui)/16px var(--fc-font); color: var(--fc-text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-wrap: break-word;
+  box-shadow: 0 2px 8px var(--fc-scrim-1); }
 .fc-ch-bub::before { content: ''; position: absolute; left: -9px; top: 22px; width: 10px; height: 10px; border-radius: 50%; background: var(--fc-s2); }
 .fc-ch-bub::after { content: ''; position: absolute; left: -15px; top: 33px; width: 5px; height: 5px; border-radius: 50%; background: var(--fc-s2); }
 .fc-ch.has-bub .fc-ch-body { padding-top: 46px; }
-.fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 20px/26px var(--fc-font); color: var(--fc-head); }
+.fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 var(--fc-fs-xl)/26px var(--fc-font); color: var(--fc-head); }
 .fc-ch-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-ch-name > *:not(span) { flex: none; margin-left: 6px; }
-.fc-ch-pn { margin-top: 1px; font: 500 13px/17px var(--fc-font); color: var(--fc-text); }
-.fc-ch-meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 13px; color: var(--fc-muted); }
+.fc-ch-pn { margin-top: 1px; font: 500 var(--fc-fs-ui)/17px var(--fc-font); color: var(--fc-text); }
+.fc-ch-meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 .fc-ch-meta .fc-flag { margin-right: 6px; }
 .fc-ch-meta .fc-tag { margin-right: 6px; }
-.fc-ch-sub { margin-top: 2px; font-size: 13px; color: var(--fc-muted); }
+.fc-ch-sub { margin-top: 2px; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 .fc-stats { display: flex; flex-wrap: wrap; margin: 12px -4px 0; }
 .fc-stat { flex: 1 1 calc(50% - 8px); min-width: 0; margin: 0 4px 8px; padding: 8px 10px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s2); }
 .fc-stats.three .fc-stat { flex-basis: calc(33.3% - 8px); }
-.fc-stat > span { display: block; font: 700 11px/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
-.fc-stat > b { display: block; margin-top: 2px; font: 800 16px/20px var(--fc-font); color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fc-stat > small { display: block; margin-top: 1px; font-size: 11.5px; color: var(--fc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-stat > span { display: block; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-stat > b { display: block; margin-top: 2px; font: 800 var(--fc-fs-lg)/20px var(--fc-font); color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-stat > small { display: block; margin-top: 1px; font-size: var(--fc-fs-sm); color: var(--fc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fc-stat.up > b { color: var(--fc-success); }
 .fc-stat.down > b { color: var(--fc-danger); }
-.fc-warn { display: flex; align-items: center; margin-top: 8px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: 12.5px; font-weight: 600;
+.fc-warn { display: flex; align-items: center; margin-top: 8px; padding: 6px 10px; border-radius: var(--fc-r2); font-size: var(--fc-fs-ui); font-weight: 600;
   color: var(--fc-warning); background: rgba(240,178,50,.12); }
 .fc-warn > .fc-ic { width: 14px; height: 14px; flex: none; margin-right: 6px; }
 /* the inner panel of a card (about me, badges, numbers) and the "Message @name" box under it */
@@ -2041,7 +2104,7 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-ch-sec > .fc-stats:first-child { margin-top: 0; }
 .fc-ch-sec > .fc-stats:last-child { margin-bottom: -8px; }
 .fc-cmsg { display: flex; align-items: center; height: 40px; margin-top: 12px; padding: 0 12px; box-sizing: border-box; border-radius: var(--fc-r2);
-  background: var(--fc-input, var(--fc-s2)); box-shadow: inset 0 0 0 1px var(--fc-divider); color: var(--fc-muted); font: 14px/1 var(--fc-font);
+  background: var(--fc-input, var(--fc-s2)); box-shadow: var(--fc-edge); color: var(--fc-muted); font: var(--fc-fs-md)/1 var(--fc-font);
   cursor: text; transition: box-shadow var(--fc-fast) ease, color var(--fc-fast) ease; }
 .fc-cmsg:hover { color: var(--fc-text); box-shadow: inset 0 0 0 1px var(--fc-muted); }
 .fc-cmsg > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -2053,12 +2116,12 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-ph > .fc-ic { width: 32px; height: 32px; flex: none; margin-right: 10px; padding: 7px; box-sizing: border-box; border-radius: 10px;
   color: var(--fc-accent); background: var(--fc-accent-soft); }
 .fc-ph .tt { flex: 1; min-width: 0; }
-.fc-ph .tt > b { display: block; font: 800 16px/1.25 var(--fc-font); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fc-ph .tt > span { display: block; margin-top: 1px; font-size: 12px; line-height: 1.35; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-ph .tt > b { display: block; font: 800 var(--fc-fs-lg)/1.25 var(--fc-font); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-ph .tt > span { display: block; margin-top: 1px; font-size: var(--fc-fs-sm); line-height: 1.35; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fc-ph > .fc-btn, .fc-ph > .fc-chip { flex: none; margin-left: 4px; }
 .fc-pb { padding: 0 12px 10px; }
 .fc-pf { display: flex; align-items: center; padding: 10px 12px; border-top: 1px solid var(--fc-divider); background: rgba(255,255,255,.02); }
-.fc-pf .l { flex: 1; min-width: 0; margin-right: 8px; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fc-pf .l { flex: 1; min-width: 0; margin-right: 8px; font-size: var(--fc-fs-sm); color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fc-pf .r { display: flex; align-items: center; flex: none; }
 .fc-pf .r > * + * { margin-left: 6px; }
 
@@ -2069,12 +2132,12 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
   border-radius: var(--fc-r1); color: var(--fc-text); background: var(--fc-btn); cursor: pointer; transition: background-color var(--fc-fast), color var(--fc-fast); }
 .fc-hbtn:hover { background: var(--fc-btn-h); color: var(--fc-head); }
 .fc-hbtn > .fc-ic { width: 18px; height: 18px; }
-.fc-hbtn .fc-hdot { position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px;
-  font: 700 10px/16px var(--fc-font); text-align: center; color: #fff; background: var(--fc-danger); box-shadow: 0 0 0 2px var(--fc-s1); }
+.fc-hbtn .fc-hdot { position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--fc-r2);
+  font: 700 var(--fc-fs-2xs)/16px var(--fc-font); text-align: center; color: #fff; background: var(--fc-danger); box-shadow: 0 0 0 2px var(--fc-s1); }
 .fcHdrMoreBtn { margin-right: 0; }
 .fcHdrMenu .fc-menu-item { min-width: 170px; }
-.cbn-merged .fc-hbtn { background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); color: #fff; }
-.cbn-merged .fc-hbtn:hover { background: rgba(0,0,0,.55); }
+.cbn-merged .fc-hbtn { background: var(--fc-scrim-2); box-shadow: inset 0 0 0 1px var(--fc-tint-4); color: #fff; }
+.cbn-merged .fc-hbtn:hover { background: var(--fc-scrim-4); }
 `;
 
 function ensureStyle() {
@@ -2122,6 +2185,39 @@ function copyText(text) {
     try { require('electron').clipboard.writeText(String(text)); return true; } catch (e) { /* not Electron */ }
     try { if (navigator.clipboard) { navigator.clipboard.writeText(String(text)); return true; } } catch (e) { /* no clipboard */ }
     return false;
+}
+
+// 3.9: the small celebration -- a card bottom-right with a burst of confetti out of it. Clicks go
+// through everywhere but the card (a click on it closes it)
+function smallCelebrate(p, cols) {
+    const old = document.getElementById('fcCelebS');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.id = 'fcCelebS';
+    const still = document.documentElement.classList.contains('fc-still');
+    let bits = '';
+    for (let i = 0; i < (still ? 0 : 26); i++) {
+        // out and down-left, into the room under the card
+        const a = Math.PI * (0.45 + 0.6 * (i / 25)), d = 110 + Math.random() * 120;
+        bits += `<span class="bit" style="background:${cols[i % cols.length]};--x:${(Math.cos(a) * d * 1.4).toFixed(0)}px;--y:${(Math.sin(a) * d).toFixed(0)}px;` +
+            `--r:${Math.round(Math.random() * 720)}deg;animation-delay:${(0.15 + Math.random() * 0.15).toFixed(2)}s"></span>`;
+    }
+    el.innerHTML = `<div class="card" style="--c:${fmt.esc(p.glow || cols[0])}">${bits}` +
+        `<span class="ic">${ui.icon(p.icon || 'trophy', 'fill')}</span>` +
+        `<span class="tx"><b>${fmt.esc(p.big || '')}</b>${p.mid ? `<span class="mid">${p.mid}</span>` : ''}${p.sub ? `<small>${fmt.esc(p.sub)}</small>` : ''}</span></div>`;
+    let done = false, timer = 0;
+    const close = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 350);
+    };
+    el.querySelector('.card').addEventListener('click', (e) => { e.stopPropagation(); close(); });
+    document.body.appendChild(el);
+    if (!p.quiet) sound.play('success');
+    timer = setTimeout(close, p.ms || 4500);
+    return { close, el };
 }
 
 const TOAST_MAX = 2;            // toasts on screen at once
@@ -2219,15 +2315,18 @@ const ui = {
 
     // a full-screen moment with confetti: fc.ui.celebrate({ big, mid (html), sub, note, colors, glow, bigSize, ms })
     // Click (or ms, default 6 s) closes it. -> { close }
+    // 3.9: small: true -> a card in the corner with its own burst, which doesn't block anything
+    // ({ small, big, sub, mid (html), icon, colors, glow, ms (4.5 s) })
     celebrate(o) {
         if (!hasDom()) return { close() {} };
         ensureStyle();
         const p = o || {};
+        const cols = p.colors && p.colors.length ? p.colors : ['#5865f2', '#eb459e', '#ffffff', '#fee75c'];
+        if (p.small) return smallCelebrate(p, cols);
         const old = document.getElementById('fcCeleb');
         if (old) old.remove();
         const el = document.createElement('div');
         el.id = 'fcCeleb';
-        const cols = p.colors && p.colors.length ? p.colors : ['#5865f2', '#eb459e', '#ffffff', '#fee75c'];
         let bits = '';
         for (let i = 0; i < 40; i++) {
             const a = (i / 40) * Math.PI * 2, d = 30 + Math.random() * 30;
@@ -2447,49 +2546,58 @@ const ui = {
         return page;
     },
 
-    // SVG charts (strings). series: [{ points: [[x, y]], color, area }]
+    // Charts (strings). series: [{ points: [[x, y]], color, area }]
+    // (3.9: they fill their box's width at a fixed height (o.h px) and the labels are HTML, so text
+    //  stays its real size however wide the card is; the SVG only draws the lines, stretched)
     chart: {
         line(series, o) {
-            const p = Object.assign({ w: 480, h: 160, pad: 24, dots: false, grid: 4 }, o || {});
+            const p = Object.assign({ h: 160, dots: false, grid: 4 }, o || {});
             const all = [].concat(...series.map(s => s.points));
-            if (!all.length) return `<svg class="fc-chart" width="${p.w}" height="${p.h}"></svg>`;
+            if (!all.length) return `<div class="fc-chart" style="height:${p.h}px"></div>`;
             const xs = all.map(q => q[0]), ys = all.map(q => q[1]);
             const x0 = Math.min(...xs), x1 = Math.max(...xs);
             const y0 = p.yMin != null ? p.yMin : Math.min(...ys), y1 = p.yMax != null ? p.yMax : Math.max(...ys);
-            const W = p.w - p.pad * 2, H = p.h - p.pad * 2;
-            const X = (x) => p.pad + (x1 === x0 ? W / 2 : (x - x0) / (x1 - x0) * W);
-            const Y = (y) => p.pad + H - (y1 === y0 ? H / 2 : (y - y0) / (y1 - y0) * H);
-            let out = `<svg class="fc-chart" width="${p.w}" height="${p.h}" viewBox="0 0 ${p.w} ${p.h}">`;
+            // 0..100 both ways; the plot box stretches it to fit
+            const X = (x) => x1 === x0 ? 50 : (x - x0) / (x1 - x0) * 100;
+            const Y = (y) => 100 - (y1 === y0 ? 50 : (y - y0) / (y1 - y0) * 100);
+            const f2 = (n) => n.toFixed(2);
+            const id = 'fcg' + (++chartSeq);
+            let svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs>';
+            series.forEach((s, i) => { svg += `<linearGradient id="${id}-${i}" x1="0" x2="0" y1="0" y2="1"${s.color ? ` style="--c:${s.color}"` : ''}><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient>`; });
+            svg += '</defs>';
+            let ylab = '';
             for (let i = 0; i <= p.grid; i++) {
-                const gy = p.pad + H * i / p.grid;
-                out += `<line class="grid" x1="${p.pad}" x2="${p.w - p.pad}" y1="${gy.toFixed(1)}" y2="${gy.toFixed(1)}"/>`;
-                if (p.yLabel) out += `<text x="${p.pad - 4}" y="${(gy + 3).toFixed(1)}" text-anchor="end">${fmt.esc(p.yLabel(y1 - (y1 - y0) * i / p.grid))}</text>`;
+                const gy = 100 * i / p.grid;
+                svg += `<line class="grid" x1="0" x2="100" y1="${f2(gy)}" y2="${f2(gy)}"/>`;
+                if (p.yLabel) ylab += `<span style="top:${f2(gy)}%">${fmt.esc(p.yLabel(y1 - (y1 - y0) * i / p.grid))}</span>`;
             }
-            series.forEach(s => {
-                const pts = s.points.map(q => X(q[0]).toFixed(1) + ',' + Y(q[1]).toFixed(1));
+            let dots = '';
+            series.forEach((s, i) => {
+                const pts = s.points.map(q => f2(X(q[0])) + ',' + f2(Y(q[1])));
                 const style = s.color ? ` style="--c:${s.color}"` : '';
-                if (s.area && pts.length > 1) out += `<path class="area"${style} d="M${X(s.points[0][0]).toFixed(1)},${p.pad + H} L${pts.join(' L')} L${X(s.points[s.points.length - 1][0]).toFixed(1)},${p.pad + H} Z"/>`;
-                out += `<polyline class="ln"${style} points="${pts.join(' ')}"/>`;
-                if (p.dots || s.points.length < 2) s.points.forEach(q => { out += `<circle class="dot"${style} cx="${X(q[0]).toFixed(1)}" cy="${Y(q[1]).toFixed(1)}" r="3.5"/>`; });
+                if (s.area && pts.length > 1) svg += `<path class="area" fill="url(#${id}-${i})" d="M${f2(X(s.points[0][0]))},100 L${pts.join(' L')} L${f2(X(s.points[s.points.length - 1][0]))},100 Z"/>`;
+                if (pts.length > 1) svg += `<polyline class="ln"${style} points="${pts.join(' ')}"/>`;
+                if (p.dots || s.points.length < 2) s.points.forEach(q => { dots += `<i class="dot" style="left:${f2(X(q[0]))}%;top:${f2(Y(q[1]))}%${s.color ? ';--c:' + s.color : ''}"></i>`; });
             });
-            if (p.xLabels) p.xLabels.forEach(([x, label]) => { out += `<text x="${X(x).toFixed(1)}" y="${p.h - 6}" text-anchor="middle">${fmt.esc(label)}</text>`; });
-            return out + '</svg>';
+            svg += '</svg>';
+            // the first and last x labels line up with the plot's edges instead of hanging past them
+            const xlab = (p.xLabels || []).map(([x, label]) => { const at = X(x); return `<span class="${at < 8 ? 'l' : at > 92 ? 'r' : ''}" style="left:${f2(at)}%">${fmt.esc(label)}</span>`; }).join('');
+            return `<div class="fc-chart fc-chart-ln${ylab ? ' has-y' : ''}" style="height:${p.h}px">` +
+                (ylab ? `<div class="fc-chart-y">${ylab}</div>` : '') +
+                `<div class="fc-chart-plot">${svg}${dots}</div>` +
+                (xlab ? `<div class="fc-chart-x">${xlab}</div>` : '') + '</div>';
         },
-        // bars: [{ label, value, color, title }]
+        // bars: [{ label, value, text, color, title }]
         bars(bars, o) {
-            const p = Object.assign({ w: 480, h: 160, pad: 20, gap: 6, values: true }, o || {});
+            const p = Object.assign({ h: 160, values: true }, o || {});
             const max = p.max != null ? p.max : Math.max(1, ...bars.map(b => +b.value || 0));
-            const W = p.w - p.pad * 2, H = p.h - p.pad * 2 - 12, n = Math.max(1, bars.length);
-            const bw = Math.max(2, (W - p.gap * (n - 1)) / n);
-            let out = `<svg class="fc-chart" width="${p.w}" height="${p.h}" viewBox="0 0 ${p.w} ${p.h}">`;
-            bars.forEach((b, i) => {
-                const v = Math.max(0, +b.value || 0), bh = H * v / max, x = p.pad + i * (bw + p.gap), y = p.pad + H - bh;
-                out += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(0, bh).toFixed(1)}" rx="3"${b.color ? ` style="--c:${b.color}"` : ''}>` +
-                    (b.title ? `<title>${fmt.esc(b.title)}</title>` : '') + '</rect>';
-                if (p.values && b.text != null) out += `<text class="v" x="${(x + bw / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle">${fmt.esc(b.text)}</text>`;
-                if (b.label != null) out += `<text x="${(x + bw / 2).toFixed(1)}" y="${p.h - 4}" text-anchor="middle">${fmt.esc(b.label)}</text>`;
-            });
-            return out + '</svg>';
+            return `<div class="fc-chart fc-chart-bars" style="height:${p.h}px">` + bars.map(b => {
+                const v = Math.max(0, Math.min(max, +b.value || 0));
+                return `<div class="col"${b.title ? ` title="${fmt.esc(b.title)}"` : ''}><div class="track">` +
+                    `<i class="bar" style="height:${(v / max * 100).toFixed(1)}%${b.color ? ';--c:' + b.color : ''}">` +
+                    (p.values && b.text != null ? `<b class="v">${fmt.esc(b.text)}</b>` : '') + '</i></div>' +
+                    (b.label != null ? `<span class="l">${fmt.esc(b.label)}</span>` : '') + '</div>';
+            }).join('') + '</div>';
         }
     },
 

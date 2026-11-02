@@ -215,24 +215,24 @@ function onClick(e) {
 const CSS = `
 html .chatContent .messageWrapper.endgame.fcrc-on > :not(.fcrc) { display: none !important; }
 html .chatContent .messageWrapper.endgame.fcrc-on { padding: 4px 16px 4px 72px !important; background: none !important; }
-.fcrc { --fcrc-bg: #1e1f24; --fcrc-glow: rgba(148,155,164,.35); position: relative; max-width: 560px; overflow: hidden; border-radius: 12px;
+.fcrc { --fcrc-bg: #1e1f24; --fcrc-glow: rgba(148,155,164,.35); position: relative; max-width: 560px; overflow: hidden; border-radius: var(--fc-r3);
     background: linear-gradient(90deg, rgba(20,21,25,.96) 0%, rgba(20,21,25,.86) 45%, rgba(20,21,25,.96) 100%), var(--fcrc-art) center 30%/cover, var(--fcrc-bg);
-    box-shadow: 0 0 0 1px rgba(255,255,255,.07), inset 3px 0 0 var(--fcrc-glow), 0 6px 22px -14px var(--fcrc-glow); font-family: var(--fc-font); color: #f2f3f5; }
+    box-shadow: 0 0 0 1px var(--fc-tint-3), inset 3px 0 0 var(--fcrc-glow), 0 6px 22px -14px var(--fcrc-glow); font-family: var(--fc-font); color: var(--fc-head); }
 .fcrc.won { --fcrc-glow: #23a55a; }
 .fcrc.lost { --fcrc-glow: #f23f43; }
 .fcrc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 45%; pointer-events: none; background: radial-gradient(120% 90% at 0% 50%, var(--fcrc-glow), transparent 70%); opacity: .16; }
 .fcrcTop { position: relative; display: flex; align-items: center; padding: 10px 14px 0; }
-.fcrcPill { padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,.1); font: 800 11px/16px var(--fc-font); letter-spacing: .06em; text-transform: uppercase; color: #dbdee1; }
-.fcrcPill.ranked { background: linear-gradient(90deg, #5865f2, #8a5cf6); color: #fff; }
-.fcrcGame { margin-left: 8px; font-size: 12px; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcrcPill { padding: 2px 8px; border-radius: 6px; background: var(--fc-tint-4); font: 800 var(--fc-fs-xs)/16px var(--fc-font); letter-spacing: .06em; text-transform: uppercase; color: var(--fc-text); }
+.fcrcPill.ranked { background: linear-gradient(90deg, var(--fc-accent), #8a5cf6); color: #fff; }
+.fcrcGame { margin-left: 8px; font-size: var(--fc-fs-sm); color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcrcMid { position: relative; display: flex; align-items: center; padding: 10px 14px 4px; }
 .fcrcSide { flex: 1; min-width: 0; display: flex; align-items: center; }
 .fcrcSide.r { flex-direction: row-reverse; text-align: right; }
 .fcrcPics { position: relative; flex: none; }
-.fcrcFace { position: relative; width: 62px; height: 82px; overflow: hidden; border-radius: 10px; background: rgba(255,255,255,.06); box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
+.fcrcFace { position: relative; width: 62px; height: 82px; overflow: hidden; border-radius: 10px; background: var(--fc-tint-2); box-shadow: 0 0 0 1px var(--fc-tint-4); }
 .fcrcFace img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 .fcrcFace span { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 3px 3px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.85));
-    font: 700 10px/12px var(--fc-font); text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    font: 700 var(--fc-fs-2xs)/12px var(--fc-font); text-align: center; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcrcFace.none img { display: none; }
 .fcrcSide.hasFace .fcrcFace span { padding-right: 16px; text-align: left; }
 .fcrcSide.r.hasFace .fcrcFace span { padding: 10px 3px 3px 16px; text-align: right; }
@@ -242,22 +242,22 @@ html .chatContent .messageWrapper.endgame.fcrc-on { padding: 4px 16px 4px 72px !
 .fcrcSide.r.hasFace .fcrcWho { margin: 0 22px 0 0; }
 .fcrcWho { min-width: 0; margin: 0 0 0 14px; }
 .fcrcSide.r .fcrcWho { margin: 0 14px 0 0; }
-.fcrcName { display: block; font: 800 15px/20px var(--fc-font); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcrcName { display: block; font: 800 var(--fc-fs-chat)/20px var(--fc-font); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcrcMeta { display: flex; align-items: center; margin-top: 3px; }
 .fcrcSide.r .fcrcMeta { justify-content: flex-end; }
 .fcrcMeta > * { margin-right: 6px; }
 .fcrcSide.r .fcrcMeta > * { margin: 0 0 0 6px; }
-.fcrcRes { padding: 1px 6px; border-radius: 4px; font: 800 10.5px/15px var(--fc-font); letter-spacing: .08em; text-transform: uppercase; }
+.fcrcRes { padding: 1px 6px; border-radius: var(--fc-r1); font: 800 var(--fc-fs-2xs)/15px var(--fc-font); letter-spacing: .08em; text-transform: uppercase; }
 .fcrcRes.won { background: rgba(35,165,90,.22); color: #3ddc84; }
 .fcrcRes.lost { background: rgba(242,63,67,.2); color: #ff6b6e; }
-.fcrcRes.draw { background: rgba(255,255,255,.12); color: #dbdee1; }
+.fcrcRes.draw { background: var(--fc-tint-4); color: var(--fc-text); }
 .fcrcScore { flex: none; display: flex; align-items: baseline; padding: 0 14px; font: 900 34px/1 var(--fc-font); color: rgba(255,255,255,.45); font-variant-numeric: tabular-nums; }
 .fcrcScore b.hi { color: #fff; text-shadow: 0 0 18px var(--fcrc-glow); }
 .fcrcScore i { margin: 0 8px; font-style: normal; font-weight: 400; color: rgba(255,255,255,.3); }
-.fcrcScore.vs { font-size: 16px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.fcrcNotes { position: relative; display: flex; flex-wrap: wrap; padding: 4px 14px 0; font-size: 12px; color: rgba(255,255,255,.65); }
+.fcrcScore.vs { font-size: var(--fc-fs-lg); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.fcrcNotes { position: relative; display: flex; flex-wrap: wrap; padding: 4px 14px 0; font-size: var(--fc-fs-sm); color: rgba(255,255,255,.65); }
 .fcrcNotes > span { display: inline-flex; align-items: center; margin-right: 12px; }
-.fcrcNotes .warn { color: #f0b232; }
+.fcrcNotes .warn { color: var(--fc-warning); }
 .fcrcNotes .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
 .fcrcBtns { position: relative; display: flex; flex-wrap: wrap; padding: 10px 14px 12px; }
 .fcrcBtns .fc-btn { margin-right: 8px; }

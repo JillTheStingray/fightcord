@@ -313,10 +313,10 @@ function wireTags(el) {
 const CSS = `
 .ntChips { display: flex; flex-wrap: wrap; margin: 2px -2px; }
 .ntChip { display: inline-flex; align-items: center; height: 20px; margin: 2px; padding: 0 8px 0 6px; border-radius: 10px;
-    font: 600 11.5px/1 var(--fc-font); color: var(--fc-text); background: rgba(255,255,255,.07);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); white-space: nowrap; }
+    font: 600 var(--fc-fs-sm)/1 var(--fc-font); color: var(--fc-text); background: var(--fc-tint-3);
+    box-shadow: inset 0 0 0 1px var(--fc-tint-2); white-space: nowrap; }
 .ntChip::before { content: ''; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--c); flex: none; }
-.ntNote { margin-top: 4px; font-size: 13px; line-height: 1.35; font-style: italic; color: var(--fc-text); opacity: .9;
+.ntNote { margin-top: 4px; font-size: var(--fc-fs-ui); line-height: 1.35; font-style: italic; color: var(--fc-text); opacity: .9;
     overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .ntDots { display: inline-flex; align-items: center; margin-left: 5px; vertical-align: middle; }
 .ntDots i { width: 7px; height: 7px; margin-right: 2px; border-radius: 50%; display: inline-block; }
@@ -326,15 +326,15 @@ const CSS = `
 #ntEdit .ntChip.pick:hover { opacity: .85; }
 #ntEdit .ntChip.pick.on { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--c); }
 #ntEdit textarea { width: 100%; height: 80px; padding: 8px 10px; resize: none; line-height: 1.4; }
-#ntEdit .ntGuide { max-height: 46vh; overflow-y: auto; margin: 0 -4px 10px; padding: 10px 12px; border-radius: 12px; background: var(--fc-s1, rgba(0,0,0,.2)); }
-#ntEdit .ntMine { display: block; margin-bottom: 4px; color: var(--fc-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+#ntEdit .ntGuide { max-height: 46vh; overflow-y: auto; margin: 0 -4px 10px; padding: 10px 12px; border-radius: var(--fc-r3); background: var(--fc-s1, rgba(0,0,0,.2)); }
+#ntEdit .ntMine { display: block; margin-bottom: 4px; color: var(--fc-muted); font-size: var(--fc-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
 #ntEdit .ntGuide + .ntMine + textarea { height: 64px; }
-#ntEdit .f { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; }
+#ntEdit .f { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: var(--fc-fs-sm); }
 .ntTagRow .fc-input[type="text"] { width: 180px; margin-left: 8px; height: 30px; }
 .ntTagRow .fc-color { height: 30px; }
 .ntAddRow { margin-top: 10px; }
 .ntChip.rq { background: rgba(255,106,43,.16); color: #ffb08a; box-shadow: inset 0 0 0 1px rgba(255,106,43,.35); }
-.ntWhy { display: flex; align-items: flex-start; margin-top: 3px; color: #ffb08a; font: 12px/1.35 var(--fc-font); }
+.ntWhy { display: flex; align-items: flex-start; margin-top: 3px; color: #ffb08a; font: var(--fc-fs-sm)/1.35 var(--fc-font); }
 .ntWhy .fc-ic { flex: none; margin: 1px 5px 0 0; }
 `;
 

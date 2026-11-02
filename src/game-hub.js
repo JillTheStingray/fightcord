@@ -279,7 +279,7 @@ function profileHtml() {
                 ${!isMe && nt ? fc.ui.btn('Notes', { kind: 'sec', size: 'sm', icon: 'note', act: 'notes' }) : ''}
                 ${isMe ? siteLink('profile') : `<span class="ghSite" data-url="${E('https://www.fightcade.com/id/' + encodeURIComponent(name))}">${fc.ui.ic('link')}${ET('Open on fightcade.com')}</span>`}</div></div>
         <div class="tiles">${tiles.map(([v, k]) => `<div class="fc-tile"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('')}</div>
-        ${elo.length > 1 ? `<div class="fc-card ghElo"><h4>${ET('Your ELO in this game')}</h4>${fc.ui.chart.line([{ points: elo, color: 'var(--fc-accent)' }], { w: 760, h: 150 })}</div>` : ''}
+        ${elo.length > 1 ? `<div class="fc-card ghElo"><h4>${ET('Your ELO in this game')}</h4>${fc.ui.chart.line([{ points: elo, color: 'var(--fc-accent)', area: true }], { h: 170, yLabel: (v) => Math.round(v) })}</div>` : ''}
         <div class="ghFind"><input class="fc-input ghWho" placeholder="${ET('Look up another player…')}">${fc.ui.btn('Show', { kind: 'sec', size: 'sm', act: 'who' })}</div>
     </div>`;
 }
@@ -416,7 +416,7 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .fc-page-h > * { position: relative; }
 #ghHub .ghTabs { display: inline-flex; margin-right: 12px; }
 #ghHub .ghTabBtn { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; margin-left: 4px; border-radius: 6px; cursor: pointer;
-    font: 600 13px/30px var(--fc-font); color: var(--fc-text); }
+    font: 600 var(--fc-fs-ui)/30px var(--fc-font); color: var(--fc-text); }
 #ghHub .ghTabBtn .fc-ic { width: 15px; height: 15px; margin-right: 6px; }
 #ghHub .ghTabBtn:hover { background: var(--fc-hover); }
 #ghHub .ghTabBtn.on { background: var(--fc-accent); color: #fff; }
@@ -424,19 +424,27 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghBar { display: flex; align-items: center; margin-bottom: 12px; }
 #ghHub .ghBar > * + * { margin-left: 8px; }
 #ghHub .ghSearch { width: 240px; height: 32px; }
-#ghHub .ghSite { display: inline-flex; align-items: center; font-size: 12.5px; color: var(--fc-muted); cursor: pointer; }
+#ghHub .ghSite { display: inline-flex; align-items: center; font-size: var(--fc-fs-ui); color: var(--fc-muted); cursor: pointer; }
 #ghHub .ghSite:hover { color: var(--fc-text); text-decoration: underline; }
 #ghHub .ghSite .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
-#ghHub .ghSeg { display: inline-flex; border-radius: 8px; overflow: hidden; background: var(--fc-btn); }
-#ghHub .ghSeg span { padding: 0 12px; line-height: 30px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--fc-text); }
+#ghHub .ghSeg { display: inline-flex; border-radius: var(--fc-r2); overflow: hidden; background: var(--fc-btn); }
+#ghHub .ghSeg span { padding: 0 12px; line-height: 30px; font-size: var(--fc-fs-ui); font-weight: 600; cursor: pointer; color: var(--fc-text); }
 #ghHub .ghSeg span.on { background: var(--fc-accent); color: #fff; }
 #ghHub .ghCols, #ghHub .ghRow { display: grid; grid-template-columns: 56px 1fr 70px 100px 90px; align-items: center; }
-#ghHub .ghCols { padding: 0 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fc-muted); }
-#ghHub .ghRow { min-height: 44px; padding: 0 10px; border-radius: 8px; cursor: pointer; }
+#ghHub .ghCols { padding: 0 10px 6px; font-size: var(--fc-fs-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fc-muted); }
+#ghHub .ghRow { min-height: 44px; padding: 0 10px; border-radius: var(--fc-r2); cursor: pointer; }
 #ghHub .ghRow:hover { background: var(--fc-hover); }
-#ghHub .ghRow.me { background: rgba(88,101,242,.16); box-shadow: inset 3px 0 0 var(--fc-accent); }
 #ghHub .ghRow .pos { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--fc-muted); }
-#ghHub .ghRow .pos.top1 { color: #f0b232; } #ghHub .ghRow .pos.top2 { color: #c9d1d9; } #ghHub .ghRow .pos.top3 { color: #d08a4e; }
+/* 3.9: the top three get medals */
+#ghHub .ghRow .pos.top1, #ghHub .ghRow .pos.top2, #ghHub .ghRow .pos.top3 { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+    border-radius: 50%; font-size: var(--fc-fs-ui); color: #1a1407; box-shadow: inset 0 -2px 0 rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.45); }
+#ghHub .ghRow .pos.top1 { background: linear-gradient(160deg, #ffe082, #f0b232 55%, #c98b12); }
+#ghHub .ghRow .pos.top2 { background: linear-gradient(160deg, #f1f4f8, #c3cad3 55%, #8e98a5); }
+#ghHub .ghRow .pos.top3 { background: linear-gradient(160deg, #f4c193, #d08a4e 55%, #9a5b28); }
+#ghHub .ghRow + .ghRow { box-shadow: inset 0 1px 0 var(--fc-tint-1); }
+#ghHub .ghRow:hover, #ghHub .ghRow:hover + .ghRow { box-shadow: none; }
+#ghHub .ghCols > span:nth-child(n+4), #ghHub .ghRow .num { text-align: right; }
+#ghHub .ghRow.me, #ghHub .ghRow.me:hover { background: var(--fc-accent-soft); box-shadow: inset 3px 0 0 var(--fc-accent); }
 #ghHub .ghRow .who { position: relative; display: flex; align-items: center; min-width: 0; }
 #ghHub .ghRow .who .fc-avatar { margin-right: 10px; }
 #ghHub .ghRow .who .fc-flag { margin-right: 6px; }
@@ -448,7 +456,7 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghMore { display: flex; justify-content: center; padding: 14px 0; }
 #ghHub .ghEmpty { padding: 18px 10px; color: var(--fc-muted); }
 #ghHub .ghEmpty .fc-btn { margin-left: 8px; }
-#ghHub .ghRep { display: grid; grid-template-columns: 1fr 70px 1fr 110px 90px 92px; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 8px; }
+#ghHub .ghRep { display: grid; grid-template-columns: 1fr 70px 1fr 110px 90px 92px; align-items: center; min-height: 44px; padding: 0 10px; border-radius: var(--fc-r2); }
 #ghHub .ghRep:hover { background: var(--fc-hover); }
 #ghHub .ghRep .pl { display: flex; align-items: center; min-width: 0; color: var(--fc-text); }
 #ghHub .ghRep .pl.r { justify-content: flex-end; }
@@ -456,40 +464,39 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghRep .pl b { cursor: pointer; font-weight: 600; color: var(--fc-muted); }
 #ghHub .ghRep .pl.win b { font-weight: 800; color: var(--fc-head); }
 #ghHub .ghRep .sc { text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
-#ghHub .ghRep .meta, #ghHub .ghRep .when { font-size: 12.5px; color: var(--fc-muted); text-align: right; }
+#ghHub .ghRep .meta, #ghHub .ghRep .when { font-size: var(--fc-fs-ui); color: var(--fc-muted); text-align: right; }
 #ghHub .ghRep .live { color: var(--fc-danger); font-weight: 700; }
 #ghHub .ghWatch { justify-self: end; }
-#ghHub .ghH { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fc-muted); }
+#ghHub .ghH { margin: 18px 0 8px; font-size: var(--fc-fs-sm); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fc-muted); }
 #ghHub .ghEv { display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; background: var(--fc-s2, rgba(255,255,255,.04)); }
 #ghHub .ghEv.on { box-shadow: inset 0 0 0 1px rgba(240,178,50,.45); }
 #ghHub .ghEv .dt { flex: none; width: 52px; text-align: center; }
-#ghHub .ghEv .dt b { display: block; font-size: 11px; text-transform: uppercase; color: var(--fc-warning); }
-#ghHub .ghEv .dt span { font-size: 22px; font-weight: 800; color: var(--fc-head); }
-#ghHub .ghEv .art { flex: none; width: 96px; height: 54px; margin: 0 12px 0 6px; border-radius: 6px; background: center / cover; background-color: rgba(0,0,0,.3); }
+#ghHub .ghEv .dt b { display: block; font-size: var(--fc-fs-xs); text-transform: uppercase; color: var(--fc-warning); }
+#ghHub .ghEv .dt span { font-size: var(--fc-fs-2xl); font-weight: 800; color: var(--fc-head); }
+#ghHub .ghEv .art { flex: none; width: 96px; height: 54px; margin: 0 12px 0 6px; border-radius: 6px; background: center / cover; background-color: var(--fc-scrim-2); }
 #ghHub .ghEv .tx { flex: 1; min-width: 0; }
-#ghHub .ghEv .tx b { display: block; font-size: 15px; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#ghHub .ghEv .tx span { display: block; font-size: 12.5px; color: var(--fc-muted); }
-#ghHub .ghEv .tx em { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--fc-warning); }
+#ghHub .ghEv .tx b { display: block; font-size: var(--fc-fs-chat); color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#ghHub .ghEv .tx span { display: block; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
+#ghHub .ghEv .tx em { font-style: normal; font-size: var(--fc-fs-ui); font-weight: 700; color: var(--fc-warning); }
 #ghHub .ghEv.live .tx em { color: var(--fc-danger); }
 #ghHub .ghEv .bell { flex: none; width: 32px; height: 32px; margin: 0 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--fc-muted); background: rgba(255,255,255,.06); }
+    cursor: pointer; color: var(--fc-muted); background: var(--fc-tint-2); }
 #ghHub .ghEv .bell.on { color: #1a1300; background: var(--fc-warning); }
 #ghHub .ghEv .fc-btn { margin-left: 6px; }
 #ghHub .ghProf .hd { display: flex; align-items: center; padding: 6px 0 16px; }
 #ghHub .ghProf .who { flex: 1; min-width: 0; margin-left: 16px; }
-#ghHub .ghProf .nm { display: flex; align-items: center; font-size: 26px; font-weight: 800; color: var(--fc-head); }
+#ghHub .ghProf .nm { display: flex; align-items: center; font-size: var(--fc-fs-2xl); font-weight: 800; color: var(--fc-head); }
 #ghHub .ghProf .nm .fc-flag { margin-right: 10px; }
 #ghHub .ghProf .sub { margin-top: 2px; color: var(--fc-muted); }
 #ghHub .ghProf .acts { display: flex; align-items: center; }
 #ghHub .ghProf .acts > * { margin-left: 8px; }
 #ghHub .ghProf .tiles { display: grid; grid-template-columns: repeat(5, 1fr); grid-gap: 10px; }
 #ghHub .ghElo { margin-top: 14px; }
-#ghHub .ghElo svg { width: 100%; height: auto; }
 #ghHub .ghFind { display: flex; margin-top: 16px; }
 #ghHub .ghFind .ghWho { width: 260px; height: 32px; margin-right: 8px; }
-#ghHub .ghWait { display: flex; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: 8px; background: rgba(240,178,50,.1); color: var(--fc-warning); font-size: 13px; font-weight: 600; }
+#ghHub .ghWait { display: flex; align-items: center; padding: 10px 14px; margin-bottom: 10px; border-radius: var(--fc-r2); background: rgba(240,178,50,.1); color: var(--fc-warning); font-size: var(--fc-fs-ui); font-weight: 600; }
 #ghHub .ghWait .fc-ic { width: 15px; height: 15px; margin-right: 8px; }
-#ghHub .ghErr { display: flex; align-items: center; padding: 16px; border-radius: 8px; background: rgba(242,63,67,.08); color: var(--fc-text); }
+#ghHub .ghErr { display: flex; align-items: center; padding: 16px; border-radius: var(--fc-r2); background: rgba(242,63,67,.08); color: var(--fc-text); }
 #ghHub .ghErr .fc-ic { color: var(--fc-danger); margin-right: 8px; }
 #ghHub .ghErr .fc-btn { margin-left: auto; }
 `;

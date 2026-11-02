@@ -70,14 +70,15 @@ function Book(ttl) {
     const m = new Map();
     const ver = (x) => (typeof x === 'string' && /^[0-9a-f]{8}$/.test(x) ? x : '');
     return {
-        // dk (3.6): their Fightcord ID, for friend requests and DMs; lv (3.7): their looks' version
-        heard(h, voice, now, pv, nw, dk, lv) {
+        // dk (3.6): their Fightcord ID, for friend requests and DMs; lv (3.7): their looks' version;
+        // xv (3.9): their name style and decoration's version; mc (3.9): their in-game chat is muted
+        heard(h, voice, now, pv, nw, dk, lv, xv, mc) {
             const old = m.get(h);
-            const v = ver(pv), l = ver(lv);
+            const v = ver(pv), l = ver(lv), x = ver(xv);
             const d = typeof dk === 'string' && /^[0-9a-f]{64}$/.test(dk) ? dk : '';
-            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l });
+            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l, xv: x, mc: mc === 1 });
             if (m.size > 5000) m.delete(m.keys().next().value);
-            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || now - old.at > ttl;       // news?
+            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || old.xv !== x || old.mc !== (mc === 1) || now - old.at > ttl;       // news?
         },
         gone(h) { return m.delete(h); },
         get(h, now) { const e = m.get(h); return e && now - e.at <= ttl ? e : null; },
@@ -163,6 +164,34 @@ const cleanFull = (p) => Object.assign(cleanProfile(p), cleanLook(p));
 const hasLook = (p) => !!p && !!(p.av || p.bn || p.th || p.fr || p.pn);
 const lookVersion = (p) => fnv('look|' + JSON.stringify(cleanFull(p)));
 const lookMsg = (h, lv) => 'fightcord-look-v1|' + h + '|' + lv;
+
+// --- 3.9: a name style and an avatar decoration ("extras") ---
+// 3.7 / 3.8 work the looks' version out of the fields they know, so these stay out of it (lv): they
+// have their own version (xv) and signature, and older Fightcords still show your pictures
+const NAME_STYLES = ['gradient', 'neon', 'shimmer', 'toon', 'fire', 'rainbow'];
+const NAME_COLOURED = ['gradient', 'neon', 'shimmer', 'toon'];              // (fire and rainbow have their own)
+const DECOS = ['crown', 'halo', 'horns', 'catears', 'headphones', 'sparkles', 'snow', 'flames', 'hearts', 'bolts'];
+// how bright a colour is, 0..1 (names sit on dark panels: too dark doesn't read)
+function lum(hex) {
+    const n = parseInt(String(hex).slice(1), 16);
+    const ch = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * ch((n >> 16) & 255) + 0.7152 * ch((n >> 8) & 255) + 0.0722 * ch(n & 255);
+}
+const NAME_MIN_LUM = 0.12;
+const readable = (c) => /^#[0-9a-f]{6}$/i.test(String(c)) && lum(c) >= NAME_MIN_LUM;
+function cleanExtras(p) {
+    const o = p && typeof p === 'object' ? p : {}, out = {};
+    const ns = o.ns && typeof o.ns === 'object' ? o.ns : null;
+    if (ns && NAME_STYLES.indexOf(ns.s) >= 0) {
+        if (NAME_COLOURED.indexOf(ns.s) < 0) out.ns = { s: ns.s };
+        else if (Array.isArray(ns.c) && ns.c.length === 2 && ns.c.every(readable)) out.ns = { s: ns.s, c: ns.c.map(c => String(c).toLowerCase()) };
+    }
+    if (DECOS.indexOf(o.dc) >= 0) out.dc = o.dc;
+    return out;
+}
+const hasExtras = (p) => { const x = cleanExtras(p); return !!(x.ns || x.dc); };
+const extrasVersion = (p) => hasExtras(p) ? fnv('look-x|' + JSON.stringify(cleanExtras(p))) : '';
+const extrasMsg = (h, lv, xv) => 'fightcord-look-x1|' + h + '|' + (lv || '') + '|' + xv;
 const PIN_QUIET = 30 * 86400000;
 // may this Fightcord ID put pictures on that name? A friend: only the ID you accepted. Anyone else:
 // the first ID seen with pictures for that name; another one once that one has been quiet 30 days
@@ -188,7 +217,8 @@ module.exports = {
     id: 'presence', name: 'Fightcord players',
     start: (f) => start(f),
     hashOf, Book, react, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom, newcomerDay, announceDecision,
-    FRAMES, PIC_HOSTS, picUrl, cleanPic, cleanLook, cleanFull, hasLook, lookVersion, lookMsg, mayLook
+    FRAMES, PIC_HOSTS, picUrl, cleanPic, cleanLook, cleanFull, hasLook, lookVersion, lookMsg, mayLook,
+    NAME_STYLES, NAME_COLOURED, DECOS, lum, readable, cleanExtras, hasExtras, extrasVersion, extrasMsg
 };
 
 /* ================================================================== browser */
@@ -196,6 +226,7 @@ module.exports = {
 let relays = null;
 const book = Book(TTL);
 let lastSent = 0, timers = [], said = false;
+let chatMuted = false;                   // the emulator's Mute chat
 const waiting = [];                      // { h, done, timer }
 
 const myHash = () => { const m = fc.app.me(); return m ? hashOf(m) : ''; };
@@ -213,11 +244,14 @@ function send(t, extra) {
     if (pv) msg.pv = pv;
     const lv = named && t !== 'bye' ? myLv() : '';
     if (lv) msg.lv = lv;
+    const xv = named && t !== 'bye' ? myXv() : '';
+    if (xv) msg.xv = xv;
     const nw = named && (t === 'hi' || t === 'here') ? myNewDay() : 0;
     if (nw) msg.nw = nw;
     // your Fightcord ID (3.6): other Fightcords can send you a friend request with it
     const dk = named && t !== 'bye' ? myDk() : '';
     if (dk) msg.dk = dk;
+    if (named && t !== 'bye' && chatMuted && cfg.shareChatOff !== false) msg.mc = 1;
     relays.send(Object.assign(msg, extra));
 }
 function myDk() {
@@ -232,6 +266,30 @@ function myNewDay() {
 }
 function say(t) { if (cfg.visible) send(t); }
 
+// The emulator saves Mute chat in its own settings; nothing tells us when, so look now and then
+function readChatMuted() {
+    return (fc.emu ? fc.emu.chatMuted() : Promise.resolve(false)).then(v => {
+        if (v !== chatMuted) { chatMuted = v; if (said) say('here'); }
+        return v;
+    });
+}
+
+// Opponents without Fightcord can't get the "here" flag: one line in the lobby, if you turned that on.
+// Once per opponent for 6 hours, and never over something you're typing.
+const TOLD_MS = 6 * 3600000;
+const told = new Map();
+async function tellChatOff(opp) {
+    if (!opp || cfg.chatOffLine !== true || !(await readChatMuted())) return;
+    if (await check(opp, 3000)) return;  // they have Fightcord: their VS screen says it
+    const key = String(opp).toLowerCase(), now = Date.now();
+    if (now - (told.get(key) || 0) < TOLD_MS) return;
+    const input = fc.app.chatInput();
+    if (!input || input.value) return;
+    told.set(key, now);
+    fc.app.setChatText(T('@{name} my in-game chat is off, not ignoring you. GGs here after!', { name: opp }), false);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+}
+
 let changeT = 0;
 function changed() {
     clearTimeout(changeT);
@@ -244,10 +302,10 @@ function onMsg(m) {
     if (m && m.t === 'prof') { takeProfile(m, now); return; }
     const what = react(m, myHash());
     if (what === 'record' || what === 'record+reply') {
-        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv)) changed();
+        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv, m.xv, m.mc)) changed();
         if (m.dk && /^[0-9a-f]{64}$/.test(m.dk)) fc.emit('presence:id', { h: m.h, dk: m.dk });
         if (m.nw) newcomer(m.h, m.nw);
-        for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice }); }
+        for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice, chatOff: m.mc === 1 }); }
     }
     if (what === 'forget' && book.gone(m.h)) changed();
     // answer a newcomer (spread out, and not if we just spoke) / a direct question (right away)
@@ -386,23 +444,38 @@ function myBadges() {
     badgeCache = { at: Date.now(), list: badgesFrom(fc.history.all(), spot) };
     return badgeCache.list;
 }
-// what you share (badges included): cleaned the same way everyone else's is
-function myProfile() { const p = cleanFull(Object.assign({}, cfg.profile, { bd: cfg.showBadges === false ? [] : myBadges() })); noteAnims(p); return p; }
+// what you share (badges included): cleaned the same way everyone else's is (3.9: with the extras)
+function myProfile() { const p = Object.assign(cleanFull(Object.assign({}, cfg.profile, { bd: cfg.showBadges === false ? [] : myBadges() })), cleanExtras(cfg.profile)); noteAnims(p); return p; }
 function myPv() { if (!cfg || !cfg.shareProfile) return ''; const p = cleanProfile(myProfile()); return isEmptyProfile(p) ? '' : profileVersion(p); }
 function myLv() { if (!cfg || !cfg.shareProfile) return ''; const p = myProfile(); return hasLook(p) ? lookVersion(p) : ''; }
+function myXv() { if (!cfg || !cfg.shareProfile) return ''; return extrasVersion(cfg.profile); }
+function signExtras(h, lv, xv) {
+    const lb = fc.modules.get('lobbies');
+    if (!crypto || !lb || !lb.signId) return '';
+    return lb.signId(crypto.createHash('sha256').update(extrasMsg(h, lv, xv)).digest());
+}
+function extrasSigned(h, lv, xv, dk, sig) {
+    if (!crypto || !V || !V.verify || !/^[0-9a-f]{64}$/.test(String(dk || '')) || !/^[0-9a-f]{128}$/.test(String(sig || ''))) return false;
+    try { return V.verify(crypto.createHash('sha256').update(extrasMsg(h, lv, xv)).digest(), Buffer.from(dk, 'hex'), Buffer.from(sig, 'hex')); }
+    catch (e) { return false; }
+}
 
 function answerProfile(m, now) {
     if (!cfg.visible || !cfg.shareProfile || !HASH.test(String(m.q || '')) || m.q !== myHash()) return;
     // answers to the same version at most every 4 s (a new version always goes out)
-    const pv = myPv(), lv = myLv(), v = pv + lv;
+    const pv = myPv(), lv = myLv(), xv = myXv(), v = pv + lv + xv;
     if (!v || (v === lastAnswer.v && now - lastAnswer.at < 4000)) return;
     lastAnswer = { v, at: now };
     send('prof', profAnswer());
 }
-// your profile for whoever asked: the looks signed with your Fightcord ID (3.6 only reads the text)
+// your profile for whoever asked: the looks signed with your Fightcord ID (3.6 only reads the text);
+// 3.9: the extras signed on their own (over lv too, so they only go with these looks)
 function profAnswer() {
-    const lv = myLv();
-    return lv ? { p: myProfile(), lv, sig: signLook(myHash(), lv) } : { p: cleanProfile(myProfile()) };
+    const lv = myLv(), xv = myXv(), h = myHash();
+    const out = lv || xv ? { p: myProfile() } : { p: cleanProfile(myProfile()) };
+    if (lv) { out.lv = lv; out.sig = signLook(h, lv); }
+    if (xv) { out.xv = xv; out.xsig = signExtras(h, lv, xv); }
+    return out;
 }
 function takeProfile(m, now) {
     if (!HASH.test(String(m.h || '')) || m.h === myHash()) return;
@@ -420,6 +493,14 @@ function takeProfile(m, now) {
     } else if (e.pv && m.pv === e.pv && profileVersion(full) === e.pv) {
         // only the version that player announced (someone else answering for them doesn't count)
         x = { pv: e.pv, lv: '', p: cleanProfile(full), at: now };
+    }
+    // 3.9: the name style and decoration -- the version they announced, signed by the ID that name is pinned to
+    if (e.xv && m.xv === e.xv) {
+        const ex = cleanExtras(m.p);
+        const ok = extrasVersion(ex) === e.xv && extrasSigned(m.h, e.lv || '', e.xv, e.dk, m.xsig) && mayLook(seen.pins[m.h], e.dk, friendPkFor(m.h), now);
+        if (!x) x = { pv: '', lv: '', p: {}, at: now };
+        if (ok) { seen.pins[m.h] = { dk: e.dk, at: now }; x.xv = e.xv; Object.assign(x.p, ex); }
+        else x.xbad = e.xv;
     }
     if (!x) return;
     remember(m.h, x);
@@ -440,16 +521,17 @@ function pics(p) {
 // while they're away
 function profile(name, soft) {
     if (!name || !cfg) return null;
-    if (fc.app.isMe(name)) { const p = myProfile(); return isEmptyProfile(p) && !hasLook(p) ? null : p; }
+    if (fc.app.isMe(name)) { const p = myProfile(); return isEmptyProfile(p) && !hasLook(p) && !hasExtras(p) ? null : p; }
     if (!cfg.showProfiles || isHidden(name)) return null;
     const h = hashOf(name), now = Date.now();
     const e = book.get(h, now), c = seen.m[h] || null;
-    const shown = c && (!isEmptyProfile(c.p) || hasLook(c.p)) ? pics(c.p) : null;
+    const shown = c && (!isEmptyProfile(c.p) || hasLook(c.p) || hasExtras(c.p)) ? pics(c.p) : null;
     if (!e) return shown;
-    if (!e.pv && !e.lv) return null;                      // here, and sharing nothing (any more)
-    if (c && (e.lv ? c.lv === e.lv || c.bad === e.lv : !c.lv && c.pv === e.pv)) return shown;
+    if (!e.pv && !e.lv && !e.xv) return null;             // here, and sharing nothing (any more)
+    const xok = !c || (e.xv ? c.xv === e.xv || c.xbad === e.xv : !c.xv);
+    if (c && xok && (e.lv ? c.lv === e.lv || c.bad === e.lv : !c.lv && (c.pv || '') === e.pv)) return shown;
     // a new version: ask now; the same one again: not more than every 30 s
-    const v = e.pv + e.lv, last = asked.get(h);
+    const v = e.pv + e.lv + (e.xv || ''), last = asked.get(h);
     if (relays && (!last || last.v !== v || (!soft && now - last.at > 30000))) { asked.set(h, { v, at: now }); send('prof?', { q: h }); }
     return shown;                                          // (the old one meanwhile)
 }
@@ -492,7 +574,7 @@ function profileHtml(name, opts) {
         (nb ? (badges ? badges.replace('<div class="fcBadges">', '<div class="fcBadges">' + nb) : `<div class="fcBadges">${nb}</div>`) : badges) + '</div>';
 }
 function setProfile(p) {
-    const c = cleanFull(p);
+    const c = Object.assign(cleanFull(p), cleanExtras(p));
     delete c.bd;                          // (badges come from your history, every time)
     cfg.profile = c;
     store.save();
@@ -516,7 +598,7 @@ function info(name) {
     if (!name) return null;
     if (fc.app.isMe(name)) return cfg.visible ? { voice: voiceOn() } : null;
     const e = book.get(hashOf(name), Date.now());
-    return e ? { voice: e.voice, dk: e.dk || '' } : null;
+    return e ? { voice: e.voice, dk: e.dk || '', chatOff: !!e.mc } : null;
 }
 
 // ask one player directly (a set is starting and they're not in the book yet)
@@ -544,25 +626,25 @@ function line(name) {
 }
 
 const CSS = `
-.fcPres { display: inline-flex; align-items: center; height: 15px; padding: 0 4px; margin: 0 0 0 5px; border-radius: 4px; vertical-align: middle;
-    background: var(--fc-accent); color: #fff; font: 800 9.5px/1 var(--fc-font); letter-spacing: 0; text-transform: none; flex: none; cursor: default; }
+.fcPres { display: inline-flex; align-items: center; height: 15px; padding: 0 4px; margin: 0 0 0 5px; border-radius: var(--fc-r1); vertical-align: middle;
+    background: var(--fc-accent); color: #fff; font: 800 var(--fc-fs-2xs)/1 var(--fc-font); letter-spacing: 0; text-transform: none; flex: none; cursor: default; }
 .fcPres > b { font-weight: 800; }
 .fcPres > b + .fc-ic { margin-left: 2px; }
 .fcPres .fc-ic { width: 10px; height: 11px; stroke-width: 3; }
 .fcPres.v { background: var(--fc-success); }
-.fcPres.big { height: 18px; padding: 0 5px; font-size: 11.5px; border-radius: 5px; }
+.fcPres.big { height: 18px; padding: 0 5px; font-size: var(--fc-fs-sm); border-radius: 5px; }
 .fcPres.big .fc-ic { width: 12px; height: 13px; }
-.fcPresLine { display: flex; align-items: center; margin-top: 6px; font-size: 12px; color: var(--fc-muted); }
+.fcPresLine { display: flex; align-items: center; margin-top: 6px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcPresLine .fcPres { margin: 0 6px 0 0; }
 .fcProf { margin-top: 8px; }
-.fcProfS { display: flex; align-items: flex-start; padding: 6px 9px; border-radius: var(--fc-r2); background: var(--fc-s2); font: 13px/1.35 var(--fc-font); color: var(--fc-text); }
+.fcProfS { display: flex; align-items: flex-start; padding: 6px 9px; border-radius: var(--fc-r2); background: var(--fc-s2); font: var(--fc-fs-ui)/1.35 var(--fc-font); color: var(--fc-text); }
 .fcProfS > .fc-ic { flex: none; width: 13px; height: 13px; margin: 2px 7px 0 0; color: var(--fc-muted); }
 .fcProfS > span { min-width: 0; word-wrap: break-word; }
-.fcProfA { margin-top: 8px; font: 12.5px/1.45 var(--fc-font); color: var(--fc-text); word-wrap: break-word; }
-.fcProfA > b { display: block; margin-bottom: 2px; font: 700 11px/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fcProfA { margin-top: 8px; font: var(--fc-fs-ui)/1.45 var(--fc-font); color: var(--fc-text); word-wrap: break-word; }
+.fcProfA > b { display: block; margin-bottom: 2px; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
 .fcBadges { display: flex; flex-wrap: wrap; margin: 8px -4px 0 0; }
 .fcBadge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; margin: 0 4px 4px 0; border-radius: 10px; background: var(--fc-s2);
-    font: 600 11px/20px var(--fc-font); color: var(--fc-text); cursor: default; }
+    font: 600 var(--fc-fs-xs)/20px var(--fc-font); color: var(--fc-text); cursor: default; }
 .fcBadge .fc-ic { width: 12px; height: 12px; margin-right: 4px; }
 .fcBadge.sets .fc-ic { color: var(--fc-accent); }
 .fcBadge.streak .fc-ic { color: #ff8a3d; }
@@ -579,7 +661,7 @@ html body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd)::before, 
 function start(f) {
     fc = f;
     store = fc.config('presence', { visible: true, shareProfile: true, showProfiles: true, showPics: true, showBadges: true, profile: { s: '', a: '', b: '' }, hiddenProfiles: [],
-        shareNew: true, welcomeNew: true, announced: {} });
+        shareNew: true, welcomeNew: true, shareChatOff: true, chatOffLine: false, announced: {} });
     cfg = store.data;
     seenStore = fc.config('presence-profiles', { m: {}, pins: {} });
     seen = seenStore.data;
@@ -596,6 +678,9 @@ function start(f) {
         fc.own(() => window.removeEventListener('beforeunload', bye));
     }
     fc.settings.section('voice', 'Voice chat', 'mic', 75);       // shared with voice.js
+    readChatMuted();
+    fc.tick(readChatMuted, 30000, { whileHidden: true });
+    fc.on('match:accepted', (ev) => { tellChatOff(ev && ev.opp).catch(() => {}); });
     fc.settings.block({
         id: 'presence', section: 'voice', title: 'Fightcord players', hint: '— see who else has Fightcord', store, order: 5,
         fields: [
@@ -611,6 +696,11 @@ function start(f) {
                 onChange: () => { changed(); fc.emit('presence:profile', { pics: true }); } },
             { key: 'shareNew', type: 'switch', label: 'Tell Fightcord players I’m new', hint: 'In your first week with Fightcord: a welcome line in their chat and a “New to Fightcord” badge on your card',
                 show: (d) => d.visible, onChange: () => { if (said) say('here'); changed(); } },
+            { key: 'shareChatOff', type: 'switch', label: 'Tell Fightcord opponents when my in-game chat is muted',
+                hint: 'Uses the Mute chat setting of the emulator (FBNeo games). Their VS screen says you’ll talk in the lobby after the set.',
+                show: (d) => d.visible, onChange: () => { if (said) say('here'); changed(); } },
+            { key: 'chatOffLine', type: 'switch', label: 'Tell everyone else in the lobby chat',
+                hint: 'When your in-game chat is muted and the opponent has no Fightcord, sends “@name my in-game chat is off, not ignoring you. GGs here after!” in the lobby. This is public, once per opponent every 6 hours.' },
             { key: 'welcomeNew', type: 'switch', label: 'Welcome new Fightcord players in the chat', hint: 'A line in your chat when someone in your channel just got Fightcord (only you see it)' },
             { type: 'note', label: 'Fightcord players find each other through the same free public relays as voice chat. Your name is sent hashed, and nothing is stored, but anyone listening who knows your name could tell you use Fightcord. A profile you share can be read by any Fightcord player, and your profile pictures are on public file hosts: anyone with the link can see them.' }
         ]
@@ -648,17 +738,21 @@ const api = {
     animOf: (url) => anims.get(url) || '',
     frames: () => FRAMES.slice(),
     cleanFull: (p) => cleanFull(p),
+    // 3.9: name styles and decorations
+    nameStyles: () => NAME_STYLES.slice(),
+    decos: () => DECOS.slice(),
+    readable: (c) => readable(c),
     // the dev harness: pretend someone shared a profile (looks too: not signed, it's only on your screen)
     _profile(name, p) {
-        const c = cleanFull(p), h = hashOf(name), pv = isEmptyProfile(cleanProfile(c)) ? '' : profileVersion(c), lv = hasLook(c) ? lookVersion(c) : '';
-        book.heard(h, false, Date.now(), pv, 0, '', lv);
-        remember(h, { pv, lv, p: c, at: Date.now() });
+        const c = Object.assign(cleanFull(p), cleanExtras(p)), h = hashOf(name), pv = isEmptyProfile(cleanProfile(c)) ? '' : profileVersion(c), lv = hasLook(c) ? lookVersion(c) : '', xv = extrasVersion(c);
+        book.heard(h, false, Date.now(), pv, 0, '', lv, xv);
+        remember(h, { pv, lv, xv, p: c, at: Date.now() });
         changed();
         fc.emit('presence:profile', { h });
     },
     _forget(name) { const h = hashOf(name); book.gone(h); changed(); },
     _msg: (m) => onMsg(m),                // tests: a message from the relays
-    _answer: () => Object.assign({ t: 'prof', h: myHash(), pv: myPv(), lv: myLv(), dk: myDk() }, profAnswer()),
+    _answer: () => Object.assign({ t: 'prof', h: myHash(), pv: myPv(), lv: myLv(), xv: myXv(), dk: myDk() }, profAnswer()),
     count: () => book.count(Date.now()),
     // the dev harness: pretend we heard from someone (nw: a newcomer's day)
     _heard(name, voice, nw) { const h = hashOf(name); if (book.heard(h, voice, Date.now(), '', nw)) changed(); if (nw) newcomer(h, nw); },

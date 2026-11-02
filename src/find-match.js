@@ -139,7 +139,7 @@ function rowHtml(c, ctx) {
                 : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}${E(conn || T('ping unknown'))}</span></div>
         ${rec}
         ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
-        ${fc.ui.btn('Challenge', { kind: 'success', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;
+        ${fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;
 }
 
 function render(box) {
@@ -247,38 +247,40 @@ function refreshPill() {
 
 const CSS = `
 .fcfmPill { display: inline-flex; align-items: center; height: 32px; padding: 0 10px; margin-right: 8px; border-radius: var(--fc-r1);
-    background: var(--fc-btn); color: #fff; font: 600 14px/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; text-transform: none; letter-spacing: normal; }
+    background: var(--fc-btn); color: #fff; font: 600 var(--fc-fs-md)/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; text-transform: none; letter-spacing: normal; }
 .fcfmPill:hover { background: var(--fc-btn-h); }
 /* 2.13: the one accent button in the header (the thing to do next) */
 .fcHdr .fcfmPill { background: var(--fc-accent); color: #fff; }
 .fcHdr .fcfmPill:hover { background: var(--fc-accent-h, var(--fc-accent)); filter: brightness(1.1); }
-.cbn-merged .fcHdr .fcfmPill { box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.cbn-merged .fcHdr .fcfmPill { box-shadow: 0 2px 10px var(--fc-scrim-2); }
 .fcfmPill svg { width: 16px; height: 16px; margin-right: 6px; }
-.fcfmRow { display: flex; align-items: center; padding: 6px 4px; border-radius: 8px; }
-.fcfmRow:hover { background: rgba(255,255,255,.04); }
+.fcfmRow { display: flex; align-items: center; padding: 6px 4px; border-radius: var(--fc-r2); }
+.fcfmRow:hover { background: var(--fc-tint-1); }
 .fcfmNote { position: fixed; z-index: var(--fc-z-pop); width: 230px; padding: 10px 12px; border-radius: 10px; pointer-events: none; box-sizing: border-box;
-    background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); font: 13px/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
-.fcfmNote .h { display: flex; align-items: center; margin-bottom: 6px; font: 700 11px/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+    background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); font: var(--fc-fs-ui)/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
+.fcfmNote .h { display: flex; align-items: center; margin-bottom: 6px; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
 .fcfmNote .h .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
 .fcfmNote .h span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcfmRow .fc-avatar { flex: none; margin-right: 10px; }
 .fcfmWho { flex: 1; min-width: 0; }
-.fcfmWho b { display: block; font-size: 14px; font-weight: 600; color: var(--fc-head); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcfmWho b { display: block; font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fcfmWho b:hover { text-decoration: underline; }
 .fcfmWho b .fc-flag { margin-right: 5px; }
-.fcfmWho span { display: flex; align-items: center; font-size: 12px; color: var(--fc-muted); white-space: nowrap; }
+.fcfmWho span { display: flex; align-items: center; font-size: var(--fc-fs-sm); color: var(--fc-muted); white-space: nowrap; }
 .fcfmWho span .fc-tag { margin-right: 5px; }
-.fcfmNew, .fcfmRec, .fcfmOdds { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+.fcfmNew, .fcfmRec, .fcfmOdds { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 10px; font-size: var(--fc-fs-sm); font-weight: 700; }
 .fcfmNew { background: var(--fc-accent-soft); color: var(--fc-head); }
-.fcfmRec { background: rgba(255,255,255,.07); color: var(--fc-text); }
+.fcfmRec { background: var(--fc-tint-3); color: var(--fc-text); }
 .fcfmOdds.good { color: var(--fc-success); } .fcfmOdds.bad { color: var(--fc-danger); }
-.fcfmRow .fc-btn { flex: none; margin-left: 8px; }
+.fcfmRow .fc-btn { flex: none; margin-left: 8px; transition: background var(--fc-fast) ease; }
+/* one green button at a time: the row you point at (a wall of green buttons reads as noise) */
+.fcfmRow:hover .fc-btn, .fcfmRow .fc-btn:focus-visible { background: var(--fc-success); color: #fff; }
 .fcfmWiden { display: flex; justify-content: center; margin-top: 4px; }
 /* 3.8.1: ranked or casual only */
-.fcfmWho span i { flex: none; margin-right: 6px; padding: 0 5px; border-radius: 4px; font: 700 10px/16px var(--fc-font); font-style: normal; letter-spacing: .02em; text-transform: uppercase; }
+.fcfmWho span i { flex: none; margin-right: 6px; padding: 0 5px; border-radius: var(--fc-r1); font: 700 var(--fc-fs-2xs)/16px var(--fc-font); font-style: normal; letter-spacing: .02em; text-transform: uppercase; }
 .fcfmRk { background: rgba(240,178,50,.16); color: var(--fc-warning); }
-.fcfmCas { background: rgba(255,255,255,.07); color: var(--fc-muted); }
-.fcfmTop { display: flex; align-items: center; margin: -2px 0 8px; padding: 0 4px 8px; border-bottom: 1px solid var(--fc-divider); color: var(--fc-text); font: 13px/1.35 var(--fc-font); }
+.fcfmCas { background: var(--fc-tint-3); color: var(--fc-muted); }
+.fcfmTop { display: flex; align-items: center; margin: -2px 0 8px; padding: 0 4px 8px; border-bottom: 1px solid var(--fc-divider); color: var(--fc-text); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
 .fcfmTop.note { color: var(--fc-muted); }
 .fcfmTop.note .fc-ic { flex: none; margin-right: 6px; }
 .fcfmSw { display: flex; align-items: center; cursor: pointer; }

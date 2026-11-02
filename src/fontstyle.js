@@ -499,7 +499,7 @@ function openPicker(anchor) {
     const box = document.createElement('div');
     box.id = 'fontStylePicker';
     const rect = anchor.getBoundingClientRect();
-    box.style.cssText = 'position:fixed;z-index:100000;width:280px;max-height:60vh;overflow-y:auto;' +
+    box.style.cssText = 'position:fixed;z-index:var(--fc-z-float);width:280px;max-height:60vh;overflow-y:auto;' +
         'background:var(--mainColor-darker,#14161a);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
         'border-radius:6px;padding:4px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);' +
         'left:' + Math.max(8, rect.right - 280) + 'px;bottom:' + (window.innerHeight - rect.top + 8) + 'px;';
@@ -554,7 +554,7 @@ function ensureChatButton() {
         btn.textContent = 'Aa';
         btn.title = T('Chat font style (Ctrl+Shift+F cycles, Ctrl+Shift+X toggles)');
         btn.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);z-index:50;' +
-            'cursor:pointer;font-size:12px;font-weight:bold;line-height:1;padding:4px 6px;border-radius:4px;' +
+            'cursor:pointer;font-size:var(--fc-fs-sm);font-weight:bold;line-height:1;padding:4px 6px;border-radius:var(--fc-r1);' +
             'background:rgba(0,0,0,.35);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
             'color:#fff;opacity:.75;user-select:none;';
         btn.addEventListener('mouseenter', () => btn.style.opacity = '1');

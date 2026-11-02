@@ -95,9 +95,9 @@ function previewHtml(d) {
 const STYLE = `
 .fcriPrev { display: flex; padding: 10px 0 4px; }
 .fcriRow { display: flex; flex-wrap: wrap; }
-.fcriCell { display: flex; flex-direction: column; align-items: center; width: 58px; margin: 0 6px 6px 0; padding: 8px 0 6px; border-radius: 8px; background: rgba(0,0,0,.18); }
+.fcriCell { display: flex; flex-direction: column; align-items: center; width: 58px; margin: 0 6px 6px 0; padding: 8px 0 6px; border-radius: var(--fc-r2); background: rgba(0,0,0,.18); }
 .fcriCell img { width: 40px; height: 40px; object-fit: contain; }
-.fcriCell b { margin-top: 4px; font-size: 12px; color: var(--fc-muted); }
+.fcriCell b { margin-top: 4px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .fcriPrev:not(.on) .fcriCell img { filter: grayscale(1); opacity: .55; }
 `;
 

@@ -185,7 +185,7 @@ html.dc-theme #app input, html.dc-theme #app select, html.dc-theme #app textarea
     font-family: var(--dc-font);
 }
 html.dc-theme ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
-html.dc-theme ::-webkit-scrollbar-thumb { background: var(--dc-select); border-radius: 4px; border: 0; }
+html.dc-theme ::-webkit-scrollbar-thumb { background: var(--dc-select); border-radius: var(--fc-r1); border: 0; }
 html.dc-theme ::-webkit-scrollbar-track { background: transparent; }
 html.dc-theme ::selection { background: var(--dc-accent-soft); }
 `;
@@ -207,19 +207,19 @@ html.dc-layout .mainToolbar .channelsList::before {
 }
 html.dc-layout .channelItemWrapper { margin: 0 0 8px; width: 72px; }
 html.dc-layout .channelItemWrapper .channelItem {
-    width: 40px; height: 40px; margin: 0 16px; border: 0; border-radius: 12px;
+    width: 40px; height: 40px; margin: 0 16px; border: 0; border-radius: var(--fc-r3);
     background-color: var(--dc-select); background-position: center; background-size: cover; background-repeat: no-repeat;
-    transition: border-radius .15s ease-out, background-color .15s ease-out;
+    transition: border-radius var(--fc-fast) ease-out, background-color var(--fc-fast) ease-out;
 }
 html.dc-layout .channelItemWrapper .channelItem:hover,
-html.dc-layout .channelItemWrapper .channelItem.active { border-radius: 12px; border: 0; }
+html.dc-layout .channelItemWrapper .channelItem.active { border-radius: var(--fc-r3); border: 0; }
 html.dc-layout .channelItemWrapper .channelItem:not(.dc-art):hover,
 html.dc-layout .channelItemWrapper .channelItem:not(.dc-art).active { background-color: var(--dc-blurple); }
 html.dc-layout .channelItemWrapper .channelItem .channelItemName {
     font-size: 0; padding: 0; border-radius: inherit; color: var(--dc-text); text-transform: none;
 }
 html.dc-layout .channelItemWrapper .channelItem .channelItemName::before {
-    content: attr(data-dc-initials); font-size: 12px; font-weight: 600; letter-spacing: 0; line-height: 1;
+    content: attr(data-dc-initials); font-size: var(--fc-fs-sm); font-weight: 600; letter-spacing: 0; line-height: 1;
     color: var(--dc-text);
 }
 html.dc-layout .channelItemWrapper .channelItem:hover .channelItemName::before,
@@ -228,25 +228,25 @@ html.dc-layout .channelItemWrapper .channelItem.dc-art .channelItemName::before 
 /* the white pill on the left edge */
 html.dc-layout .channelItemWrapper .channelItem::before {
     content: ''; position: absolute; left: -16px; top: 50%; width: 4px; height: 0; margin-top: 0;
-    background: var(--dc-head); border-radius: 0 4px 4px 0;
-    transition: height .15s ease-out, margin-top .15s ease-out;
+    background: var(--dc-head); border-radius: 0 var(--fc-r1) var(--fc-r1) 0;
+    transition: height var(--fc-fast) ease-out, margin-top var(--fc-fast) ease-out;
 }
 html.dc-layout .channelItemWrapper .channelItem:hover::before { height: 20px; margin-top: -10px; }
 html.dc-layout .channelItemWrapper .channelItem.active::before { height: 36px; margin-top: -18px; }
 /* FC's glow ring becomes Discord's name tooltip */
 html.dc-layout .channelItemWrapper .channelItem::after {
-    content: attr(data-dc-name); display: block; box-shadow: 0 8px 16px rgba(0,0,0,.24);
+    content: attr(data-dc-name); display: block; box-shadow: 0 8px 16px var(--fc-scrim-1);
     position: absolute; left: 52px; top: 50%; width: auto; height: auto; transform: translateY(-50%);
-    background: var(--dc-float); color: var(--dc-head); padding: 8px 12px; border-radius: 4px;
-    font-size: 15px; font-weight: 600; line-height: 1.25; white-space: nowrap; text-transform: none;
-    opacity: 0; pointer-events: none; z-index: 1000; transition: opacity .1s ease-out;
+    background: var(--dc-float); color: var(--dc-head); padding: 8px 12px; border-radius: var(--fc-r1);
+    font-size: var(--fc-fs-chat); font-weight: 600; line-height: 1.25; white-space: nowrap; text-transform: none;
+    opacity: 0; pointer-events: none; z-index: 1000; transition: opacity var(--fc-fast) ease-out;
 }
-html.dc-layout .channelItemWrapper .channelItem.active::after { box-shadow: 0 8px 16px rgba(0,0,0,.24); opacity: 0; }
+html.dc-layout .channelItemWrapper .channelItem.active::after { box-shadow: 0 8px 16px var(--fc-scrim-1); opacity: 0; }
 html.dc-layout .channelItemWrapper .channelItem:hover::after { opacity: 1; }
 /* unread / mention / challenge markers */
 html.dc-layout .channelItem .notificationsIndicatorsWrapper .notificationsIndicators { left: -16px; }
 html.dc-layout .channelItem .notificationsIndicators .newMessages {
-    width: 4px; height: 8px; border-radius: 0 4px 4px 0; background-color: var(--dc-head); box-shadow: none;
+    width: 4px; height: 8px; border-radius: 0 var(--fc-r1) var(--fc-r1) 0; background-color: var(--dc-head); box-shadow: none;
 }
 html.dc-layout .channelItem .notificationsIndicators .newMentions { background-color: var(--dc-red); box-shadow: none; }
 html.dc-layout .channelItem .notificationsIndicators .newChallenges { background-color: var(--dc-green); box-shadow: none; }
@@ -273,9 +273,9 @@ html.dc-layout .channelItemWrapper .muteChannelItem.active .icon .icon-strike { 
 /* browse games = Discord's green "explore" button */
 html.dc-layout .mainToolbar .buttonItemWrapper { display: flex; justify-content: center; height: auto; padding: 0; margin: 0 0 8px; }
 html.dc-layout .mainToolbar .buttonItemWrapper .searchIcon {
-    width: 40px; height: 40px; padding: 10px; box-sizing: border-box; border-radius: 12px;
+    width: 40px; height: 40px; padding: 10px; box-sizing: border-box; border-radius: var(--fc-r3);
     background: var(--dc-select); fill: var(--dc-green); filter: none;
-    transition: border-radius .15s ease-out, background-color .15s ease-out;
+    transition: border-radius var(--fc-fast) ease-out, background-color var(--fc-fast) ease-out;
 }
 html.dc-layout .mainToolbar .buttonItemWrapper .searchIcon path { fill: var(--dc-green); }
 html.dc-layout .mainToolbar .buttonItemWrapper:hover .searchIcon,
@@ -298,7 +298,7 @@ html.dc-layout .mainToolbar .buttonBar .userButton .userState {
     width: 14px; height: 14px; right: -2px; bottom: -2px; border: 3px solid var(--dc-bg3); box-shadow: none;
 }
 html.dc-layout .mainToolbar .buttonBar .userButton .userStateMenu {
-    background: var(--dc-float); border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,.24); border: 0;
+    background: var(--dc-float); border-radius: var(--fc-r2); box-shadow: 0 8px 16px var(--fc-scrim-1); border: 0;
 }
 
 /* ============================== channel header ============================== */
@@ -309,25 +309,25 @@ html.dc-layout .channelToolbar {
 html.dc-layout .channelToolbar .channelInfo { height: 48px; align-items: center; min-width: 0; flex: 1 1 auto; }
 html.dc-layout .channelToolbar .channelInfo .name:not(.title) { flex: 0 0 auto; overflow: visible; }
 html.dc-layout .channelToolbar .channelInfo .name {
-    font-size: 13px; font-weight: 600; color: var(--dc-muted); text-transform: none; letter-spacing: 0;
+    font-size: var(--fc-fs-ui); font-weight: 600; color: var(--dc-muted); text-transform: none; letter-spacing: 0;
     padding: 0 8px; line-height: 20px; height: auto;
 }
 html.dc-layout .channelToolbar .channelInfo .name.title {
-    font-size: 16px; color: var(--dc-head); padding-left: 0; margin-right: 4px;
+    font-size: var(--fc-fs-lg); color: var(--dc-head); padding-left: 0; margin-right: 4px;
     border-right: 1px solid var(--dc-divider); padding-right: 12px;
     flex: 0 1 auto; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* the rom name is already in the title; Discord's header has no room for it */
 html.dc-layout .channelToolbar .channelInfo .name[title="Rom name"] { display: none; }
 html.dc-layout .channelToolbar .channelInfo .name.title::first-letter { color: var(--dc-faint); font-weight: 400; }
-html.dc-layout .channelToolbar .channelInfo .name .link { color: var(--dc-icon); text-transform: none; font-weight: 500; font-size: 14px; }
+html.dc-layout .channelToolbar .channelInfo .name .link { color: var(--dc-icon); text-transform: none; font-weight: 500; font-size: var(--fc-fs-md); }
 html.dc-layout .channelToolbar .channelInfo .name .link:hover { color: var(--dc-head); text-decoration: none; }
 html.dc-layout .channelToolbar .rankedWrapper svg path { fill: var(--dc-icon); }
 html.dc-layout .channelToolbar .channelActions { height: 48px; align-items: center; flex: 0 0 auto; }
 html.dc-layout .button-alt {
     height: 32px; min-height: 32px; padding: 2px 16px; border: 0; border-radius: 3px; background: var(--dc-btn);
-    color: #fff; font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 8px;
-    transition: background-color .17s ease;
+    color: #fff; font-size: var(--fc-fs-md); font-weight: 500; text-transform: none; letter-spacing: 0; margin-left: 8px;
+    transition: background-color var(--fc-fast) ease;
 }
 html.dc-layout .button-alt:hover { background: var(--dc-btn-h); color: #fff; border: 0; }
 html.dc-layout .button-alt::after { display: none; }
@@ -385,12 +385,12 @@ html.dc-layout .chatContent .message.chat .blocks .highlight { color: var(--dc-h
 /* the rules / resources message becomes an embed card */
 html.dc-layout .chatContent .messageWrapper.motd { margin: 16px 48px 8px 72px; padding: 0; background: none; }
 html.dc-layout .chatContent .messageWrapper.motd .motd {
-    background: var(--dc-input); border: 0; border-left: 4px solid var(--dc-blurple); border-radius: 4px;
+    background: var(--dc-input); border: 0; border-left: 4px solid var(--dc-blurple); border-radius: var(--fc-r1);
     padding: 8px 16px 16px 12px; box-shadow: none;
 }
 html.dc-layout .chatContent .motd .line { padding: 0; }
 html.dc-layout .chatContent .motd .line .time { display: none; }
-html.dc-layout .chatContent .motd .blocksContainer { color: var(--dc-text); font-size: 14px; line-height: 18px; }
+html.dc-layout .chatContent .motd .blocksContainer { color: var(--dc-text); font-size: var(--fc-fs-md); line-height: 18px; }
 
 /* ============================== system messages ============================== */
 /* challenge results/errors, incoming challenges, end-of-match, bot/channel notices.
@@ -398,7 +398,7 @@ html.dc-layout .chatContent .motd .blocksContainer { color: var(--dc-text); font
    system messages as a plain muted line in the text column. */
 html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) {
     position: relative; margin: 6px 0 0; padding: 3px 48px 3px 72px; min-height: 22px;
-    background: none; box-shadow: none; border: 0; animation: none; font-size: 15px; line-height: 22px;
+    background: none; box-shadow: none; border: 0; animation: none; font-size: var(--fc-fs-chat); line-height: 22px;
 }
 html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd):hover { background: var(--dc-hover); }
 /* the band is drawn twice: on the wrapper and again on the inner .message */
@@ -407,18 +407,18 @@ html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) .message {
 }
 html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) header { display: none; }
 html.dc-layout .chatContent .messageWrapper.channel header { display: flex; padding: 0; min-height: 0; }
-html.dc-layout .chatContent .messageWrapper.channel header .author { text-transform: none; font-size: 15px; }
-html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) .line { padding: 0; font-size: 15px; line-height: 22px; }
+html.dc-layout .chatContent .messageWrapper.channel header .author { text-transform: none; font-size: var(--fc-fs-chat); }
+html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) .line { padding: 0; font-size: var(--fc-fs-chat); line-height: 22px; }
 html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) .line .time { display: none; }
 html.dc-layout .chatContent .messageWrapper:not(.chat):not(.motd) .regular {
     font-weight: 400; text-transform: none; color: var(--dc-muted);
 }
-html.dc-layout .chatContent .messageWrapper.bot { font-style: normal; font-size: 14px; color: var(--dc-muted); }
+html.dc-layout .chatContent .messageWrapper.bot { font-style: normal; font-size: var(--fc-fs-md); color: var(--dc-muted); }
 html.dc-layout .chatContent .message .challengeContainer,
 html.dc-layout .chatContent .message .challengeWrapper { padding: 0; align-items: center; }
 html.dc-layout .chatContent .message .challengeContainer .title,
 html.dc-layout .chatContent .message .challengeWrapper .title {
-    font-size: 15px; font-weight: 400; text-transform: none; letter-spacing: 0; line-height: 22px;
+    font-size: var(--fc-fs-chat); font-weight: 400; text-transform: none; letter-spacing: 0; line-height: 22px;
     color: var(--dc-muted); margin: 0 8px 0 0;
 }
 html.dc-layout .chatContent .message .challengeContainer .title strong,
@@ -428,7 +428,7 @@ html.dc-layout .chatContent .message .wrapUpWrapper.accepted { color: var(--dc-g
 html.dc-layout .chatContent .message .wrapUpWrapper.declined { color: var(--dc-red); }
 html.dc-layout .chatContent .message .challengeWrapper .challengeContent .userInfo { margin: 4px 16px 4px 0; }
 html.dc-layout .chatContent .message .challengeWrapper .challengeContent .userInfo .name {
-    font-size: 16px; font-weight: 600; color: var(--dc-head);
+    font-size: var(--fc-fs-lg); font-weight: 600; color: var(--dc-head);
 }
 /* Accept / Decline / Cancel become Discord buttons */
 html.dc-layout .chatContent .messageWrapper .buttons { margin: 4px 0 2px; text-transform: none; font-weight: 500; }
@@ -437,9 +437,9 @@ html.dc-layout .chatContent .messageWrapper .decline-challenge,
 html.dc-layout .chatContent .messageWrapper .cancel-challenge,
 html.dc-layout .chatContent .messageWrapper .rank-option {
     display: inline-flex; align-items: center; height: 28px; padding: 0 12px; margin: 0 8px 0 0;
-    border-radius: 4px; font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0;
+    border-radius: var(--fc-r1); font-size: var(--fc-fs-md); font-weight: 500; text-transform: none; letter-spacing: 0;
     text-shadow: none; filter: none; cursor: pointer; user-select: none;
-    background: var(--dc-btn); color: var(--dc-text); transition: background-color .17s ease;
+    background: var(--dc-btn); color: var(--dc-text); transition: background-color var(--fc-fast) ease;
 }
 html.dc-layout .chatContent .messageWrapper .accept-challenge { background: var(--dc-green); color: #fff; }
 html.dc-layout .chatContent .messageWrapper .accept-challenge:hover { background: #1a8a4a; color: #fff; }
@@ -456,12 +456,12 @@ html.dc-layout .chatContent .messageWrapper.dc-live:not(.chat):not(.motd) .title
 /* end of match: an embed card, like the rules message */
 html.dc-layout .chatContent .messageWrapper.endgame .endgameMessageWrapper {
     display: inline-block; max-width: 560px; margin: 2px 0; padding: 8px 16px 8px 12px; box-shadow: none; border: 0;
-    border-left: 4px solid var(--dc-blurple); border-radius: 4px; background: var(--dc-input);
+    border-left: 4px solid var(--dc-blurple); border-radius: var(--fc-r1); background: var(--dc-input);
 }
 html.dc-layout .chatContent .endgameMessageWrapper h3 {
-    margin: 0 0 2px; font-size: 15px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--dc-head);
+    margin: 0 0 2px; font-size: var(--fc-fs-chat); font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--dc-head);
 }
-html.dc-layout .chatContent .endgameMessageWrapper p { margin: 0; font-size: 14px; line-height: 20px; color: var(--dc-muted); }
+html.dc-layout .chatContent .endgameMessageWrapper p { margin: 0; font-size: var(--fc-fs-md); line-height: 20px; color: var(--dc-muted); }
 html.dc-layout .chatContent .endgameMessageWrapper a { color: var(--dc-link); font-weight: 400; }
 html.dc-layout .chatContent .endgameMessageWrapper .wrapUpWrapper.won { color: var(--dc-green); }
 html.dc-layout .chatContent .endgameMessageWrapper .wrapUpWrapper.lost { color: var(--dc-red); }
@@ -475,7 +475,7 @@ html.dc-layout.dc-clean-names .chatContent .message.chat header .author .flagWra
 html.dc-layout .chatInput { padding: 0 16px 12px; background: var(--dc-bg); border: 0; height: auto; }
 html.dc-layout .chatInput input.input {
     height: 52px; background: var(--dc-input); color: var(--dc-text); border: 1px solid var(--dc-input-edge);
-    border-radius: 8px; padding: 14px 104px 14px 16px; font-size: 16px; line-height: 22px; box-shadow: none;
+    border-radius: var(--fc-r2); padding: 14px 104px 14px 16px; font-size: var(--fc-fs-lg); line-height: 22px; box-shadow: none;
     box-sizing: border-box;
 }
 html.dc-layout .chatInput input.input::placeholder { color: var(--dc-faint); }
@@ -489,16 +489,16 @@ html.dc-layout .chatInput .emojiBtn:hover, html.dc-layout .chatInput .fontStyleB
 html.dc-layout .chatInput .notificationsHelpersWrapper { left: 16px !important; right: 16px !important; width: auto !important; bottom: 60px !important; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem {
     justify-content: space-between !important; padding: 5px 14px 9px !important; margin-bottom: -4px;
-    border-radius: 8px 8px 0 0; box-shadow: none !important; text-transform: none !important; letter-spacing: 0;
-    font: 600 13px/18px var(--dc-font, inherit) !important; color: #fff !important; background: var(--fc-accent, #5865f2) !important; }
+    border-radius: var(--fc-r2) var(--fc-r2) 0 0; box-shadow: none !important; text-transform: none !important; letter-spacing: 0;
+    font: 600 var(--fc-fs-ui)/18px var(--dc-font, inherit) !important; color: #fff !important; background: var(--fc-accent, #5865f2) !important; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem + .notificationsHelpersItem { border-radius: 0; }
-html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.mention { background: #f23f43 !important; }
-html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.challenge { background: #23a55a !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.mention { background: var(--fc-danger) !important; }
+html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem.challenge { background: var(--fc-success) !important; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .title {
     width: auto !important; flex: 1 1 auto; margin: 0 !important; text-align: left !important; color: #fff !important;
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options {
-    width: auto !important; flex: none; display: flex; align-items: center; margin-left: 12px; font-size: 13px !important; text-align: right !important; }
+    width: auto !important; flex: none; display: flex; align-items: center; margin-left: 12px; font-size: var(--fc-fs-ui) !important; text-align: right !important; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > * + * { margin-left: 16px !important; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > * { margin: 0 !important; color: rgba(255,255,255,.85) !important; cursor: pointer; }
 html.dc-layout .chatInput .notificationsHelpersWrapper .notificationsHelpersItem .options > *:hover { color: #fff !important; text-decoration: underline; }
@@ -511,7 +511,7 @@ html.dc-layout .usersListWrapper .usersOnlineTitle,
 html.dc-layout .usersListWrapper .usersAwayTitle,
 html.dc-layout .usersListWrapper .usersIgnoredTitle,
 html.dc-layout .usersListWrapper .matchesTitleWrapper {
-    font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--dc-muted);
+    font-size: var(--fc-fs-md); font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--dc-muted);
     padding: 20px 8px 4px 16px; height: auto; min-height: 0; line-height: 18px; background: none; border: 0;
     box-shadow: none;
 }
@@ -521,14 +521,14 @@ html.dc-layout .usersListWrapper .usersOnlineTitle { padding-top: 4px; display: 
 html.dc-layout .usersListWrapper .usersOnlineTitle > span:first-of-type,
 html.dc-layout .usersListWrapper .usersAwayTitle > span:first-of-type,
 html.dc-layout .usersListWrapper .usersIgnoredTitle > span:first-of-type {
-    background: none; color: var(--dc-muted); font-size: 14px; font-weight: 500; padding: 0; margin-left: 4px; min-width: 0;
+    background: none; color: var(--dc-muted); font-size: var(--fc-fs-md); font-weight: 500; padding: 0; margin-left: 4px; min-width: 0;
 }
 html.dc-layout .usersListWrapper .usersOnlineTitle > span:first-of-type::before,
 html.dc-layout .usersListWrapper .usersAwayTitle > span:first-of-type::before,
 html.dc-layout .usersListWrapper .usersIgnoredTitle > span:first-of-type::before { content: '— '; }
 html.dc-layout .usersListWrapper .userItem {
     display: flex; align-items: center; height: 42px; min-height: 42px; padding: 0 8px; margin: 0 8px 2px;
-    border-radius: 4px; background: none; border: 0; box-sizing: border-box;
+    border-radius: var(--fc-r1); background: none; border: 0; box-sizing: border-box;
 }
 html.dc-layout .usersListWrapper .userItem:hover { background: var(--dc-select); }
 html.dc-layout .usersListWrapper .userItem .avatarWrapper {
@@ -546,39 +546,39 @@ html.dc-layout .usersListWrapper .usersAwayList .userItem { opacity: .55; }
 html.dc-layout .usersListWrapper .usersAwayList .userItem:hover { opacity: 1; }
 html.dc-layout .usersListWrapper .userItem .nameAndGame { order: 0; flex: 1 1 auto; min-width: 0; }
 html.dc-layout .usersListWrapper .userItem .playerName {
-    font-size: 15px; font-weight: 500; color: var(--dc-muted); line-height: 20px;
+    font-size: var(--fc-fs-chat); font-weight: 500; color: var(--dc-muted); line-height: 20px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 html.dc-layout .usersListWrapper .userItem:hover .playerName { color: var(--dc-head); }
-html.dc-layout .usersListWrapper .userItem .nameAndGame > :not(.playerName) { font-size: 12px; color: var(--dc-muted); line-height: 16px; }
+html.dc-layout .usersListWrapper .userItem .nameAndGame > :not(.playerName) { font-size: var(--fc-fs-sm); color: var(--dc-muted); line-height: 16px; }
 html.dc-layout .usersListWrapper .userItem .flagWrapper { order: 1; width: 18px; height: 13px; margin: 0 0 0 6px; background-size: contain; }
 html.dc-layout .usersListWrapper .userItem .rankWrapper { order: 2; margin: 0 0 0 6px; }
 html.dc-layout .usersListWrapper .userItem .pingWrapper { order: 3; margin: 0 0 0 6px; }
 html.dc-layout .usersListWrapper .matchesList .matchItem {
-    background: var(--dc-bg); border: 0; border-radius: 8px; margin: 0 8px 4px; box-shadow: none;
+    background: var(--dc-bg); border: 0; border-radius: var(--fc-r2); margin: 0 8px 4px; box-shadow: none;
 }
 
 /* ============================== settings panel ============================== */
-html.dc-layout .settingsWrapper .settingsSection { background: var(--dc-bg2); box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+html.dc-layout .settingsWrapper .settingsSection { background: var(--dc-bg2); box-shadow: 0 0 0 1px var(--fc-scrim-1); }
 html.dc-layout .settingsWrapper .settingsSection .label {
-    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--dc-muted);
+    font-size: var(--fc-fs-sm); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--dc-muted);
 }
-html.dc-layout .settingsWrapper .settingsSection .option .title { color: var(--dc-text); font-size: 14px; }
+html.dc-layout .settingsWrapper .settingsSection .option .title { color: var(--dc-text); font-size: var(--fc-fs-md); }
 html.dc-layout .settingsWrapper .settingsSection select,
 html.dc-layout .settingsWrapper .settingsSection input[type="text"],
 html.dc-layout .settingsWrapper .settingsSection input[type="password"],
 html.dc-layout .settingsWrapper .settingsSection input.userEmail {
-    background: var(--dc-bg3); color: var(--dc-text); border: 0; border-radius: 4px; box-shadow: none;
+    background: var(--dc-bg3); color: var(--dc-text); border: 0; border-radius: var(--fc-r1); box-shadow: none;
 }
 /* checkboxes become Discord's toggle switches */
 html.dc-layout .settingsWrapper .settingsSection .option .optionCheckboxWrapper .optionCheckbox {
-    width: 40px; height: 24px; border: 0; border-radius: 12px; background: #80848e; box-shadow: none;
-    transition: background-color .2s ease;
+    width: 40px; height: 24px; border: 0; border-radius: var(--fc-r3); background: #80848e; box-shadow: none;
+    transition: background-color var(--fc-med) ease;
 }
 html.dc-layout .settingsWrapper .settingsSection .option .optionCheckboxWrapper:hover .optionCheckbox { box-shadow: none; }
 html.dc-layout .settingsWrapper .settingsSection .option .optionCheckboxWrapper input[type="checkbox"] ~ .optionCheckbox::before {
     top: 3px; left: 3px; right: auto; bottom: auto; width: 18px; height: 18px; border-radius: 50%;
-    background: #fff; opacity: 1; transition: transform .2s ease;
+    background: #fff; opacity: 1; transition: transform var(--fc-med) ease;
 }
 html.dc-layout .settingsWrapper .settingsSection .option .optionCheckboxWrapper input[type="checkbox"]:checked ~ .optionCheckbox {
     background: var(--dc-green); box-shadow: none;
@@ -590,7 +590,7 @@ html.dc-layout .settingsWrapper .settingsSection .option .optionCheckboxWrapper 
 /* ============================== browse / search ============================== */
 html.dc-layout .welcomeWrapper, html.dc-layout .searchWrapper { background: var(--dc-bg); background-image: none; }
 html.dc-layout .welcomeWrapper .text-filter, html.dc-layout .searchWrapper .text-filter {
-    background: var(--dc-bg3); color: var(--dc-text); border: 0; border-radius: 4px; box-shadow: none;
+    background: var(--dc-bg3); color: var(--dc-text); border: 0; border-radius: var(--fc-r1); box-shadow: none;
 }
 `;
 
@@ -619,11 +619,11 @@ function important(css) {
 const EDITOR_CSS = `
 /* Looks (2.11): the cards */
 .dcLooksHead { align-items: center; }
-.dcKeep { display: inline-flex; align-items: center; font-size: 12.5px; color: var(--fc-muted); cursor: pointer; }
+.dcKeep { display: inline-flex; align-items: center; font-size: var(--fc-fs-ui); color: var(--fc-muted); cursor: pointer; }
 .dcKeep input { margin: 0 6px 0 0; }
 .dcLooks { display: flex; flex-wrap: wrap; margin: 4px -5px 14px; }
 .dcLook { width: calc(20% - 10px); min-width: 104px; margin: 5px; padding: 6px 6px 8px; border-radius: 10px; box-sizing: border-box; cursor: pointer;
-    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); transition: box-shadow .12s, transform .12s; }
+    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px var(--fc-tint-2); transition: box-shadow var(--fc-fast), transform var(--fc-fast); }
 .dcLook:hover { transform: translateY(-2px); }
 .dcLook.on { box-shadow: inset 0 0 0 2px var(--fc-accent), 0 0 14px rgba(88,101,242,.25); }
 .dcLook .pv { position: relative; height: 70px; border-radius: 7px; overflow: hidden; }
@@ -631,12 +631,12 @@ const EDITOR_CSS = `
 .dcLook .pv .msg { position: absolute; left: 26px; right: 6px; top: 16px; display: flex; align-items: flex-start; }
 .dcLook .pv .av { flex: none; width: 22px; height: 22px; margin-right: 7px; border-radius: 50%; }
 .dcLook .pv .msg > div { min-width: 0; }
-.dcLook .pv .msg b { display: block; font-size: 12px; line-height: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dcLook .pv .msg span { display: block; font-size: 11.5px; line-height: 15px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dcLook .pv .msg b { display: block; font-size: var(--fc-fs-sm); line-height: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dcLook .pv .msg span { display: block; font-size: var(--fc-fs-sm); line-height: 15px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dcLook .pv.dcLook-crt::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
-    background: repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 1px, transparent 1px 3px); }
-.dcLook > b { display: block; margin-top: 7px; font-size: 13px; color: var(--fc-head); }
-.dcLook > small { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.3; color: var(--fc-muted); }
+    background: repeating-linear-gradient(0deg, var(--fc-scrim-2) 0 1px, transparent 1px 3px); }
+.dcLook > b { display: block; margin-top: 7px; font-size: var(--fc-fs-ui); color: var(--fc-head); }
+.dcLook > small { display: block; margin-top: 1px; font-size: var(--fc-fs-sm); line-height: 1.3; color: var(--fc-muted); }
 @media (max-width: 1100px) { .dcLook { width: calc(33.333% - 10px); } }
 /* Arcade CRT: faint scanlines over the whole window and a soft phosphor glow on text */
 html.dc-theme.dc-preset-crt body::after { content: ''; position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 2147483600; pointer-events: none;
@@ -647,11 +647,11 @@ html.dc-theme.dc-preset-crt .chatContent .message.chat .line { text-shadow: 0 0 
 .dcSwatch.on { box-shadow: 0 0 0 2px var(--fc-s2), 0 0 0 4px var(--fc-head); }
 .dcSwatches .fc-color { margin-left: 10px; height: 28px; width: 40px; }
 .dcColors { display: flex; }
-.dcColors label { display: flex; flex-direction: column; align-items: center; margin-left: 12px; font-size: 11px; color: var(--fc-muted); cursor: pointer; }
+.dcColors label { display: flex; flex-direction: column; align-items: center; margin-left: 12px; font-size: var(--fc-fs-xs); color: var(--fc-muted); cursor: pointer; }
 .dcColors .fc-color { height: 30px; margin-bottom: 2px; }
-.dcCode { width: 220px; margin-right: 8px; height: 30px; font-size: 12px; }
+.dcCode { width: 220px; margin-right: 8px; height: 30px; font-size: var(--fc-fs-sm); }
 .dcBlock .fc-field > .fc-btn + .fc-btn { margin-left: 8px; }
-.dcEdMsg { min-height: 16px; margin-top: 6px; font-size: 12px; color: var(--fc-success); }
+.dcEdMsg { min-height: 16px; margin-top: 6px; font-size: var(--fc-fs-sm); color: var(--fc-success); }
 .dcEdMsg.bad { color: var(--fc-danger); }
 `;
 

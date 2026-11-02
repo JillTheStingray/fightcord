@@ -410,14 +410,14 @@ html.fcbg-on .channelContent .chatWrapper > .chatInput { position: relative; z-i
 .fcbgLayer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 /* a hovered message: a soft see-through tint, not a solid dark box over the moving background */
 html.fcbg-on body .chatContent .messageWrapper .message.chat .line:hover,
-html.fcbg-on body .chatWrapper .chatContent .messageWrapper:not(.chat):not(.motd):not(.dc-live):hover { background: rgba(255,255,255,.045) !important; border-radius: 6px; }
+html.fcbg-on body .chatWrapper .chatContent .messageWrapper:not(.chat):not(.motd):not(.dc-live):hover { background: var(--fc-tint-1) !important; border-radius: 6px; }
 .fcbgLayer canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 .fcbgLayer i { position: absolute; display: block; }
 .fcbgLayer .w1, .fcbgLayer .w2, .fcbgLayer .w3 { width: 140%; height: 140%; left: -20%; top: -20%; border-radius: 45%; filter: blur(40px);
     opacity: calc(.12 + var(--fcbg-k, .5) * .25); }
 .fcbgLayer .w1 { background: radial-gradient(ellipse at 30% 40%, var(--fc-accent), transparent 55%); animation: fcbgW1 26s ease-in-out infinite alternate; }
-.fcbgLayer .w2 { background: radial-gradient(ellipse at 70% 60%, #8b5cf6, transparent 50%); animation: fcbgW2 32s ease-in-out infinite alternate; }
-.fcbgLayer .w3 { background: radial-gradient(ellipse at 50% 80%, #22e3f2, transparent 45%); opacity: calc(.06 + var(--fcbg-k, .5) * .14);
+.fcbgLayer .w2 { background: radial-gradient(ellipse at 70% 60%, var(--fc-violet), transparent 50%); animation: fcbgW2 32s ease-in-out infinite alternate; }
+.fcbgLayer .w3 { background: radial-gradient(ellipse at 50% 80%, var(--fc-cyan), transparent 45%); opacity: calc(.06 + var(--fcbg-k, .5) * .14);
     animation: fcbgW1 40s ease-in-out infinite alternate-reverse; }
 @keyframes fcbgW1 { from { transform: translate(-6%, -4%) rotate(0deg); } to { transform: translate(6%, 5%) rotate(25deg); } }
 @keyframes fcbgW2 { from { transform: translate(5%, 4%) rotate(0deg); } to { transform: translate(-6%, -5%) rotate(-30deg); } }

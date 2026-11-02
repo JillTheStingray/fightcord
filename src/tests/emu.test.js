@@ -52,6 +52,13 @@ test('fc.emu reads <Fightcade>/emulator/fbneo/fightcade and checks the quark', (
     }
 });
 
+test('in-game chat mute comes from the emulator ini', () => {
+    assert.equal(emu.iniMutesChat('// Mute Fightcade chat\r\nbVidMuteChat 1\r\n'), true);
+    assert.equal(emu.iniMutesChat('bVidMuteChat 0\r\n'), false);
+    assert.equal(emu.iniMutesChat('nVidDepth 1\n'), false);
+    assert.equal(emu.iniMutesChat(''), false);
+});
+
 test('characters per set: each finished game counts for the characters on screen', () => {
     const side = (ms_, ts, mc, tc) => ({ mine: { score: ms_, char: mc }, theirs: { score: ts, char: tc } });
     let c = ms.charStep(null, side(0, 0, 'Akuma', 'Yang'));

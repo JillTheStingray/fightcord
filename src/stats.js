@@ -552,10 +552,16 @@ async function share(k) {
         fc.ui.toast('No sets recorded for that session', { kind: 'warning' });
         return;
     }
+    return shareImage({ title: 'Share your session', file: 'session-' + k + '.png', draw: (art) => drawShare(k, art) });
+}
+
+// a picture to share: drawn (draw(withArt) -> canvas), shown, saved to Pictures\Fightcord or copied.
+// (3.9: Wrapped's card goes the same way)
+async function shareImage(o) {
     let url = '', savedFile = '';
     const say = (html) => { const m = modal.body.querySelector('.msg'); if (m) m.innerHTML = html; };
     const modal = fc.ui.modal({
-        title: 'Share your session', width: 880, cls: 'fcsShare',
+        title: o.title, width: 880, cls: 'fcsShare',
         body: '<div class="fcsPv"><div class="ld"><span class="fc-spin"></span> ' + ET('Drawing…') + '</div></div><div class="msg"></div>',
         actions: [
             { label: 'Save PNG', kind: 'sec', keep: true, fn: () => {
@@ -563,7 +569,7 @@ async function share(k) {
                 try {
                     const dir = path.join(require('os').homedir(), 'Pictures', 'Fightcord');
                     fs.mkdirSync(dir, { recursive: true });
-                    savedFile = path.join(dir, 'session-' + k + '.png');
+                    savedFile = path.join(dir, o.file);
                     fs.writeFileSync(savedFile, Buffer.from(url.split(',')[1], 'base64'));
                     say(ET('Saved to {file}', { file: savedFile }) + ' · <span class="lnk" data-show="1">' + ET('Show in folder') + '</span>');
                 } catch (err) { say(ET('Couldn’t save ({error}).', { error: err.message })); }
@@ -589,8 +595,8 @@ async function share(k) {
     });
     let canvas;
     // Fightcade's art is same-origin in the app; anywhere else it taints the canvas -> draw without it
-    try { canvas = await drawShare(k, true); url = canvas.toDataURL('image/png'); }
-    catch (e) { canvas = await drawShare(k, false); url = canvas.toDataURL('image/png'); }
+    try { canvas = await o.draw(true); url = canvas.toDataURL('image/png'); }
+    catch (e) { canvas = await o.draw(false); url = canvas.toDataURL('image/png'); }
     const pv = modal.body.querySelector('.fcsPv');
     if (pv) pv.innerHTML = `<img src="${url}" alt="">`;
 }
@@ -609,6 +615,7 @@ function onPageClick(e) {
     const a = e.target.closest('[data-act]');
     const act = a && a.getAttribute('data-act');
     if (act === 'import' || act === 'empty') { if (!view.busy) importHistory(); return; }
+    if (act === 'wrapped') { const w = mod('wrapped'); if (w && w.pick) w.pick(a); return; }
     if (act === 'back') { view.opp = ''; view.note = ''; render(); page.body.scrollTop = 0; return; }
     if (act && view.opp) { if (!a.disabled) onH2HAction(act, a); return; }
     const op = e.target.closest('[data-opp]');
@@ -638,7 +645,8 @@ function open(opts) {
         page = fc.ui.page('stats', {
             title: 'Your stats', icon: 'chart', cls: 'fcsPage',
             tools: `<span class="fcsSeg"><span data-p="7">${ET('7 days')}</span><span data-p="30">${ET('30 days')}</span><span data-p="all">${ET('All time')}</span></span>` +
-                `<select class="fc-select fcsGame"></select>` + fc.ui.btn('Import history', { kind: 'sec', size: 'sm', icon: 'download', act: 'import', title: 'Add your older sets from Fightcade’s match list' }),
+                `<select class="fc-select fcsGame"></select>` + fc.ui.btn('Import history', { kind: 'sec', size: 'sm', icon: 'download', act: 'import', title: 'Add your older sets from Fightcade’s match list' }) +
+                (mod('wrapped') ? fc.ui.btn('Wrapped', { kind: 'brand', size: 'sm', icon: 'wrapped', act: 'wrapped', title: 'Your month on Fightcade, as a story' }) : ''),
             onEsc: () => { if (view.opp) { view.opp = ''; render(); return false; } return true; },
             onClose: () => { page = null; }
         });
@@ -655,22 +663,23 @@ function close() { if (page) page.close(); }
 const CSS = `
 #fcsStats .fc-page-b { padding-top: 8px; }
 #fcsStats .fcsSeg { display: flex; padding: 3px; border-radius: var(--fc-r2); background: var(--fc-s1); }
-#fcsStats .fcsSeg span { padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--fc-muted); cursor: pointer; }
+#fcsStats .fcsSeg span { padding: 4px 10px; border-radius: 6px; font-size: var(--fc-fs-ui); font-weight: 600; color: var(--fc-muted); cursor: pointer; }
 #fcsStats .fcsSeg span.on { background: var(--fc-s4); color: var(--fc-head); }
-#fcsStats .fcsGame { height: 30px; font-size: 13px; max-width: 220px; }
+#fcsStats .fcsGame { height: 30px; font-size: var(--fc-fs-ui); max-width: 220px; }
 #fcsStats .fcsTabs { margin: 0 0 12px; }
-#fcsStats .fcsNote { min-height: 18px; font-size: 13px; color: var(--fc-success); }
+#fcsStats .fcsNote { min-height: 18px; font-size: var(--fc-fs-ui); color: var(--fc-success); }
 #fcsStats .fcsTop { display: flex; flex-wrap: wrap; margin: 4px -6px 0; }
+#fcsStats .fcsTop > .fc-tile { flex: 1 1 140px; margin: 6px; }
 #fcsStats .fcsBig { flex: 1 1 140px; margin: 6px; padding: 14px 16px; }
-#fcsStats .fcsBig .v { font-size: 24px; font-weight: 800; }
+#fcsStats .fcsBig .v { font-size: var(--fc-fs-2xl); font-weight: 800; }
 #fcsStats .fcsBig .v.good { color: var(--fc-success); } #fcsStats .fcsBig .v.bad { color: var(--fc-danger); }
-#fcsStats .fcsBig .k { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12px; }
+#fcsStats .fcsBig .k { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: var(--fc-fs-sm); }
 #fcsStats .fcsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-gap: 12px; margin-top: 12px; }
 #fcsStats .fcsCard { padding: 14px 16px; }
 #fcsStats .fcsCard.wide { grid-column: 1 / -1; }
-#fcsStats h4 { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+#fcsStats h4 { margin: 0 0 10px; font-size: var(--fc-fs-sm); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 #fcsStats h4 small { text-transform: none; font-weight: 500; letter-spacing: 0; }
-#fcsStats .fcsRow { display: flex; align-items: center; padding: 4px 0; font-size: 14px; }
+#fcsStats .fcsRow { display: flex; align-items: center; padding: 4px 0; font-size: var(--fc-fs-md); }
 #fcsStats .fcsRow .n { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--fc-head); font-weight: 600; }
 #fcsStats .fcsRow .r { flex: none; margin-left: 10px; font-variant-numeric: tabular-nums; }
 #fcsStats .fcsRow .p { flex: none; width: 48px; text-align: right; font-weight: 700; color: var(--fc-muted); }
@@ -678,19 +687,19 @@ const CSS = `
 #fcsStats .fcsBar { height: 4px; margin: 4px 0 6px; border-radius: 2px; background: rgba(242,63,67,.35); overflow: hidden; }
 #fcsStats .fcsBar i { display: block; height: 100%; background: var(--fc-success); }
 #fcsStats .fcsChart { display: block; width: 100%; height: 160px; }
-#fcsStats .fcsChart .grid { stroke: rgba(255,255,255,.06); stroke-width: 1; }
+#fcsStats .fcsChart .grid { stroke: var(--fc-tint-2); stroke-width: 1; }
 #fcsStats .fcsChart .mid { stroke: rgba(255,255,255,.18); stroke-width: 1; stroke-dasharray: 4 4; }
 #fcsStats .fcsChart .ln { fill: none; stroke: var(--fc-accent); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 #fcsStats .fcsChart .pt { fill: var(--fc-accent); stroke: var(--fc-s2); stroke-width: 2; vector-effect: non-scaling-stroke; }
-#fcsStats .fcsAxis { display: flex; justify-content: space-between; font-size: 11px; color: var(--fc-muted); margin-top: 4px; }
+#fcsStats .fcsAxis { display: flex; justify-content: space-between; font-size: var(--fc-fs-xs); color: var(--fc-muted); margin-top: 4px; }
 #fcsStats .fcsSessions { display: flex; align-items: flex-end; height: 130px; }
 #fcsStats .fcsSessions .s { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; cursor: pointer; border-radius: 6px; }
-#fcsStats .fcsSessions .s:hover { background: rgba(255,255,255,.05); }
+#fcsStats .fcsSessions .s:hover { background: var(--fc-tint-2); }
 #fcsStats .fcsSessions .bars { flex: 1; width: 60%; max-width: 34px; display: flex; flex-direction: column-reverse; justify-content: flex-start; }
 #fcsStats .fcsSessions i { display: block; width: 100%; }
 #fcsStats .fcsSessions i.w { background: var(--fc-success); border-radius: 3px 3px 0 0; }
 #fcsStats .fcsSessions i.l { background: var(--fc-danger); }
-#fcsStats .fcsSessions span { margin-top: 4px; font-size: 11px; color: var(--fc-muted); }
+#fcsStats .fcsSessions span { margin-top: 4px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 #fcsStats [data-opp] { cursor: pointer; }
 #fcsStats .fcsRow [data-opp]:hover, #fcsStats .fcsSet .o[data-opp]:hover { text-decoration: underline; }
 #fcsStats .fcsBack { margin: 4px 0 8px -8px; }
@@ -698,32 +707,32 @@ const CSS = `
     background: linear-gradient(120deg, var(--fc-accent-soft), transparent 70%), var(--fc-s2); }
 #fcsStats .fcsHHead > .fc-avatar { margin-right: 16px; }
 #fcsStats .fcsHHead .who { flex: 1; min-width: 200px; }
-#fcsStats .fcsHHead .nm { font-size: 24px; font-weight: 800; color: var(--fc-head); }
+#fcsStats .fcsHHead .nm { font-size: var(--fc-fs-2xl); font-weight: 800; color: var(--fc-head); }
 #fcsStats .fcsHHead .nm .fc-flag { margin-right: 8px; }
-#fcsStats .fcsHHead .nm .fr { color: var(--fc-warning); font-size: 18px; }
-#fcsStats .fcsHHead .st { margin: 2px 0 4px; font-size: 13px; color: var(--fc-muted); }
+#fcsStats .fcsHHead .nm .fr { color: var(--fc-warning); font-size: var(--fc-fs-h3); }
+#fcsStats .fcsHHead .st { margin: 2px 0 4px; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 #fcsStats .fcsHHead .st.on { color: var(--fc-success); } #fcsStats .fcsHHead .st.playing { color: var(--fc-danger); }
 #fcsStats .fcsHHead .acts { display: flex; flex-wrap: wrap; }
 #fcsStats .fcsHHead .acts > .fc-btn { margin: 4px 0 4px 8px; }
-#fcsStats .fcsSet { display: flex; align-items: center; min-height: 36px; padding: 4px 8px; margin: 0 -8px; border-radius: 6px; font-size: 14px; }
+#fcsStats .fcsSet { display: flex; align-items: center; min-height: 36px; padding: 4px 8px; margin: 0 -8px; border-radius: 6px; font-size: var(--fc-fs-md); }
 #fcsStats .fcsSet:hover { background: var(--fc-hover); }
 #fcsStats .fcsSet > b { flex: none; width: 22px; height: 22px; margin-right: 10px; border-radius: 5px; display: flex; align-items: center;
-    justify-content: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--fc-s4); }
+    justify-content: center; font-size: var(--fc-fs-sm); font-weight: 800; color: #fff; background: var(--fc-s4); }
 #fcsStats .fcsSet > b.w { background: var(--fc-success); } #fcsStats .fcsSet > b.l { background: var(--fc-danger); }
 #fcsStats .fcsSet .o { flex: 1 1 30%; min-width: 0; font-weight: 600; color: var(--fc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcsStats .fcsSet .sc { flex: none; width: 48px; font-weight: 700; font-variant-numeric: tabular-nums; }
-#fcsStats .fcsSet .ch { flex: 1 1 22%; min-width: 0; margin-right: 8px; color: var(--fc-text); font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#fcsStats .fcsSet .ch { flex: 1 1 22%; min-width: 0; margin-right: 8px; color: var(--fc-text); font-size: var(--fc-fs-ui); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #fcsStats .fcsSet .g { flex: 1 1 26%; min-width: 0; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#fcsStats .fcsSet .t { flex: none; width: 128px; text-align: right; color: var(--fc-muted); font-size: 12px; }
+#fcsStats .fcsSet .t { flex: none; width: 128px; text-align: right; color: var(--fc-muted); font-size: var(--fc-fs-sm); }
 #fcsStats .fcsRp { flex: none; width: 82px; margin-left: 12px; }
 #fcsStats span.fcsRp.none { display: inline-block; }
-#fcsStats .fcsStar { flex: none; width: 28px; margin-left: 6px; text-align: center; font-size: 17px; color: var(--fc-muted); cursor: pointer; }
+#fcsStats .fcsStar { flex: none; width: 28px; margin-left: 6px; text-align: center; font-size: var(--fc-fs-lg); color: var(--fc-muted); cursor: pointer; }
 #fcsStats .fcsStar.on, #fcsStats .fcsStar:hover { color: var(--fc-warning); }
 #fcsStats .fcsStar.none { cursor: default; }
-.fcsPv { border-radius: var(--fc-r2); overflow: hidden; background: #0d0f1f; }
+.fcsPv { border-radius: var(--fc-r2); overflow: hidden; background: var(--fc-navy); }
 .fcsPv img { display: block; width: 100%; }
 .fcsPv .ld { padding: 120px 0; text-align: center; color: var(--fc-muted); }
-.fc-modal .msg { min-height: 18px; margin-top: 10px; font-size: 13px; color: var(--fc-success); }
+.fc-modal .msg { min-height: 18px; margin-top: 10px; font-size: var(--fc-fs-ui); color: var(--fc-success); }
 .fc-modal .msg .lnk { color: var(--fc-link); cursor: pointer; }
 `;
 
@@ -756,6 +765,9 @@ const api = {
     open: (opts) => open(opts),
     close: () => close(),
     share: (k) => share(k),
+    // 3.9: for Wrapped -- the share modal, and the canvas helpers the session card draws with
+    shareImage: (o) => shareImage(o),
+    draw: { FONT, loadImg, rr, cover, glow, fit },
     _tally: tally,
     _streaks: streaks,
     _drawShare: (k, art) => drawShare(k, art),

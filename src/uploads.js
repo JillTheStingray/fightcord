@@ -896,16 +896,16 @@ const CSS = `
 .fcupBtn { position: absolute; top: 50%; z-index: 50; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;
     margin-top: -12px; border-radius: 50%; cursor: pointer; background: var(--fc-muted); color: var(--fc-s2); transition: background var(--fc-fast); }
 .fcupBtn:hover { background: var(--fc-head); }
-.fcupGifBtn { position: absolute; top: 50%; z-index: 50; height: 20px; margin-top: -10px; padding: 0 5px; border-radius: 4px; cursor: pointer; user-select: none;
-    background: var(--fc-muted); color: var(--fc-s2); font: 800 11px/20px var(--fc-font); letter-spacing: .02em; opacity: .85; }
+.fcupGifBtn { position: absolute; top: 50%; z-index: 50; height: 20px; margin-top: -10px; padding: 0 5px; border-radius: var(--fc-r1); cursor: pointer; user-select: none;
+    background: var(--fc-muted); color: var(--fc-s2); font: 800 var(--fc-fs-xs)/20px var(--fc-font); letter-spacing: .02em; opacity: .85; }
 .fcupGifBtn:hover { background: var(--fc-head); opacity: 1; }
 .fcupSearch { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
 .fcupList { height: 380px; overflow-y: auto; }
-.fcupSec { margin: 4px 0 6px; font: 700 12px/1 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
+.fcupSec { margin: 4px 0 6px; font: 700 var(--fc-fs-sm)/1 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
 .fcupGrid { column-count: 2; column-gap: 8px; }
-.fcupMsg { padding: 24px 8px; text-align: center; font-size: 13px; color: var(--fc-muted); }
+.fcupMsg { padding: 24px 8px; text-align: center; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
 .fcupMsg.bad { color: var(--fc-danger); }
-.fcupBy { margin-top: 6px; text-align: right; font: 600 10px/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-faint, var(--fc-muted)); }
+.fcupBy { margin-top: 6px; text-align: right; font: 600 var(--fc-fs-2xs)/1 var(--fc-font); letter-spacing: .04em; color: var(--fc-faint, var(--fc-muted)); }
 .fcupGrid .fc-empty { column-span: all; }
 .fcupKinds { margin: -4px 0 8px; }
 .fcupKinds .fc-tabs { border-bottom: 0; }
@@ -915,8 +915,8 @@ const CSS = `
 .fcupGrid.st .fcupFav:hover { background: var(--fc-hover); }
 .fcupFav { position: relative; margin-bottom: 8px; border-radius: 6px; overflow: hidden; cursor: pointer; line-height: 0; background: var(--fc-s1); break-inside: avoid; }
 .fcupFav img, .fcupFav video { width: 100%; height: auto; display: block; }
-.fcupFav:hover { box-shadow: 0 0 0 2px var(--fc-accent); }
-.fcupFav .star { position: absolute; top: 6px; right: 6px; display: none; padding: 4px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; line-height: 0; }
+.fcupFav:hover { box-shadow: var(--fc-ring); }
+.fcupFav .star { position: absolute; top: 6px; right: 6px; display: none; padding: 4px; border-radius: 50%; background: var(--fc-scrim-4); color: #fff; line-height: 0; }
 .fcupFav.on .star { color: var(--fc-warning); }
 .fcupFav:hover .star { display: block; }
 .fcupFav .star .fc-ic { width: 16px; height: 16px; }
@@ -926,17 +926,17 @@ const CSS = `
     border-radius: 10px 10px 0 0; background: var(--fc-input, #383a40); box-shadow: 0 -1px 0 var(--fc-divider); }
 html body .chatInput.fcupTrayOn input.input { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
 .fcupTile { position: relative; width: 216px; margin: 0 12px 10px 0; padding: 8px; box-sizing: border-box; border-radius: var(--fc-r2);
-    background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
+    background: var(--fc-s2); box-shadow: var(--fc-edge); animation: fcPop var(--fc-fast) var(--fc-ease) both; }
 .fcupTile .th { position: relative; display: flex; align-items: center; justify-content: center; height: 200px; overflow: hidden; border-radius: 6px;
     background: var(--fc-s1); line-height: 0; }
 .fcupTile .th img, .fcupTile .th video { max-width: 100%; max-height: 100%; object-fit: contain; }
 .fcupTile .th .au .fc-ic { width: 48px; height: 48px; color: var(--fc-accent); }
 .fcupTile.spoiler .th img, .fcupTile.spoiler .th video { filter: blur(18px); transform: scale(1.08); }
-.fcupTile .sp { position: absolute; padding: 4px 10px; border-radius: 12px; background: rgba(0,0,0,.65); color: #fff; font: 800 11px/1.2 var(--fc-font);
+.fcupTile .sp { position: absolute; padding: 4px 10px; border-radius: var(--fc-r3); background: rgba(0,0,0,.65); color: #fff; font: 800 var(--fc-fs-xs)/1.2 var(--fc-font);
     letter-spacing: .06em; text-transform: uppercase; }
-.fcupTile .nm { margin-top: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 13px/18px var(--fc-font); color: var(--fc-text); }
-.fcupTile .bar { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 4px; border-radius: 2px; background: rgba(0,0,0,.5); overflow: hidden; display: none; }
-.fcupTile .bar > b { display: block; width: 0; height: 100%; background: var(--fc-accent); transition: width .15s; }
+.fcupTile .nm { margin-top: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: var(--fc-fs-ui)/18px var(--fc-font); color: var(--fc-text); }
+.fcupTile .bar { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 4px; border-radius: 2px; background: var(--fc-scrim-3); overflow: hidden; display: none; }
+.fcupTile .bar > b { display: block; width: 0; height: 100%; background: var(--fc-accent); transition: width var(--fc-fast); }
 .fcupTile.up .bar { display: block; }
 .fcupTile.err { box-shadow: inset 0 0 0 2px var(--fc-danger); }
 /* the toolbar on the tile's corner: spoiler, name, remove */
@@ -950,16 +950,16 @@ html body .chatInput.fcupTrayOn input.input { border-top-left-radius: 0 !importa
 .fcupTb { opacity: 0; pointer-events: none; transition: opacity var(--fc-fast) ease; }
 .fcupTile:hover .fcupTb { opacity: 1; pointer-events: auto; }
 .fcupTray.busy .fcupTb { display: none; }
-.fcupTrayNote { flex: 1 1 100%; font: 12px/18px var(--fc-font); color: var(--fc-muted); }
+.fcupTrayNote { flex: 1 1 100%; font: var(--fc-fs-sm)/18px var(--fc-font); color: var(--fc-muted); }
 .fcupName { width: 100%; }
-.fcupSp { display: flex; align-items: center; margin-top: 10px; font-size: 13px; color: var(--fc-text); cursor: pointer; }
+.fcupSp { display: flex; align-items: center; margin-top: 10px; font-size: var(--fc-fs-ui); color: var(--fc-text); cursor: pointer; }
 .fcupSp input { margin: 0 8px 0 0; }
 #fcupDrop { position: fixed; z-index: var(--fc-z-pop); display: none; align-items: center; justify-content: center; pointer-events: none;
-    background: rgba(88,101,242,.18); box-shadow: inset 0 0 0 3px var(--fc-accent); border-radius: 8px; }
+    background: rgba(88,101,242,.18); box-shadow: inset 0 0 0 3px var(--fc-accent); border-radius: var(--fc-r2); }
 #fcupDrop > div { display: flex; flex-direction: column; align-items: center; padding: 24px 32px; border-radius: var(--fc-r3); background: var(--fc-accent); color: #fff; text-align: center; }
 #fcupDrop .fc-ic { width: 36px; height: 36px; margin-bottom: 8px; }
-#fcupDrop b { font: 700 18px/1.3 var(--fc-font); }
-#fcupDrop span { margin-top: 4px; font: 13px/1.3 var(--fc-font); opacity: .85; }
+#fcupDrop b { font: 700 var(--fc-fs-h3)/1.3 var(--fc-font); }
+#fcupDrop span { margin-top: 4px; font: var(--fc-fs-ui)/1.3 var(--fc-font); opacity: .85; }
 `;
 
 function start(f) {

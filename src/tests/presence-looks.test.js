@@ -193,3 +193,79 @@ test('end to end: your answer is signed with your Fightcord ID; another Fightcor
     // a 3.6 Fightcord: cleanProfile drops the looks, and the text's version still matches pv
     assert.equal(P.profileVersion(P.cleanProfile(ans.p)), ans.pv);
 });
+
+/* ------------------------------------------- 3.9: name styles and decorations */
+
+test('extras: known styles and decorations only, colours that read on a dark panel', () => {
+    assert.deepEqual(P.cleanExtras({ ns: { s: 'gradient', c: ['#FF73FA', '#7af0ff'] }, dc: 'crown' }), { ns: { s: 'gradient', c: ['#ff73fa', '#7af0ff'] }, dc: 'crown' });
+    assert.deepEqual(P.cleanExtras({ ns: { s: 'fire', c: ['#000000'] } }), { ns: { s: 'fire' } }, 'fire brings its own colours');
+    assert.deepEqual(P.cleanExtras({ ns: { s: 'gradient', c: ['#ff73fa', '#101010'] } }), {}, 'too dark to read');
+    assert.deepEqual(P.cleanExtras({ ns: { s: 'comic-sans', c: ['#ffffff', '#ffffff'] }, dc: 'tophat' }), {}, 'unknown ones');
+    assert.deepEqual(P.cleanExtras({ ns: { s: 'neon', c: ['#ffffff'] } }), {}, 'two colours');
+    assert.deepEqual(P.cleanExtras(null), {});
+    assert.equal(P.extrasVersion({}), '');
+    assert.notEqual(P.extrasVersion({ dc: 'crown' }), P.extrasVersion({ dc: 'halo' }));
+});
+
+function signedSender(name, sk, profile) {
+    const lobbies = { myId: () => V.pubkey(sk).toString('hex'), signId: (msg) => V.sign(msg, sk, crypto.randomBytes(32)).toString('hex') };
+    const s = client(name, {}, { lobbies });
+    try { s.pres.setProfile(profile); return s.pres._answer(); } finally { s.stop(); }
+}
+
+test('end to end: a 3.9 sender’s extras are signed on their own; 3.8 still sees the pictures', () => {
+    const sk = K('styled');
+    const ans = signedSender('Styled', sk, { s: 'hi', av: { u: PIC }, fr: 'gold', ns: { s: 'neon', c: ['#7af0ff', '#ff73fa'] }, dc: 'halo' });
+    assert.match(ans.xv, /^[0-9a-f]{8}$/);
+    assert.match(ans.xsig, /^[0-9a-f]{128}$/);
+    // what 3.7 / 3.8 work out: the looks' version from the fields they know -- it still matches
+    assert.equal(P.lookVersion(P.cleanFull(ans.p)), ans.lv, '3.8 keeps showing the pictures');
+    // a 3.9 viewer: all of it
+    const v = client('Viewer4', {});
+    try {
+        v.pres._msg({ t: 'here', h: ans.h, voice: 0, pv: ans.pv, lv: ans.lv, xv: ans.xv, dk: ans.dk });
+        v.pres._msg(ans);
+        const p = v.pres.profile('Styled');
+        assert.deepEqual([p.av, p.fr, p.ns, p.dc], [{ u: PIC }, 'gold', { s: 'neon', c: ['#7af0ff', '#ff73fa'] }, 'halo']);
+    } finally { v.stop(); }
+    // a "here" without xv (how 3.8 announces): the looks, no extras
+    const old = client('Viewer5', {});
+    try {
+        old.pres._msg({ t: 'here', h: ans.h, voice: 0, pv: ans.pv, lv: ans.lv, dk: ans.dk });
+        old.pres._msg(Object.assign({}, ans, { xv: undefined, xsig: undefined }));
+        const p = old.pres.profile('Styled');
+        assert.deepEqual([p.av, p.ns, p.dc], [{ u: PIC }, undefined, undefined]);
+    } finally { old.stop(); }
+});
+
+test('end to end: someone with only a name style (no pictures, no text) still shows it', () => {
+    const ans = signedSender('JustStyle', K('juststyle'), { ns: { s: 'rainbow' } });
+    assert.equal(ans.lv, '', 'nothing for 3.8 to show');
+    const v = client('Viewer7', {});
+    try {
+        v.pres._msg({ t: 'here', h: ans.h, voice: 0, pv: ans.pv, lv: ans.lv, xv: ans.xv, dk: ans.dk });
+        v.pres._msg(ans);
+        assert.deepEqual(v.pres.profile('JustStyle').ns, { s: 'rainbow' });
+    } finally { v.stop(); }
+});
+
+test('end to end: extras with a forged signature, or from another ID on that name, are dropped', () => {
+    const real = signedSender('Rose', K('rose'), { av: { u: PIC }, dc: 'crown' });
+    const other = signedSender('Rose', K('impostor'), { av: { u: PIC }, dc: 'horns' });
+    const v = client('Viewer6', {});
+    try {
+        // a forged extras signature: the looks stay, the decoration doesn't
+        v.pres._msg({ t: 'here', h: real.h, voice: 0, pv: real.pv, lv: real.lv, xv: real.xv, dk: real.dk });
+        v.pres._msg(Object.assign({}, real, { xsig: other.xsig }));
+        let p = v.pres.profile('Rose');
+        assert.deepEqual([p.av, p.dc], [{ u: PIC }, undefined]);
+        // the real one
+        v.pres._msg(real);
+        assert.equal(v.pres.profile('Rose').dc, 'crown');
+        // someone else's Fightcord on Rose's name, properly signed with its own ID: not Rose's pin
+        v.pres._msg({ t: 'here', h: other.h, voice: 0, pv: other.pv, lv: other.lv, xv: other.xv, dk: other.dk });
+        v.pres._msg(other);
+        p = v.pres.profile('Rose');
+        assert.ok(!p || p.dc !== 'horns', 'not from an ID that isn’t pinned to that name');
+    } finally { v.stop(); }
+});

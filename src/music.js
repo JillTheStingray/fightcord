@@ -293,7 +293,7 @@ function wire(el) {
 
 const CSS = `
 .muList { margin-top: 10px; border-radius: var(--fc-r2); overflow: hidden; background: var(--fc-s1); }
-.muTrack { display: flex; align-items: center; height: 36px; padding: 0 6px 0 10px; cursor: pointer; font-size: 13px; }
+.muTrack { display: flex; align-items: center; height: 36px; padding: 0 6px 0 10px; cursor: pointer; font-size: var(--fc-fs-ui); }
 .muTrack:hover { background: var(--fc-hover); }
 .muTrack.on { background: var(--fc-accent-soft); font-weight: 600; color: var(--fc-head); }
 .muTrack .muIc { width: 16px; height: 16px; margin-right: 8px; color: var(--fc-accent); }
@@ -301,10 +301,10 @@ const CSS = `
 .muTrack .muX { opacity: 0; }
 .muTrack:hover .muX { opacity: .8; }
 .muTrack .muX:hover { color: var(--fc-danger); }
-.muEmpty { padding: 10px; font-size: 12px; color: var(--fc-muted); }
+.muEmpty { padding: 10px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 .muBar { display: flex; align-items: center; margin-top: 10px; }
 .muBar > .fc-btn + .fc-btn { margin-left: 8px; }
-.muNow { flex: 1; min-width: 0; margin-left: 12px; text-align: right; font-size: 12px; color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.muNow { flex: 1; min-width: 0; margin-left: 12px; text-align: right; font-size: var(--fc-fs-sm); color: var(--fc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 `;
 
 /* ------------------------------------------------------------------- module */

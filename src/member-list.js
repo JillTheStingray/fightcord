@@ -511,7 +511,7 @@ ${P} .userItem.fcm-hidden { display: none !important; }
 ${P} .userItem.fcm-row.fcm-first { margin-top: 36px !important; }
 ${P} .userItem.fcm-row { position: relative !important; }
 ${P} .userItem .fcm-gh { position: absolute; left: 6px; top: -31px; display: flex; align-items: center; height: 26px; padding-left: 32px; white-space: nowrap;
-    cursor: pointer; user-select: none; font: 500 14px/26px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
+    cursor: pointer; user-select: none; font: 500 var(--fc-fs-md)/26px var(--fc-font); color: var(--fc-muted); letter-spacing: 0;
     background: var(--fcm-hi) no-repeat left center / 26px 26px; pointer-events: auto; visibility: visible !important; }
 ${P} .userItem .fcm-gh:hover { color: var(--fc-head); }
 ${P} .userItem .fcm-gh i { display: inline-flex; order: 2; margin-left: 4px; opacity: .7; transition: transform var(--fc-fast); }
@@ -537,56 +537,58 @@ ${P} .userItem.fcm-row .fcScoutBadge { display: none !important; }
 ${P} .userItem.fcm-row:hover .fcScoutBadge { display: inline !important; }
 ${P} .userItem.fcm-row .nameAndGame .playerName {
     display: inline-block !important; max-width: calc(100% - 64px) !important; vertical-align: bottom !important; }
-${P} .fcm-sub { display: block; font-size: 12px; line-height: 16px; color: var(--fc-muted);
+${P} .fcm-sub { display: block; font-size: var(--fc-fs-sm); line-height: 16px; color: var(--fc-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
 ${P} .fcm-flag { display: inline-block; width: 16px; height: 11px; margin-right: 5px; vertical-align: -1px;
     background-size: cover; background-position: center; border-radius: 2px; }
 /* the theme greys out everything after a name with !important (0,5,1): out-rank it */
 ${P} .userItem .nameAndGame > .fcm-vs { display: inline-block !important; margin-left: 6px !important; padding: 0 4px !important;
-    border-radius: 4px !important; vertical-align: 1px !important; font: 600 11px/16px var(--fc-font) !important;
-    background: rgba(255,255,255,.06) !important; color: var(--fc-muted) !important; }
+    border-radius: var(--fc-r1) !important; vertical-align: 1px !important; font: 600 var(--fc-fs-xs)/16px var(--fc-font) !important;
+    background: var(--fc-tint-2) !important; color: var(--fc-muted) !important; }
 ${P} .userItem .nameAndGame > .fcm-vs.ahead { color: var(--fc-success) !important; background: rgba(35,165,90,.12) !important; }
-${P} .userItem .nameAndGame > .fcm-vs.behind { color: #f23f43 !important; background: rgba(242,63,67,.12) !important; }
-${P} .fcm-ms.good { color: var(--fc-success); } ${P} .fcm-ms.ok { color: var(--fc-warning); } ${P} .fcm-ms.bad { color: #f23f43; }
+${P} .userItem .nameAndGame > .fcm-vs.behind { color: var(--fc-danger) !important; background: rgba(242,63,67,.12) !important; }
+${P} .fcm-ms.good { color: var(--fc-success); } ${P} .fcm-ms.ok { color: var(--fc-warning); } ${P} .fcm-ms.bad { color: var(--fc-danger); }
 ${P} .fcm-net { color: var(--fc-text); }
 ${P} .userItem .nameAndGame > .fcm-nt { display: inline-block !important; }
 ${P} .userItem .nameAndGame > .fcm-pres { display: inline-flex !important; align-items: center !important; }
-${P} .userItem.fcm-playing { background: rgba(242,63,67,.07) !important; box-shadow: inset 2px 0 0 #f23f43 !important; border-radius: 4px !important; }
-${P} .userItem .nameAndGame > .fcm-live { display: flex !important; align-items: center !important; margin-top: 1px !important; font-size: 12px !important;
+${P} .userItem.fcm-playing { background: var(--fc-tint-1) !important; border-radius: var(--fc-r1) !important; }
+${P} .userItem.fcm-playing:hover { background: var(--fc-tint-2) !important; }
+${P} .userItem .nameAndGame > .fcm-live { display: flex !important; align-items: center !important; margin-top: 1px !important; font-size: var(--fc-fs-sm) !important;
     color: var(--fc-muted) !important; white-space: nowrap !important; overflow: hidden !important; }
-${P} .userItem .nameAndGame > .fcm-live .dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #f23f43; flex: none; box-shadow: 0 0 6px #f23f43; }
+${P} .userItem .nameAndGame > .fcm-live .dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--fc-danger); flex: none; box-shadow: 0 0 6px var(--fc-danger); }
 ${P} .userItem .nameAndGame > .fcm-live b { color: var(--fc-text); font-weight: 600; margin-left: 3px; }
-${P} .userItem .nameAndGame > .fcm-live .w { margin-left: 6px; padding: 0 6px; border-radius: 3px; font-size: 11px; font-weight: 700; color: #fff;
-    background: #f23f43; cursor: pointer; flex: none; }
+${P} .userItem .nameAndGame > .fcm-live .w { display: inline-flex; align-items: center; margin-left: 6px; padding: 0 6px; border-radius: var(--fc-r1); font-size: var(--fc-fs-xs);
+    font-weight: 600; line-height: 16px; color: var(--fc-text); background: var(--fc-tint-2); cursor: pointer; flex: none; transition: background var(--fc-fast) ease, color var(--fc-fast) ease; }
+${P} .userItem .nameAndGame > .fcm-live .w:hover { color: #fff; background: var(--fc-danger); }
 ${P} .userItem.fcm-playing .nameAndGame .game { display: none !important; }
 ${P} .userItem.fcm-playing .nameAndGame > .fcm-sub { display: none !important; }
-${P} .userItem .nameAndGame > .fcm-fr { display: inline-block !important; margin-left: 5px !important; color: var(--fc-warning) !important; font-size: 12px !important; }
+${P} .userItem .nameAndGame > .fcm-fr { display: inline-block !important; margin-left: 5px !important; color: var(--fc-warning) !important; font-size: var(--fc-fs-sm) !important; }
 ${P} .userItem .nameAndGame > .fcm-top { display: inline-block !important; margin-left: 6px !important; padding: 0 4px !important;
-    border-radius: 4px !important; vertical-align: 1px !important; font: 700 11px/16px var(--fc-font) !important;
-    background: rgba(255,255,255,.06) !important; color: var(--fc-muted) !important; }
+    border-radius: var(--fc-r1) !important; vertical-align: 1px !important; font: 700 var(--fc-fs-xs)/16px var(--fc-font) !important;
+    background: var(--fc-tint-2) !important; color: var(--fc-muted) !important; }
 ${P} .userItem .nameAndGame > .fcm-top.silver { color: #c9d1d9 !important; background: rgba(201,209,217,.12) !important; }
 ${P} .userItem .nameAndGame > .fcm-top.gold { color: var(--fc-warning) !important; background: rgba(240,178,50,.14) !important; }
 ${P} .fcm-bars { order: 5; flex: none; display: inline-flex; align-items: flex-end; height: 12px; margin-left: 8px; }
 ${P} .fcm-bars i { width: 3px; margin-left: 2px; border-radius: 1px; background: currentColor; opacity: .25; }
 ${P} .fcm-bars i:nth-child(1) { height: 5px; } ${P} .fcm-bars i:nth-child(2) { height: 8px; } ${P} .fcm-bars i:nth-child(3) { height: 12px; }
-${P} .fcm-bars.good { color: var(--fc-success); } ${P} .fcm-bars.ok { color: var(--fc-warning); } ${P} .fcm-bars.bad { color: #f23f43; } ${P} .fcm-bars.unk { color: #80848e; }
+${P} .fcm-bars.good { color: var(--fc-success); } ${P} .fcm-bars.ok { color: var(--fc-warning); } ${P} .fcm-bars.bad { color: var(--fc-danger); } ${P} .fcm-bars.unk { color: #80848e; }
 ${P} .fcm-bars.good i, ${P} .fcm-bars.ok i:nth-child(-n+2), ${P} .fcm-bars.bad i:nth-child(1) { opacity: 1; }
 ${P} .fcm-chips { display: flex; flex-wrap: wrap; align-items: center; padding: 6px 8px 2px; }
 ${P} .fcm-chips > .fcm-cbx { display: flex; align-items: center; flex: 1 1 100%; }
 ${P} .fcm-search { flex: 1 1 100%; height: 28px; margin: 0 0 6px; padding: 0 10px; box-sizing: border-box; border: 0; border-radius: 6px; outline: none;
-    background: var(--fc-input); color: var(--fc-text); font: 13px/28px var(--fc-font); }
+    background: var(--fc-input); color: var(--fc-text); font: var(--fc-fs-ui)/28px var(--fc-font); }
 ${P} .fcm-search::placeholder { color: var(--fc-muted); }
 ${P} .fcm-search:focus { box-shadow: 0 0 0 1px var(--fc-accent); }
-${P} .fcm-fbtn { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 12px; cursor: pointer; user-select: none;
-    font: 600 12px/24px var(--fc-font); background: var(--fc-btn); color: var(--fc-text); }
+${P} .fcm-fbtn { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: var(--fc-r3); cursor: pointer; user-select: none;
+    font: 600 var(--fc-fs-sm)/24px var(--fc-font); background: var(--fc-btn); color: var(--fc-text); }
 ${P} .fcm-fbtn:hover { background: var(--fc-btn-h); }
 ${P} .fcm-fbtn .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
 ${P} .fcm-fbtn.on { background: var(--fc-accent); color: #fff; }
-${P} .fcm-fbtn b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; text-align: center;
-    font: 700 11px/16px var(--fc-font); background: rgba(255,255,255,.25); }
+${P} .fcm-fbtn b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--fc-r2); text-align: center;
+    font: 700 var(--fc-fs-xs)/16px var(--fc-font); background: rgba(255,255,255,.25); }
 /* Fightcade's Playing list: folded unless opened from its title */
 ${P} .matchesTitleWrapper.fcm-fold { cursor: pointer; }
-${P} .matchesTitleWrapper.fcm-fold .matchesTitle::before { content: '▸'; display: inline-block; width: 14px; transition: transform .15s; }
+${P} .matchesTitleWrapper.fcm-fold .matchesTitle::before { content: '▸'; display: inline-block; width: 14px; transition: transform var(--fc-fast); }
 html body .usersListWrapper.fcm-pl-open .matchesTitleWrapper.fcm-fold .matchesTitle::before { transform: rotate(90deg); }
 html body .usersListWrapper:not(.fcm-pl-open) .matchesList { display: none !important; }
 /* on the left of the chat: rail | members | chat */
@@ -598,10 +600,10 @@ html.fcm-compact.dc-layout body .usersListToolbar, html.fcm-compact.dc-layout bo
 html.fcm-compact body .usersListWrapper .fcm-sub { display: none !important; }
 html.fcm-compact body .usersListWrapper .userItem .avatarWrapper, html.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 28px !important; height: 28px !important; }
 html.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing) { height: 36px !important; min-height: 36px !important; }
-${P} .fcm-st { display: block; font-size: 12px; line-height: 16px; color: var(--fc-muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+${P} .fcm-st { display: block; font-size: var(--fc-fs-sm); line-height: 16px; color: var(--fc-muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 3.2, the Discord 2025 list (the new layout): 32 px avatars and 42 px rows even with one line,
    rounded rows, small capital group headings, rows fading in the first time they show */
-html.dc-refresh body .usersListWrapper .userItem.fcm-row { border-radius: 8px !important; animation: fcRise var(--fc-med) ease both; }
+html.dc-refresh body .usersListWrapper .userItem.fcm-row { border-radius: var(--fc-r2) !important; animation: fcRise var(--fc-med) ease both; }
 html.dc-refresh.fcm-compact body .usersListWrapper .userItem .avatarWrapper,
 html.dc-refresh.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 32px !important; height: 32px !important; }
 html.dc-refresh.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing):not(.fcm-folded-head) { height: 42px !important; min-height: 42px !important; }
@@ -610,18 +612,18 @@ html.dc-refresh.dc-dens-compact.fcm-compact body .usersListWrapper .userItem .av
 html.dc-refresh.dc-dens-compact.fcm-compact body .usersListWrapper .userItem .avatarWrapper .image { width: 24px !important; height: 24px !important; }
 html.dc-refresh.dc-dens-compact body .usersListWrapper .fcm-st { display: none; }
 html.dc-refresh.dc-dens-spacious.fcm-compact.dc-layout body .usersListWrapper .userItem:not(.fcm-playing):not(.fcm-folded-head) { height: 48px !important; min-height: 48px !important; }
-html.dc-refresh body .usersListWrapper .userItem .fcm-gh { padding-left: 26px; font: 600 12px/26px var(--fc-font); letter-spacing: .02em; text-transform: uppercase;
+html.dc-refresh body .usersListWrapper .userItem .fcm-gh { padding-left: 26px; font: 600 var(--fc-fs-sm)/26px var(--fc-font); letter-spacing: .02em; text-transform: uppercase;
     background-size: 20px 20px; }
 html.dc-refresh body .usersListWrapper .userItem .fcm-gh i .fc-ic { width: 11px; height: 11px; }
-.fcm-filters .fcm-popt { margin: 2px 2px 6px; font: 700 11px/14px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+.fcm-filters .fcm-popt { margin: 2px 2px 6px; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 .fcm-filters .fcm-poprow { display: flex; flex-wrap: wrap; margin-bottom: 8px; }
-.fcm-filters .fcm-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; margin: 0 4px 4px 0; border-radius: 12px;
-    font: 500 12px/24px var(--fc-font); cursor: pointer; user-select: none; background: var(--fc-btn); color: var(--fc-text); }
+.fcm-filters .fcm-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; margin: 0 4px 4px 0; border-radius: var(--fc-r3);
+    font: 500 var(--fc-fs-sm)/24px var(--fc-font); cursor: pointer; user-select: none; background: var(--fc-btn); color: var(--fc-text); }
 .fcm-filters .fcm-chip:hover { background: var(--fc-btn-h); }
 .fcm-filters .fcm-chip.on { background: var(--fc-accent); color: #fff; }
 .fcm-filters .fcm-chip[data-chip="clear"] { background: transparent; color: var(--fc-muted); padding: 0 4px; }
 ${P} .fcm-chip, ${P} .fcm-seg { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; margin: 0 4px 4px 0;
-    border-radius: 11px; font: 500 12px/22px var(--fc-font); cursor: pointer; user-select: none;
+    border-radius: 11px; font: 500 var(--fc-fs-sm)/22px var(--fc-font); cursor: pointer; user-select: none;
     background: var(--fc-btn); color: var(--fc-text); }
 ${P} .fcm-chip:hover { background: var(--fc-btn-h); }
 ${P} .fcm-chip.on { background: var(--fc-accent); color: #fff; }

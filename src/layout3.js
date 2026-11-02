@@ -234,7 +234,7 @@ html.l3-tb #l3Title { position: fixed; top: 0; left: 0; right: 0; height: ${TOP}
 #l3Title .l3Ic .fc-ic { width: 16px; height: 16px; }
 #l3Title .l3Acts { position: absolute; right: 10px; top: 0; height: ${TOP}px; display: flex; align-items: center; }
 /* ---- small icon buttons (title bar + your panel) */
-.l3Btn { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px;
+.l3Btn { position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--fc-r2);
     color: var(--dc-icon); cursor: pointer; transition: background-color var(--fc-fast) ease, color var(--fc-fast) ease; }
 #l3Title .l3Btn { width: 28px; height: 24px; margin-left: 4px; border-radius: 6px; }
 .l3Btn:hover { background: var(--dc-hover-2, rgba(255,255,255,.07)); color: var(--dc-head); }
@@ -256,16 +256,16 @@ html.l3-tb #l3Title { position: fixed; top: 0; left: 0; right: 0; height: ${TOP}
 #l3Panel { display: none; }
 html.l3-panel #l3Panel { position: fixed; bottom: 8px; left: 8px; height: 52px; z-index: 46; display: flex; align-items: center; padding: 0 8px 0 6px; box-sizing: border-box;
     --l3-panel-bg: var(--dc-input, #222327);
-    border-radius: 10px; background: var(--l3-panel-bg); box-shadow: 0 0 0 1px var(--dc-divider), 0 6px 18px rgba(0,0,0,.35); font-family: var(--fc-font);
+    border-radius: 10px; background: var(--l3-panel-bg); box-shadow: 0 0 0 1px var(--dc-divider), 0 6px 18px var(--fc-scrim-2); font-family: var(--fc-font);
     animation: l3Up var(--fc-slow) var(--fc-ease) both; }
 @keyframes l3Up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 html.l3-panel.l3-covered #l3Panel { opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
 html.l3-panel #l3Panel { transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }
 /* docked at the foot of a page's left column: that column keeps room for it */
 html.l3-panel.l3-docked .fc-page [data-l3-dock] { padding-bottom: 68px; box-sizing: border-box; }
-#l3Panel .l3Me { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; height: 40px; padding: 0 6px 0 4px; margin-right: 4px; border-radius: 8px; cursor: pointer;
+#l3Panel .l3Me { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; height: 40px; padding: 0 6px 0 4px; margin-right: 4px; border-radius: var(--fc-r2); cursor: pointer;
     transition: background-color var(--fc-fast) ease; }
-#l3Panel .l3Me:hover { background: rgba(255,255,255,.06); }
+#l3Panel .l3Me:hover { background: var(--fc-tint-2); }
 #l3Panel .l3Av { position: relative; flex: none; width: 32px; height: 32px; margin-right: 8px; }
 #l3Panel .l3Av img { width: 32px; height: 32px; border-radius: 50%; display: block; background: var(--dc-bg3); }
 #l3Panel .l3St { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 3px var(--l3-panel-bg); background: var(--dc-green); }
@@ -277,8 +277,8 @@ html.l3-panel-mini #l3Panel .l3Who, html.l3-panel-mini #l3Panel > .l3Btn { displ
 html.l3-panel-mini #l3Panel .l3Me { flex: none; margin: 0; padding: 0 4px; }
 html.l3-panel-mini #l3Panel .l3Av { margin: 0; }
 #l3Panel .l3Who { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
-#l3Panel .l3Who b { font-size: 14px; font-weight: 600; color: var(--dc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#l3Panel .l3Who small { font-size: 12px; color: var(--dc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#l3Panel .l3Who b { font-size: var(--fc-fs-md); font-weight: 600; color: var(--dc-head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#l3Panel .l3Who small { font-size: var(--fc-fs-sm); color: var(--dc-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 /* ---- the window: everything moves under the title bar */
 html.l3-tb #app { position: relative !important; top: ${TOP}px !important; height: calc(100% - ${TOP}px) !important; }
