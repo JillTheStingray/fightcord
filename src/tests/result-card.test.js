@@ -50,3 +50,14 @@ test('the set Fightcord recorded: the same match id first, else the newest vs th
     assert.equal(R.setFor(sets, Object.assign({}, r, { quark: 'x' }), now).myChar, 'Ken');
     assert.equal(R.setFor(sets, Object.assign({}, r, { quark: 'x' }), now + 30 * 60000), null);
 });
+
+test('the score: Fightcade\'s, unless it says 0-0 and the recorded set has games (casual sets)', () => {
+    const casual = R.parseEndgame(eg({ ranked: 0, scores: [0, 0] }), 'Me');
+    assert.deepEqual(R.scoreFor(casual, { mine: 3, theirs: 0 }), { mine: 3, theirs: 0 }, 'the 3-0 from the emulator, not 0-0');
+    assert.deepEqual(R.scoreFor(casual, { mine: 0, theirs: 0 }), { mine: 0, theirs: 0 });
+    assert.deepEqual(R.scoreFor(casual, null), { mine: 0, theirs: 0 });
+    const ranked = R.parseEndgame(eg({ scores: [3, 1], ranked: 3 }), 'Me');
+    assert.deepEqual(R.scoreFor(ranked, { mine: 2, theirs: 1 }), { mine: 3, theirs: 1 }, 'a real score from the site wins');
+    assert.deepEqual(R.scoreFor({ my: null, their: null }, { mine: 1, theirs: 2 }), { mine: 1, theirs: 2 }, 'only the message text: the recorded set');
+    assert.deepEqual(R.scoreFor({ my: null, their: null }, null), { mine: null, theirs: null });
+});

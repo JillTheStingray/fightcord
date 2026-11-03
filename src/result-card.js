@@ -70,7 +70,7 @@ function setFor(sets, r, now) {
         list.filter(s => now - (s.at || 0) < 15 * 60000).pop() || null;
 }
 
-module.exports = { id: 'result-card', name: 'Match result cards', start: (f) => start(f), parseEndgame, replayParts, setFor };
+module.exports = { id: 'result-card', name: 'Match result cards', start: (f) => start(f), parseEndgame, replayParts, setFor, scoreFor };
 
 /* ================================================================== browser */
 
@@ -104,12 +104,21 @@ function sideHtml(name, ch, rom, res, right, chan) {
         (label ? `<span class="fcrcRes ${res}">${E(label)}</span>` : '') + `</div></div></div>`;
 }
 
+// the score to show: Fightcade's, unless it says 0-0 (casual sets often do) and the set Fightcord
+// recorded (the emulator's own count, 3.8.2) has games in it
+function scoreFor(r, set) {
+    const has = (a, b) => a != null && b != null;
+    const site = has(r.my, r.their) ? { mine: r.my, theirs: r.their } : null;
+    const rec = set && has(set.mine, set.theirs) ? { mine: set.mine, theirs: set.theirs } : null;
+    if (site && (site.mine || site.theirs || !rec || !(rec.mine || rec.theirs))) return site;
+    return rec || site || { mine: null, theirs: null };
+}
+
 function cardHtml(r, set, row) {
     const rom = r.rom || (set && set.rom) || '';
     const ch = fc.app.channel ? fc.app.channel(chanOf(row)) : null;
     const game = shortGame((set && (set.game || set.channel)) || (ch && ch.name) || '');
-    const mine = r.my != null ? r.my : set && set.mine != null ? set.mine : null;
-    const theirs = r.their != null ? r.their : set && set.theirs != null ? set.theirs : null;
+    const { mine, theirs } = scoreFor(r, set);
     const outcome = r.outcome || (set && set.result) || (mine != null && theirs != null && (mine || theirs) ? (mine > theirs ? 'won' : mine < theirs ? 'lost' : 'draw') : '');
     const opp = outcome === 'won' ? 'lost' : outcome === 'lost' ? 'won' : outcome;
     const ft = r.ft || (set && set.ft) || 0;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.2
+
+- **Casual scores on result cards:** the card in the chat after a casual set said 0-0 (that's what Fightcade
+  sends for casual sets) even when the result screen had the real score. It now shows the score Fightcord
+  counted from the emulator, the same one the result screen and your history use.
+
 ## 3.9.1
 
 - **Players' mains:** the characters someone plays, as little faces next to their tags on the scout card,
