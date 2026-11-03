@@ -15,6 +15,10 @@
  * Matchup notes (2.10): one note per game + opponent character ("parry the dive kick"). When the
  * emulator shows who they picked, a card in the lobby says your record vs that character and the
  * note; Analytics lists every matchup with its note. Same file, key "<rom>|<character>".
+ *
+ * Mains (3.9.1): up to 3 characters per player and game, as faces next to their tags. Yours tag wins,
+ * then the ones they share (Edit profile, presence.js), then the characters they picked in your sets
+ * with them. Your own: the ones you picked in Edit profile, else the ones you play most.
  */
 'use strict';
 
@@ -44,7 +48,7 @@ function get(name) {
     if (!cfg) return { name, note: '', tags: [] };
     const p = cfg.people[key(name)] || {};
     const tags = (p.tags || []).map(id => cfg.tags.find(t => t.id === id)).filter(Boolean);
-    return { name: p.name || name, note: p.note || '', tags, rq: p.rq || null };
+    return { name: p.name || name, note: p.note || '', tags, rq: p.rq || null, mains: p.mains || {} };
 }
 
 const has = (name) => { const p = get(name); return !!(p.note || p.tags.length); };
@@ -60,7 +64,9 @@ function set(name, patch) {
     const k = key(name);
     const p = Object.assign({ name, note: '', tags: [] }, cfg.people[k], patch, { name });
     p.note = String(p.note || '').slice(0, 500);
-    if (!p.note && !(p.tags || []).length && !p.rq && !p.rqOff) delete cfg.people[k];
+    if (p.mains) Object.keys(p.mains).forEach(g => { if (!Array.isArray(p.mains[g]) || !p.mains[g].length) delete p.mains[g]; });
+    if (p.mains && !Object.keys(p.mains).length) delete p.mains;
+    if (!p.note && !(p.tags || []).length && !p.rq && !p.rqOff && !p.mains) delete cfg.people[k];
     else cfg.people[k] = p;
     changed(name);
 }
@@ -205,6 +211,100 @@ function onMuClick(e) {
     editMatchup(v.slice(0, i), v.slice(i + 1), el.getBoundingClientRect());
 }
 
+/* --------------------------------------------------------------------- mains */
+
+const MAINS_MAX = 3;
+const guide = () => (fc.modules ? fc.modules.get('matchup-guide') : null);
+// one key per game: the guide's (all of 3rd Strike's roms are one game), else the rom itself
+function gameKey(rom) {
+    const g = guide(), x = g && g.gameOf ? g.gameOf(rom) : null;
+    return x ? x.id : String(rom || '').toLowerCase();
+}
+// the guide's spelling of a character ("Remya" -> "Remy"), else the emulator's
+function canon(rom, ch) {
+    const g = guide(), e = g && g.find ? g.find(rom, ch) : null;
+    return e ? e.name : String(ch || '').trim();
+}
+
+// the characters someone picked in your sets with them, in one game, most-picked first. A pick
+// under a fifth of those sets is a pocket character, not a main. -> { chars, n: {char: sets}, total }
+// (field: 'myChar' for your own)
+function mainsFrom(sets, gk, keyOf, canonOf, field) {
+    const f = field || 'oppChar';
+    const n = {};
+    let total = 0;
+    (sets || []).forEach(s => {
+        if (!s || !s[f] || !s.rom || keyOf(s.rom) !== gk) return;
+        const c = canonOf(s.rom, s[f]);
+        if (!c) return;
+        n[c] = (n[c] || 0) + 1;
+        total++;
+    });
+    const chars = Object.keys(n).filter(c => n[c] * 5 >= total).sort((a, b) => n[b] - n[a] || a.localeCompare(b)).slice(0, MAINS_MAX);
+    return { chars, n, total };
+}
+
+// -> { rom, chars, auto, n, total } or null; rom = the game on screen when not given
+function mains(name, rom) {
+    rom = rom || (fc.app ? fc.app.activeGameId() : '');
+    if (!rom || !cfg || !name) return null;
+    const gk = gameKey(rom), pr = fc.modules ? fc.modules.get('presence') : null;
+    if (fc.app.isMe(name)) {
+        const mine = pr && pr.myMainsSet ? pr.myMainsSet()[gk] : null;
+        if (mine && mine.length) return { rom, chars: mine.slice(0, MAINS_MAX), auto: false, own: true };
+        if (cfg.autoMains === false) return null;
+        const m = mainsFrom(fc.history.all(), gk, gameKey, canon, 'myChar');
+        return m.chars.length ? Object.assign({ rom, auto: true, own: true }, m) : null;
+    }
+    const p = cfg.people[key(name)];
+    const tagged = p && p.mains && p.mains[gk];
+    if (tagged && tagged.length) return { rom, chars: tagged.slice(0, MAINS_MAX), auto: false };
+    const shared = pr && pr.mainsOf ? pr.mainsOf(name)[gk] : null;
+    if (shared && shared.length) return { rom, chars: shared.slice(0, MAINS_MAX).map(c => canon(rom, c)), auto: false, shared: true };
+    if (cfg.autoMains === false) return null;
+    const m = mainsFrom(fc.history.vs(name), gk, gameKey, canon);
+    return m.chars.length ? Object.assign({ rom, auto: true }, m) : null;
+}
+
+// your most-played characters in each game you've played 5+ sets of (what you share without picking)
+function myAutoMains() {
+    if (!cfg || cfg.autoMains === false) return {};
+    const per = {};
+    fc.history.all().forEach(s => { if (s && s.rom && s.myChar) { const gk = gameKey(s.rom); per[gk] = per[gk] || []; per[gk].push(s); } });
+    const out = {};
+    Object.keys(per).filter(gk => per[gk].length >= 5).sort((a, b) => per[b].length - per[a].length).slice(0, 8).forEach(gk => {
+        const m = mainsFrom(per[gk], gk, gameKey, canon, 'myChar');
+        if (m.chars.length) out[gk] = m.chars;
+    });
+    return out;
+}
+const gameName = (rom) => { const g = guide(), x = g && g.gameOf ? g.gameOf(rom) : null; return x ? x.name : ''; };
+
+function setMains(name, rom, chars) {
+    if (!name || !rom || !cfg) return;
+    const cur = (cfg.people[key(name)] || {}).mains || {};
+    set(name, { mains: Object.assign({}, cur, { [gameKey(rom)]: (chars || []).slice(0, MAINS_MAX) }) });
+}
+
+// the characters the editor offers: the guide's list, else everyone picked in this game in your history
+function pickable(rom) {
+    const g = guide(), list = g && g.charsOf ? g.charsOf(rom) : [];
+    if (list.length) return list;
+    const gk = gameKey(rom), seen = new Set();
+    fc.history.all().forEach(s => { if (s.rom && gameKey(s.rom) === gk) [s.myChar, s.oppChar].forEach(c => { if (c) seen.add(canon(s.rom, c)); }); });
+    return [...seen].sort();
+}
+
+const faceOf = (rom, ch, size) => { const g = guide(); return g && g.faceHtml ? g.faceHtml(rom, ch, size) : ''; };
+function mainsChips(m) {
+    return m.chars.map(c => {
+        const title = m.own ? (m.auto ? T('{char}: picked in {n} of your {total} sets', { char: c, n: m.n[c], total: m.total }) : T('{char}: your main', { char: c }))
+            : m.auto ? T('{char}: picked in {n} of your {total} sets with them', { char: c, n: m.n[c], total: m.total })
+            : m.shared ? T('{char}: their main (from their profile)', { char: c }) : T('{char}: their main (you tagged it)', { char: c });
+        return `<span class="ntMain${m.auto ? ' auto' : ''}" title="${E(title)}">${faceOf(m.rom, c, 18)}${E(c)}</span>`;
+    }).join('');
+}
+
 /* ------------------------------------------------------------------- display */
 
 const tagChip = (t, extra, title) => `<span class="ntChip${t.id === RQ ? ' rq' : ''}${extra || ''}" data-tag="${E(t.id)}" style="--c:${E(t.color)}"${title ? ` title="${E(title)}"` : ''}>${E(t.label)}</span>`;
@@ -213,9 +313,10 @@ const tagChip = (t, extra, title) => `<span class="ntChip${t.id === RQ ? ' rq' :
 function chips(name, opts) {
     const p = get(name);
     const o = opts || {};
-    if (!p.tags.length && !p.note) return o.empty || '';
+    const mn = o.mains === false || (cfg && cfg.showMains === false) ? null : mains(name, o.rom);
+    if (!p.tags.length && !p.note && !mn) return o.empty || '';
     const why = p.tags.some(t => t.id === RQ) ? rqWhy(p.rq) : '';
-    return `<div class="ntChips">${p.tags.map(t => tagChip(t, '', t.id === RQ && why ? why + '. ' + T('Could also be disconnects.') : '')).join('')}</div>` +
+    return `<div class="ntChips">${p.tags.map(t => tagChip(t, '', t.id === RQ && why ? why + '. ' + T('Could also be disconnects.') : '')).join('')}${mn ? mainsChips(mn) : ''}</div>` +
         (why && !o.noWhy ? `<div class="ntWhy">${fc.ui.ic('warn')}<span>${E(why)}</span></div>` : '') +
         (p.note && !o.noNote ? `<div class="ntNote">“${E(p.note)}”</div>` : '');
 }
@@ -241,11 +342,20 @@ function edit(name, rect) {
     closeEditor();
     const box = document.createElement('div');
     box.id = 'ntEdit';
+    const rom = fc.app.activeGameId();
+    const roster = rom && !fc.app.isMe(name) ? pickable(rom) : [];
+    const mainsPick = () => {
+        if (!roster.length) return '';
+        const m = mains(name, rom), mine = m && !m.auto ? m.chars : [], sug = m && m.auto ? m.chars : [];
+        const g = guide(), game = g && g.gameOf ? g.gameOf(rom) : null;
+        return `<span class="ntMine">${E(T('Their mains'))}${game ? ' · ' + E(game.name) : ''}</span><div class="ntPick">${roster.map(c =>
+            `<button type="button" data-main="${E(c)}" class="${mine.includes(c) ? 'on' : sug.includes(c) ? 'sug' : ''}" title="${E(c)}">${faceOf(rom, c, 30)}</button>`).join('')}</div>`;
+    };
     const draw = () => {
         const p = get(name);
         const on = new Set(p.tags.map(t => t.id));
         box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Notes on {name}', { name }) }) +
-            `<div class="fc-pb"><div class="tags">${cfg.tags.map(t => tagChip(t, ' pick' + (on.has(t.id) ? ' on' : ''))).join('')}</div>
+            `<div class="fc-pb"><div class="tags">${cfg.tags.map(t => tagChip(t, ' pick' + (on.has(t.id) ? ' on' : ''))).join('')}</div>${mainsPick()}
             <textarea class="fc-input" maxlength="500" placeholder="${E(T('Anything to remember about {name}…', { name }))}">${E(p.note)}</textarea></div>` +
             fc.ui.popFoot(E(T('Only you can see this')), fc.ui.btn('Save', { size: 'sm', act: 'save' }));
     };
@@ -257,6 +367,17 @@ function edit(name, rect) {
     }, true);
     box.addEventListener('click', (e) => {
         e.stopPropagation();
+        const mb = e.target.closest('[data-main]');
+        if (mb) {
+            const note = box.querySelector('textarea').value;
+            const m = mains(name, rom), cur = m && !m.auto ? m.chars.slice() : [], c = mb.dataset.main;
+            // a 4th pick pushes the oldest one out
+            const next = cur.includes(c) ? cur.filter(x => x !== c) : cur.concat(c).slice(-MAINS_MAX);
+            setMains(name, rom, next);
+            draw();
+            box.querySelector('textarea').value = note;
+            return;
+        }
         const t = e.target.closest('[data-tag]');
         if (t) {
             const note = box.querySelector('textarea').value;
@@ -315,6 +436,16 @@ const CSS = `
 .ntChip { display: inline-flex; align-items: center; height: 20px; margin: 2px; padding: 0 8px 0 6px; border-radius: 10px;
     font: 600 var(--fc-fs-sm)/1 var(--fc-font); color: var(--fc-text); background: var(--fc-tint-3);
     box-shadow: inset 0 0 0 1px var(--fc-tint-2); white-space: nowrap; }
+.ntMain { display: inline-flex; align-items: center; height: 22px; margin: 1px 2px; padding: 0 8px 0 2px; border-radius: 11px;
+    font: 600 var(--fc-fs-sm)/1 var(--fc-font); color: var(--fc-text); background: var(--fc-tint-3); box-shadow: inset 0 0 0 1px var(--fc-tint-2); white-space: nowrap; }
+.ntMain .fc-mu-face { margin-right: 5px; border-radius: 50%; }
+.ntMain.auto { background: transparent; color: var(--fc-muted); box-shadow: inset 0 0 0 1px var(--fc-tint-3); }
+#ntEdit .ntPick { display: grid; grid-template-columns: repeat(auto-fill, 32px); grid-gap: 4px; margin: 0 0 10px; }
+#ntEdit .ntPick button { display: block; width: 32px; height: 32px; padding: 1px; border: 0; border-radius: 9px; background: none; cursor: pointer; opacity: .55;
+    transition: opacity var(--fc-fast), box-shadow var(--fc-fast); }
+#ntEdit .ntPick button:hover, #ntEdit .ntPick button:focus-visible { opacity: .9; }
+#ntEdit .ntPick button.sug { opacity: .85; box-shadow: inset 0 0 0 1.5px var(--fc-tint-4); }
+#ntEdit .ntPick button.on { opacity: 1; box-shadow: 0 0 0 2px var(--fc-accent); }
 .ntChip::before { content: ''; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; background: var(--c); flex: none; }
 .ntNote { margin-top: 4px; font-size: var(--fc-fs-ui); line-height: 1.35; font-style: italic; color: var(--fc-text); opacity: .9;
     overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
@@ -342,7 +473,7 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {}, matchupToast: false, autoRq: true });
+    store = fc.config('notes', { people: {}, tags: DEFAULT_TAGS.map(t => Object.assign({}, t)), matchups: {}, matchupToast: false, autoRq: true, showMains: true, autoMains: true });
     cfg = store.data;
     if (!cfg.people || typeof cfg.people !== 'object') cfg.people = {};
     if (!Array.isArray(cfg.tags) || !cfg.tags.length) cfg.tags = DEFAULT_TAGS.map(t => Object.assign({}, t));
@@ -365,6 +496,10 @@ function start(f) {
     fc.settings.block({ id: 'notes-rq', section: 'members', title: 'Ragequitters', hint: '— a heads-up, not a block', store, order: 31,
         fields: [{ key: 'autoRq', type: 'switch', label: 'Tag ragequitters for me',
             hint: 'The Ragequitter tag goes on players who often leave ranked sets unfinished (their recent sets, or two with you while behind), and off again when they stop. Take it off a player and it stays off' }] });
+    fc.settings.block({ id: 'notes-mains', section: 'members', title: 'Players’ mains', hint: '— character faces next to their tags', store, order: 32,
+        fields: [{ key: 'showMains', type: 'switch', label: 'Show players’ mains', hint: 'On scout cards, challenge cards and hover cards, for the game you’re in. Tag them in Notes & tags' },
+            { key: 'autoMains', type: 'switch', label: 'Fill them in from my sets', show: (d) => d.showMains !== false,
+                hint: 'Until you tag someone’s mains, the characters they picked in your sets with them (from the emulator)' }] });
     fc.settings.block({ id: 'notes-matchups', section: 'match', title: 'Matchup notes', hint: '— your notes per character', store, order: 40,
         fields: [{ key: 'matchupToast', type: 'switch', label: 'Pop-up when your opponent picks a character', hint: 'Your record and note against that character, during the match' }] });
     fc.log('ready,', Object.keys(cfg.people).length, 'players noted');
@@ -372,12 +507,13 @@ function start(f) {
 }
 
 const api = {
-    get, has, set, toggleTag, chips, dots, edit, quitEvidence, rqWhy,
+    get, has, set, toggleTag, chips, dots, edit, quitEvidence, rqWhy, mains, setMains, myAutoMains, gameKey, gameName, pickable,
+    faceHtml: (rom, ch, size) => faceOf(rom, ch, size),
     isRagequitter: (name) => get(name).tags.some(t => t.id === RQ),
     matchup, setMatchup, matchupRecord, editMatchup, _onCharacter: (ev) => onCharacter(ev),
     tags: () => (cfg ? cfg.tags : DEFAULT_TAGS),
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'notes', name: 'Player notes & tags', start, rqVerdict };
+module.exports = { id: 'notes', name: 'Player notes & tags', start, rqVerdict, mainsFrom };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

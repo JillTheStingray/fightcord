@@ -295,6 +295,21 @@ function editProfile() {
     const plainAv = fc.data.avatarUrl(me, u.gravatar, 160, true);
     // N_('Avatar') N_('Banner') N_('Profile theme') N_('Avatar frame') N_('Avatar decoration') N_('Name style')
     const sec = (title, inner, extra) => `<div class="pcEdSec"${extra || ''}><div class="pcEdH">${E(T(title))}</div>${inner}</div>`;
+    // 3.9.1: your mains, per game (the games with a character list: the guide's, or ones in your history)
+    const nt = mod('notes');
+    const mnGames = new Map();                         // game key -> { rom, name }
+    if (nt && nt.gameKey && pr.setMains) {
+        [fc.app.activeGameId()].concat([...games.keys()]).forEach(rom => {
+            if (!rom) return;
+            const gk = nt.gameKey(rom);
+            if (!mnGames.has(gk) && nt.pickable(rom).length) mnGames.set(gk, { rom, name: nt.gameName(rom) || games.get(rom) || rom });
+        });
+    }
+    const mnDraft = pr.myMainsSet ? pr.myMainsSet() : {};
+    let mnGame = mnGames.size ? [...mnGames.keys()][0] : '';
+    // N_('Your mains')
+    const mainsSec = mnGames.size ? sec('Your mains', `<select class="fc-select pcEdMnGame">${[...mnGames.entries()].map(([gk, g]) => `<option value="${E(gk)}">${E(g.name)}</option>`).join('')}</select>
+        <div class="pcEdMains"></div><p class="fc-note">${E(T('Up to 3 per game. Without any, Fightcord shows the characters you play most.'))}</p>`) : '';
     const body = `<div class="pcEd"><div class="pcEdL pcEdit">
         ${sec('Avatar', `<div class="pcEdRow" data-drop="av">${fc.ui.btn('Change avatar', { size: 'sm', attrs: 'data-ed="pick-av"' })}${fc.ui.btn('Remove', { size: 'sm', kind: 'ghost', attrs: 'data-ed="rm-av"' })}<span class="pcEdUp" data-up="av"></span></div>`, ' data-drop="av"')}
         ${sec('Banner', `<div class="pcEdRow">${fc.ui.btn('Change banner', { size: 'sm', attrs: 'data-ed="pick-bn"' })}${fc.ui.btn('Remove', { size: 'sm', kind: 'ghost', attrs: 'data-ed="rm-bn"' })}<span class="pcEdUp" data-up="bn"></span></div>
@@ -310,6 +325,7 @@ function editProfile() {
             Object.keys(nameStyles).map(k => `<span class="pcEdN" data-ed="ns" data-ns="${k}"><b data-fcns="${k}">${E(me || T('You'))}</b><small>${E(T(nameStyles[k]))}</small></span>`).join('') + '</div>' +
             `<div class="pcEdTheme pcEdNsCol"><label class="pcEdCol"><input type="color" data-ed="ns0"><small>${E(T('Colour 1'))}</small></label><label class="pcEdCol"><input type="color" data-ed="ns1"><small>${E(T('Colour 2'))}</small></label>` +
             `<span class="pcEdNsWarn">${fc.ui.ic('warn')}${E(T('Too dark to read on Fightcade’s dark panels: pick a lighter colour'))}</span></div>`)}
+        ${mainsSec}
         <label><span>${E(T('Pronouns'))}</span><input class="fc-input" data-f="pn" maxlength="40" placeholder="${E(T('Add your pronouns'))}" value="${E(draft.pn || '')}"></label>
         <label><span>${E(T('Status'))}</span><input class="fc-input" data-f="s" maxlength="80" placeholder="${E(T('Grinding 3rd Strike, FT5s welcome'))}" value="${E(draft.s || '')}"></label>
         <label><span>${E(T('About me'))}</span><textarea class="fc-input" data-f="a" maxlength="190" placeholder="${E(T('Mains, where you play from, what you’re working on…'))}">${E(draft.a || '')}</textarea><small class="cnt"></small></label>
@@ -323,6 +339,7 @@ function editProfile() {
             if (Object.keys(busy).length) { fc.ui.toast(T('Still uploading…'), { icon: 'image' }); return false; }
             if (draft.ns && draft.ns.c && pr.readable && !draft.ns.c.every(c => pr.readable(c))) { fc.ui.toast(T('Pick lighter name colours first'), { icon: 'warn', kind: 'warning' }); return false; }
             pr.setProfile(draft);
+            if (mnGames.size) pr.setMains(mnDraft);
             if (lk) lk.refresh();
             fc.ui.toast(T('Profile saved'), { icon: 'check', kind: 'success' });
         } }],
@@ -344,7 +361,7 @@ function editProfile() {
         const box = $('.pcPrev');
         box.innerHTML = fc.ui.cardHead({ name: me || T('You'), banner, avatar: av, status: draft.s || '', pn: draft.pn || '', meta: `<span>${E(T('Online'))}</span>` }) +
             `<div class="pcPrevB">${draft.a ? `<div class="fc-ch-sec"><div class="fcProfA"><b>${E(T('About me'))}</b>${E(draft.a)}</div></div>` : ''}` +
-            `${fc.ui.cardMsg(me || 'you', 'data-none', T('Message @{name}', { name: me || 'you' }))}</div>`;
+            `${mnPrev()}${fc.ui.cardMsg(me || 'you', 'data-none', T('Message @{name}', { name: me || 'you' }))}</div>`;
         if (lk) lk.applyTheme(box, draft.th || null);
         if (lk && lk.setName) {
             lk.setName(box.querySelector('.fc-ch-name > span'), draft.ns || null);
@@ -489,6 +506,34 @@ function editProfile() {
         home();
     };
 
+    // your mains: faces for the game picked above; the ones you play most show as suggestions
+    function mnPrev() {
+        const g = mnGame && mnGames.get(mnGame);
+        if (!g) return '';
+        const auto = nt.mains(me, g.rom), cs = (mnDraft[mnGame] && mnDraft[mnGame].length) ? mnDraft[mnGame] : auto && auto.auto ? auto.chars : [];
+        return cs.length ? `<div class="fc-ch-sec"><div class="ntChips">${cs.map(c => `<span class="ntMain">${nt.faceHtml(g.rom, c, 18)}${E(c)}</span>`).join('')}</div></div>` : '';
+    }
+    const drawMains = () => {
+        const box = m.body.querySelector('.pcEdMains');
+        if (!box || !mnGame) return;
+        const g = mnGames.get(mnGame), on = mnDraft[mnGame] || [];
+        const auto = nt.mains(me, g.rom), sug = auto && auto.auto ? auto.chars : [];
+        box.innerHTML = nt.pickable(g.rom).map(c => `<button type="button" data-mn="${E(c)}" class="${on.includes(c) ? 'on' : !on.length && sug.includes(c) ? 'sug' : ''}" title="${E(c)}">${nt.faceHtml(g.rom, c, 32)}</button>`).join('');
+    };
+    if (mnGames.size) {
+        drawMains();
+        m.body.querySelector('.pcEdMnGame').addEventListener('change', (e) => { mnGame = e.target.value; drawMains(); prev(); });
+        m.body.querySelector('.pcEdMains').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-mn]');
+            if (!b) return;
+            const cur = mnDraft[mnGame] || [], c = b.dataset.mn;
+            // a 4th pushes the oldest out
+            mnDraft[mnGame] = cur.includes(c) ? cur.filter(x => x !== c) : cur.concat(c).slice(-3);
+            if (!mnDraft[mnGame].length) delete mnDraft[mnGame];
+            drawMains();
+            prev();
+        });
+    }
     m.body.addEventListener('click', (e) => {
         const t = e.target.closest('[data-ed]');
         if (!t) return;
@@ -654,6 +699,13 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 .pcEdPresets > i { width: 22px; height: 22px; margin: 0 6px 6px 0; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
 .pcEdPresets > i:hover { transform: scale(1.12); }
 .pcEdFrames { display: flex; flex-wrap: wrap; margin-right: -8px; }
+.pcEdMnGame { max-width: 100%; }
+.pcEdMains { display: grid; grid-template-columns: repeat(auto-fill, 36px); grid-gap: 4px; margin: 8px 0 4px; }
+.pcEdMains button { display: block; width: 36px; height: 36px; padding: 1px; border: 0; border-radius: 10px; background: none; cursor: pointer; opacity: .55;
+    transition: opacity var(--fc-fast), box-shadow var(--fc-fast); }
+.pcEdMains button:hover, .pcEdMains button:focus-visible { opacity: .9; }
+.pcEdMains button.sug { opacity: .85; box-shadow: inset 0 0 0 1.5px var(--fc-tint-4); }
+.pcEdMains button.on { opacity: 1; box-shadow: 0 0 0 2px var(--fc-accent); }
 .pcEdFr { display: flex; flex-direction: column; align-items: center; width: 64px; margin: 0 8px 8px 0; padding: 10px 0 6px; border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer; }
 .pcEdFr:hover { background: var(--fc-s3); }
 .pcEdFr.on { box-shadow: var(--fc-ring-in); }

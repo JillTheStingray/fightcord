@@ -71,14 +71,15 @@ function Book(ttl) {
     const ver = (x) => (typeof x === 'string' && /^[0-9a-f]{8}$/.test(x) ? x : '');
     return {
         // dk (3.6): their Fightcord ID, for friend requests and DMs; lv (3.7): their looks' version;
-        // xv (3.9): their name style and decoration's version; mc (3.9): their in-game chat is muted
-        heard(h, voice, now, pv, nw, dk, lv, xv, mc) {
+        // xv (3.9): their name style and decoration's version; mc (3.9): their in-game chat is muted;
+        // mv (3.9.1): their mains' version
+        heard(h, voice, now, pv, nw, dk, lv, xv, mc, mv) {
             const old = m.get(h);
-            const v = ver(pv), l = ver(lv), x = ver(xv);
+            const v = ver(pv), l = ver(lv), x = ver(xv), mn = ver(mv);
             const d = typeof dk === 'string' && /^[0-9a-f]{64}$/.test(dk) ? dk : '';
-            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l, xv: x, mc: mc === 1 });
+            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l, xv: x, mc: mc === 1, mv: mn });
             if (m.size > 5000) m.delete(m.keys().next().value);
-            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || old.xv !== x || old.mc !== (mc === 1) || now - old.at > ttl;       // news?
+            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || old.xv !== x || old.mc !== (mc === 1) || old.mv !== mn || now - old.at > ttl;       // news?
         },
         gone(h) { return m.delete(h); },
         get(h, now) { const e = m.get(h); return e && now - e.at <= ttl ? e : null; },
@@ -191,6 +192,20 @@ function cleanExtras(p) {
 }
 const hasExtras = (p) => { const x = cleanExtras(p); return !!(x.ns || x.dc); };
 const extrasVersion = (p) => hasExtras(p) ? fnv('look-x|' + JSON.stringify(cleanExtras(p))) : '';
+// --- 3.9.1: your mains, per game ("3s": ["Yun", "Chun-Li"]) ---
+// Like the status text they're not signed. Their own version (mv), outside p, so 3.9.0 never sees them.
+const MAIN_GAME = /^[a-z0-9_]{1,24}$/;
+function cleanMains(o) {
+    const out = {};
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+    Object.keys(o).filter(k => MAIN_GAME.test(k)).sort().slice(0, 8).forEach(k => {
+        const cs = [];
+        (Array.isArray(o[k]) ? o[k] : []).forEach(c => { const t = cleanText(c, 24); if (t && cs.indexOf(t) < 0 && cs.length < 3) cs.push(t); });
+        if (cs.length) out[k] = cs;
+    });
+    return out;
+}
+const mainsVersion = (mn) => { const c = cleanMains(mn); return Object.keys(c).length ? fnv('mains|' + JSON.stringify(c)) : ''; };
 const extrasMsg = (h, lv, xv) => 'fightcord-look-x1|' + h + '|' + (lv || '') + '|' + xv;
 const PIN_QUIET = 30 * 86400000;
 // may this Fightcord ID put pictures on that name? A friend: only the ID you accepted. Anyone else:
@@ -218,7 +233,7 @@ module.exports = {
     start: (f) => start(f),
     hashOf, Book, react, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom, newcomerDay, announceDecision,
     FRAMES, PIC_HOSTS, picUrl, cleanPic, cleanLook, cleanFull, hasLook, lookVersion, lookMsg, mayLook,
-    NAME_STYLES, NAME_COLOURED, DECOS, lum, readable, cleanExtras, hasExtras, extrasVersion, extrasMsg
+    NAME_STYLES, NAME_COLOURED, DECOS, lum, readable, cleanExtras, hasExtras, extrasVersion, extrasMsg, cleanMains, mainsVersion
 };
 
 /* ================================================================== browser */
@@ -252,6 +267,8 @@ function send(t, extra) {
     const dk = named && t !== 'bye' ? myDk() : '';
     if (dk) msg.dk = dk;
     if (named && t !== 'bye' && chatMuted && cfg.shareChatOff !== false) msg.mc = 1;
+    const mv = named && t !== 'bye' ? myMv() : '';
+    if (mv) msg.mv = mv;
     relays.send(Object.assign(msg, extra));
 }
 function myDk() {
@@ -302,7 +319,7 @@ function onMsg(m) {
     if (m && m.t === 'prof') { takeProfile(m, now); return; }
     const what = react(m, myHash());
     if (what === 'record' || what === 'record+reply') {
-        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv, m.xv, m.mc)) changed();
+        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv, m.xv, m.mc, m.mv)) changed();
         if (m.dk && /^[0-9a-f]{64}$/.test(m.dk)) fc.emit('presence:id', { h: m.h, dk: m.dk });
         if (m.nw) newcomer(m.h, m.nw);
         for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice, chatOff: m.mc === 1 }); }
@@ -449,6 +466,38 @@ function myProfile() { const p = Object.assign(cleanFull(Object.assign({}, cfg.p
 function myPv() { if (!cfg || !cfg.shareProfile) return ''; const p = cleanProfile(myProfile()); return isEmptyProfile(p) ? '' : profileVersion(p); }
 function myLv() { if (!cfg || !cfg.shareProfile) return ''; const p = myProfile(); return hasLook(p) ? lookVersion(p) : ''; }
 function myXv() { if (!cfg || !cfg.shareProfile) return ''; return extrasVersion(cfg.profile); }
+// your mains as shared: the ones you picked (Edit profile), and for your other games the characters
+// you play most (notes.js; unless "fill them in" is off). Worked out at most once a minute
+let mainsCache = { at: 0, v: null };
+function myMains() {
+    if (!cfg || !cfg.shareProfile || cfg.shareMains === false) return {};
+    const now = Date.now();
+    if (mainsCache.v && now - mainsCache.at < 60000) return mainsCache.v;
+    const nt = fc.modules.get('notes');
+    const auto = nt && nt.myAutoMains ? nt.myAutoMains() : {};
+    const v = cleanMains(Object.assign({}, auto, cleanMains(cfg.mains)));
+    mainsCache = { at: now, v };
+    return v;
+}
+function myMv() { return mainsVersion(myMains()); }
+function setMains(mn) {
+    cfg.mains = cleanMains(mn);
+    store.save();
+    mainsCache.at = 0;
+    if (said) say('here');
+    changed();
+    fc.emit('presence:profile', { me: true });
+}
+// someone's shared mains ({} when none, or their profile is hidden); asks for them like profile() does
+function mainsOf(name) {
+    if (!name || !cfg) return {};
+    if (fc.app.isMe(name)) return myMains();
+    if (!cfg.showProfiles || isHidden(name)) return {};
+    profile(name, true);
+    const h = hashOf(name), e = book.get(h, Date.now()), c = seen.m[h];
+    if (e && !e.mv) return {};                          // here, and not sharing them (any more)
+    return (c && c.mn) || {};
+}
 function signExtras(h, lv, xv) {
     const lb = fc.modules.get('lobbies');
     if (!crypto || !lb || !lb.signId) return '';
@@ -463,7 +512,7 @@ function extrasSigned(h, lv, xv, dk, sig) {
 function answerProfile(m, now) {
     if (!cfg.visible || !cfg.shareProfile || !HASH.test(String(m.q || '')) || m.q !== myHash()) return;
     // answers to the same version at most every 4 s (a new version always goes out)
-    const pv = myPv(), lv = myLv(), xv = myXv(), v = pv + lv + xv;
+    const pv = myPv(), lv = myLv(), xv = myXv(), mv = myMv(), v = pv + lv + xv + mv;
     if (!v || (v === lastAnswer.v && now - lastAnswer.at < 4000)) return;
     lastAnswer = { v, at: now };
     send('prof', profAnswer());
@@ -475,6 +524,8 @@ function profAnswer() {
     const out = lv || xv ? { p: myProfile() } : { p: cleanProfile(myProfile()) };
     if (lv) { out.lv = lv; out.sig = signLook(h, lv); }
     if (xv) { out.xv = xv; out.xsig = signExtras(h, lv, xv); }
+    const mv = myMv();
+    if (mv) { out.mv = mv; out.mn = myMains(); }
     return out;
 }
 function takeProfile(m, now) {
@@ -502,6 +553,11 @@ function takeProfile(m, now) {
         if (ok) { seen.pins[m.h] = { dk: e.dk, at: now }; x.xv = e.xv; Object.assign(x.p, ex); }
         else x.xbad = e.xv;
     }
+    // 3.9.1: their mains, when they're the version they announced
+    if (e.mv && m.mv === e.mv) {
+        const mn = cleanMains(m.mn);
+        if (mainsVersion(mn) === e.mv) { if (!x) x = { pv: '', lv: '', p: {}, at: now }; x.mv = e.mv; x.mn = mn; }
+    }
     if (!x) return;
     remember(m.h, x);
     changed();
@@ -527,11 +583,12 @@ function profile(name, soft) {
     const e = book.get(h, now), c = seen.m[h] || null;
     const shown = c && (!isEmptyProfile(c.p) || hasLook(c.p) || hasExtras(c.p)) ? pics(c.p) : null;
     if (!e) return shown;
-    if (!e.pv && !e.lv && !e.xv) return null;             // here, and sharing nothing (any more)
+    if (!e.pv && !e.lv && !e.xv && !e.mv) return null;    // here, and sharing nothing (any more)
     const xok = !c || (e.xv ? c.xv === e.xv || c.xbad === e.xv : !c.xv);
-    if (c && xok && (e.lv ? c.lv === e.lv || c.bad === e.lv : !c.lv && (c.pv || '') === e.pv)) return shown;
+    const mok = !c || (e.mv ? c.mv === e.mv : true);
+    if (c && xok && mok && (e.lv ? c.lv === e.lv || c.bad === e.lv : !c.lv && (c.pv || '') === e.pv)) return shown;
     // a new version: ask now; the same one again: not more than every 30 s
-    const v = e.pv + e.lv + (e.xv || ''), last = asked.get(h);
+    const v = e.pv + e.lv + (e.xv || '') + (e.mv || ''), last = asked.get(h);
     if (relays && (!last || last.v !== v || (!soft && now - last.at > 30000))) { asked.set(h, { v, at: now }); send('prof?', { q: h }); }
     return shown;                                          // (the old one meanwhile)
 }
@@ -661,7 +718,7 @@ html body .chatContent .messageWrapper.bot.fcNew:not(.chat):not(.motd)::before, 
 function start(f) {
     fc = f;
     store = fc.config('presence', { visible: true, shareProfile: true, showProfiles: true, showPics: true, showBadges: true, profile: { s: '', a: '', b: '' }, hiddenProfiles: [],
-        shareNew: true, welcomeNew: true, shareChatOff: true, chatOffLine: false, announced: {} });
+        shareNew: true, welcomeNew: true, shareChatOff: true, chatOffLine: false, shareMains: true, mains: {}, announced: {} });
     cfg = store.data;
     seenStore = fc.config('presence-profiles', { m: {}, pins: {} });
     seen = seenStore.data;
@@ -689,6 +746,8 @@ function start(f) {
                 onChange: (v) => { if (v) send('hi'); else send('bye'); changed(); } },
             { key: 'shareProfile', type: 'switch', label: 'Share my profile', hint: 'Your avatar, banner, colours, status, About me and badges, for Fightcord players (set them from your avatar, bottom-left)',
                 show: (d) => d.visible, onChange: () => { if (said) say('here'); changed(); } },
+            { key: 'shareMains', type: 'switch', label: 'Share my mains', hint: 'The characters you play, on your card for Fightcord players: the ones you pick in Edit profile, or the ones you play most',
+                show: (d) => d.visible && d.shareProfile, onChange: () => { mainsCache.at = 0; if (said) say('here'); changed(); } },
             { key: 'showBadges', type: 'switch', label: 'Show my badges', hint: 'Sets played, win streaks and leaderboard spots, from your own history', show: (d) => d.visible && d.shareProfile,
                 onChange: () => { badgeCache.at = 0; if (said) say('here'); changed(); } },
             { key: 'showProfiles', type: 'switch', label: 'Show other players’ profiles', hint: 'Their status and badges on hover and scout cards' },
@@ -730,6 +789,10 @@ const api = {
     bannerFor: (n) => bannerFor(n),
     myProfile: () => myProfile(),
     rawProfile: () => Object.assign({ s: '', a: '', b: '' }, cfg && cfg.profile),
+    // 3.9.1: mains
+    mainsOf: (n) => mainsOf(n),
+    myMainsSet: () => cleanMains(cfg && cfg.mains),
+    setMains: (mn) => setMains(mn),
     setProfile: (p) => setProfile(p),
     hideProfile: (n, on) => hideProfile(n, on),
     isHidden: (n) => !!cfg && isHidden(n),
@@ -745,8 +808,9 @@ const api = {
     // the dev harness: pretend someone shared a profile (looks too: not signed, it's only on your screen)
     _profile(name, p) {
         const c = Object.assign(cleanFull(p), cleanExtras(p)), h = hashOf(name), pv = isEmptyProfile(cleanProfile(c)) ? '' : profileVersion(c), lv = hasLook(c) ? lookVersion(c) : '', xv = extrasVersion(c);
-        book.heard(h, false, Date.now(), pv, 0, '', lv, xv);
-        remember(h, { pv, lv, xv, p: c, at: Date.now() });
+        const mn = cleanMains(p.mn), mv = mainsVersion(mn);
+        book.heard(h, false, Date.now(), pv, 0, '', lv, xv, 0, mv);
+        remember(h, { pv, lv, xv, mv, mn, p: c, at: Date.now() });
         changed();
         fc.emit('presence:profile', { h });
     },

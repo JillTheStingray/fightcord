@@ -684,7 +684,9 @@ const CSS = `
 .fc-mu-src:hover { text-decoration: underline; }
 `;
 
-const api = { find, tips, hasPair, faceHtml, cardHtml, gameOf, games: () => GAMES.map(g => ({ id: g.id, name: g.name })) };
+// every character of a game, in the guide's order ([] for a game it doesn't know)
+const charsOf = (rom) => { const g = gameOf(rom); return g ? Object.keys(g.chars) : []; };
+const api = { find, tips, hasPair, faceHtml, cardHtml, gameOf, charsOf, games: () => GAMES.map(g => ({ id: g.id, name: g.name })) };
 
 function start(f) {
     fc = f;
@@ -693,4 +695,4 @@ function start(f) {
     return api;
 }
 
-module.exports = { id: 'matchup-guide', name: 'Matchup guide', start, _test: { GAMES, resolve, find, tips, hasPair, faceHtml, cardHtml, imgUrl, thumbUrl, gameOf } };
+module.exports = { id: 'matchup-guide', name: 'Matchup guide', start, _test: { GAMES, resolve, find, tips, hasPair, faceHtml, cardHtml, imgUrl, thumbUrl, gameOf, charsOf } };

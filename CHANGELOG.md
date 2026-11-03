@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.9.1
+
+- **Players' mains:** the characters someone plays, as little faces next to their tags on the scout card,
+  the challenge card and their hover card, for the game you're in. Tag up to 3 yourself in Notes & tags (a
+  4th pushes out the oldest); until you do, Fightcord shows the characters they picked in your sets with them,
+  with an outline so you can tell them apart. Settings → Member list & friends → Players' mains turns either off.
+- **Your own mains:** pick up to 3 per game in Edit profile (or leave them empty and Fightcord uses the
+  characters you play most). They show on your own card, and Fightcord players see them on theirs, even if
+  you've never played them. Players on 3.9.0 just don't see them. Settings → Voice chat → Share my mains turns
+  sharing off.
+
 ## 3.9.0
 
 Fightcord gets more fun to look at.

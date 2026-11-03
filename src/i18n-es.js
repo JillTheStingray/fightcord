@@ -2465,5 +2465,21 @@ module.exports = { id: 'i18n-es', name: "Español", start() {}, strings: {
     "When your in-game chat is muted and the opponent has no Fightcord, sends “@name my in-game chat is off, not ignoring you. GGs here after!” in the lobby. This is public, once per opponent every 6 hours.": "Cuando tu chat del juego está silenciado y el rival no tiene Fightcord, envía “@nombre mi chat del juego está apagado, no te estoy ignorando. ¡GGs aquí después!” en el lobby. Es público, una vez por rival cada 6 horas.",
     "In-game chat off": "Chat del juego apagado",
     "GGs in the lobby after": "GGs en el lobby después",
-    "{name} has in-game chat off: GGs in the lobby after": "{name} tiene el chat del juego apagado: GGs en el lobby después"
+    "{name} has in-game chat off: GGs in the lobby after": "{name} tiene el chat del juego apagado: GGs en el lobby después",
+    "{char}: picked in {n} of your {total} sets with them": "{char}: elegido en {n} de tus {total} sets con esa persona",
+    "{char}: their main (you tagged it)": "{char}: su main (lo marcaste tú)",
+    "Their mains": "Mains",
+    "Players’ mains": "Mains de los jugadores",
+    "— character faces next to their tags": "— caras de los personajes junto a sus etiquetas",
+    "Show players’ mains": "Mostrar los mains de los jugadores",
+    "On scout cards, challenge cards and hover cards, for the game you’re in. Tag them in Notes & tags": "En las tarjetas de scout, de desafío y al pasar el ratón, para el juego en el que estás. Márcalos en Notas y etiquetas",
+    "Fill them in from my sets": "Rellenarlos con mis sets",
+    "Until you tag someone’s mains, the characters they picked in your sets with them (from the emulator)": "Hasta que marques los mains de alguien, los personajes que eligió en tus sets con esa persona (del emulador)",
+    "Your mains": "Tus mains",
+    "Up to 3 per game. Without any, Fightcord shows the characters you play most.": "Hasta 3 por juego. Sin ninguno, Fightcord muestra los personajes que más usas.",
+    "Share my mains": "Compartir mis mains",
+    "The characters you play, on your card for Fightcord players: the ones you pick in Edit profile, or the ones you play most": "Los personajes que juegas, en tu tarjeta para jugadores de Fightcord: los que eliges en Editar perfil, o los que más usas",
+    "{char}: picked in {n} of your {total} sets": "{char}: elegido en {n} de tus {total} sets",
+    "{char}: your main": "{char}: tu main",
+    "{char}: their main (from their profile)": "{char}: su main (de su perfil)"
 } };
