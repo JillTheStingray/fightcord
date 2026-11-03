@@ -47,3 +47,14 @@ test('a new best ELO: real ELO only, above your best, after 3 real points', () =
     assert.equal(P.bestElo(pts.slice(0, 2), { rom: 'sf', elo: 1600, est: false }), null, 'too early to tell');
     assert.equal(P.bestElo(pts, { rom: 'new', elo: 1600, est: false }), null);
 });
+
+test('streak tags: the name burns, "🔥 5 in a row" in chat, "🔥 5" in the member list; names escaped', () => {
+    const C = require('../celebrations.js');
+    assert.equal(C.streakCss([], (n) => n + ' in a row'), '');
+    const css = C.streakCss([{ name: 'Me', n: 5, me: true }, { name: 'Odd"Name', n: 3 }], (n) => n + ' in a row');
+    assert.match(css, /\[data-current-user="Me" i\] header \.author::after \{ content: "🔥 5 in a row";/);
+    assert.match(css, /\[data-current-user="Me" i\] \.playerName::before \{ content: "🔥5";/);
+    assert.match(css, /#l3Panel \.l3Me/, 'your own panel name burns too');
+    assert.match(css, /data-current-user="Odd\\"Name" i/, 'a quote in a name can’t break the rule');
+    assert.equal((css.match(/#l3Panel/g) || []).length, 1, 'only for you');
+});

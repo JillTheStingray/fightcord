@@ -1,7 +1,8 @@
 /**
  * Fightcord celebrations (3.9): a small moment for the good stuff, only on your screen
  *
- *   - a win streak of 3, 5 or 10 (then every 5) in a session, and your name burns while it lasts
+ *   - a win streak of 3, 5 or 10 (then every 5) in a session, and your name burns while it lasts, with
+ *     "🔥 5 in a row" next to it (3.10: Fightcord players see that too, and you see theirs)
  *   - a new best ELO in a game (progress.js: elo:best)
  *   - a goal done (goals.js: goal:done)
  *   - a badge earned (100 / 500 / 1,000 sets, a 5 / 10 / 20 set win streak): the full-screen one
@@ -61,7 +62,8 @@ function momentsFor(c) {
     return out.sort((a, b) => SIZE[b.kind] - SIZE[a.kind]);
 }
 
-module.exports = { id: 'celebrations', name: 'Celebrations', start: (f) => start(f), winRun, streakMoment, nemesisMoment, badgeMoment, momentsFor, SIZE };
+module.exports = { id: 'celebrations', name: 'Celebrations', start: (f) => start(f), winRun, streakMoment, nemesisMoment, badgeMoment, momentsFor, SIZE, streakCss,
+    streakNow: () => streakNow() };
 
 /* ================================================================== browser */
 
@@ -164,17 +166,50 @@ function gameName(rom) {
     return s ? String(s.channel || s.game).replace(/\s*\([^)]*\)\s*$/, '') : rom || '';
 }
 
-// your name burns while you're on a streak of 3+ tonight (only on your screen)
+// your win streak tonight, for Fightcord players (0 = under 3, or you don't share it)
+function streakNow() {
+    if (!cfg || cfg.shareStreak === false || !fc.app.me()) return 0;
+    const n = winRun(sessionSets());
+    return n >= 3 ? n : 0;
+}
+
+// names on a streak -> the CSS: the name burns, "🔥 5 in a row" after it in chat, "🔥 5" before it in the member list
+// (the member list cuts long names short: after it, the tag would be cut off).
+// entries: [{ name, n, me }]; label(n) = the chat text
+const cssStr = (s) => '"' + String(s).replace(/["\\]/g, '\\$&').replace(/[\n\r]/g, ' ') + '"';
+function streakCss(entries, label) {
+    if (!entries.length) return '';
+    const fire = 'background: linear-gradient(90deg, #ff3d00, #ffb300, #ff6d00, #ffca28, #ff3d00) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text; ' +
+        'color: transparent !important; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 4px rgba(255,109,0,.5)); animation: fcclFire 2.4s linear infinite;';
+    const pill = 'display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font: 700 11px/16px var(--fc-font); vertical-align: 1px; white-space: nowrap; ' +
+        'color: #fff; -webkit-text-fill-color: #fff; background: linear-gradient(90deg, #ff3d00, #ff8f00); filter: none; animation: none;';
+    return entries.map(e => {
+        const q = cssStr(e.name) + ' i';
+        const names = [`.messageWrapper[data-current-user=${q}] header .author`, `[data-current-user=${q}] .playerName`].concat(e.me ? ['#l3Panel .l3Me .l3Who b'] : []);
+        return `${names.join(', ')} { ${fire} }
+.messageWrapper[data-current-user=${q}] header .author::after { content: ${cssStr('🔥 ' + label(e.n))}; ${pill} }
+[data-current-user=${q}] .playerName::before { content: ${cssStr('🔥' + e.n)}; ${pill} margin: 0 4px 0 0; padding: 0 4px; font-size: 10px; line-height: 14px; }`;
+    }).join('\n') + '\n@keyframes fcclFire { to { background-position: -200% 0; } }';
+}
+
+// yours (while you're on 3+ tonight) and the Fightcord players' you can see; tells them when yours changes
+let lastWs = -1;
 function hot() {
-    const me = fc.app.me();
-    const on = cfg.enabled && cfg.streak && cfg.hotName && me && winRun(sessionSets()) >= 3;
-    if (!on) { fc.ui.style('fcclHot', null); return; }
-    const q = '"' + String(me).replace(/["\\]/g, '\\$&') + '" i';
-    fc.ui.style('fcclHot', `
-.messageWrapper[data-current-user=${q}] header .author, [data-current-user=${q}] .playerName, #l3Panel .l3Me .l3Who b {
-    background: linear-gradient(90deg, #ff3d00, #ffb300, #ff6d00, #ffca28, #ff3d00) 0 0 / 200% 100%; -webkit-background-clip: text; background-clip: text;
-    color: transparent !important; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 4px rgba(255,109,0,.5)); animation: fcclFire 2.4s linear infinite; }
-@keyframes fcclFire { to { background-position: -200% 0; } }`);
+    const me = fc.app.me(), n = winRun(sessionSets());
+    const share = streakNow();
+    if (share !== lastWs) { lastWs = share; const P = mod('presence'); if (P && P.announce) P.announce(); }
+    const out = [];
+    if (cfg.enabled && cfg.streak && cfg.hotName && me && n >= 3) out.push({ name: me, n, me: true });
+    const P = mod('presence');
+    if (cfg.showStreaks !== false && P && P.info) {
+        Object.keys(fc.app.users() || {}).forEach(name => {
+            if (fc.app.isMe(name)) return;
+            const i = P.info(name);
+            if (i && i.ws >= 3) out.push({ name, n: i.ws });
+        });
+    }
+    const css = streakCss(out.slice(0, 200), (k) => T('{n} in a row', { n: k }));
+    fc.ui.style('fcclHot', css || null);
 }
 
 const CSS = `
@@ -186,7 +221,7 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('celebrations', { enabled: true, streak: true, hotName: true, elo: true, goal: true, badge: true, nemesis: true });
+    store = fc.config('celebrations', { enabled: true, streak: true, hotName: true, shareStreak: true, showStreaks: true, elo: true, goal: true, badge: true, nemesis: true });
     cfg = store.data;
     fc.ui.style('fcclStyle', CSS);
     fc.own(() => { fc.ui.style('fcclStyle', null); fc.ui.style('fcclHot', null); clearTimeout(collectTimer); clearTimeout(waitTimer); });
@@ -197,12 +232,17 @@ function start(f) {
     fc.on('elo:best', (b) => { if (cfg.enabled && cfg.elo && b && Date.now() - lastShown > 20000) add({ kind: 'elo', rom: b.rom, elo: b.elo, prev: b.prev }); });
     fc.on('goal:done', (g) => { if (cfg.enabled && cfg.goal && g) add({ kind: 'goal', goal: g.goal }); });
     fc.tick(hot, 60000);             // (one style rule: it reaches rows drawn later by itself)
+    fc.on('set:recorded', () => setTimeout(hot, 60));
+    let hotT = 0;
+    fc.on('presence:changed', () => { clearTimeout(hotT); hotT = setTimeout(hot, 500); });
     fc.settings.block({
         id: 'celebrations', section: 'match', title: 'Celebrations', hint: '— small moments for the good stuff, only on your screen', store, order: 25,
         fields: [
             { key: 'enabled', type: 'switch', label: 'Celebrations', hint: 'One per set at most, and never during a match', onChange: () => hot() },
             { key: 'streak', type: 'switch', label: 'Win streaks', hint: '3, 5 and 10 sets in a row in a session', show: (d) => d.enabled, onChange: () => hot() },
-            { key: 'hotName', type: 'switch', label: 'My name burns during a streak', hint: 'In chat and the member list, while you’re on 3 or more wins in a row (only you see it)', show: (d) => d.enabled && d.streak, onChange: () => hot() },
+            { key: 'hotName', type: 'switch', label: 'My name burns during a streak', hint: 'In chat and the member list, with “🔥 5 in a row” next to it, while you’re on 3 or more wins in a row', show: (d) => d.enabled && d.streak, onChange: () => hot() },
+            { key: 'shareStreak', type: 'switch', label: 'Show my streak to Fightcord players', hint: 'Their screen shows your name burning with the number too (needs “Show that I use Fightcord”)', onChange: () => hot() },
+            { key: 'showStreaks', type: 'switch', label: 'Show other players’ streaks', hint: 'Fightcord players on 3 or more wins in a row: their name burns, with the number next to it', onChange: () => hot() },
             { key: 'elo', type: 'switch', label: 'A new best ELO', hint: 'Above your best real ELO in that game', show: (d) => d.enabled },
             { key: 'goal', type: 'switch', label: 'Goals done', show: (d) => d.enabled },
             { key: 'badge', type: 'switch', label: 'Badges earned', hint: '100, 500 and 1,000 sets, and long win streaks', show: (d) => d.enabled },

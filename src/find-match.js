@@ -136,7 +136,7 @@ function rowHtml(c, ctx) {
     return `<div class="fcfmRow" data-name="${E(c.name)}">${fc.ui.avatar(c.name, { size: 32, status: 'auto' })}
         <div class="fcfmWho"><b class="fcfmName" data-scout="${E(c.name)}" title="${E(T('Open the scout card'))}">${fc.ui.flag(c.cc)}${E(c.name)}${dots}</b>
             <span>${c.rank ? fc.ui.tag(c.rank) + ' ' : ''}${rankedHere(ctx) ? (c.ranked ? `<i class="fcfmRk" title="${E(T('Ranked sets on: you pick the FT when you challenge'))}">${E(T('Ranked'))}</i>`
-                : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}${E(conn || T('ping unknown'))}</span></div>
+                : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}${conn ? fc.fmt.connHtml({ ping: c.ping, wlan: c.wlan, proxy: c.proxy }) : E(T('ping unknown'))}</span></div>
         ${rec}
         ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
         ${fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;

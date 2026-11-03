@@ -18,7 +18,7 @@ test('the book: news only when something changed, gone after the TTL', () => {
     assert.equal(b.heard('a', 0, 0), true);             // new
     assert.equal(b.heard('a', 0, 500), false);          // same, still fresh
     assert.equal(b.heard('a', 1, 600), true);           // voice turned on
-    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0, dk: '', lv: '', xv: '', mc: false, mv: '' });
+    assert.deepEqual(b.get('a', 1500), { at: 600, voice: true, pv: '', nw: 0, dk: '', lv: '', xv: '', mc: false, mv: '', ws: 0 });
     assert.equal(b.heard('a', 1, 650, 'abcd1234'), true, 'a new profile version is news');
     assert.equal(b.heard('a', 1, 660, 'abcd1234'), false);
     assert.equal(b.heard('a', 1, 670, 'not-a-pv'), true, 'a broken version counts as none');
@@ -93,4 +93,15 @@ test('newcomers: announced once, in their first 3 days, in your channel, at most
     assert.equal(ask({ h: 'h2' }), 'wait', 'three this hour already');
     st.recent = [now - 3700000, now - 2000, now - 3000];
     assert.equal(ask({ h: 'h2' }), 'announce', 'the hour moves on');
+});
+
+test('win streaks in the book: 3 and up only, a change is news', () => {
+    const b = p.Book(10 * 60000);
+    assert.equal(b.heard('s', 0, 0), true);
+    assert.equal(b.heard('s', 0, 10, '', 0, '', '', '', 0, '', 5), true, 'a streak is news');
+    assert.equal(b.get('s', 10).ws, 5);
+    assert.equal(b.heard('s', 0, 20, '', 0, '', '', '', 0, '', 5), false);
+    assert.equal(b.heard('s', 0, 30, '', 0, '', '', '', 0, '', 2), true, 'under 3 counts as none');
+    assert.equal(b.get('s', 30).ws, 0);
+    assert.deepEqual([p.validWs(3), p.validWs(2), p.validWs('7'), p.validWs(5.5), p.validWs(1000)], [3, 0, 0, 0, 0]);
 });

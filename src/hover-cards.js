@@ -1,8 +1,8 @@
 /**
  * Fightcord member hover cards
  *
- * Rest the mouse on anyone in the member list and a Discord-style profile popout appears
- * next to it: avatar with status ring, rank, ping, what they're playing (with Watch), your
+ * Rest the mouse on anyone in the member list (3.10: or on a name in the chat) and a Discord-style
+ * profile popout appears next to it: avatar with status ring, rank, ping, what they're playing (with Watch), your
  * record vs them, your notes on them -- and Challenge / Friend / Notes / Head-to-head /
  * Scout buttons. It never clicks anything in Fightcade's list itself.
  */
@@ -24,10 +24,22 @@ const dmOk = (name) => { const d = mod('dms'); return !!(d && d.canDm && d.canDm
 let showT = 0, hideT = 0, current = '';
 const opened = [];            // for the harness
 
+// what a card opens from: a member list row, or a name in the chat
+const CHAT_NAME = '.chatContent .messageWrapper.chat header .author';
+const isChat = (el) => !!(el && el.matches && el.matches(CHAT_NAME));
+function targetOf(t) {
+    if (!t || !t.closest) return null;
+    return t.closest('.usersListWrapper .userItem') || (cfg.chat !== false ? t.closest(CHAT_NAME) : null);
+}
 function nameOf(row) {
+    if (isChat(row)) {
+        const w = row.closest('.messageWrapper');
+        return ((w && w.dataset.currentUser) || (row.firstChild ? row.firstChild.textContent : row.textContent) || '').trim();
+    }
     const n = row.querySelector('.playerName') || row.querySelector('.name');
     return n ? n.textContent.trim() : '';
 }
+let anchor = null;            // the row / name the open card belongs to
 
 function cardHtml(name, chanHint) {
     const all = fc.app.users();
@@ -57,7 +69,7 @@ function cardHtml(name, chanHint) {
     // 2.13: the shared card head; one line under it (in a match, else your record vs them)
     const marks = (isFr ? '<span class="hcStar" title="' + E(T('Friend')) + '">' + fc.ui.ic('star', 'fill') + '</span>' : '') + (pr && pr.mark ? pr.mark(name) : '');
     const meta = fc.ui.flag(cc) + (rank ? fc.ui.tag(rank) : '') +
-        '<span>' + E([(u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || '', conn].filter(Boolean).join(' · ')) + '</span>';
+        '<span>' + [E((u && u.country && (u.country.full_name || String(u.country.iso_code || '').toUpperCase())) || ''), conn ? fc.fmt.connHtml(fc.app.userInfo(name)) : ''].filter(Boolean).join(' · ') + '</span>';
     const vsLine = !playLine && vs && (vs.w || vs.l || vs.played)
         ? `<div class="hcVs"><span>${E(T('You vs {name}', { name }))}</span><b class="${vs.w > vs.l ? 'up' : vs.w < vs.l ? 'down' : ''}">${vs.w}–${vs.l}</b>${vs.played ? `<small>${E(T('{n} sets', { n: vs.played }))}</small>` : ''}</div>` : '';
     // 3.2: the game they're in (or this channel's) as the banner, their status in a bubble
@@ -100,8 +112,10 @@ function show(row) {
     const t = cw && cw.querySelector('.channelToolbar .channelInfo .name.title');
     card.dataset.chan = t ? (t.getAttribute('title') || t.textContent.replace(/^#/, '')).trim() : '';
     card.innerHTML = cardHtml(name, card.dataset.chan);
+    anchor = row;
     const r = row.getBoundingClientRect();
-    card.style.left = (r.left > 320 ? r.left - 300 - 10 : Math.min(window.innerWidth - 308, r.right + 10)) + 'px';
+    // a chat name: to its right (the chat is wide); a member list row: beside the list
+    card.style.left = (isChat(row) ? Math.max(8, Math.min(window.innerWidth - 308, r.right + 12)) : r.left > 320 ? r.left - 300 - 10 : Math.min(window.innerWidth - 308, r.right + 10)) + 'px';
     card.style.top = '0px';
     const h = card.offsetHeight;
     card.style.top = Math.max(40, Math.min(window.innerHeight - h - 8, r.top - 12)) + 'px';
@@ -124,6 +138,7 @@ function hide() {
     const card = document.getElementById('hcCard');
     if (card && !card.classList.contains('fc-out')) fc.ui.animateOut(card);
     current = '';
+    anchor = null;
 }
 
 function scheduleHide() {
@@ -176,7 +191,7 @@ function onClick(e) {
 
 function onOver(e) {
     if (!cfg.enabled) return;
-    const row = e.target && e.target.closest ? e.target.closest('.usersListWrapper .userItem') : null;
+    const row = targetOf(e.target);
     if (!row) return;
     clearTimeout(hideT);
     const name = nameOf(row);
@@ -186,18 +201,25 @@ function onOver(e) {
 }
 
 function onOut(e) {
-    const row = e.target && e.target.closest ? e.target.closest('.usersListWrapper .userItem') : null;
+    const row = targetOf(e.target);
     if (!row) return;
     const to = e.relatedTarget;
-    if (to && to.closest && (to.closest('#hcCard') || to.closest('.usersListWrapper .userItem') === row)) return;
+    if (to && to.closest && (to.closest('#hcCard') || targetOf(to) === row)) return;
     clearTimeout(showT);
     scheduleHide();
 }
 
-// scrolling the member list moves the row away; chat scrolling doesn't matter
+// scrolling moves the row (or the chat name) away from its card
 function onScroll(e) {
     const t = e.target;
+    if (anchor && t && t.contains && t.contains(anchor)) { hide(); return; }
     if (t && t.closest && (t.closest('.usersListWrapper') || (t.querySelector && t.querySelector(':scope > .usersListWrapper, .usersListWrapper .userItem')))) hide();
+}
+// pressing a chat name opens Fightcade's own menu (Challenge / Profile / Spectate): the card makes way
+function onDown(e) {
+    if (!e.target || !e.target.closest || !e.target.closest(CHAT_NAME)) return;
+    clearTimeout(showT);
+    hide();
 }
 
 const CSS = `
@@ -235,14 +257,16 @@ const CSS = `
 function start(f) {
     fc = f;
     fc.on('presence:profile', () => refreshOpen());
-    store = fc.config('hover-cards', { enabled: true, delay: 350 });
+    store = fc.config('hover-cards', { enabled: true, chat: true, delay: 350 });
     cfg = store.data;
     window.__fcHoverLoaded = true;
     fc.ui.style('hcStyle', CSS);
     document.addEventListener('mouseover', onOver, true);
     document.addEventListener('mouseout', onOut, true);
     window.addEventListener('scroll', onScroll, true);
+    document.addEventListener('mousedown', onDown, true);
     fc.own(() => {
+        document.removeEventListener('mousedown', onDown, true);
         fc.ui.style('hcStyle', null);
         hide();
         document.removeEventListener('mouseover', onOver, true);
@@ -251,10 +275,11 @@ function start(f) {
         window.__fcHoverLoaded = false;
     });
     fc.settings.block({
-        id: 'hover-cards', section: 'members', title: 'Hover cards', hint: '— a profile popout when you rest the mouse on someone in the member list',
+        id: 'hover-cards', section: 'members', title: 'Hover cards', hint: '— a profile popout when you rest the mouse on someone',
         store, order: 15,
         fields: [
-            { key: 'enabled', type: 'switch', label: 'Show hover cards', onChange: (v) => { if (!v) hide(); } },
+            { key: 'enabled', type: 'switch', label: 'Show hover cards', hint: 'In the member list', onChange: (v) => { if (!v) hide(); } },
+            { key: 'chat', type: 'switch', label: 'On names in the chat too', hint: 'Pressing a name still opens Fightcade’s own menu', show: (d) => d.enabled, onChange: (v) => { if (!v) hide(); } },
             { key: 'delay', type: 'slider', label: 'Delay', min: 100, max: 1000, step: 50, unit: ' ms', show: (d) => d.enabled }
         ]
     });

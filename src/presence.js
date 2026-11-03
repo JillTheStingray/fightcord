@@ -65,6 +65,8 @@ function announceDecision(state, o) {
     return recent.length >= ANNOUNCE_PER_HOUR ? 'wait' : 'announce';
 }
 
+// a win streak worth showing: 3..999 sets in a row, else 0
+const validWs = (n) => (Number.isInteger(n) && n >= 3 && n <= 999 ? n : 0);
 // the people heard from: hash -> { at, voice, pv, nw, dk, lv }
 function Book(ttl) {
     const m = new Map();
@@ -72,14 +74,14 @@ function Book(ttl) {
     return {
         // dk (3.6): their Fightcord ID, for friend requests and DMs; lv (3.7): their looks' version;
         // xv (3.9): their name style and decoration's version; mc (3.9): their in-game chat is muted;
-        // mv (3.9.1): their mains' version
-        heard(h, voice, now, pv, nw, dk, lv, xv, mc, mv) {
+        // mv (3.9.1): their mains' version; ws (3.10): their win streak tonight (3+, else 0)
+        heard(h, voice, now, pv, nw, dk, lv, xv, mc, mv, ws) {
             const old = m.get(h);
-            const v = ver(pv), l = ver(lv), x = ver(xv), mn = ver(mv);
+            const v = ver(pv), l = ver(lv), x = ver(xv), mn = ver(mv), st = validWs(ws);
             const d = typeof dk === 'string' && /^[0-9a-f]{64}$/.test(dk) ? dk : '';
-            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l, xv: x, mc: mc === 1, mv: mn });
+            m.set(h, { at: now, voice: !!voice, pv: v, nw: validNw(nw), dk: d, lv: l, xv: x, mc: mc === 1, mv: mn, ws: st });
             if (m.size > 5000) m.delete(m.keys().next().value);
-            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || old.xv !== x || old.mc !== (mc === 1) || old.mv !== mn || now - old.at > ttl;       // news?
+            return !old || old.voice !== !!voice || old.pv !== v || old.dk !== d || old.lv !== l || old.xv !== x || old.mc !== (mc === 1) || old.mv !== mn || old.ws !== st || now - old.at > ttl;       // news?
         },
         gone(h) { return m.delete(h); },
         get(h, now) { const e = m.get(h); return e && now - e.at <= ttl ? e : null; },
@@ -231,7 +233,7 @@ function badgesFrom(sets, bestSpot) {
 module.exports = {
     id: 'presence', name: 'Fightcord players',
     start: (f) => start(f),
-    hashOf, Book, react, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom, newcomerDay, announceDecision,
+    hashOf, Book, react, validWs, KIND, TOPIC, BADGES, cleanText, cleanProfile, profileVersion, badgesFrom, newcomerDay, announceDecision,
     FRAMES, PIC_HOSTS, picUrl, cleanPic, cleanLook, cleanFull, hasLook, lookVersion, lookMsg, mayLook,
     NAME_STYLES, NAME_COLOURED, DECOS, lum, readable, cleanExtras, hasExtras, extrasVersion, extrasMsg, cleanMains, mainsVersion
 };
@@ -269,6 +271,10 @@ function send(t, extra) {
     if (named && t !== 'bye' && chatMuted && cfg.shareChatOff !== false) msg.mc = 1;
     const mv = named && t !== 'bye' ? myMv() : '';
     if (mv) msg.mv = mv;
+    // 3.10: your win streak tonight (celebrations.js; 0 = none, or you don't share it)
+    const cl = named && t !== 'bye' ? fc.modules.get('celebrations') : null;
+    const ws = cl && cl.streakNow ? validWs(cl.streakNow()) : 0;
+    if (ws) msg.ws = ws;
     relays.send(Object.assign(msg, extra));
 }
 function myDk() {
@@ -319,7 +325,7 @@ function onMsg(m) {
     if (m && m.t === 'prof') { takeProfile(m, now); return; }
     const what = react(m, myHash());
     if (what === 'record' || what === 'record+reply') {
-        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv, m.xv, m.mc, m.mv)) changed();
+        if (book.heard(m.h, m.voice, now, m.pv, m.nw, m.dk, m.lv, m.xv, m.mc, m.mv, m.ws)) changed();
         if (m.dk && /^[0-9a-f]{64}$/.test(m.dk)) fc.emit('presence:id', { h: m.h, dk: m.dk });
         if (m.nw) newcomer(m.h, m.nw);
         for (let i = waiting.length - 1; i >= 0; i--) if (waiting[i].h === m.h) { const w = waiting.splice(i, 1)[0]; clearTimeout(w.timer); w.done({ voice: !!m.voice, chatOff: m.mc === 1 }); }
@@ -655,7 +661,7 @@ function info(name) {
     if (!name) return null;
     if (fc.app.isMe(name)) return cfg.visible ? { voice: voiceOn() } : null;
     const e = book.get(hashOf(name), Date.now());
-    return e ? { voice: e.voice, dk: e.dk || '', chatOff: !!e.mc } : null;
+    return e ? { voice: e.voice, dk: e.dk || '', chatOff: !!e.mc, ws: e.ws || 0 } : null;
 }
 
 // ask one player directly (a set is starting and they're not in the book yet)
@@ -789,6 +795,8 @@ const api = {
     bannerFor: (n) => bannerFor(n),
     myProfile: () => myProfile(),
     rawProfile: () => Object.assign({ s: '', a: '', b: '' }, cfg && cfg.profile),
+    // 3.10: something you share changed (your win streak): say so now
+    announce() { if (said && cfg && cfg.visible) say('here'); },
     // 3.9.1: mains
     mainsOf: (n) => mainsOf(n),
     myMainsSet: () => cleanMains(cfg && cfg.mains),

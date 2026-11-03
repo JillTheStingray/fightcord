@@ -630,8 +630,9 @@ function faceHtml(rom, char, size, cls) {
     const name = e ? e.name : String(char || '');
     if (!name) return '';
     const s = size || 32;
-    // the big art first (3rd Strike), then the small face, then the initial
-    const img = e ? `<img${e.art ? ` class="art"${e.fo ? ` style="--fo:${esc(e.fo)}"` : ''}` : ''} src="${esc(e.face)}"${e.art ? ` data-alt="${esc(e.small)}"` : ''} alt="" loading="lazy" referrerpolicy="no-referrer" ` +
+    // your own 3rd Strike busts (own-art.js) first, then the big art (3rd Strike), the small face, the initial
+    const oa = fc && fc.modules ? fc.modules.get('own-art') : null, own = e && oa && oa.face ? oa.face(rom, e.name) : '';
+    const img = own ? `<img class="own" src="${esc(own)}" alt="">` : e ? `<img${e.art ? ` class="art"${e.fo ? ` style="--fo:${esc(e.fo)}"` : ''}` : ''} src="${esc(e.face)}"${e.art ? ` data-alt="${esc(e.small)}"` : ''} alt="" loading="lazy" referrerpolicy="no-referrer" ` +
         `onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.removeAttribute('data-alt');this.className='';this.removeAttribute('style')}else{this.parentNode.classList.add('nof');this.remove()}">` : '';
     return `<span class="fc-mu-face${e ? '' : ' nof'}${cls ? ' ' + cls : ''}" style="--s:${s}px;--h:${hue(name)}" title="${esc(name)}">${img}<b>${esc(name.charAt(0).toUpperCase())}</b></span>`;
 }
@@ -662,6 +663,7 @@ const CSS = `
     overflow: hidden; vertical-align: middle; background: hsl(var(--h) 38% 30%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
 .fc-mu-face img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; }
 /* the art is a bust: zoom in on the face */
+.fc-mu-face img.own { object-position: 50% 0; }
 .fc-mu-face img.art { object-position: 50% 0; transform: scale(1.6); transform-origin: var(--fo, 50% 8%); }
 .fc-mu-face b { display: none; color: #fff; font-weight: 800; font-size: calc(var(--s) * .44); line-height: 1; }
 .fc-mu-face.nof b { display: block; }

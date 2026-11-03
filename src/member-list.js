@@ -548,7 +548,7 @@ ${P} .userItem .nameAndGame > .fcm-vs { display: inline-block !important; margin
 ${P} .userItem .nameAndGame > .fcm-vs.ahead { color: var(--fc-success) !important; background: rgba(35,165,90,.12) !important; }
 ${P} .userItem .nameAndGame > .fcm-vs.behind { color: var(--fc-danger) !important; background: rgba(242,63,67,.12) !important; }
 ${P} .fcm-ms.good { color: var(--fc-success); } ${P} .fcm-ms.ok { color: var(--fc-warning); } ${P} .fcm-ms.bad { color: var(--fc-danger); }
-${P} .fcm-net { color: var(--fc-text); }
+${P} .fcm-net { color: var(--fc-danger); font-weight: 700; }
 ${P} .userItem .nameAndGame > .fcm-nt { display: inline-block !important; }
 ${P} .userItem .nameAndGame > .fcm-pres { display: inline-flex !important; align-items: center !important; }
 ${P} .userItem.fcm-playing { background: var(--fc-tint-1) !important; border-radius: var(--fc-r1) !important; }

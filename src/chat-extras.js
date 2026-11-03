@@ -27,6 +27,7 @@ let store = null, cfg = null;          // chat-extras-config.json
 
 const DEFAULTS = {
     mentions: true,
+    nameMeta: true,        // country flag + ping next to names (3.10)
     newLine: true,
     hoverActions: true,
     linkPreviews: true,
@@ -959,6 +960,14 @@ function updateJump() {
 }
 
 const CSS = `
+/* 3.10: country + ping after names */
+.fcNm { display: inline-flex; align-items: center; margin-left: 6px; font-size: var(--fc-fs-2xs); font-weight: 600; line-height: 1; vertical-align: middle; white-space: nowrap; }
+.fcNm:empty { display: none; }
+.fcNm .fc-flag { width: 16px; height: 11px; border-radius: 2px; object-fit: cover; }
+.fcNm .fc-flag + b { margin-left: 5px; }
+.fcNm b.good { color: var(--fc-success); }
+.fcNm b.ok { color: var(--fc-warning); }
+.fcNm b.bad { color: var(--fc-danger); }
 /* the channel notice, folded to one line (2.13) */
 .messageWrapper.motd.fcx-motd-shut > .motd { display: none !important; }
 .messageWrapper.motd.fcx-motd-shut { border: 0 !important; box-shadow: none !important; background: none !important; padding: 0 !important; }
@@ -1145,6 +1154,31 @@ function foldNotices(chat) {
     });
 }
 
+// 3.10: their country flag and ping after each name (the ping is now's, and it updates)
+const pingTone = (ms) => (ms < 80 ? 'good' : ms < 150 ? 'ok' : 'bad');
+function nameMetaHtml(u) {
+    if (!u) return '';
+    const cc = u.country ? String(u.country.iso_code || u.country || '').toLowerCase() : '';
+    const ping = typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0;
+    return (/^[a-z]{2}$/.test(cc) ? fc.ui.flag(cc, (u.country && u.country.full_name) || '') : '') +
+        (ping ? `<b class="${pingTone(ping)}">${ping} ms</b>` : '');
+}
+function nameMeta(chat) {
+    if (!cfg.nameMeta) { chat.querySelectorAll('.fcNm').forEach(n => n.remove()); return; }
+    const users = fc.app.users() || {};
+    chat.querySelectorAll('.messageWrapper.chat header .author').forEach(a => {
+        let m = a.nextElementSibling && a.nextElementSibling.classList.contains('fcNm') ? a.nextElementSibling : null;
+        if (!m) {
+            const name = authorOf(a.closest('.messageWrapper'));
+            if (!name) return;
+            a.insertAdjacentHTML('afterend', `<span class="fcNm" data-fcnm="${E(name)}"></span>`);
+            m = a.nextElementSibling;
+        }
+        const html = nameMetaHtml(users[m.dataset.fcnm]);
+        if (m.__html !== html) { m.__html = html; fc.ui.setHtml(m, html); }
+    });
+}
+
 function sweep() {
     const me = fc.app.me();
     document.querySelectorAll('.chatContent').forEach(chat => {
@@ -1156,6 +1190,7 @@ function sweep() {
         formatTimes(chat);
         polish(chat);
         previewLinks(chat);
+        nameMeta(chat);
     });
     updateJump();
 }
@@ -1227,6 +1262,7 @@ function start(f) {
             opt('discordTime', 'Discord timestamps', '"10:16 PM" instead of "at 22:16"'),
             opt('hour12', '12-hour clock', 'Off = 22:16', (d) => d.discordTime),
             opt('animate', 'Animate new messages', 'They slide in'),
+            opt('nameMeta', 'Country and ping next to names', 'Their flag and their ping right now (green under 80 ms, yellow under 150, red above)'),
             opt('rankColors', 'Rank colours', 'Names coloured by channel rank (S gold, A red, B purple…)'),
             opt('systemCards', 'Compact system messages', 'Challenge and match messages as pills and cards'),
             opt('timeDividers', 'Time dividers', 'A line with the time after a 20+ minute gap'),

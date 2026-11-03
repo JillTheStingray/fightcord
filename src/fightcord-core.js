@@ -139,6 +139,10 @@ const fmt = {
         if (info.proxy) bits.push('VPN'); else if (info.wlan) bits.push('Wi-Fi');
         return bits.join(' · ');
     },
+    // the same as HTML, Wi-Fi / VPN in red (3.10: muted grey on some themes didn't read, and it's a warning)
+    connHtml(info) {
+        return fmt.esc(fmt.conn(info)).replace(/\b(Wi-Fi|VPN)$/, '<b class="fc-badnet">$1</b>');
+    },
     pct: (x, digits) => (isFinite(x) ? (x * 100).toFixed(digits || 0) : '0') + '%',
     num: (n) => (+n || 0).toLocaleString(tr.locale()),
     plural: (n, one, many) => n + ' ' + tr(n === 1 ? one : (many || one + 's')),
@@ -1904,6 +1908,7 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-tag.nf::before { content: attr(data-r); }
 .fc-ic.inl { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: .3em; }
 .fc-ic.fill { fill: currentColor; }
+.fc-badnet { color: var(--fc-danger) !important; font-weight: 700; }
 .fc-flag { width: 20px !important; height: 14px !important; object-fit: cover; border-radius: 2px; vertical-align: -2px; }
 .fc-badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--fc-pill); text-align: center;
   font: 700 var(--fc-fs-xs)/16px var(--fc-font); color: #fff; background: var(--fc-danger); }

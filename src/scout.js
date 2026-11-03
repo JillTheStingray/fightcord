@@ -252,7 +252,7 @@ function renderCard(card, name, data) {
     const marks = (isFriend ? `<span class="fcsc-star" title="${E(T('Friend'))}">${fc.ui.ic('star', 'fill')}</span>` : '') + (pr && pr.mark ? pr.mark(name) : '');
     // one meta line: flag · state · ping
     const meta = (info && info.country ? fc.ui.flag(info.country, info.countryName || '') : '') +
-        `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + E(fc.fmt.conn(info)) : ''}</span>`;
+        `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + fc.fmt.connHtml(info) : ''}</span>`;
     // 3.2: the game they're in (or this one) as the banner, their status in a bubble, one inner panel
     const playing = info && info.playing && info.playing.gameId;
     const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.ui.cardBanner(playing || gameId() || '', fc.data.hashColor(name));

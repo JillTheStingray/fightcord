@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.10.0
+
+- **Your own 3rd Strike art:** if you have Street Fighter III: 3rd Strike Online Edition (the PS3 game, for
+  example in RPCS3), point Fightcord at its folder (Settings → Match screens → Your 3rd Strike art). Fightcord
+  reads the HD character art and the jingles from your copy once and uses them on your screen: both
+  characters on the VS and result screens, the character faces on cards, the matchup guide and mains, and
+  the VS / win / lose / draw jingles. Each one has its own switch. Nothing is uploaded or shared, and
+  Fightcord ships none of it: without the game nothing changes.
+- **Win streaks say what they are:** while you're on 3 or more wins in a row, your burning name gets "🔥 5 in a
+  row" next to it in chat (and "🔥5" in the member list). Other Fightcord players now see your streak too, and
+  you see theirs. Settings → Match screens → Celebrations has a switch for each.
+- **Country and ping in the chat:** every name in the chat has their flag and their ping right now next to it
+  (green, yellow or red). Settings → Chat → Chat extras turns it off.
+- **Hover cards in the chat:** rest the mouse on a name in the chat for the same profile card the member list
+  shows. Pressing the name still opens Fightcade's own menu.
+- **Wi-Fi and VPN in red:** on Find a match, the member list, scout, hover and challenge cards, so a wireless
+  connection stands out instead of hiding in grey text.
+- **Mains first:** on cards, a player's mains now come before your tags on them.
+
 ## 3.9.2
 
 - **Casual scores on result cards:** the card in the chat after a casual set said 0-0 (that's what Fightcade

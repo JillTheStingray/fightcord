@@ -398,3 +398,11 @@ test('diagnostics text lists modules and problems', () => {
     assert.match(txt, /Modules:/);
     assert.match(txt, /Recent problems:/);
 });
+
+test('connection as HTML: Wi-Fi and VPN marked (red), the rest escaped as before', () => {
+    const f = require('../fightcord-core.js')._test.fmt;
+    assert.equal(f.connHtml({ ping: 29, wlan: true }), '29 ms · <b class="fc-badnet">Wi-Fi</b>');
+    assert.equal(f.connHtml({ ping: 40 }), '40 ms');
+    assert.equal(f.connHtml({ proxy: true, wlan: true }), '<b class="fc-badnet">VPN</b>', 'a VPN says VPN, not Wi-Fi');
+    assert.equal(f.connHtml(null), '');
+});

@@ -61,7 +61,7 @@ test('tagged mains win over the picks, per game, up to 3, and an empty list clea
 test('on the cards: faces next to the tags, and the switches turn them off', () => {
     const api = fresh([set('Kenji', 'Ken')], { tags: [{ id: 'spar', label: 'Good sparring', color: '#23a55a' }], people: { kenji: { name: 'Kenji', tags: ['spar'] } } });
     const html = api.chips('Kenji');
-    assert.match(html, /ntChip[^]*ntMain auto[^]*fc-mu-face[^]*Ken<\/span>/);
+    assert.match(html, /^<div class="ntChips"><span class="ntMain auto"[^]*fc-mu-face[^]*Ken<\/span><span class="ntChip"/, 'their mains come before your tags');
     assert.match(api.chips('Stranger'), /^$/);
     api._config.autoMains = false;
     assert.doesNotMatch(api.chips('Kenji'), /ntMain/);

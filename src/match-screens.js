@@ -115,8 +115,12 @@ function ensureSoundDir() {
 }
 
 function soundUrl(kind) {
-    for (const ext of ['wav', 'mp3', 'ogg']) {
-        const file = path.join(SOUND_DIR, kind + '.' + ext);
+    // your own files first, then your 3rd Strike jingles (own-art.js)
+    const oa = fc && fc.modules ? fc.modules.get('own-art') : null;
+    const files = ['wav', 'mp3', 'ogg'].map(ext => path.join(SOUND_DIR, kind + '.' + ext)).concat(oa && oa.sound ? [oa.sound(kind)] : []);
+    for (const file of files) {
+        if (!file) continue;
+        const ext = path.extname(file).slice(1);
         let st;
         try { st = fs.statSync(file); } catch (e) { continue; }
         const c = soundCache[kind];
@@ -268,6 +272,11 @@ function tipsHtml(rom, myChar, oppChar, n) {
     return `<div class="mutips"><small>${E(T('How to beat {char}', { char: e.name }))}</small>` +
         (note ? `<p class="own">${fc.ui.ic('note')}${E(note.text)}</p>` : '') + lines.map(x => `<p>${E(x)}</p>`).join('') + '</div>';
 }
+// your own 3rd Strike art (own-art.js), big on one side of the VS / result screen ('' without it)
+function bigArt(rom, ch, side) {
+    const oa = fc.modules.get('own-art'), u = oa && oa.full && ch ? oa.full(rom, ch) : '';
+    return u ? `<div class="oeArt ${side}"><img src="${E(u)}" alt=""></div>` : '';
+}
 const faceOf = (rom, ch) => { const mg = fc.modules.get('matchup-guide'); return mg && ch ? mg.faceHtml(rom, ch, 40) : ''; };
 
 let vsShown = 0;                          // for tests: how many VS screens were opened
@@ -292,6 +301,7 @@ function showVs(meName, oppName) {
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="half l" style="--c:${me.color}"></div>
         <div class="half r" style="--c:${opp.color}"></div>
+        ${bigArt(rom, myChar, 'l')}${bigArt(rom, oppChar, 'r')}
         ${playerHtml(me, 'l', { char: myChar, face: faceOf(rom, myChar), charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
         ${playerHtml(opp, 'r', { char: oppChar, face: faceOf(rom, oppChar), charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
             picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0, rq: rqFor(oppName) })}
@@ -431,6 +441,7 @@ function showResult(kind, mine, theirs, oppName, game, extras) {
     const ep = eloPanel(Object.assign({ rom }, ex, { rank: ex.rank || fc.data.rankNum(me.rank) }));
     openOverlay('res ' + kind, `
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
+        ${bigArt(rom, ex.myChar, 'l')}${bigArt(rom, ex.oppChar, 'r')}
         <div class="rays"></div>${bits}
         <div class="big"><span data-t="${title}">${title}</span>${kind === 'lost' ? '<svg class="crack" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 11 L14 9 L22 13 L31 7 L43 12 L52 8 L61 13 L70 9 L82 12 L90 8 L100 10"/></svg>' : ''}</div>
         <div class="stack"><div class="board">${side(me, ex.myChar, 'l')}<div class="score">${known ? `<span class="n${mine > theirs ? ' w' : ''}">${mine}</span><i>–</i><span class="n${theirs > mine ? ' w' : ''}">${theirs}</span>` : '<i>vs</i>'}</div>${side(opp, ex.oppChar, 'r')}</div>
@@ -1082,7 +1093,16 @@ const CSS = `
 #fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 4.5vh; text-align: center; color: rgba(255,255,255,.8);
     font-size: 2.4vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase; animation: fcms-in .5s 1.1s both; }
 #fcmsOverlay .game small { display: block; margin-top: 1vmin; font-size: 2vmin; letter-spacing: .08em; text-transform: none; color: rgba(255,255,255,.9); }
-html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still #fcmsOverlay .spark { animation: none !important; }
+html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still #fcmsOverlay .spark, html.fc-still #fcmsOverlay .oeArt { animation: none !important; }
+/* your own 3rd Strike art: facing each other from the edges, under the names */
+#fcmsOverlay .oeArt { position: absolute; bottom: 0; height: 86vh; width: 40vw; pointer-events: none; display: flex; align-items: flex-end; }
+#fcmsOverlay .oeArt img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 3vmin rgba(0,0,0,.55)); }
+#fcmsOverlay .oeArt.l { left: -2vw; justify-content: flex-start; animation: fcms-oe-l .7s .15s cubic-bezier(.2,1,.3,1) both; }
+#fcmsOverlay .oeArt.r { right: -2vw; justify-content: flex-end; animation: fcms-oe-r .7s .15s cubic-bezier(.2,1,.3,1) both; }
+#fcmsOverlay .oeArt.r img { transform: scaleX(-1); }
+#fcmsOverlay.res .oeArt { height: 78vh; opacity: .5; }
+@keyframes fcms-oe-l { from { opacity: 0; transform: translateX(-8vw); } }
+@keyframes fcms-oe-r { from { opacity: 0; transform: translateX(8vw); } }
 
 /* ---------- results (3.1: arcade) ---------- */
 #fcmsOverlay.res .art { filter: saturate(1.1) brightness(.26) blur(.4vmin); }

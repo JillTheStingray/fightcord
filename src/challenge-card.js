@@ -102,7 +102,7 @@ function show(d, fromQueue) {
             <div class="ccVsTxt">VS</div>
             <div class="ccP them"><div class="ccRing">${fc.ui.avatar(d.name, { size: 56 })}</div>
                 <b>${fc.ui.flag(cc)}${E(d.name)}${fr && fr.isFriend && fr.isFriend(d.name) ? ' <span class="ccStar">' + fc.ui.ic('star', 'fill') + '</span>' : ''}${pi ? pr.mark(d.name) : ''}</b>
-                <span class="ccMeta">${rank ? fc.ui.tag(rank) + ' ' : ''}${E(conn)}</span>
+                <span class="ccMeta">${rank ? fc.ui.tag(rank) + ' ' : ''}${conn ? fc.fmt.connHtml(fc.app.userInfo(d.name)) : ''}</span>
                 ${voice ? `<span class="ccVoice">${fc.ui.ic('mic')}${E(T('Voice chat available'))}</span>` : ''}</div>
         </div>
         <div class="ccStats">

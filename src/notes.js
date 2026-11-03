@@ -316,7 +316,8 @@ function chips(name, opts) {
     const mn = o.mains === false || (cfg && cfg.showMains === false) ? null : mains(name, o.rom);
     if (!p.tags.length && !p.note && !mn) return o.empty || '';
     const why = p.tags.some(t => t.id === RQ) ? rqWhy(p.rq) : '';
-    return `<div class="ntChips">${p.tags.map(t => tagChip(t, '', t.id === RQ && why ? why + '. ' + T('Could also be disconnects.') : '')).join('')}${mn ? mainsChips(mn) : ''}</div>` +
+    // (their mains first: who they play, then what you noted)
+    return `<div class="ntChips">${mn ? mainsChips(mn) : ''}${p.tags.map(t => tagChip(t, '', t.id === RQ && why ? why + '. ' + T('Could also be disconnects.') : '')).join('')}</div>` +
         (why && !o.noWhy ? `<div class="ntWhy">${fc.ui.ic('warn')}<span>${E(why)}</span></div>` : '') +
         (p.note && !o.noNote ? `<div class="ntNote">“${E(p.note)}”</div>` : '');
 }
