@@ -1167,7 +1167,10 @@ function nameMeta(chat) {
     if (!cfg.nameMeta) { chat.querySelectorAll('.fcNm').forEach(n => n.remove()); return; }
     const users = fc.app.users() || {};
     chat.querySelectorAll('.messageWrapper.chat header .author').forEach(a => {
-        let m = a.nextElementSibling && a.nextElementSibling.classList.contains('fcNm') ? a.nextElementSibling : null;
+        // (anywhere in the name's line: the scout's badge also goes right after the name, in front of it)
+        const all = a.parentElement ? a.parentElement.querySelectorAll(':scope > .fcNm') : [];
+        for (let i = 1; i < all.length; i++) all[i].remove();
+        let m = all[0] || null;
         if (!m) {
             const name = authorOf(a.closest('.messageWrapper'));
             if (!name) return;

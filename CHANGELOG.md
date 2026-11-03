@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.10.1
+
+- **One flag and ping per name:** with the scout's search badges on, names in the chat could get the country
+  and ping twice (or more). Now it's always one.
+
 ## 3.10.0
 
 - **Your own 3rd Strike art:** if you have Street Fighter III: 3rd Strike Online Edition (the PS3 game, for
