@@ -583,7 +583,7 @@ ${P} .fcm-fbtn { display: inline-flex; align-items: center; height: 24px; paddin
     font: 600 var(--fc-fs-sm)/24px var(--fc-font); background: var(--fc-btn); color: var(--fc-text); }
 ${P} .fcm-fbtn:hover { background: var(--fc-btn-h); }
 ${P} .fcm-fbtn .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
-${P} .fcm-fbtn.on { background: var(--fc-accent); color: #fff; }
+${P} .fcm-fbtn.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 ${P} .fcm-fbtn b { margin-left: 6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: var(--fc-r2); text-align: center;
     font: 700 var(--fc-fs-xs)/16px var(--fc-font); background: rgba(255,255,255,.25); }
 /* Fightcade's Playing list: folded unless opened from its title */
@@ -620,17 +620,17 @@ html.dc-refresh body .usersListWrapper .userItem .fcm-gh i .fc-ic { width: 11px;
 .fcm-filters .fcm-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; margin: 0 4px 4px 0; border-radius: var(--fc-r3);
     font: 500 var(--fc-fs-sm)/24px var(--fc-font); cursor: pointer; user-select: none; background: var(--fc-btn); color: var(--fc-text); }
 .fcm-filters .fcm-chip:hover { background: var(--fc-btn-h); }
-.fcm-filters .fcm-chip.on { background: var(--fc-accent); color: #fff; }
+.fcm-filters .fcm-chip.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 .fcm-filters .fcm-chip[data-chip="clear"] { background: transparent; color: var(--fc-muted); padding: 0 4px; }
 ${P} .fcm-chip, ${P} .fcm-seg { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; margin: 0 4px 4px 0;
     border-radius: 11px; font: 500 var(--fc-fs-sm)/22px var(--fc-font); cursor: pointer; user-select: none;
     background: var(--fc-btn); color: var(--fc-text); }
 ${P} .fcm-chip:hover { background: var(--fc-btn-h); }
-${P} .fcm-chip.on { background: var(--fc-accent); color: #fff; }
+${P} .fcm-chip.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 ${P} .fcm-chip[data-chip="clear"] { background: transparent; color: var(--fc-muted); padding: 0 6px; }
 ${P} .fcm-sort { display: inline-flex; margin: 0 0 4px auto; border-radius: 11px; overflow: hidden; }
 ${P} .fcm-seg { margin: 0; border-radius: 0; padding: 0 7px; }
-${P} .fcm-seg.on { background: var(--fc-accent); color: #fff; }
+${P} .fcm-seg.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 ` + Object.keys(fc.data.RANK_COLOR).map(r =>
         `html body .usersListWrapper .fcm-colors .userItem.fcm-row[data-fcm-rank="${r}"] .playerName:not(.patreon):not(.dev) { color: ${fc.data.RANK_COLOR[r]} !important; }`).join('\n');
 }

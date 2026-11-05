@@ -74,7 +74,8 @@ function cardHtml(name, chanHint) {
         ? `<div class="hcVs"><span>${E(T('You vs {name}', { name }))}</span><b class="${vs.w > vs.l ? 'up' : vs.w < vs.l ? 'down' : ''}">${vs.w}–${vs.l}</b>${vs.played ? `<small>${E(T('{n} sets', { n: vs.played }))}</small>` : ''}</div>` : '';
     // 3.2: the game they're in (or this channel's) as the banner, their status in a bubble
     const ch = fc.app.channel(playing ? playing.channelId : chan);
-    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.ui.cardBanner((playing && playing.gameId) || (ch && ch.gameid) || '', fc.data.hashColor(name));
+    const oa = mod('own-art'), rom = (playing && playing.gameId) || (ch && ch.gameid) || '';
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || (oa && oa.cardBanner ? oa.cardBanner(name, rom) : '') || fc.ui.cardBanner(rom, fc.data.hashColor(name));
     const p = pr && pr.profile ? pr.profile(name) : null;
     const prof = pr && pr.profileHtml ? pr.profileHtml(name, { about: false, status: false }) : '';
     const inner = prof + playLine + vsLine + (notes ? `<div class="hcNotes">${notes}</div>` : '');

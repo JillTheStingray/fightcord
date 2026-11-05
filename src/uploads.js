@@ -956,7 +956,7 @@ html body .chatInput.fcupTrayOn input.input { border-top-left-radius: 0 !importa
 .fcupSp input { margin: 0 8px 0 0; }
 #fcupDrop { position: fixed; z-index: var(--fc-z-pop); display: none; align-items: center; justify-content: center; pointer-events: none;
     background: rgba(88,101,242,.18); box-shadow: inset 0 0 0 3px var(--fc-accent); border-radius: var(--fc-r2); }
-#fcupDrop > div { display: flex; flex-direction: column; align-items: center; padding: 24px 32px; border-radius: var(--fc-r3); background: var(--fc-accent); color: #fff; text-align: center; }
+#fcupDrop > div { display: flex; flex-direction: column; align-items: center; padding: 24px 32px; border-radius: var(--fc-r3); background: var(--fc-accent); color: var(--fc-on-accent, #fff); text-align: center; }
 #fcupDrop .fc-ic { width: 36px; height: 36px; margin-bottom: 8px; }
 #fcupDrop b { font: 700 var(--fc-fs-h3)/1.3 var(--fc-font); }
 #fcupDrop span { margin-top: 4px; font: var(--fc-fs-ui)/1.3 var(--fc-font); opacity: .85; }

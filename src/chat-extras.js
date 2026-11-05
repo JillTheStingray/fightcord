@@ -1079,7 +1079,7 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 .fcxAuTop a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--fc-link) !important; }
 .fcxAuCtl { display: flex; align-items: center; }
 .fcxEmbed .fcxPlay { flex: none; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
-    background: var(--fc-accent); color: #fff; }
+    background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 .fcxEmbed .fcxPlay:hover { filter: brightness(1.12); }
 .fcxEmbed .fcxPlay .fc-ic { width: 14px; height: 14px; }
 .fcxAuCtl .fcxTime { flex: none; margin: 0 12px; font-size: var(--fc-fs-sm); color: var(--fc-muted); font-variant-numeric: tabular-nums; }
@@ -1095,7 +1095,7 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 
 #fcxJump { position: fixed; z-index: 99990; display: none; align-items: center; justify-content: space-between;
     height: 34px; padding: 0 12px; box-sizing: border-box; border-radius: var(--fc-r2) var(--fc-r2) 0 0;
-    background: var(--fc-accent); color: #fff; font: 500 var(--fc-fs-md)/1 var(--fc-font); cursor: pointer;
+    background: var(--fc-accent); color: var(--fc-on-accent, #fff); font: 500 var(--fc-fs-md)/1 var(--fc-font); cursor: pointer;
     box-shadow: 0 -2px 8px var(--fc-scrim-1); }
 #fcxJump .fcxJumpBtn { font-weight: 700; }
 #fcxJump:hover { background: var(--fc-accent-h); }
@@ -1166,18 +1166,30 @@ function nameMetaHtml(u) {
 function nameMeta(chat) {
     if (!cfg.nameMeta) { chat.querySelectorAll('.fcNm').forEach(n => n.remove()); return; }
     const users = fc.app.users() || {};
+    // someone in Fightcade's user list by name, any case (as the profile card finds them); the lower-case
+    // index is built once per pass, and only when a name isn't found as written
+    let low = null;
+    const userOf = (u, n) => {
+        if (u[n]) return u[n];
+        if (!low) { low = {}; Object.keys(u).forEach(k => { low[k.toLowerCase()] = u[k]; }); }
+        return low[String(n || '').toLowerCase()] || null;
+    };
     chat.querySelectorAll('.messageWrapper.chat header .author').forEach(a => {
         // (anywhere in the name's line: the scout's badge also goes right after the name, in front of it)
         const all = a.parentElement ? a.parentElement.querySelectorAll(':scope > .fcNm') : [];
         for (let i = 1; i < all.length; i++) all[i].remove();
         let m = all[0] || null;
+        // asked every time: Fightcade reuses a message's row for another one, and a tag that kept its
+        // first name showed someone else's flag and ping (3.11 fix)
+        // (the name on the row itself, not data-current-user, which profile-looks re-stamps on its own timer)
+        const own = a.firstChild && a.firstChild.nodeType === 3 ? a.firstChild.textContent.trim() : '';
+        const name = own || authorOf(a.closest('.messageWrapper'));
+        if (!name) { if (m) m.remove(); return; }
         if (!m) {
-            const name = authorOf(a.closest('.messageWrapper'));
-            if (!name) return;
             a.insertAdjacentHTML('afterend', `<span class="fcNm" data-fcnm="${E(name)}"></span>`);
             m = a.nextElementSibling;
-        }
-        const html = nameMetaHtml(users[m.dataset.fcnm]);
+        } else if (m.dataset.fcnm !== name) m.dataset.fcnm = name;
+        const html = nameMetaHtml(userOf(users, name));
         if (m.__html !== html) { m.__html = html; fc.ui.setHtml(m, html); }
     });
 }

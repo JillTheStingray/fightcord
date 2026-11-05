@@ -145,3 +145,217 @@ test('the import: art cropped to the character, the default-colour bust, the jin
         assert.equal(fs.existsSync(path.join(out, 'face', 'sean.png')), false);
     } finally { fs.rmSync(g.root, { recursive: true, force: true }); }
 });
+
+/* ------------------------------------------- 3.11: GTF, the sheets, the bigger import */
+
+// a GTF with one texture: header + one 0x24 entry + data
+function gtf(w, h, fmt, data) {
+    const head = Buffer.alloc(12 + 0x24);
+    head.writeUInt32BE(0x01020304, 0); head.writeUInt32BE(data.length, 4); head.writeUInt32BE(1, 8);
+    const e = 12;
+    head.writeUInt32BE(0, e); head.writeUInt32BE(head.length, e + 4); head.writeUInt32BE(data.length, e + 8);
+    head[e + 12] = fmt; head[e + 13] = 1; head[e + 14] = 2;
+    head.writeUInt16BE(w, e + 20); head.writeUInt16BE(h, e + 22); head.writeUInt16BE(1, e + 24);
+    head.writeUInt32BE(fmt & 0x20 ? w * 4 : 0, e + 28);
+    return Buffer.concat([head, Buffer.from(data)]);
+}
+
+test('GTF: DXT1 like a DDS, A8R8G8B8 unswizzled, anything else left out', () => {
+    // 0xa6 = DXT1, linear: the same red/blue block as the DDS test
+    const [d] = OA.decodeGtf(gtf(4, 4, 0xa6, [0x00, 0xf8, 0x1f, 0x00, 0b100100, 0, 0, 0]));
+    assert.deepEqual([d.w, d.h, px(d, 0, 0), px(d, 1, 0)], [4, 4, [255, 0, 0, 255], [0, 0, 255, 255]]);
+    // 0x85 swizzled 2x2: memory order (0,0) (1,0) (0,1) (1,1) for 2x2 Morton; ARGB bytes
+    const argb = [[255, 10, 0, 0], [255, 20, 0, 0], [255, 30, 0, 0], [128, 40, 0, 0]];
+    const sw = OA.decodeGtf(gtf(2, 2, 0x85, [].concat(...argb)))[0];
+    assert.deepEqual([px(sw, 0, 0), px(sw, 1, 0), px(sw, 0, 1), px(sw, 1, 1)], [[10, 0, 0, 255], [20, 0, 0, 255], [30, 0, 0, 255], [40, 0, 0, 128]]);
+    assert.equal(OA.mortonIndex(1, 1, 4, 4), 3);
+    assert.equal(OA.mortonIndex(2, 0, 4, 4), 4);
+    assert.deepEqual(OA.decodeGtf(gtf(4, 4, 0x8b, Array(64).fill(0))), [], 'a format it can’t read');
+    assert.deepEqual(OA.decodeGtf(Buffer.from('short')), []);
+});
+
+// an RGBA picture with opaque rectangles [x, y, w, h]
+function sheet(w, h, rects) {
+    const img = { w, h, rgba: new Uint8Array(w * h * 4) };
+    rects.forEach(([x0, y0, rw, rh]) => { for (let y = y0; y < y0 + rh; y++) for (let x = x0; x < x0 + rw; x++) img.rgba.set([200, 200, 200, 255], (y * w + x) * 4); });
+    return img;
+}
+
+test('the sheets: each plate / oval found, put in the game’s order, nothing when the count is off', () => {
+    const img = sheet(200, 120, [[2, 4, 60, 20], [3, 40, 90, 20], [110, 5, 50, 20], [112, 42, 40, 20], [111, 80, 70, 24]]);
+    const bs = OA.boxes(img);
+    assert.equal(bs.length, 5);
+    assert.ok(bs.some(b => b.x === 3 && b.y === 40 && b.w === 90 && b.h === 20), 'tightened to the real pixels');
+    const n = OA.splitNames(img, ['a', 'b'], ['c', 'd', 'e']);
+    assert.deepEqual([n.a.y, n.b.y, n.c.x, n.e.y], [4, 40, 110, 80]);
+    assert.equal(OA.splitNames(img, ['a'], ['c', 'd', 'e']), null);
+    const ov = sheet(120, 60, [[60, 2, 50, 20], [4, 3, 50, 20], [4, 34, 50, 20], [62, 33, 50, 20]]);
+    const o = OA.splitOvals(ov, ['tl', 'tr', 'bl', 'br']);
+    assert.deepEqual([o.tl.x, o.tr.x, o.bl.y, o.br.x], [4, 60, 34, 62], 'rows, then left to right');
+    assert.equal(OA.splitOvals(ov, ['one']), null);
+    assert.equal(OA.boxes(sheet(40, 40, [[1, 1, 2, 2]])).length, 0, 'specks don’t count');
+    const big = OA.shrink(sheet(10, 8, [[0, 0, 10, 8]]), 4);
+    assert.deepEqual([big.w, big.h], [2, 2]);
+});
+
+test('the import, 3.11: portraits, ovals, names, VS background, banners and the Vault', async () => {
+    const g = fakeGame(), out = path.join(g.root, 'out');
+    try {
+        const solid = (n) => [].concat(...Array(n).fill([255, 255, 0, 0, 0, 0, 0, 0, 0x00, 0xf8, 0x00, 0xf8, 0, 0, 0, 0]));
+        const clear = (n) => Array(16 * n).fill(0);
+        // 8x4 DXT5: left block solid, right clear
+        const port = gtf(8, 4, 0xa8, solid(1).concat(clear(1)));
+        // the ovals: a 20-wide x 4-high sheet would be too small for boxes(); use 2 ovals in 16x8 (4x2 blocks)
+        // with the order list cut to 2 -- the real order is checked against the pictures by eye
+        const two = gtf(32, 8, 0xa8, solid(1).concat(clear(3), solid(1), clear(3), clear(8)));
+        const usrZip = path.join(g.usr, 'zip');
+        fs.writeFileSync(path.join(usrZip, 'hirez.wad.zip'), zip([
+            ['hirez/cs_portraits/204_Ken.gtf', port, true], ['hirez/cs_portraits/204_Basketball.gtf', port, false],
+            ['hirez/cs_misc/background_vs.gtf', port, false], ['hirez/charsel/Thumbnail_atlas.gtf', two, false]]));
+        fs.writeFileSync(path.join(usrZip, 'trials.wad.zip'), zip([['flashtextures/trials/ken.dds', dds(8, 4, 'DXT5', solid(1).concat(clear(1))), false],
+            ['flashtextures/trials/parry.dds', dds(4, 4, 'DXT5', solid(1)), false]]));
+        fs.mkdirSync(path.join(g.usr, 'flashtextures', 'vault', 'concepts'), { recursive: true });
+        fs.mkdirSync(path.join(g.usr, 'flashtextures', 'vault', 'thumbs'), { recursive: true });
+        fs.writeFileSync(path.join(g.usr, 'flashtextures', 'vault', 'concepts', '204_ken.dds'), dds(4, 4, 'DXT1', [0x00, 0xf8, 0x00, 0xf8, 0, 0, 0, 0]));
+        fs.writeFileSync(path.join(g.usr, 'flashtextures', 'vault', 'thumbs', '204_ken.dds'), dds(4, 4, 'DXT1', [0x00, 0xf8, 0x00, 0xf8, 0, 0, 0, 0]));
+        fs.writeFileSync(path.join(g.usr, 'flashtextures', 'vault', 'concepts', 'nothumb.dds'), dds(4, 4, 'DXT1', [0, 0, 0, 0, 0, 0, 0, 0]));
+        const r = await OA.importFrom(g.usr, null, out);
+        assert.equal(r.v, 4);
+        assert.deepEqual(r.portraits, ['ken'], 'Basketball is a stage, not a character');
+        assert.equal(r.vsbg, true);
+        assert.deepEqual(r.banners, ['ken'], 'the trial menu’s parry banner isn’t a character');
+        assert.deepEqual(r.vault, ['204_ken'], 'only concepts with a thumbnail');
+        assert.deepEqual(r.ovals, [], 'a sheet that doesn’t have all 20 ovals is left out, not mislabelled');
+        const p = fs.readFileSync(path.join(out, 'portrait', 'ken.png'));
+        assert.deepEqual([p.readUInt32BE(16), p.readUInt32BE(20)], [4, 4], 'cropped to the character');
+        assert.ok(fs.existsSync(path.join(out, 'bg', 'vs.png')) && fs.existsSync(path.join(out, 'vault', '204_ken.png')));
+        assert.equal(fs.readFileSync(path.join(out, 'bg', 'vs.png')).readUInt32BE(16), 8, 'character select’s VS background');
+        // the menus' concrete backdrop wins when the copy has it
+        fs.mkdirSync(path.join(g.usr, 'textures'));
+        fs.writeFileSync(path.join(g.usr, 'textures', 'background.gtf'), gtf(4, 4, 0xa8, solid(1)));
+        await OA.importFrom(g.usr, null, out);
+        assert.equal(fs.readFileSync(path.join(out, 'bg', 'vs.png')).readUInt32BE(16), 4, 'textures/background.gtf');
+    } finally { fs.rmSync(g.root, { recursive: true, force: true }); }
+});
+
+/* ------------------------------------------------- 3.11: the Online Edition Look's pieces */
+
+// bits, most significant first (SWF shape records)
+function bits() {
+    const out = [];
+    let cur = 0, n = 0;
+    const put = (v, k) => { for (let i = k - 1; i >= 0; i--) { cur = cur * 2 + (Math.floor(v / 2 ** i) & 1); if (++n === 8) { out.push(cur); cur = 0; n = 0; } } };
+    return { put, sb: (v, k) => put(v < 0 ? v + 2 ** k : v, k), done: () => { if (n) out.push(cur << (8 - n)); return Buffer.from(out); } };
+}
+// a glyph: [['m', x, y] | ['l', dx, dy] | ['c', cdx, cdy, adx, ady]] -> its SHAPE (1 fill bit, 0 line bits)
+function shape(cmds) {
+    const w = bits(), N = 16;
+    w.put(1, 4); w.put(0, 4);
+    cmds.forEach(c => {
+        if (c[0] === 'm') { w.put(0, 1); w.put(0b00101, 5); w.put(N, 5); w.sb(c[1], N); w.sb(c[2], N); w.put(1, 1); }
+        else if (c[0] === 'l') { w.put(1, 1); w.put(1, 1); w.put(N - 2, 4); w.put(1, 1); w.sb(c[1], N); w.sb(c[2], N); }
+        else { w.put(1, 1); w.put(0, 1); w.put(N - 2, 4); c.slice(1).forEach(v => w.sb(v, N)); }
+    });
+    w.put(0, 1); w.put(0, 5);
+    return w.done();
+}
+// a GFX movie with one DefineFont3 (layout, wide codes)
+function gfx(name, glyphs) {
+    const shapes = glyphs.map(g => shape(g.cmds)), n = glyphs.length;
+    const offs = [];
+    let at = (n + 1) * 2;
+    shapes.forEach(s => { offs.push(at); at += s.length; });
+    const u16 = (v) => { const b = Buffer.alloc(2); b.writeUInt16LE(v); return b; }, s16 = (v) => { const b = Buffer.alloc(2); b.writeInt16LE(v); return b; };
+    const body = Buffer.concat([u16(1), Buffer.from([0x84, 0, name.length]), Buffer.from(name, 'latin1'), u16(n),
+        Buffer.concat(offs.map(u16)), u16(at), Buffer.concat(shapes), Buffer.concat(glyphs.map(g => u16(g.code))),
+        s16(19260), s16(3900), s16(0), Buffer.concat(glyphs.map(g => s16(g.adv))), Buffer.alloc(n), u16(0)]);
+    const tag = (code, data) => { const h = Buffer.alloc(6); h.writeUInt16LE((code << 6) | 63); h.writeUInt32LE(data.length, 2); return Buffer.concat([h, data]); };
+    const movie = Buffer.concat([Buffer.from([0]), Buffer.from([0, 24, 1, 0]), tag(75, body), Buffer.from([0, 0])]);
+    const head = Buffer.alloc(8); head.write('GFX', 0, 'latin1'); head[3] = 10; head.writeUInt32LE(8 + movie.length, 4);
+    return Buffer.concat([head, movie]);
+}
+const GLYPHS = [
+    // A: a square with a square hole (drawn the other way round)
+    { code: 65, adv: 11000, cmds: [['m', 0, 0], ['l', 10000, 0], ['l', 0, -10000], ['l', -10000, 0], ['l', 0, 10000],
+        ['m', 2000, -2000], ['l', 0, -6000], ['l', 6000, 0], ['l', 0, 6000], ['l', -6000, 0]] },
+    // b: one curve and a line back
+    { code: 98, adv: 9000, cmds: [['m', 0, 0], ['c', 5000, -10000, 5000, 10000], ['l', -10000, 0]] },
+    { code: 32, adv: 3000, cmds: [] }
+];
+// the tables of a TrueType file -> { tag: Buffer }
+function tables(f) {
+    const n = f.readUInt16BE(4), t = {};
+    for (let i = 0; i < n; i++) { const e = 12 + i * 16; t[f.toString('latin1', e, e + 4)] = f.subarray(f.readUInt32BE(e + 8), f.readUInt32BE(e + 8) + f.readUInt32BE(e + 12)); }
+    return t;
+}
+
+test('the District font: Scaleform DefineFont3 glyphs become a TrueType font', () => {
+    const [f] = OA.gfxFonts(gfx('DistrictTF-RegularItalic', GLYPHS));
+    assert.equal(f.name, 'DistrictTF-RegularItalic');
+    assert.deepEqual([f.ascent, f.descent], [963, 195]);
+    assert.deepEqual(f.glyphs.map(g => [g.code, g.adv, g.contours.length]), [[65, 550, 2], [98, 450, 1], [32, 150, 0]]);
+    // y up in the font, the closing point dropped
+    assert.deepEqual(f.glyphs[0].contours[0].map(p => [p.x, p.y]), [[0, 0], [500, 0], [500, 500], [0, 500]]);
+    assert.deepEqual(f.glyphs[1].contours[0].map(p => p.on), [true, false, true]);
+    const font = OA.ttf(f, 'FC OE District'), t = tables(font);
+    assert.equal(font.readUInt32BE(0), 0x10000);
+    ['OS/2', 'cmap', 'glyf', 'head', 'hhea', 'hmtx', 'loca', 'maxp', 'name', 'post'].forEach(k => assert.ok(t[k], k));
+    assert.equal(t.head.readUInt16BE(18), 1024, 'units per em');
+    assert.equal(t.head.readUInt32BE(12), 0x5f0f3cf5);
+    assert.equal(t.maxp.readUInt16BE(4), 4, '.notdef + 3 glyphs');
+    // the whole file sums to the magic number once checkSumAdjustment is in
+    let sum = 0;
+    for (let i = 0; i < font.length; i += 4) sum = (sum + font.readUInt32BE(i)) >>> 0;
+    assert.equal(sum, 0xb1b0afba);
+    // cmap format 4: 'A' -> glyph 1, 'b' -> 2, ' ' -> 3
+    const sub = t.cmap.subarray(t.cmap.readUInt32BE(8)), sc = sub.readUInt16BE(6) / 2;
+    const look = (c) => {
+        for (let i = 0; i < sc; i++) {
+            const end = sub.readUInt16BE(14 + i * 2), start = sub.readUInt16BE(16 + sc * 2 + i * 2);
+            if (c >= start && c <= end) return (c + sub.readUInt16BE(16 + sc * 4 + i * 2)) & 0xffff;
+        }
+        return 0;
+    };
+    assert.deepEqual([look(65), look(98), look(32), look(66)], [1, 2, 3, 0]);
+    // glyph 1: 2 contours, 8 points; the space has no outline; advances in hmtx
+    const loca = (i) => t.loca.readUInt32BE(i * 4);
+    assert.equal(t.glyf.readInt16BE(loca(1)), 2);
+    assert.equal(t.glyf.readUInt16BE(loca(1) + 12), 7, 'the last point of the second contour');
+    assert.equal(loca(4) - loca(3), 0, 'the space');
+    assert.deepEqual([t.hmtx.readUInt16BE(4), t.hmtx.readUInt16BE(12)], [550, 150]);
+    assert.ok(Buffer.from(t.name).swap16().toString('utf16le').indexOf('FC OE District') >= 0);
+    assert.deepEqual(OA.gfxFonts(Buffer.from('not a movie')), []);
+});
+
+test('the import, 3.11: the menus’ look (font, select bar, panel, scanlines)', async () => {
+    const g = fakeGame(), out = path.join(g.root, 'out');
+    try {
+        const usrZip = path.join(g.usr, 'zip');
+        fs.writeFileSync(path.join(usrZip, 'font.wad.zip'), zip([['font/font_lib.gfx', gfx('DistrictTF-RegularItalic', GLYPHS), true]]));
+        fs.writeFileSync(path.join(usrZip, 'startscreen.wad.zip'), zip([['startscreen/genericPopup_I33.dds', dds(1, 1, 'BGRA', [0, 200, 220, 255]), false]]));
+        fs.writeFileSync(path.join(usrZip, 'screens.zip'), zip([['flash/howToPlay_I5B.dds', dds(1, 1, 'BGRA', [20, 20, 20, 255]), false]]));
+        fs.mkdirSync(path.join(g.usr, 'textures'));
+        fs.writeFileSync(path.join(g.usr, 'textures', 'scanlines.gtf'), gtf(4, 4, 0xa8, [255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        const r = await OA.importFrom(g.usr, null, out);
+        assert.deepEqual(r.theme, { font: true, bar: true, panel: true, scan: true }, 'no numbers font in this copy: left out');
+        assert.equal(fs.readFileSync(path.join(out, 'theme', 'district.ttf')).readUInt32BE(0), 0x10000);
+        ['bar.png', 'panel.png', 'scan.png'].forEach(n => assert.equal(fs.readFileSync(path.join(out, 'theme', n)).readUInt32BE(12), 0x49484452, n));
+        // a copy without some of them: those left out, the rest still read
+        fs.unlinkSync(path.join(usrZip, 'font.wad.zip'));
+        fs.unlinkSync(path.join(usrZip, 'screens.zip'));
+        const r2 = await OA.importFrom(g.usr, null, out);
+        assert.deepEqual(r2.theme, { bar: true, scan: true });
+        assert.deepEqual(r2.chars.sort(), ['chunli', 'ken']);
+    } finally { fs.rmSync(g.root, { recursive: true, force: true }); }
+});
+
+// the real thing, on a PC that has the user's menu dump (never in the repo)
+const REAL = path.join(os.homedir(), 'Downloads', 'SF3_Online_Edition_Trial_Menu_Assets', 'flash_menu_movies', 'font', 'font_lib.gfx');
+test('the game’s own font_lib.gfx (only on a PC that has it)', { skip: !fs.existsSync(REAL) }, () => {
+    const it = OA.gfxFonts(fs.readFileSync(REAL)).find(f => f.name === 'DistrictTF-RegularItalic');
+    assert.ok(it);
+    assert.equal(it.glyphs.length, 220);
+    const A = it.glyphs.find(g => g.code === 65);
+    assert.ok(A.adv > 400 && A.adv < 900 && A.contours.length === 2);
+    assert.equal(tables(OA.ttf(it, 'FC OE District')).maxp.readUInt16BE(4), 221);
+});

@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.11.0
+
+More of your own 3rd Strike art (only if you have 3rd Strike Online Edition, and only on your screen).
+
+- **A VS screen like the game's:** character select's HD portraits face each other, with the names in the
+  game's own lettering, over the concrete backdrop of the game's menus. The result screen keeps the full-body art.
+- **Character select ovals as faces:** on cards, mains, the matchup guide and result cards.
+- **Trial banners on cards:** scout and hover cards show the trial banner of someone's main when they have
+  no banner of their own (switch: Trial banners on cards).
+- **The Vault:** the game's concept art, about 300 pictures, from the ⋯ menu in 3rd Strike channels or
+  Settings → Match screens. Any of it can be your chat background.
+- **The Online Edition Look** (Settings → Appearance → Looks): the game's own menus as your Fightcade theme.
+  You get the concrete behind the panels, yellow select bars, the menus' dark panels and faint scanlines.
+  Titles, names and buttons use the game's District lettering; messages keep a plain font. The card only
+  shows up once Fightcord has read your copy. It covers Fightcord's own pages too: DMs and friends,
+  lobbies, the game hub and profile cards.
+- **Challenges from Discord:** in a Discord server that runs the Fightcord bot, type /challenge @someone
+  and, once they accept in Discord, both Fightcades start the match. Link yours once in Settings → Scout &
+  challenges → Discord: Get a code, then type /link with it in the server. The bot can only ask your Fightcord
+  who you are and to send or accept that one challenge, nothing else.
+- **Fixed:** with the chat background off, the message box's GIF and Aa buttons showed through DMs and lobbies.
+- **Fixed:** the flag and ping next to a name in chat could belong to someone else once the chat had
+  scrolled (Fightcade reuses message rows). They now always match the name, the same as the profile card.
+- **Readable buttons on a light accent:** with a yellow or amber accent, buttons and badges now use dark
+  text instead of white.
+- **Goals inside 3rd Strike matches** (Settings → Goals): parry N times, red parry N times, land N super
+  arts, win N perfect rounds, per day, session or week. FBNeo runs no scripts online, so Fightcord reads the
+  game from outside while you play, like a stream overlay. It only reads: it can't change the game or cause
+  a desync, and it only runs during your own 3rd Strike sets when you have one of these goals. Idea by Mushn1k.
+
+Already set it up in 3.10? Nothing to do: Fightcord reads your copy again by itself when Fightcade starts,
+and tells you when the new art is there. As before, Fightcord reads your own copy and ships none of it.
+
 ## 3.10.1
 
 - **One flag and ping per name:** with the scout's search badges on, names in the chat could get the country

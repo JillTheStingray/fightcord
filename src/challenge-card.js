@@ -294,7 +294,8 @@ function start(f) {
     fc.own(() => { fc.ui.style('ccStyle', null); waiting.length = 0; [...cards.keys()].forEach(close); window.__fcCardLoaded = false; });
 
     // after the filters (their warnings are in ctx.warn) and Fightcade's own handler
-    fc.hooks.challenge((ctx) => show({ user: ctx.user, name: ctx.name, channel: ctx.channel, id: ctx.id, ranked: ctx.ranked, warn: ctx.warn.slice() }), { order: 10 });
+    // (a challenge you already accepted in Discord gets no card: discord-link.js accepts it)
+    fc.hooks.challenge((ctx) => { if (!ctx.trusted) show({ user: ctx.user, name: ctx.name, channel: ctx.channel, id: ctx.id, ranked: ctx.ranked, warn: ctx.warn.slice() }); }, { order: 10 });
     // accepted / declined / cancelled anywhere -> Fightcade clears its notifications -> close our card
     fc.hooks.method(() => fc.app.root(), 'removeChallengeNotifications', { before(user, channel, id) { drop(channel + '|' + id); } });
     // finished a match: the first one waiting gets its card

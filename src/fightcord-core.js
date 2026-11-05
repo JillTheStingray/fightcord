@@ -1425,7 +1425,9 @@ const api = {
 // The challenge pipeline: ONE wrapper on Fightcade's connectionCallbacks.onChallengeRequest.
 //   phase 'filter' handlers run first and may ctx.decline('reason') (then Fightcade never
 //   sees it); then Fightcade's own handler; then the 'after' handlers (scout, card, ...).
-// ctx = { user, name, channel, id, ranked, ft, warn: [], decline(reason), declined }
+// ctx = { user, name, channel, id, ranked, ft, warn: [], decline(reason), declined, trusted }
+//   trusted: set by a filter that knows you want this one (discord-link.js: a challenge you accepted
+//   in Discord); decline() does nothing then
 // The wrapper only re-installs itself when Fightcade replaced the callback (it's no longer
 // anywhere in the chain). Other wrappers may sit on top of it: it never fights them for the
 // outermost spot (two wrappers doing that wrap each other forever). Fightcade's own handler
@@ -1451,7 +1453,8 @@ function installChallengeHook() {
         const name = String((user && (user.name || user.id)) || user || '');
         const ctx = {
             user, name, channel, id, ranked, ft: +ranked || 0, warn: [], declined: '',
-            decline(reason) { if (!ctx.declined) ctx.declined = reason || 'filtered'; }
+            trusted: '',
+            decline(reason) { if (!ctx.declined && !ctx.trusted) ctx.declined = reason || 'filtered'; }
         };
         const mine = !name || app.isMe(name);
         const run = (phase) => chHandlers.filter(h => h.phase === phase && !h.owner.dead)
@@ -1777,6 +1780,8 @@ const STYLE = `
   --fc-navy: #0d0f1f; --fc-blurple: #4f63f0; --fc-violet: #8b5cf6; --fc-cyan: #22e3f2;
   --fc-brand: linear-gradient(135deg, #4f63f0, #8b5cf6);
   --fc-accent: var(--dc-blurple, #5865f2); --fc-accent-h: var(--dc-blurple-h, #4752c4); --fc-accent-soft: var(--dc-accent-soft, rgba(88,101,242,.22));
+  /* 3.11: text on the accent colour -- white, or dark on a light accent (the theme sets --dc-on-accent) */
+  --fc-on-accent: var(--dc-on-accent, #fff);
   --fc-success: var(--dc-green, #23a55a); --fc-danger: var(--dc-red, #f23f43); --fc-warning: var(--dc-yellow, #f0b232); --fc-link: var(--dc-link, #00a8fc);
   --fc-s0: var(--dc-float, #111214); --fc-s1: var(--dc-bg3, #1e1f22); --fc-s2: var(--dc-bg2, #2b2d31); --fc-s3: var(--dc-bg, #313338); --fc-s4: var(--dc-select, #35373c);
   --fc-hover: var(--dc-hover, rgba(255,255,255,.04)); --fc-divider: var(--dc-divider, #3f4147); --fc-input: var(--dc-input, #1e1f22);
@@ -1864,11 +1869,12 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 
 /* 3.3: Discord 2025 sizes -- 36 / 28 / 44 px, rounder corners */
 .fc-btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px; border: 0; border-radius: var(--fc-r2);
-  font: 500 var(--fc-fs-md)/1 var(--fc-font); color: #fff; background: var(--fc-accent); cursor: pointer; white-space: nowrap; user-select: none;
+  font: 500 var(--fc-fs-md)/1 var(--fc-font); color: var(--fc-on-accent); background: var(--fc-accent); cursor: pointer; white-space: nowrap; user-select: none;
   transition: background var(--fc-fast), color var(--fc-fast), opacity var(--fc-fast), box-shadow var(--fc-fast); text-decoration: none; }
 .fc-btn:hover { background: var(--fc-accent-h); }
 .fc-btn:active { transform: translateY(1px); }
 .fc-btn > .fc-ic { width: 16px; height: 16px; margin-right: 6px; }
+.fc-btn.sec, .fc-btn.danger, .fc-btn.success, .fc-btn.brand { color: #fff; }
 .fc-btn.sec { background: var(--fc-btn); }
 .fc-btn.sec:hover { background: var(--fc-btn-h); }
 .fc-btn.ghost { background: transparent; color: var(--fc-text); }
@@ -1967,6 +1973,9 @@ label.fc-field { cursor: pointer; }
   font: 800 var(--fc-fs-2xs)/16px var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--fc-danger); }
 .fc-set-row.fc-changed .fc-field-text > b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 7px; border-radius: 50%;
   vertical-align: 2px; background: var(--fc-accent); }
+/* the message box keeps its own layer (3.11): without it, the GIF / Aa buttons in it (z-index 50) poked
+   through Fightcord's pages (DMs, lobbies) whenever the chat background was off */
+.channelContent .chatWrapper > .chatInput { position: relative; z-index: 2; }
 .fc-note { margin: 8px 0; padding: 8px 12px; border-radius: var(--fc-r2); background: var(--fc-s1); font: var(--fc-fs-sm)/1.45 var(--fc-font); color: var(--fc-muted); }
 
 .fc-avatar { position: relative; display: inline-block; flex: none; width: var(--sz, 32px); height: var(--sz, 32px); vertical-align: middle; }

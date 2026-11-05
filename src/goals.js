@@ -10,6 +10,8 @@
  *   - a toast + chime the moment one is done
  *   - next time you play: a summary of your last session, with its share card
  *
+ * 3.11: 3rd Strike goals too (parries, red parries, super arts, perfect rounds), counted inside
+ * matches by fight-stats.js.
  * Works from fc.history (sets recorded from 2.0 on carry the opponent's rank). Settings ->
  * Goals to add or remove them. Event: goal:done {goal, period}.
  */
@@ -29,13 +31,19 @@ const TYPES = {
     beatRank: { label: 'Beat ranked players', unit: N_('players'), text: (g) => T(g.target === 1 ? 'Beat {n} player ranked {rank} or higher' : 'Beat {n} players ranked {rank} or higher', { n: g.target, rank: g.rank || 'B' }) },
     minutes:  { label: 'Play minutes', unit: N_('min'), text: (g) => T('Play {n} minutes', { n: g.target }) },
     winrate:  { label: 'Keep a win rate', unit: N_('sets'), text: (g) => T('Win {rate}%+ over {n} sets', { rate: g.rate || 60, n: g.target }) },
-    streak:   { label: 'Win in a row', unit: N_('wins'), text: (g) => T('Win {n} in a row', { n: g.target }) }
+    streak:   { label: 'Win in a row', unit: N_('wins'), text: (g) => T('Win {n} in a row', { n: g.target }) },
+    // counted inside 3rd Strike matches (fight-stats.js)
+    parries:  { label: 'Parry', unit: N_('parries'), fight: 'parry', text: (g) => T(g.target === 1 ? 'Parry {n} time' : 'Parry {n} times', { n: g.target }) },
+    reds:     { label: 'Red parry', unit: N_('red parries'), fight: 'red', text: (g) => T(g.target === 1 ? 'Red parry {n} time' : 'Red parry {n} times', { n: g.target }) },
+    supers:   { label: 'Land super arts', unit: N_('super arts'), fight: 'super', text: (g) => T(g.target === 1 ? 'Land {n} super art' : 'Land {n} super arts', { n: g.target }) },
+    perfects: { label: 'Win perfect rounds', unit: N_('rounds'), fight: 'perfect', text: (g) => T(g.target === 1 ? 'Win {n} perfect round' : 'Win {n} perfect rounds', { n: g.target }) }
 };
+const isFight = (type) => !!(TYPES[type] && TYPES[type].fight);
 const SCOPES = { day: N_('today'), session: N_('this session'), week: N_('this week') };
 const SUGGEST = [
     { type: 'wins', target: 5, scope: 'day' }, { type: 'minutes', target: 60, scope: 'day' },
     { type: 'beatRank', target: 2, scope: 'week', rank: 'A' }, { type: 'winrate', target: 10, scope: 'week', rate: 55 },
-    { type: 'streak', target: 3, scope: 'session' }
+    { type: 'streak', target: 3, scope: 'session' }, { type: 'parries', target: 10, scope: 'day' }
 ];
 
 /* --------------------------------------------------------------- the maths */
@@ -61,8 +69,8 @@ function bestStreak(sets) {
     return best;
 }
 
-// -> { value, target, frac, done, text, detail }
-function evaluate(goal, allSets, at, clearedAt) {
+// -> { value, target, frac, done, text, detail }; fights = fight-stats events [{ at, k }]
+function evaluate(goal, allSets, at, clearedAt, fights) {
     const t0 = periodStart(goal.scope, at || Date.now(), clearedAt);
     const sets = (allSets || []).filter(s => (s.at || 0) >= t0).sort((a, b) => a.at - b.at);
     const target = Math.max(1, +goal.target || 1);
@@ -75,6 +83,7 @@ function evaluate(goal, allSets, at, clearedAt) {
         value = new Set(sets.filter(s => s.result === 'won' && +s.oppRank >= min).map(s => String(s.opp || '').toLowerCase())).size;
     } else if (type === 'minutes') value = Math.floor(sets.reduce((n, s) => n + (+s.durSec || 0), 0) / 60);
     else if (type === 'streak') value = bestStreak(sets);
+    else if (TYPES[type].fight) { const k = TYPES[type].fight; value = (fights || []).filter(e => e && e.k === k && e.at >= t0).length; }
     else if (type === 'winrate') {
         const k = sets.filter(s => s.result === 'won' || s.result === 'lost');
         const w = k.filter(s => s.result === 'won').length;
@@ -96,7 +105,8 @@ function evaluate(goal, allSets, at, clearedAt) {
 
 const E = (s) => fc.fmt.esc(s);
 const clearedAt = () => { const ms = fc.modules.get('match-screens'); return ms && ms._config ? ms._config.sessionClearedAt : 0; };
-const results = () => cfg.goals.map(g => ({ g, r: evaluate(g, fc.history.all(), Date.now(), clearedAt()) }));
+const fights = () => { const m = fc.modules.get('fight-stats'); return m && m.events ? m.events() : []; };
+const results = () => { const all = fc.history.all(), ev = fights(); return cfg.goals.map(g => ({ g, r: evaluate(g, all, Date.now(), clearedAt(), ev) })); };
 const periodKey = (g) => g.scope + ':' + periodStart(g.scope, Date.now(), clearedAt());
 
 // a goal just reached in this period: celebrate once
@@ -243,7 +253,9 @@ function togglePop(anchor) {
 
 function blockHtml() {
     const rs = results();
-    const types = Object.keys(TYPES).map(k => `<option value="${k}">${E(T(TYPES[k].label))}</option>`).join('');
+    const opt = (k) => `<option value="${k}">${E(T(TYPES[k].label))}</option>`;
+    const types = Object.keys(TYPES).filter(k => !isFight(k)).map(opt).join('') +
+        `<optgroup label="${E(T('In 3rd Strike matches'))}">${Object.keys(TYPES).filter(isFight).map(opt).join('')}</optgroup>`;
     const scopes = Object.keys(SCOPES).map(k => `<option value="${k}">${E(T(SCOPES[k]))}</option>`).join('');
     return `<div class="fc-set-title">${E(T('Training goals'))} <small>— ${E(T('days and sessions run 5 AM to 5 AM'))}</small></div>
         ${rs.length ? `<div class="fcglList">${rs.map(({ g, r }) => `<div class="fcglRow${r.done ? ' done' : ''}">${fc.ui.ring(r.frac, { size: 36, stroke: 4, color: r.done ? 'var(--fc-success)' : 'var(--fc-accent)', label: r.done ? '✓' : Math.round(r.frac * 100) + '%' })}` +
@@ -256,6 +268,8 @@ function blockHtml() {
             <select class="fc-select" data-f="rank" title="${E(T('Rank or higher'))}" hidden>${['S', 'A', 'B', 'C', 'D'].map(r => `<option${r === 'B' ? ' selected' : ''}>${r}</option>`).join('')}</select>
             <input class="fc-input" type="number" min="10" max="100" value="60" data-f="rate" title="${E(T('Win rate %'))}" hidden>
             <select class="fc-select" data-f="scope">${scopes}</select>${fc.ui.btn('Add', { kind: 'success', size: 'sm', icon: 'plus', act: 'add' })}</div>
+        <div class="fc-note fcglFight" hidden>${E(T('3rd Strike only. Fightcord counts these during your matches by reading the game from outside, like a stream overlay. It only reads, so it can’t change the game or cause a desync.'))}</div>
+        ${fightStatus()}
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Pop-up when a goal is done'))}</b><small>${E(T('With a chime'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="notify"${cfg.notify ? ' checked' : ''}><i class="fc-switch"></i></label>
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Ring by the session pill'))}</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Last-session summary'))}</b><small>${E(T('The first time you play after a session, with its share card'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="summary"${cfg.summary ? ' checked' : ''}><i class="fc-switch"></i></label>`;
@@ -267,7 +281,7 @@ function addGoal(g) {
     if (g.type === 'winrate') goal.rate = Math.max(10, Math.min(100, +g.rate || 60));
     cfg.goals.push(goal);
     // already reached in this period: no "done" pop-up for something you didn't just do
-    if (evaluate(goal, fc.history.all(), Date.now(), clearedAt()).done) cfg.done[goal.id] = periodKey(goal);
+    if (evaluate(goal, fc.history.all(), Date.now(), clearedAt(), fights()).done) cfg.done[goal.id] = periodKey(goal);
     store.save();
     check();
 }
@@ -278,6 +292,20 @@ function syncAdd(el) {
     if (!type) return;
     el.querySelector('[data-f="rank"]').hidden = type.value !== 'beatRank';
     el.querySelector('[data-f="rate"]').hidden = type.value !== 'winrate';
+    const note = el.querySelector('.fcglFight');
+    if (note) note.hidden = !isFight(type.value);
+}
+
+const wantsFight = () => !!(cfg && cfg.goals.some(g => isFight(g.type)));
+
+// how the counting went last time, once you have a 3rd Strike goal
+function fightStatus() {
+    if (!wantsFight()) return '';
+    const m = fc.modules.get('fight-stats');
+    const st = m && m.status ? m.status() : null;
+    if (!st) return `<div class="fc-note">${E(T('Parries and the rest are counted from your next 3rd Strike match.'))}</div>`;
+    if (st.ok) return `<div class="fc-note">${E(T('Counting works: last checked {when}.', { when: fc.fmt.ago(st.at) }))}</div>`;
+    return `<div class="fc-note fcglWarn">${E(T('Couldn’t read 3rd Strike during your last match, so nothing was counted. It tries again next match.'))}</div>`;
 }
 
 function wire(el) {
@@ -332,7 +360,8 @@ html.fc-still .fcglBars > i { animation: none !important; }
 .fcglSuggest .fc-chip { margin: 0 6px 6px 0; }
 .fcglAdd > * { margin-right: 6px; height: 30px; font-size: var(--fc-fs-ui); }
 .fcglAdd input[type="number"] { width: 70px; }
-.fcglAdd [hidden] { display: none; }
+.fcglAdd [hidden], .fcglFight[hidden] { display: none; }
+.fcglWarn { color: var(--fc-warning); }
 .fcglSum { margin-top: 10px; }
 .fcglSum > span { font-size: var(--fc-fs-2xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 .fcglSum .fcglRow { padding: 3px 0; }
@@ -355,6 +384,8 @@ function start(f) {
     fc.on('set:recorded', () => setTimeout(check, 50));
     fc.on('set:updated', () => setTimeout(check, 50));          // a result found late (3.7)
     fc.on('history:merged', check);
+    let fightT = 0;                                      // a parry etc. (fight-stats.js): a few a second at most
+    fc.on('fight:event', () => { clearTimeout(fightT); fightT = setTimeout(check, 300); });
     fc.watch(refreshPill, { selector: '.channelToolbar' });
     fc.tick(check, 60000);                         // a new day / week starts on its own
     // after you've logged in (not on Fightcade's log-in screen)
@@ -368,9 +399,10 @@ const api = {
     results: () => results(),
     summaryHtml: () => summaryHtml(),
     add: (g) => addGoal(g),
+    wantsFight: () => wantsFight(),
     _check: () => check(),
     _summary: () => lastSessionSummary()
 };
 
-module.exports = { id: 'goals', name: 'Training goals', start, evaluate, periodStart, TYPES };
+module.exports = { id: 'goals', name: 'Training goals', start, evaluate, periodStart, TYPES, isFight };
 Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });

@@ -120,7 +120,7 @@ const CSS = `
 ${['user', 'swords', 'ban', 'at', 'copy', 'star', 'star-fill', 'edit', 'handshake', 'search'].map(n =>
     `.mask > .menu.fccm [data-fcicon="${n}"]::before { -webkit-mask-image: var(--fc-i-${n}) !important; }`).join('\n')}
 .mask > .menu.fccm .contextMenuItemsWrapper > *:hover, .mask > .menu.fccm .challengeButtonWrapper > *:hover {
-    background: var(--fc-accent) !important; color: #fff !important; }
+    background: var(--fc-accent) !important; color: var(--fc-on-accent, #fff) !important; }
 .mask > .menu.fccm .challengeButtonWrapper { margin: 0 0 4px !important; padding: 0 0 4px !important; background: none !important;
     border: 0 !important; border-bottom: 1px solid var(--fc-divider) !important; }
 .mask > .menu.fccm .challengeButtonWrapper > * { color: #fff !important; font-weight: 600 !important; background: rgba(35,165,90,.22) !important; }

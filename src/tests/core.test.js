@@ -366,6 +366,19 @@ test('challenge pipeline: filters decline before Fightcade, after-handlers run a
     assert.deepEqual(order, ['filter', 'filter', 'after:5']);
 });
 
+test('challenge pipeline: a trusted challenge (accepted in Discord) gets past the filters', () => {
+    T.reset();
+    const { r, seen } = fakeRoot();
+    T.setRoot(r);
+    const hooks = T.hooksFor(T.makeOwner('ch-trust'));
+    hooks.challenge((ctx) => ctx.decline('FT not allowed'), { phase: 'filter' });
+    hooks.challenge((ctx) => { if (ctx.name === 'Bob') ctx.trusted = 'discord'; }, { phase: 'filter', order: -1000 });
+    r.connectionCallbacks.onChallengeRequest({ name: 'Bob' }, 'chan', 1, 3);
+    r.connectionCallbacks.onChallengeRequest({ name: 'Carol' }, 'chan', 2, 3);
+    assert.deepEqual(seen.fc, [['Bob', 3]]);
+    assert.deepEqual(seen.declined, [['Carol', 2]]);
+});
+
 test('challenge pipeline: never fights another wrapper, re-hooks when Fightcade replaces it', () => {
     T.reset();
     const { r, seen } = fakeRoot();

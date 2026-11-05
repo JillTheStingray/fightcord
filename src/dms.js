@@ -1071,7 +1071,7 @@ function start(f) {
 const CSS = `
 .fcdmRail { padding-bottom: 0; }
 .fcdmHome .fc-ic { width: 22px; height: 22px; }
-.fcdmHome:hover, .fcdmHome.on { background: var(--fc-accent); color: #fff; }
+.fcdmHome:hover, .fcdmHome.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 .fcdmBub .bd, .fcdmHome .bd { background: var(--fc-danger, #f23f43); color: #fff; }
 .fclbDmPage .fclbSide { padding: 8px 0; }
 .fcdmFind { margin: 0 10px 8px; padding: 0 8px; height: 28px; border-radius: var(--fc-r1); background: var(--fc-s1); color: var(--fc-muted); font: var(--fc-fs-ui)/28px var(--fc-font); cursor: pointer;
@@ -1193,7 +1193,7 @@ const CSS = `
 .fcdmPick .r .nm b { display: block; color: var(--fc-head); font: 500 var(--fc-fs-chat)/1.2 var(--fc-font); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fcdmPick .r .nm small { display: block; color: var(--fc-muted); font: var(--fc-fs-sm)/1.2 var(--fc-font); }
 .fcdmPick .r .ck { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 2px var(--fc-muted); color: transparent; }
-.fcdmPick .r.on .ck { background: var(--fc-accent); box-shadow: none; color: #fff; }
+.fcdmPick .r.on .ck { background: var(--fc-accent); box-shadow: none; color: var(--fc-on-accent, #fff); }
 .fcdmPick .r .ck .fc-ic { width: 14px; height: 14px; stroke-width: 3; }
 .fcdmPick .none { padding: 24px 12px; color: var(--fc-muted); font: var(--fc-fs-ui)/1.45 var(--fc-font); text-align: center; }
 .fcdmPick .go { width: 100%; justify-content: center; }

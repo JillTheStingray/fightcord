@@ -419,7 +419,7 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
     font: 600 var(--fc-fs-ui)/30px var(--fc-font); color: var(--fc-text); }
 #ghHub .ghTabBtn .fc-ic { width: 15px; height: 15px; margin-right: 6px; }
 #ghHub .ghTabBtn:hover { background: var(--fc-hover); }
-#ghHub .ghTabBtn.on { background: var(--fc-accent); color: #fff; }
+#ghHub .ghTabBtn.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 #ghHub .ghTab { max-width: 980px; margin: 0 auto; }
 #ghHub .ghBar { display: flex; align-items: center; margin-bottom: 12px; }
 #ghHub .ghBar > * + * { margin-left: 8px; }
@@ -429,7 +429,7 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghSite .fc-ic { width: 13px; height: 13px; margin-right: 5px; }
 #ghHub .ghSeg { display: inline-flex; border-radius: var(--fc-r2); overflow: hidden; background: var(--fc-btn); }
 #ghHub .ghSeg span { padding: 0 12px; line-height: 30px; font-size: var(--fc-fs-ui); font-weight: 600; cursor: pointer; color: var(--fc-text); }
-#ghHub .ghSeg span.on { background: var(--fc-accent); color: #fff; }
+#ghHub .ghSeg span.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 #ghHub .ghCols, #ghHub .ghRow { display: grid; grid-template-columns: 56px 1fr 70px 100px 90px; align-items: center; }
 #ghHub .ghCols { padding: 0 10px 6px; font-size: var(--fc-fs-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--fc-muted); }
 #ghHub .ghRow { min-height: 44px; padding: 0 10px; border-radius: var(--fc-r2); cursor: pointer; }

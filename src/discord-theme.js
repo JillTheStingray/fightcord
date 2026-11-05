@@ -31,7 +31,7 @@ const DEFAULTS = {
     chatArt: false,        // keep Fightcade's game artwork faintly behind the chat
     cleanNames: true,      // the chat name line without the scout badge
     chatSize: 18,          // chat text px; Discord's default is 16, 18 matches a zoomed Discord
-    preset: 'dark',        // dark | amoled | classic | neon | crt | strike | tokyo | custom
+    preset: 'dark',        // dark | amoled | classic | neon | crt | strike | tokyo | oe | custom
     accent: '#5865f2',     // Discord blurple
     font: '',              // '' = Discord's gg sans / Noto Sans
     custom: { bg: '#1b1a1f', panel: '#1b1a1f', dark: '#131215', text: '#dfdfe2' },
@@ -41,7 +41,7 @@ const DEFAULTS = {
 
 const N_ = (s) => s;          // translated where shown
 const PRESETS = { dark: N_('Dark'), ash: N_('Ash'), amoled: N_('Onyx'), classic: N_('Classic grey'), neon: N_('FightCord Neon'),
-    crt: N_('Arcade CRT'), strike: N_('3rd Strike'), tokyo: N_('Neon Tokyo'), custom: N_('Custom (theme editor)') };
+    crt: N_('Arcade CRT'), strike: N_('3rd Strike'), tokyo: N_('Neon Tokyo'), oe: N_('Online Edition'), custom: N_('Custom (theme editor)') };
 // fonts from Google Fonts (free, open licence), loaded only when picked
 const GFONTS = { "'Share Tech Mono', monospace": 'Share+Tech+Mono', "'Chakra Petch', sans-serif": 'Chakra+Petch:wght@400;500;600;700',
     "'Exo 2', sans-serif": 'Exo+2:wght@400;500;600;700' };
@@ -61,7 +61,10 @@ const LOOKS = {
     strike: { name: N_('3rd Strike'), desc: N_('Charcoal and fight-poster orange, the game’s art drifting behind'), preset: 'strike', accent: '#f0923a', font: "'Chakra Petch', sans-serif",
         bg: { style: 'art', intensity: 0.55 }, emuFont: 'teko', sw: ['#0b0909', '#121010', '#f0923a'] },
     tokyo: { name: N_('Neon Tokyo'), desc: N_('Midnight indigo, hot pink and cyan, soft neon waves'), preset: 'tokyo', accent: '#eb459e', font: "'Exo 2', sans-serif",
-        bg: { style: 'waves', intensity: 0.6 }, emuFont: 'orbitron', sw: ['#080616', '#0e0b1f', '#eb459e'] }
+        bg: { style: 'waves', intensity: 0.6 }, emuFont: 'orbitron', sw: ['#080616', '#0e0b1f', '#eb459e'] },
+    // 3.11: made of your own copy of the game (own-art.js), so it's only offered once that's been read
+    oe: { name: N_('Online Edition'), desc: N_('3rd Strike Online Edition’s own menus: concrete, yellow bars and its lettering'), preset: 'oe', accent: '#e2d51c', font: '',
+        bg: { style: 'off' }, emuFont: 'teko', sw: ['#0b0c0b', '#1c1d1b', '#e2d51c'], own: true }
 };
 const FONTS = { '': 'Discord (gg sans)', "'Segoe UI', sans-serif": 'Segoe UI', "'Noto Sans', sans-serif": 'Noto Sans',
     "'Share Tech Mono', monospace": 'Share Tech Mono', "'Chakra Petch', sans-serif": 'Chakra Petch', "'Exo 2', sans-serif": 'Exo 2',
@@ -84,6 +87,13 @@ function hexRgb(hex) {
     if (!m) return null;
     const n = parseInt(m[1], 16);
     return [n >> 16, (n >> 8) & 255, n & 255];
+}
+
+// 3.11: text on the accent colour: white, or a very dark shade of it on a light accent (yellow, mint, ...)
+function onAccent(rgb) {
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const lum = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+    return lum > 0.4 ? '#' + rgb.map(v => Math.round(v * 0.09).toString(16).padStart(2, '0')).join('') : '#fff';
 }
 
 /* ---------------------------------------------------------------- the CSS */
@@ -160,6 +170,13 @@ html.dc-theme.dc-preset-tokyo {
     --dc-divider: #231a45; --dc-text: #e6defc; --dc-head: #ffffff; --dc-muted: #9a8fc4; --dc-faint: #675d96;
     --dc-icon: #b6a9e8; --dc-btn: #241b4a; --dc-btn-h: #30245f; --dc-link: #22e3f2;
 }
+html.dc-theme.dc-preset-oe {
+    /* Online Edition: the menus' near-black, warm off-white and select-bar yellow (the pictures: OE_CSS) */
+    --dc-bg: #0f100f; --dc-bg2: #121311; --dc-bg3: #0b0c0b; --dc-input: #171816; --dc-input-edge: #2a2b28;
+    --dc-hover: #161715; --dc-select: #20211e; --dc-active: #2a2b27; --dc-float: #070807;
+    --dc-divider: #252623; --dc-text: #eeede6; --dc-head: #ffffff; --dc-muted: #a3a197; --dc-faint: #6c6b63;
+    --dc-icon: #c9c7bd; --dc-btn: #22231f; --dc-btn-h: #30312c; --dc-link: #e2d51c;
+}
 /* a chat background picture (theme editor) */
 html.dc-theme.dc-has-bg .channelContent {
     background-image: linear-gradient(var(--dc-bg-dim), var(--dc-bg-dim)), var(--dc-chat-bg); background-size: cover;
@@ -223,7 +240,7 @@ html.dc-layout .channelItemWrapper .channelItem .channelItemName::before {
     color: var(--dc-text);
 }
 html.dc-layout .channelItemWrapper .channelItem:hover .channelItemName::before,
-html.dc-layout .channelItemWrapper .channelItem.active .channelItemName::before { color: #fff; }
+html.dc-layout .channelItemWrapper .channelItem.active .channelItemName::before { color: var(--fc-on-accent, #fff); }
 html.dc-layout .channelItemWrapper .channelItem.dc-art .channelItemName::before { content: none; }
 /* the white pill on the left edge */
 html.dc-layout .channelItemWrapper .channelItem::before {
@@ -333,10 +350,10 @@ html.dc-layout .button-alt:hover { background: var(--dc-btn-h); color: #fff; bor
 html.dc-layout .button-alt::after { display: none; }
 html.dc-layout .button-alt .icon, html.dc-layout .button-alt:hover .icon { width: 18px; height: 18px; fill: #fff; }
 html.dc-layout .button-generic {
-    border: 0; border-radius: 3px; background: var(--dc-blurple); color: #fff; font-weight: 500;
+    border: 0; border-radius: 3px; background: var(--dc-blurple); color: var(--fc-on-accent, #fff); font-weight: 500;
     text-transform: none; box-shadow: none; letter-spacing: 0;
 }
-html.dc-layout .button-generic:hover { background: var(--dc-blurple-h); color: #fff; }
+html.dc-layout .button-generic:hover { background: var(--dc-blurple-h); color: var(--fc-on-accent, #fff); }
 html.dc-layout .button-generic::after { display: none; }
 
 /* ============================== chat ============================== */
@@ -378,7 +395,7 @@ html.dc-layout .chatContent .message.chat .blocks .regular { color: var(--dc-tex
 html.dc-layout .chatContent .blocks .user {
     background: var(--dc-accent-soft); color: var(--dc-head); border-radius: 3px; padding: 0 2px; font-weight: 500;
 }
-html.dc-layout .chatContent .blocks .user:hover { background: var(--dc-blurple); color: #fff; }
+html.dc-layout .chatContent .blocks .user:hover { background: var(--dc-blurple); color: var(--fc-on-accent, #fff); }
 html.dc-layout .chatContent .blocks a { color: var(--dc-link); }
 /* FC's emphasis (.highlight -- NOT a mention) is bold accent-blue; Discord's bold is just bold */
 html.dc-layout .chatContent .message.chat .blocks .highlight { color: var(--dc-head); font-weight: 700; }
@@ -609,6 +626,230 @@ html.dc-layout .chatContent .messageWrapper.dc-live:not(.chat):not(.motd)::befor
 `;
 
 
+// 3.11: the Online Edition Look's pictures and lettering, from your own copy of the game (own-art.js;
+// html.dc-oe-own only while they're there). The menus' concrete behind see-through panels, the yellow
+// select bar on whatever is picked or pointed at, their dark panel on windows, faint scanlines, and the
+// District lettering on titles, names and buttons (never the messages themselves).
+const OE = 'html.dc-theme.dc-preset-oe.dc-oe-own';
+const OE_DISPLAY = "'FC OE District', var(--dc-font, 'Noto Sans'), sans-serif";
+const OE_BAR = 'var(--dc-oe-bar) 0 0 / 100% 100% no-repeat, #e2d51c';
+const OE_CSS = `
+${OE} body { background: transparent; }
+${OE}.dc-oe-hero body::before { content: ''; position: fixed; right: 1vw; bottom: 0; width: 44vw; height: 96vh; z-index: -1; pointer-events: none;
+    background: var(--dc-oe-hero) right bottom / contain no-repeat; opacity: .2;
+    -webkit-mask-image: linear-gradient(to top, transparent, #000 35%); }
+${OE} body::after { content: ''; position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 2147483600; pointer-events: none;
+    background: var(--dc-oe-scan) 0 0 / 4px 4px; opacity: .06; mix-blend-mode: overlay; }
+${OE} #app, ${OE} .mainWrapper, ${OE} .channelContent, ${OE} .chatWrapper, ${OE} .chatWrapperBg, ${OE} .chatInput,
+${OE} .welcomeWrapper, ${OE} .searchWrapper { background: transparent; background-image: none; }
+${OE} .usersListToolbar, ${OE} .usersListToolbar .usersListWrapper { background: rgba(0,0,0,.34); }
+/* text stays easy to read on the lighter concrete */
+${OE} .chatContent .message.chat header .author, ${OE} .chatContent .message.chat .line, ${OE} .usersListWrapper .userItem .playerName,
+${OE} .fcm-gh, ${OE} .channelToolbar, ${OE} #fcordModal .fcordSide .item:not(.on) { text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+${OE} .usersListWrapper .userItem:hover .playerName { text-shadow: none; }
+/* the select bar */
+${OE} #fcordModal .fcordSide .item.on, ${OE} .fc-btn:not(.sec):not(.ghost):not(.danger):not(.success):not(.brand) {
+    background: ${OE_BAR}; color: #141400; }
+${OE} .usersListWrapper .userItem:hover .playerName, ${OE} .usersListWrapper .userItem:hover .nameAndGame > * { color: #141400; }
+${OE} .fc-btn:not(.sec):not(.ghost):not(.danger):not(.success):not(.brand):hover { filter: brightness(1.1); }
+${OE} #fcordModal .fcordSide .item .nb.n, ${OE} .chatContent .blocks .user:hover { background: #e2d51c; color: #141400; }
+/* the bar's own shape (not Discord's round pills), a yellow tint on what's pointed at */
+${OE} #fcordModal .fcordSide .item, ${OE} .fc-btn:not(.sec):not(.ghost):not(.danger):not(.success):not(.brand) { border-radius: 3px; }
+${OE} #fcordModal .fcordSide .item:not(.on):hover { background: rgba(226,213,28,.09); color: #fff; }
+/* Fightcord's own blue-purple (the Updates / My Fightcord card, brand buttons) in the menus' colours */
+${OE} .fc-btn.brand, ${OE} #fcordModal .fcordHero .logo { background: ${OE_BAR}; color: #141400; box-shadow: 0 0 22px rgba(226,213,28,.28); }
+${OE} #fcordModal .fcordHero { background: linear-gradient(120deg, rgba(226,213,28,.16), rgba(226,213,28,.04) 60%, transparent), rgba(0,0,0,.45);
+    box-shadow: inset 3px 0 0 #e2d51c; }
+${OE} #fcordModal h3 { font-family: ${OE_DISPLAY}; font-weight: 400; font-synthesis: none; text-transform: none; font-size: var(--fc-fs-lg); color: #e2d51c; }
+/* the settings window on the concrete like the game's menu screens; pop-ups on its dark panel */
+${OE} #fcordModal .fcordWin { background: linear-gradient(rgba(8,9,8,.42), rgba(8,9,8,.74)), var(--dc-oe-concrete) center / cover no-repeat, #0e0f0e; }
+${OE} .fc-modal { background: linear-gradient(rgba(14,15,14,.55), rgba(14,15,14,.55)), var(--dc-oe-panel) center / 100% 100% no-repeat, #0e0f0e; }
+${OE} #fcordModal .fcordSide { background: rgba(0,0,0,.36); }
+${OE} #fcordModal .fcordHead > .fc-set, ${OE} #fcordModal .fc-set { background: rgba(10,11,10,.62); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+${OE} .dcLook { background: rgba(0,0,0,.4); }
+/* the lettering */
+${OE} .channelToolbar .channelInfo .name.title, ${OE} .chatContent .message.chat header .author, ${OE} .usersListWrapper .userItem .playerName,
+${OE} .usersListWrapper .usersOnlineTitle, ${OE} .usersListWrapper .usersAwayTitle, ${OE} .usersListWrapper .usersIgnoredTitle, ${OE} .usersListWrapper .matchesTitleWrapper,
+${OE} .chatContent .message .challengeWrapper .challengeContent .userInfo .name, ${OE} .chatContent .endgameMessageWrapper h3,
+${OE} .fc-set-title, ${OE} .fc-field-text > b, ${OE} .fc-modal-h, ${OE} .fc-card-h, ${OE} .fc-tab, ${OE} .fc-btn, ${OE} .button-alt, ${OE} .button-generic,
+${OE} .accept-challenge, ${OE} .decline-challenge, ${OE} .cancel-challenge, ${OE} .rank-option,
+${OE} #fcordModal .fcordSide .item, ${OE} #fcordModal .fcordSide .sec, ${OE} #fcordModal .fcordHead h2, ${OE} .dcLook > b, ${OE} #l3Title, ${OE} #l3Panel .l3Me b,
+${OE} .cbnName, ${OE} .fcm-gh {
+    font-family: ${OE_DISPLAY}; font-weight: 400; font-synthesis: none; letter-spacing: .01em; }
+${OE} .usersListWrapper .usersOnlineTitle, ${OE} .usersListWrapper .usersAwayTitle, ${OE} .usersListWrapper .usersIgnoredTitle,
+${OE} .fc-card-h, ${OE} .fcm-gh { text-transform: none; font-size: 17px; letter-spacing: .01em; }
+${OE} .channelToolbar .channelInfo .name.title, ${OE} .cbnName { font-size: 22px; }
+/* the game's menus: big slanted items, the section names in yellow */
+${OE} #fcordModal .fcordSide .item { font-size: 17px; padding: 8px 10px; white-space: nowrap; }
+${OE} #fcordModal .fcordSide .item > span { overflow: hidden; text-overflow: ellipsis; }
+${OE} #fcordModal .fcordSide .sec { text-transform: none; font-size: 17px; color: #e2d51c; }
+${OE} #fcordModal .fcordHead h2 { font-size: 34px; line-height: 1; text-shadow: 0 3px 0 rgba(0,0,0,.55); }
+${OE} .fc-set-title { font-size: 26px; }
+${OE} .fc-field-text > b { font-size: 16px; }
+${OE} .fc-btn { font-size: 15px; }
+${OE} .fc-modal-h { font-size: 24px; }
+${OE} .usersListWrapper .userItem .playerName { font-size: 16px; }
+${OE} .usersListWrapper .userItem { border-radius: 3px; }
+${OE} .usersListWrapper .usersOnlineTitle > span, ${OE} .usersListWrapper .usersAwayTitle > span, ${OE} .usersListWrapper .pingWrapper,
+${OE} #fcordModal .fcordSide .item .nb.n { font-family: 'FC OE Numbers', ${OE_DISPLAY}; }
+
+/* ---- the rest of the game's menu kit ---- */
+/* the wall: the concrete on the page itself (so your main's art can sit between it and everything else). Two of
+   the menus' graffiti tags, kept to the edges and under a darker veil so nothing sits behind the messages */
+${OE} { background: linear-gradient(rgba(6,7,6,.34), rgba(6,7,6,.66)),
+    var(--dc-oe-tag1) 97% 6% / 260px auto no-repeat fixed, var(--dc-oe-tag3) 2% 96% / 240px auto no-repeat fixed,
+    var(--dc-oe-concrete) center / cover no-repeat fixed, #0b0c0b; }
+/* a soft shade behind the messages, so they read on the concrete */
+${OE} .channelContent .chatWrapper { background: linear-gradient(90deg, rgba(8,9,8,.42), rgba(8,9,8,.18) 70%, transparent); }
+/* the title bar: the game's logo on the left, on a brushed band */
+${OE} #l3Title { background: var(--dc-oe-line) center / 100% 100% no-repeat, rgba(0,0,0,.55); }
+${OE} #l3Title::before { content: ''; position: absolute; left: 10px; top: 3px; width: 190px; height: 26px; pointer-events: none;
+    background: var(--dc-oe-logo) left center / auto 26px no-repeat, var(--dc-oe-oe) 56px center / auto 17px no-repeat; }
+/* the channel header on the same band */
+${OE} .mainToolbarWrapper .mainToolbar { background: rgba(0,0,0,.42); }
+${OE} .channelToolbar { background: var(--dc-oe-line) center / 100% 100% no-repeat, rgba(0,0,0,.3); border-bottom: 2px solid #e2d51c; }
+/* the rail: the menus' yellow pointer marks the channel you're in */
+${OE} .channelItemWrapper .channelItem.active::before { left: -15px; width: 13px; height: 16px; margin-top: -8px; border-radius: 0;
+    background: var(--dc-oe-cursor) center / contain no-repeat; }
+/* the member list: group names on the menus' olive bar, the pointer on the row under the mouse, the game's status lights */
+${OE} .fcm-gh { margin: 12px 8px 4px; padding: 3px 10px 4px; border-radius: 2px; color: #eeede6;
+    background: var(--dc-oe-row) 0 0 / 100% 100% no-repeat, rgba(41,43,19,.8); }
+${OE} .usersListWrapper .userItem { position: relative; }
+${OE} .usersListWrapper .userItem:hover::before { content: ''; position: absolute; left: -9px; top: 50%; width: 10px; height: 13px; margin-top: -6px;
+    pointer-events: none; background: var(--dc-oe-cursor) center / contain no-repeat; }
+${OE} .usersListWrapper .userItem .avatarWrapper::after { width: 12px; height: 12px; right: -3px; bottom: -3px; border: 0; border-radius: 50%;
+    background: var(--dc-oe-dotOrange) center / cover no-repeat; }
+${OE} .usersListWrapper .usersOnlineList .userItem .avatarWrapper::after { background: var(--dc-oe-dotGreen) center / cover no-repeat; }
+${OE} .usersListWrapper .usersAwayList .userItem .avatarWrapper::after { background: var(--dc-oe-dotYellow) center / cover no-repeat; }
+${OE} #l3Panel .l3St { box-shadow: none; background: var(--dc-oe-dotGreen) center / cover no-repeat; }
+${OE} #l3Panel .l3St.away { background: var(--dc-oe-dotYellow) center / cover no-repeat; }
+${OE} #l3Panel .l3St.dnd { background: var(--dc-oe-dotRed) center / cover no-repeat; }
+/* your panel bottom-left and the message box on the menus' dark card and strip */
+${OE} #l3Panel { background: none; box-shadow: none; border-image: var(--dc-oe-card) 28 fill / 12px / 0 stretch; border-radius: 4px; }
+${OE} .chatInput input.input { background: var(--dc-oe-strip) 0 0 / 100% 100% no-repeat, rgba(0,0,0,.5); border: 0; border-radius: 3px; }
+/* windows: the settings window keeps the concrete inside a grunge frame; pop-ups, toasts and menus are the frame itself */
+${OE} #fcordModal .fcordWin { border-radius: 4px; border-image: var(--dc-oe-frame) 40 / 18px / 0 stretch; }
+${OE} .fc-modal { border-radius: 4px; background: #121312; border-image: var(--dc-oe-frame) 40 fill / 18px / 0 stretch; }
+${OE} .fc-toast, ${OE} .fc-pop { border-radius: 4px; background: #121312; box-shadow: 0 10px 30px rgba(0,0,0,.6); border-image: var(--dc-oe-card) 28 fill / 12px / 0 stretch; }
+${OE} #hcCard, ${OE} #pcCard { border-radius: 4px; border-image: var(--dc-oe-card) 28 / 12px / 0 stretch; }
+/* the settings window: the logo at the top of the menu, the pointer on the page you're on, the olive bar under the mouse */
+${OE} #fcordModal .fcordSide::before { content: ''; display: block; height: 70px; margin: 16px 18px 0;
+    background: var(--dc-oe-logo) center top / auto 48px no-repeat, var(--dc-oe-oe) center bottom / auto 18px no-repeat; }
+${OE} #fcordModal .fcordSide .item { position: relative; }
+${OE} #fcordModal .fcordSide .item.on .fc-ic { visibility: hidden; }
+${OE} #fcordModal .fcordSide .item.on::before { content: ''; position: absolute; left: 9px; top: 50%; width: 15px; height: 18px; margin-top: -9px;
+    pointer-events: none; background: var(--dc-oe-cursor) center / contain no-repeat; filter: brightness(0) opacity(.8); }
+${OE} #fcordModal .fcordSide .item:not(.on):hover { background: var(--dc-oe-row) 0 0 / 100% 100% no-repeat, rgba(41,43,19,.8); }
+/* section titles with a short yellow stroke under them, the chosen Look between two grunge corners */
+${OE} .fc-set-title { padding-bottom: 8px; background: linear-gradient(#e2d51c, #e2d51c) left bottom / 44px 3px no-repeat; }
+${OE} .dcLook { position: relative; }
+${OE} .dcLook.on { box-shadow: inset 0 0 0 1px rgba(226,213,28,.5); }
+${OE} .dcLook.on::before, ${OE} .dcLook.on::after { content: ''; position: absolute; width: 24px; height: 24px; pointer-events: none;
+    background: var(--dc-oe-corner) center / contain no-repeat; }
+${OE} .dcLook.on::before { top: -5px; right: -5px; }
+${OE} .dcLook.on::after { bottom: -5px; left: -5px; transform: rotate(180deg); }
+/* buttons: Accept / success on the green grunge bar, the quiet ones on the dark strip, switches on the yellow bar */
+${OE} .fc-btn.success, ${OE} .chatContent .messageWrapper .accept-challenge { background: var(--dc-oe-green) 0 0 / 100% 100% no-repeat, #3f8f2c;
+    color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.6); border-radius: 3px; }
+${OE} .fc-btn.sec, ${OE} .chatContent .messageWrapper .decline-challenge, ${OE} .chatContent .messageWrapper .cancel-challenge {
+    background: var(--dc-oe-strip) 0 0 / 100% 100% no-repeat, #232421; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); border-radius: 3px; }
+${OE} .fc-btn.success:hover, ${OE} .fc-btn.sec:hover { filter: brightness(1.15); }
+${OE} .fc-switch-in:checked + .fc-switch { background: ${OE_BAR}; }
+/* waiting: the menus' grunge ring turning */
+${OE} .fc-spin { border: 0; border-radius: 0; background: var(--dc-oe-ring) center / contain no-repeat; }
+
+/* ---- Fightcord's own pages in the same kit: DMs + friends, lobbies, the game hub and the rest (3.11) ---- */
+/* the page on the concrete (its own copy: a page is transformed, so the wall's fixed background can't show through) */
+${OE} .fc-page { background: linear-gradient(rgba(6,7,6,.4), rgba(6,7,6,.72)), var(--dc-oe-concrete) center / cover no-repeat, #0b0c0b; }
+${OE} .fc-page-h { background: var(--dc-oe-line) center / 100% 100% no-repeat, rgba(0,0,0,.5); border-bottom: 2px solid #e2d51c; }
+${OE} .fc-page-h .tt { font-family: ${OE_DISPLAY}; font-weight: 400; font-synthesis: none; font-size: 20px; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+/* lobbies and DMs: see-through columns like the main screen */
+${OE} .fclbPage .fclbSide, ${OE} .fclbPage .fclbMem { background: rgba(0,0,0,.42); }
+${OE} .fclbPage .fclbMain { background: rgba(8,9,8,.3); }
+${OE} .fclbPage .fclbTop { background: rgba(0,0,0,.3); box-shadow: 0 1px 0 rgba(226,213,28,.35); }
+${OE} .fclbPage .fclbBox { background: var(--dc-oe-strip) 0 0 / 100% 100% no-repeat, rgba(0,0,0,.5); border-radius: 3px; }
+${OE} .fclbPage .fcdmFind { background: rgba(0,0,0,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+/* what's picked: the yellow bar; what's under the mouse: the olive bar */
+${OE} .fcdmNav.on, ${OE} .fcdmRow.on, ${OE} .fclbCh.on, ${OE} .ghTabBtn.on, ${OE} .fc-tab.on {
+    background: ${OE_BAR}; color: #141400; border-radius: 3px; text-shadow: none; }
+${OE} .fcdmNav.on *, ${OE} .fcdmRow.on .tx b, ${OE} .fcdmRow.on .tx small, ${OE} .fclbCh.on *, ${OE} .ghTabBtn.on *, ${OE} .fc-tab.on * { color: #141400; }
+${OE} .fcdmNav:not(.on):hover, ${OE} .fcdmRow:not(.on):hover, ${OE} .fclbCh:not(.on):hover, ${OE} .fclbM:hover, ${OE} .ghTabBtn:not(.on):hover, ${OE} .fcdmF:hover {
+    background: var(--dc-oe-row) 0 0 / 100% 100% no-repeat, rgba(41,43,19,.8); border-radius: 3px; }
+/* group names on the olive bar, like the member list's */
+${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH { padding: 3px 10px 4px; border-radius: 2px; color: #eeede6; text-transform: none; letter-spacing: .01em;
+    background: var(--dc-oe-row) 0 0 / 100% 100% no-repeat, rgba(41,43,19,.8); }
+/* the lettering on the pages: titles, names, tabs and group names */
+${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH, ${OE} .fcdmAct h3, ${OE} .fclbHd .nm, ${OE} .fclbTop .ti b, ${OE} .fclbHello h2,
+${OE} .fclbG .hd b, ${OE} .fcdmRow .tx b, ${OE} .fcdmF .tx b, ${OE} .fclbM .tx b, ${OE} .fcdmNav > span, ${OE} .fclbCh > span, ${OE} .ghTabBtn, ${OE} .fc-tab,
+${OE} .fc-ph .tt > b, ${OE} .fc-ch-name, ${OE} .fcfmName, ${OE} .fcdmQuiet > b {
+    font-family: ${OE_DISPLAY}; font-weight: 400; font-synthesis: none; }
+${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH { font-size: 15px; }
+${OE} .fclbHd .nm, ${OE} .fclbTop .ti b, ${OE} .fcdmAct h3 { font-size: 19px; }
+${OE} .fclbHello h2 { font-size: 34px; text-shadow: 0 3px 0 rgba(0,0,0,.55); }
+${OE} .fclbG .hd b, ${OE} .fcdmRow .tx b, ${OE} .fcdmF .tx b, ${OE} .fclbM .tx b, ${OE} .fcdmNav > span, ${OE} .fclbCh > span, ${OE} .fcfmName { font-size: 16px; }
+${OE} .fc-ph .tt > b, ${OE} .fc-ch-name { font-size: 19px; }
+${OE} .fclbDay > span, ${OE} .fclbG .hd time, ${OE} .ghCols { font-family: 'FC OE Numbers', ${OE_DISPLAY}; }
+/* text that sits on the concrete */
+${OE} .fclbPage .fclbLog, ${OE} .fclbPage .fclbSide, ${OE} .fclbPage .fclbMem, ${OE} .fc-page-h, ${OE} .ghPage { text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+${OE} .fclbPage .fclbG .ln { color: #eeede6; }
+/* everyone's status light: the game's own green / yellow / red lights inside the dark ring */
+${OE} .fc-avatar > .st.on { background: var(--dc-oe-dotGreen) center / cover no-repeat, #3f8f2c; }
+${OE} .fc-avatar > .st.away { background: var(--dc-oe-dotYellow) center / cover no-repeat, #e2d51c; }
+${OE} .fc-avatar > .st.playing { background: var(--dc-oe-dotRed) center / cover no-repeat, #c8352a; }
+/* profile cards: the card frame, the banner edged in yellow */
+${OE} .fc-ch .fc-ch-banner { box-shadow: inset 0 -3px 0 #e2d51c; }
+${OE} .fclbMem .fc-ch, ${OE} .fcdmProf { background: rgba(0,0,0,.35); }
+/* the game hub: its table head on the olive bar */
+${OE} .ghCols { background: var(--dc-oe-row) 0 0 / 100% 100% no-repeat, rgba(41,43,19,.8); border-radius: 2px; color: #eeede6; }
+/* the main screen, a step closer to the game's menus: a bigger channel title, names a size up */
+${OE} .channelToolbar .channelInfo .name.title, ${OE} .cbnName { font-size: 26px; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
+${OE} .chatContent .message.chat header .author { font-size: 16px; }
+
+/* ---- motion, like the game's menus (all of it stops with Animations off: html.fc-still) ---- */
+/* the yellow bar sweeps in from the left: under the mouse in the member list, on the page you open in settings */
+${OE} .usersListWrapper .userItem { background: var(--dc-oe-bar) 0 0 / 0% 100% no-repeat; transition: background-size .16s cubic-bezier(.2,.8,.2,1); }
+${OE} .usersListWrapper .userItem:hover { background: var(--dc-oe-bar) 0 0 / 100% 100% no-repeat; }
+${OE} #fcordModal .fcordSide .item.on { background-color: transparent; animation: oeBarIn .24s cubic-bezier(.2,.8,.2,1) both; }
+/* the pointers nudge, the way the game's cursor does */
+${OE} .channelItemWrapper .channelItem.active::before, ${OE} .usersListWrapper .userItem:hover::before, ${OE} #fcordModal .fcordSide .item.on::before {
+    animation: oeNudge .9s ease-in-out infinite; }
+/* a light glint runs over the logo now and then, and along the channel header's yellow edge */
+${OE} #l3Title::after { content: ''; position: absolute; left: 10px; top: 3px; width: 54px; height: 26px; pointer-events: none;
+    -webkit-mask: var(--dc-oe-logo) left center / auto 26px no-repeat;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%) 0 0 / 300% 100% no-repeat;
+    animation: oeShine 7s ease-in-out 1.5s infinite; }
+${OE} .channelToolbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, #fffbd0, transparent) -200px 0 / 200px 2px no-repeat; animation: oeGlint 6s ease-in-out 2s infinite; }
+/* your main slides in, then breathes */
+${OE}.dc-oe-hero body::before { will-change: transform; transform-origin: 80% 100%;
+    animation: oeHeroIn .7s cubic-bezier(.2,.8,.2,1) both, oeBreathe 16s ease-in-out .7s infinite alternate; }
+/* a settings page's title wipes in; the chosen Look's corners pulse */
+${OE} #fcordModal .fcordHead h2 { animation: oeWipe .32s cubic-bezier(.2,.8,.2,1) both; }
+${OE} .dcLook.on::before { animation: oeCornerA 1.6s ease-in-out infinite; }
+${OE} .dcLook.on::after { animation: oeCornerB 1.6s ease-in-out infinite; }
+/* pop-ups land with a punch, toasts slide in, a challenge still waiting glows on Accept */
+${OE} .fc-mask:not(.fc-out) > .fc-modal { animation: oeSlam .26s cubic-bezier(.2,.9,.3,1) both; }
+${OE} .fc-toast:not(.out) { animation: oeToastIn .3s cubic-bezier(.2,.9,.3,1) both; }
+${OE} .chatContent .messageWrapper.dc-live .accept-challenge { animation: oeGlow 1.2s ease-in-out infinite alternate; }
+/* Animations off: the rules above are more specific than the core's html.fc-still, so they get their own stop (two :not(#id) outrank any of them) */
+${OE}.fc-still:not(#oe-a):not(#oe-b) *, ${OE}.fc-still:not(#oe-a):not(#oe-b) *::before, ${OE}.fc-still:not(#oe-a):not(#oe-b) *::after { animation: none; transition: none; }
+`;
+// (written as they are: important() would put !important inside @keyframes, where it isn't allowed)
+const OE_KEYFRAMES = `
+@keyframes oeBarIn { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
+@keyframes oeNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(3px); } }
+@keyframes oeShine { 0% { background-position: 100% 0; } 22%, 100% { background-position: 0% 0; } }
+@keyframes oeGlint { 0% { background-position: -200px 0; } 40%, 100% { background-position: calc(100% + 200px) 0; } }
+@keyframes oeHeroIn { from { opacity: 0; transform: translateX(60px); } to { opacity: .2; transform: none; } }
+@keyframes oeBreathe { from { transform: scale(1); } to { transform: scale(1.035) translateX(-1%); } }
+@keyframes oeWipe { from { clip-path: inset(0 100% 0 0); transform: translateX(-14px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+@keyframes oeCornerA { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(2px, -2px); } }
+@keyframes oeCornerB { 0%, 100% { transform: rotate(180deg) translate(0, 0); } 50% { transform: rotate(180deg) translate(2px, -2px); } }
+@keyframes oeSlam { from { opacity: 0; transform: scale(1.07); filter: brightness(1.8); } 60% { opacity: 1; filter: brightness(1.15); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes oeToastIn { from { opacity: 0; transform: translateX(40px); clip-path: inset(0 0 0 100%); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
+@keyframes oeGlow { from { box-shadow: 0 0 0 rgba(120,220,60,0); } to { box-shadow: 0 0 14px rgba(120,220,60,.75); } }
+`;
+
 // Every declaration gets !important (see the note above COLORS). Only touches "prop: value;"
 // pairs, so selectors and at-rules are left as written.
 function important(css) {
@@ -753,6 +994,62 @@ function importCode(code) {
     return '';
 }
 
+// 3.11: the Online Edition Look's pieces from own-art.js (undefined = not asked yet, null = none)
+let own;
+let ownFonts = null;                 // the FontFaces added for it
+function ownTheme() {
+    if (own !== undefined) return own;
+    const oa = fc.modules.get('own-art');
+    if (!oa || !oa.theme) return null;   // (not started yet: asked again later)
+    own = oa.theme() || null;
+    return own;
+}
+// a Look is offered when it needs nothing, its files are there, or it's the one you have on
+const offered = (k) => !LOOKS[k].own || !!ownTheme() || config.preset === LOOKS[k].preset;
+function dropOwnFonts() {
+    if (ownFonts) ownFonts.forEach(f => { try { document.fonts.delete(f); } catch (e) { /* gone */ } });
+    ownFonts = null;
+}
+function applyOwn(html, on) {
+    const t = on && config.preset === 'oe' ? ownTheme() : null;
+    html.classList.toggle('dc-oe-own', !!t);
+    if (!t) dropOwnFonts();
+    else if (!ownFonts && typeof FontFace === 'function' && document.fonts) {
+        ownFonts = [['FC OE District', t.font], ['FC OE Numbers', t.num]].filter(f => f[1]).map(([family, buf]) => {
+            const face = new FontFace(family, new Uint8Array(buf), { display: 'block' });
+            document.fonts.add(face);
+            face.load().catch(e => fc.log.warn('Online Edition font', family, e && e.message));
+            return face;
+        });
+    }
+    const hero = t ? ownHero() : '';
+    html.classList.toggle('dc-oe-hero', !!hero);
+    // every picture as --dc-oe-<key> (none when this copy doesn't have it)
+    const pics = Object.assign({}, t || {}, { hero });
+    delete pics.font; delete pics.num;
+    OE_PICS.concat(Object.keys(pics)).filter((k, i, a) => a.indexOf(k) === i).forEach(k => {
+        const val = pics[k] ? 'url("' + pics[k] + '")' : 'none';
+        if (html.style.getPropertyValue('--dc-oe-' + k) !== val) html.style.setProperty('--dc-oe-' + k, val);
+    });
+}
+// the pictures the CSS uses (so a missing one is 'none', never an unset var)
+const OE_PICS = ['concrete', 'hero', 'bar', 'row', 'frame', 'ring', 'logo', 'oe', 'strip', 'line', 'panel', 'card', 'cursor', 'corner', 'brush', 'green',
+    'dotRed', 'dotOrange', 'dotYellow', 'dotGreen', 'tag1', 'tag2', 'tag3', 'scan'];
+// your main's HD art (own-art.js) behind a 3rd Strike channel, like the game's main menu; '' = none.
+// Looked up again when the channel changes, or every half minute (a new main from your sets)
+let heroKey = '', heroUrl = '';
+function ownHero() {
+    const rom = fc.app.activeGameId() || '', me = fc.app.me() || '';
+    const k = rom + '|' + me + '|' + Math.floor(Date.now() / 30000);
+    if (k === heroKey) return heroUrl;
+    heroKey = k;
+    const oa = fc.modules.get('own-art'), nt = fc.modules.get('notes');
+    const m = rom && me && nt && nt.mains ? nt.mains(me, rom) : null;
+    heroUrl = (m && m.chars && m.chars[0] && oa && oa.full ? oa.full(rom, m.chars[0]) : '') || '';
+    return heroUrl;
+}
+function ownChanged() { own = undefined; heroKey = ''; dropOwnFonts(); refresh(); }
+
 let lastSafe = null;
 function applyClasses() {
     const html = document.documentElement;
@@ -770,9 +1067,11 @@ function applyClasses() {
         html.style.setProperty('--dc-blurple', hex, 'important');
         html.style.setProperty('--dc-blurple-h', dark, 'important');
         html.style.setProperty('--dc-accent-soft', 'rgba(' + rgb.join(',') + ',.3)', 'important');
+        html.style.setProperty('--dc-on-accent', onAccent(rgb), 'important');
     }
     applyCustom(html, on);
-    const size = Math.min(24, Math.max(12, +config.chatSize || 18)) + 'px';
+    applyOwn(html, on);
+    const size =Math.min(24, Math.max(12, +config.chatSize || 18)) + 'px';
     if (html.style.getPropertyValue('--dc-chat') !== size) html.style.setProperty('--dc-chat', size);
     if (on && safe !== lastSafe && document.querySelector('#app')) {
         fc.log(safe ? 'layout layer on' : 'SAFE MODE: layout anchors missing, colours only');
@@ -781,7 +1080,7 @@ function applyClasses() {
 }
 
 function ensureStyle() {
-    fc.ui.style('dcThemeStyle', important(COLORS) + important(LAYOUT) + RAW + EDITOR_CSS);
+    fc.ui.style('dcThemeStyle', important(COLORS) + important(LAYOUT) + RAW + important(OE_CSS) + OE_KEYFRAMES + EDITOR_CSS);
     if (config.enabled && !document.getElementById('dcThemeFont')) {
         const l = document.createElement('link');
         l.id = 'dcThemeFont';
@@ -916,8 +1215,8 @@ function blockHtml() {
         <div class="dcRest"${config.enabled ? '' : ' hidden'}>
         <div class="fc-field dcLooksHead"><span class="fc-field-text"><b>${E(T('Looks'))}</b><small>${E(T('A whole look in one click'))}</small></span>
             <label class="dcKeep"><input type="checkbox" class="dcKeepIn"${lookAll ? ' checked' : ''}><span>${E(T('Also set the background and emulator font'))}</span></label></div>
-        <div class="dcLooks">${Object.keys(LOOKS).map(k => lookCard(k)).join('')}</div>
-        ${sel('preset', 'Theme', Object.keys(PRESETS).map(k => [k, PRESETS[k]]))}
+        <div class="dcLooks">${Object.keys(LOOKS).filter(offered).map(k => lookCard(k)).join('')}</div>
+        ${sel('preset', 'Theme', Object.keys(PRESETS).filter(k => !LOOKS[k] || offered(k)).map(k => [k, PRESETS[k]]))}
         <div class="fc-field"><span class="fc-field-text"><b>${E(T('Accent colour'))}</b></span><span class="dcSwatches">
             ${Object.keys(SWATCHES).map(n => `<span class="dcSwatch${SWATCHES[n] === config.accent ? ' on' : ''}" data-hex="${SWATCHES[n]}" title="${E(T(n))}" style="background:${SWATCHES[n]}"></span>`).join('')}
             <input type="color" class="fc-input fc-color" data-opt="accent" value="${E(config.accent)}" title="${E(T('Pick any colour'))}"></span></div>
@@ -1070,11 +1369,16 @@ function start(f) {
         window.removeEventListener('keydown', onKeyDown, true);
         fc.ui.style('dcThemeStyle', null);
         const html = document.documentElement;
-        ['dc-theme', 'dc-layout', 'dc-chat-art', 'dc-clean-names', 'dc-has-bg'].concat(Object.keys(PRESETS).map(p => 'dc-preset-' + p)).forEach(c => html.classList.remove(c));
+        ['dc-theme', 'dc-layout', 'dc-chat-art', 'dc-clean-names', 'dc-has-bg', 'dc-oe-own', 'dc-oe-hero'].concat(Object.keys(PRESETS).map(p => 'dc-preset-' + p)).forEach(c => html.classList.remove(c));
+        OE_PICS.forEach(k => html.style.removeProperty('--dc-oe-' + k));
+        dropOwnFonts();
         const gl = document.getElementById('dcThemeFontPick'); if (gl) gl.remove();
         clearRail();
         window.__fcDiscordThemeLoaded = false;
     });
+    // the Online Edition Look's files: read (again) or removed, and own-art.js started after this
+    fc.on('own-art:changed', ownChanged);
+    fc.on('modules:started', () => { if (own === undefined || own === null) ownChanged(); });
     refresh();
     fc.watch(() => { applyClasses(); if (config.enabled) { decorateRail(); markLiveChallenges(); } });
     fc.cmd('theme', 'Discord theme: on / off / preset / accent / size', onThemeCmd, { args: 'on|off|art|icons|names|size N|preset X|accent X' });
@@ -1086,7 +1390,7 @@ function start(f) {
 const api = {
     // for the welcome screen
     presets: () => Object.assign({}, PRESETS),
-    looks: () => Object.assign({}, LOOKS),
+    looks: () => Object.keys(LOOKS).filter(offered).reduce((o, k) => { o[k] = LOOKS[k]; return o; }, {}),
     applyLook: (k, all) => applyLook(k, all),
     swatches: () => Object.assign({}, SWATCHES),
     theme: () => ({ enabled: config.enabled, preset: config.preset, accent: config.accent, font: config.font }),
@@ -1097,12 +1401,20 @@ const api = {
         store.save();
         refresh();
     },
-    _css: () => important(COLORS) + important(LAYOUT) + RAW,
+    // 3.11: a picture as the chat background (own-art.js's concept art): a data: URL -> true when set
+    setPicture(dataUrl) {
+        if (!saveBackground(dataUrl)) return false;
+        loadBackground();
+        store.save();
+        refresh();
+        return true;
+    },
+    _css: () => important(COLORS) + important(LAYOUT) + RAW + important(OE_CSS) + OE_KEYFRAMES,
     _exportCode: () => exportCode(),
     _importCode: (c) => importCode(c),
     _refresh: () => refresh(),
     get _config() { return config; }
 };
 
-module.exports = { id: 'discord-theme', name: 'Discord theme', start, PRESETS, FONTS, GFONTS, LOOKS };
+module.exports = { id: 'discord-theme', name: 'Discord theme', start, PRESETS, FONTS, GFONTS, LOOKS, onAccent };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

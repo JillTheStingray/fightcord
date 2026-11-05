@@ -250,7 +250,7 @@ const CSS = `
     background: var(--fc-btn); color: #fff; font: 600 var(--fc-fs-md)/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; text-transform: none; letter-spacing: normal; }
 .fcfmPill:hover { background: var(--fc-btn-h); }
 /* 2.13: the one accent button in the header (the thing to do next) */
-.fcHdr .fcfmPill { background: var(--fc-accent); color: #fff; }
+.fcHdr .fcfmPill { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 .fcHdr .fcfmPill:hover { background: var(--fc-accent-h, var(--fc-accent)); filter: brightness(1.1); }
 .cbn-merged .fcHdr .fcfmPill { box-shadow: 0 2px 10px var(--fc-scrim-2); }
 .fcfmPill svg { width: 16px; height: 16px; margin-right: 6px; }

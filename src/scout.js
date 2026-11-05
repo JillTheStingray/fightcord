@@ -255,7 +255,9 @@ function renderCard(card, name, data) {
         `<span><i class="fcsc-dot ${st.k}"></i>${E(st.t)}${fc.fmt.conn(info) ? ' · ' + fc.fmt.connHtml(info) : ''}</span>`;
     // 3.2: the game they're in (or this one) as the banner, their status in a bubble, one inner panel
     const playing = info && info.playing && info.playing.gameId;
-    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || fc.ui.cardBanner(playing || gameId() || '', fc.data.hashColor(name));
+    // (3.11: their main's trial banner from your own 3rd Strike art, when they have no banner of their own)
+    const oa = mod('own-art');
+    const banner = (pr && pr.bannerFor && pr.bannerFor(name)) || (oa && oa.cardBanner ? oa.cardBanner(name, playing || gameId() || '') : '') || fc.ui.cardBanner(playing || gameId() || '', fc.data.hashColor(name));
     const p = pr && pr.profile ? pr.profile(name) : null;
     const prof = pr && pr.profileHtml ? pr.profileHtml(name, { status: false }) : '';
     card.innerHTML = fc.ui.cardHead({ name, banner, avatar: fc.ui.avatar(name, { size: 80, status: st.k, ring: 'var(--fc-s0)' }), marks, meta, status: p && p.s, close: true }) +
@@ -433,7 +435,7 @@ function onChallenge(ctx) {
     // the challenge card already shows all of this: no second popup
     const card = mod('challenge-card');
     const cardOn = !!(card && (card._config || {}).enabled);
-    if (cfg.onChallenge && !cardOn) setTimeout(() => openCard(ctx.name, null), 250);
+    if (cfg.onChallenge && !cardOn && !ctx.trusted) setTimeout(() => openCard(ctx.name, null), 250);
 }
 
 /* --------------------------------------------------------------------- module */

@@ -273,6 +273,14 @@ function tipsHtml(rom, myChar, oppChar, n) {
         (note ? `<p class="own">${fc.ui.ic('note')}${E(note.text)}</p>` : '') + lines.map(x => `<p>${E(x)}</p>`).join('') + '</div>';
 }
 // your own 3rd Strike art (own-art.js), big on one side of the VS / result screen ('' without it)
+// 3.11: on the VS screen, character select's portrait with the name in the game's lettering (the
+// full-body art when there's no portrait)
+function vsArt(rom, ch, side) {
+    const oa = fc.modules.get('own-art'), u = oa && oa.portrait && ch ? oa.portrait(rom, ch) : '';
+    if (!u) return bigArt(rom, ch, side);
+    const nm = oa.nameArt ? oa.nameArt(rom, ch) : '';
+    return `<div class="oeArt oePort ${side}"><img src="${E(u)}" alt="">${nm ? `<img class="oeName" src="${E(nm)}" alt="">` : ''}</div>`;
+}
 function bigArt(rom, ch, side) {
     const oa = fc.modules.get('own-art'), u = oa && oa.full && ch ? oa.full(rom, ch) : '';
     return u ? `<div class="oeArt ${side}"><img src="${E(u)}" alt=""></div>` : '';
@@ -296,12 +304,13 @@ function showVs(meName, oppName) {
     const u = fc.app.users()[oppName] || {};
     const face = faceoff(meName, oppName, rom);
     const tips = tipsHtml(rom, myChar, oppChar, 3);
+    const oaMod = fc.modules.get('own-art'), vsBg = oaMod && oaMod.vsBackground ? oaMod.vsBackground(rom) : '';
     const sparks = Array.from({ length: 12 }, (x, i) => `<span class="spark" style="--a:${i * 30 + 8}deg;--d:${(26 + (i % 3) * 9)}vmin"></span>`).join('');
     openOverlay('vs', `
-        ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
+        ${rom ? `<div class="art${vsBg ? ' own' : ''}" style="background-image:url('${E(vsBg || fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="half l" style="--c:${me.color}"></div>
         <div class="half r" style="--c:${opp.color}"></div>
-        ${bigArt(rom, myChar, 'l')}${bigArt(rom, oppChar, 'r')}
+        ${vsArt(rom, myChar, 'l')}${vsArt(rom, oppChar, 'r')}
         ${playerHtml(me, 'l', { char: myChar, face: faceOf(rom, myChar), charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
         ${playerHtml(opp, 'r', { char: oppChar, face: faceOf(rom, oppChar), charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
             picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0, rq: rqFor(oppName) })}
@@ -908,7 +917,7 @@ function poll() {
             endgameBefore: new Set(endgameRows()), at: Date.now() };
         Object.assign(current, setFacts(opp, current.channel, current.rom));
         if (opp) vsOnce(opp);
-        fc.emit('match:start', { quark, opp });
+        fc.emit('match:start', { quark, opp, rom: current.rom, channel: current.channel });
         fc.log('match started', quark, 'vs', opp || '?');
     } else if (quark && current && !current.opp && Date.now() - current.at < 15000) {
         // the opponent's own "playing" can land a poll or two after ours
@@ -1101,6 +1110,13 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
 #fcmsOverlay .oeArt.r { right: -2vw; justify-content: flex-end; animation: fcms-oe-r .7s .15s cubic-bezier(.2,1,.3,1) both; }
 #fcmsOverlay .oeArt.r img { transform: scaleX(-1); }
 #fcmsOverlay.res .oeArt { height: 78vh; opacity: .5; }
+/* 3.11: the portraits are wide busts; the name sits on their bottom edge, never mirrored */
+#fcmsOverlay .oePort { height: 66vh; width: 50vw; }
+#fcmsOverlay .oePort > img:first-child { max-height: 100%; }
+#fcmsOverlay .oePort .oeName { position: absolute; bottom: 13vh; height: 7.5vh; max-width: 90%; object-fit: contain; filter: drop-shadow(0 .4vmin 1vmin rgba(0,0,0,.6)); }
+#fcmsOverlay .oePort.l .oeName { left: 4vw; }
+#fcmsOverlay .oePort.r .oeName { right: 4vw; transform: none; }
+#fcmsOverlay .art.own { image-rendering: auto; filter: none; }
 @keyframes fcms-oe-l { from { opacity: 0; transform: translateX(-8vw); } }
 @keyframes fcms-oe-r { from { opacity: 0; transform: translateX(8vw); } }
 

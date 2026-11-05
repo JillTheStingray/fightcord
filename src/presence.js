@@ -690,7 +690,7 @@ function line(name) {
 
 const CSS = `
 .fcPres { display: inline-flex; align-items: center; height: 15px; padding: 0 4px; margin: 0 0 0 5px; border-radius: var(--fc-r1); vertical-align: middle;
-    background: var(--fc-accent); color: #fff; font: 800 var(--fc-fs-2xs)/1 var(--fc-font); letter-spacing: 0; text-transform: none; flex: none; cursor: default; }
+    background: var(--fc-accent); color: var(--fc-on-accent, #fff); font: 800 var(--fc-fs-2xs)/1 var(--fc-font); letter-spacing: 0; text-transform: none; flex: none; cursor: default; }
 .fcPres > b { font-weight: 800; }
 .fcPres > b + .fc-ic { margin-left: 2px; }
 .fcPres .fc-ic { width: 10px; height: 11px; stroke-width: 3; }
