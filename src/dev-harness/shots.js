@@ -86,6 +86,20 @@ const SCENES = [
         fm._list().forEach((c, i) => __sim.elo(c.name, [905, 831, 874, 948, 812, 889, 790, 856, 921, 843, 877, 802, 866, 899][i % 14], false));
         document.querySelector('.fcfmPill').click();
         await sleep(1200);` },
+    // 3.12 matchmaking: the same believable channel as findmatch, then a Match found pop-up / the searching strip
+    ...[['matchmaking', `fightcord.modules.get('matchmaking')._demo('HadoKid', { mode: 'ranked', ft: 3 }); await sleep(1400);`],
+        ['mm-search', `const mmm = fightcord.modules.get('matchmaking'); const meU = fightcord.app.users()[fightcord.app.me()]; if (meU) meU.settings = Object.assign({}, meU.settings, { ranked: true }); mmm._queue('ranked', 3); ['a1', 'b2', 'c3'].forEach(h => mmm._mm.entries.set(h, { h, ch: mmm._mm.queue.ch, mode: 'ranked', ft: 3, at: Date.now() })); document.querySelector('.fcfmPill').click(); await sleep(1400);`],
+        // the Online Edition Look's rules on the same rows (no own-art files here: own-art's theme() stubbed, so no pictures and its lettering falls back)
+        ['mm-search-oe', `const mmm = fightcord.modules.get('matchmaking'); const meU = fightcord.app.users()[fightcord.app.me()]; if (meU) meU.settings = Object.assign({}, meU.settings, { ranked: true }); mmm._queue('ranked', 3); ['a1', 'b2', 'c3'].forEach(h => mmm._mm.entries.set(h, { h, ch: mmm._mm.queue.ch, mode: 'ranked', ft: 3, at: Date.now() })); document.querySelector('.fcfmPill').click(); await sleep(1400); const H = document.documentElement; fightcord.modules.get('own-art').theme = () => ({ font: null }); fightcord.emit('own-art:changed'); fightcord.modules.get('discord-theme').applyLook('oe', true); await sleep(1500); if (!H.classList.contains('dc-oe-own')) throw new Error('OE classes did not stick'); const nm = document.querySelector('.fcfmName'); if (!/OE District/.test(getComputedStyle(nm).fontFamily)) throw new Error('OE rules not applied: ' + getComputedStyle(nm).fontFamily);`]].map(([name, go]) => ({ name, snap: CHANNEL, run: `
+        const fm = fightcord.modules.get('find-match');
+        const ch = fightcord.app.activeChannel().name;
+        fm._list().forEach((c, i) => Object.assign(fightcord.app.users()[c.name], {
+            ping: [38, 52, 61, 74, 45, 88, 97, 66, 41, 58, 83, 70][i % 12], wlan: i === 5, proxy: false,
+            channelRank: { [ch]: [2, 3, 2, 1, 3, 2, 2, 1, 3, 2, 2, 3][i % 12] } }));
+        ['HadoKid', 'Low_Kid'].forEach((n, i) => { const u = fightcord.app.users()[n]; if (u) Object.assign(u, { ping: [48, 57][i], away: false, playing: undefined, channelRank: { [ch]: 2 } }); });
+        __sim.elo(null, 862, false);
+        fm._list().forEach((c, i) => __sim.elo(c.name, [905, 831, 874, 948, 812, 889, 790, 856, 921, 843, 877, 802, 866, 899][i % 14], false));
+        ` + go })),
     { name: 'streamer', snap: CHANNEL, run: `
         fightcord.modules.get('streamer').set(true);
         document.querySelectorAll('#fcToasts > *').forEach(t => t.remove());

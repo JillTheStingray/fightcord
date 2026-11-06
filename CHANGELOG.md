@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.12.1
+
+- **Fixed: Find a match rows ran into each other** when a player had the CASUAL ONLY tag: the tag
+  covered the ping under their name and the New badge sat on top of it. That line now wraps onto a second
+  line when it doesn’t fit, and the tag shortens itself if it still can’t.
+
 ## 3.12.0
 
 - **Matchmaking, only in Fightcord** (Find a match → Matchmaking): pick Ranked and the FT (FT2, 3, 5 or 10)

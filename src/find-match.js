@@ -137,8 +137,8 @@ function rowHtml(c, ctx) {
     const dots = nt && nt.dots ? nt.dots(c.name) : '';
     return `<div class="fcfmRow" data-name="${E(c.name)}">${fc.ui.avatar(c.name, { size: 32, status: 'auto' })}
         <div class="fcfmWho"><b class="fcfmName" data-scout="${E(c.name)}" title="${E(T('Open the scout card'))}">${fc.ui.flag(c.cc)}${E(c.name)}${dots}</b>
-            <span>${c.rank ? fc.ui.tag(c.rank) + ' ' : ''}${rankedHere(ctx) ? (c.ranked ? `<i class="fcfmRk" title="${E(T('Ranked sets on: you pick the FT when you challenge'))}">${E(T('Ranked'))}</i>`
-                : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}${conn ? fc.fmt.connHtml({ ping: c.ping, wlan: c.wlan, proxy: c.proxy }) : E(T('ping unknown'))}</span></div>
+            <span class="fcfmMeta">${c.rank ? fc.ui.tag(c.rank) : ''}${rankedHere(ctx) ? (c.ranked ? `<i class="fcfmRk" title="${E(T('Ranked sets on: you pick the FT when you challenge'))}">${E(T('Ranked'))}</i>`
+                : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}<em class="fcfmPing">${conn ? fc.fmt.connHtml({ ping: c.ping, wlan: c.wlan, proxy: c.proxy }) : E(T('ping unknown'))}</em></span></div>
         ${rec}
         ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
         ${fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;
@@ -269,11 +269,14 @@ const CSS = `
 .fcfmNote .h span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fcfmRow .fc-avatar { flex: none; margin-right: 10px; }
 .fcfmWho { flex: 1; min-width: 0; }
-.fcfmWho b { display: block; font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fcfmWho b:hover { text-decoration: underline; }
-.fcfmWho b .fc-flag { margin-right: 5px; }
-.fcfmWho span { display: flex; align-items: center; font-size: var(--fc-fs-sm); color: var(--fc-muted); white-space: nowrap; }
-.fcfmWho span .fc-tag { margin-right: 5px; }
+.fcfmWho > b { display: block; font-size: var(--fc-fs-md); font-weight: 600; color: var(--fc-head); cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fcfmWho > b:hover { text-decoration: underline; }
+.fcfmWho > b .fc-flag { margin-right: 5px; }
+/* the line under the name: rank, ranked/casual tag, ping. It wraps instead of running under the
+   New/odds badges, and the tag ellipsizes if it alone is wider than the column (3.12.1) */
+.fcfmMeta { display: flex; flex-wrap: wrap; align-items: center; row-gap: 2px; min-width: 0; font-size: var(--fc-fs-sm); color: var(--fc-muted); white-space: nowrap; }
+.fcfmMeta > .fc-tag { flex: none; margin-right: 5px; }
+.fcfmPing { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
 .fcfmNew, .fcfmRec, .fcfmOdds { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 10px; font-size: var(--fc-fs-sm); font-weight: 700; }
 .fcfmNew { background: var(--fc-accent-soft); color: var(--fc-head); }
 .fcfmRec { background: var(--fc-tint-3); color: var(--fc-text); }
@@ -283,7 +286,7 @@ const CSS = `
 .fcfmRow:hover .fc-btn, .fcfmRow .fc-btn:focus-visible { background: var(--fc-success); color: #fff; }
 .fcfmWiden { display: flex; justify-content: center; margin-top: 4px; }
 /* 3.8.1: ranked or casual only */
-.fcfmWho span i { flex: none; margin-right: 6px; padding: 0 5px; border-radius: var(--fc-r1); font: 700 var(--fc-fs-2xs)/16px var(--fc-font); font-style: normal; letter-spacing: .02em; text-transform: uppercase; }
+.fcfmMeta > i { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; margin-right: 6px; padding: 0 5px; border-radius: var(--fc-r1); font: 700 var(--fc-fs-2xs)/16px var(--fc-font); font-style: normal; letter-spacing: .02em; text-transform: uppercase; }
 .fcfmRk { background: rgba(240,178,50,.16); color: var(--fc-warning); }
 .fcfmCas { background: var(--fc-tint-3); color: var(--fc-muted); }
 .fcfmTop { display: flex; align-items: center; margin: -2px 0 8px; padding: 0 4px 8px; border-bottom: 1px solid var(--fc-divider); color: var(--fc-text); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
