@@ -636,16 +636,13 @@ const OE_BAR = 'var(--dc-oe-bar) 0 0 / 100% 100% no-repeat, #e2d51c';
 const OE_CSS = `
 ${OE} body { background: transparent; }
 ${OE}.dc-oe-hero body::before { content: ''; position: fixed; right: 1vw; bottom: 0; width: 44vw; height: 96vh; z-index: -1; pointer-events: none;
-    background: var(--dc-oe-hero) right bottom / contain no-repeat; opacity: .2;
-    -webkit-mask-image: linear-gradient(to top, transparent, #000 35%); }
-${OE} body::after { content: ''; position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 2147483600; pointer-events: none;
-    background: var(--dc-oe-scan) 0 0 / 4px 4px; opacity: .06; mix-blend-mode: overlay; }
+    background: var(--dc-oe-hero) right bottom / contain no-repeat; opacity: .2; }
 ${OE} #app, ${OE} .mainWrapper, ${OE} .channelContent, ${OE} .chatWrapper, ${OE} .chatWrapperBg, ${OE} .chatInput,
 ${OE} .welcomeWrapper, ${OE} .searchWrapper { background: transparent; background-image: none; }
 ${OE} .usersListToolbar, ${OE} .usersListToolbar .usersListWrapper { background: rgba(0,0,0,.34); }
 /* text stays easy to read on the lighter concrete */
-${OE} .chatContent .message.chat header .author, ${OE} .chatContent .message.chat .line, ${OE} .usersListWrapper .userItem .playerName,
-${OE} .fcm-gh, ${OE} .channelToolbar, ${OE} #fcordModal .fcordSide .item:not(.on) { text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+${OE} .chatContent .message.chat header .author, ${OE} .usersListWrapper .userItem .playerName,
+${OE} .fcm-gh, ${OE} .channelToolbar, ${OE} #fcordModal .fcordSide .item:not(.on) { text-shadow: 0 1px 0 rgba(0,0,0,.75); }
 ${OE} .usersListWrapper .userItem:hover .playerName { text-shadow: none; }
 /* the select bar */
 ${OE} #fcordModal .fcordSide .item.on, ${OE} .fc-btn:not(.sec):not(.ghost):not(.danger):not(.success):not(.brand) {
@@ -696,9 +693,18 @@ ${OE} #fcordModal .fcordSide .item .nb.n { font-family: 'FC OE Numbers', ${OE_DI
 /* ---- the rest of the game's menu kit ---- */
 /* the wall: the concrete on the page itself (so your main's art can sit between it and everything else). Two of
    the menus' graffiti tags, kept to the edges and under a darker veil so nothing sits behind the messages */
-${OE} { background: linear-gradient(rgba(6,7,6,.34), rgba(6,7,6,.66)),
-    var(--dc-oe-tag1) 97% 6% / 260px auto no-repeat fixed, var(--dc-oe-tag3) 2% 96% / 240px auto no-repeat fixed,
-    var(--dc-oe-concrete) center / cover no-repeat fixed, #0b0c0b; }
+/* (3.12 speed: its own element on its own layer, painted once. It used to be the page's fixed background,
+   which Chromium repaints -- three pictures, the concrete scaled to the window -- on every scroll of the chat
+   or the member list. The faint scanlines live in it too, under the UI: a full-screen blended layer over
+   everything made every change re-blend the whole window) */
+${OE} { background: #0b0c0b; }
+#dcOeWall { display: none; }
+${OE} #dcOeWall { display: block; position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: -2; pointer-events: none;
+    contain: strict; will-change: transform;
+    background: linear-gradient(rgba(6,7,6,.34), rgba(6,7,6,.66)),
+    var(--dc-oe-tag1) 97% 6% / 260px auto no-repeat, var(--dc-oe-tag3) 2% 96% / 240px auto no-repeat,
+    var(--dc-oe-concrete) center / cover no-repeat, #0b0c0b; }
+${OE} #dcOeWall > i { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: var(--dc-oe-scan) 0 0 / 4px 4px; opacity: .05; }
 /* a soft shade behind the messages, so they read on the concrete */
 ${OE} .channelContent .chatWrapper { background: linear-gradient(90deg, rgba(8,9,8,.42), rgba(8,9,8,.18) 70%, transparent); }
 /* the title bar: the game's logo on the left, on a brushed band */
@@ -770,7 +776,7 @@ ${OE} .fclbPage .fclbTop { background: rgba(0,0,0,.3); box-shadow: 0 1px 0 rgba(
 ${OE} .fclbPage .fclbBox { background: var(--dc-oe-strip) 0 0 / 100% 100% no-repeat, rgba(0,0,0,.5); border-radius: 3px; }
 ${OE} .fclbPage .fcdmFind { background: rgba(0,0,0,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
 /* what's picked: the yellow bar; what's under the mouse: the olive bar */
-${OE} .fcdmNav.on, ${OE} .fcdmRow.on, ${OE} .fclbCh.on, ${OE} .ghTabBtn.on, ${OE} .fc-tab.on {
+${OE} .fcdmNav.on, ${OE} .fcdmRow.on, ${OE} .fclbCh.on, ${OE} .ghTabBtn.on, ${OE} .fc-tab.on, ${OE} .fcmmSeg.on, ${OE} .fcmmFt.on {
     background: ${OE_BAR}; color: #141400; border-radius: 3px; text-shadow: none; }
 ${OE} .fcdmNav.on *, ${OE} .fcdmRow.on .tx b, ${OE} .fcdmRow.on .tx small, ${OE} .fclbCh.on *, ${OE} .ghTabBtn.on *, ${OE} .fc-tab.on * { color: #141400; }
 ${OE} .fcdmNav:not(.on):hover, ${OE} .fcdmRow:not(.on):hover, ${OE} .fclbCh:not(.on):hover, ${OE} .fclbM:hover, ${OE} .ghTabBtn:not(.on):hover, ${OE} .fcdmF:hover {
@@ -781,7 +787,7 @@ ${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH { padding: 3px 10px 
 /* the lettering on the pages: titles, names, tabs and group names */
 ${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH, ${OE} .fcdmAct h3, ${OE} .fclbHd .nm, ${OE} .fclbTop .ti b, ${OE} .fclbHello h2,
 ${OE} .fclbG .hd b, ${OE} .fcdmRow .tx b, ${OE} .fcdmF .tx b, ${OE} .fclbM .tx b, ${OE} .fcdmNav > span, ${OE} .fclbCh > span, ${OE} .ghTabBtn, ${OE} .fc-tab,
-${OE} .fc-ph .tt > b, ${OE} .fc-ch-name, ${OE} .fcfmName, ${OE} .fcdmQuiet > b {
+${OE} .fc-ph .tt > b, ${OE} .fc-ch-name, ${OE} .fcfmName, ${OE} .fcdmQuiet > b, ${OE} .fcmmH b, ${OE} .fcmmOn b, ${OE} .fcmmVs b, ${OE} .fcmmSeg, ${OE} .fcmmFt {
     font-family: ${OE_DISPLAY}; font-weight: 400; font-synthesis: none; }
 ${OE} .fcdmCat, ${OE} .fclbCat, ${OE} .fclbMh, ${OE} .fcdmH { font-size: 15px; }
 ${OE} .fclbHd .nm, ${OE} .fclbTop .ti b, ${OE} .fcdmAct h3 { font-size: 19px; }
@@ -790,7 +796,7 @@ ${OE} .fclbG .hd b, ${OE} .fcdmRow .tx b, ${OE} .fcdmF .tx b, ${OE} .fclbM .tx b
 ${OE} .fc-ph .tt > b, ${OE} .fc-ch-name { font-size: 19px; }
 ${OE} .fclbDay > span, ${OE} .fclbG .hd time, ${OE} .ghCols { font-family: 'FC OE Numbers', ${OE_DISPLAY}; }
 /* text that sits on the concrete */
-${OE} .fclbPage .fclbLog, ${OE} .fclbPage .fclbSide, ${OE} .fclbPage .fclbMem, ${OE} .fc-page-h, ${OE} .ghPage { text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+${OE} .fclbPage .fclbSide, ${OE} .fclbPage .fclbMem, ${OE} .fc-page-h, ${OE} .ghPage { text-shadow: 0 1px 0 rgba(0,0,0,.75); }
 ${OE} .fclbPage .fclbG .ln { color: #eeede6; }
 /* everyone's status light: the game's own green / yellow / red lights inside the dark ring */
 ${OE} .fc-avatar > .st.on { background: var(--dc-oe-dotGreen) center / cover no-repeat, #3f8f2c; }
@@ -811,26 +817,30 @@ ${OE} .usersListWrapper .userItem { background: var(--dc-oe-bar) 0 0 / 0% 100% n
 ${OE} .usersListWrapper .userItem:hover { background: var(--dc-oe-bar) 0 0 / 100% 100% no-repeat; }
 ${OE} #fcordModal .fcordSide .item.on { background-color: transparent; animation: oeBarIn .24s cubic-bezier(.2,.8,.2,1) both; }
 /* the pointers nudge, the way the game's cursor does */
-${OE} .channelItemWrapper .channelItem.active::before, ${OE} .usersListWrapper .userItem:hover::before, ${OE} #fcordModal .fcordSide .item.on::before {
-    animation: oeNudge .9s ease-in-out infinite; }
+/* (3.12 speed: a few nudges when it lands, not forever: an endless animation redraws the whole window every frame) */
+${OE} .channelItemWrapper .channelItem.active::before, ${OE} #fcordModal .fcordSide .item.on::before { animation: oeNudge .9s ease-in-out 3; }
+${OE} .usersListWrapper .userItem:hover::before { animation: oeNudge .9s ease-in-out infinite; }
 /* a light glint runs over the logo now and then, and along the channel header's yellow edge */
 ${OE} #l3Title::after { content: ''; position: absolute; left: 10px; top: 3px; width: 54px; height: 26px; pointer-events: none;
     -webkit-mask: var(--dc-oe-logo) left center / auto 26px no-repeat;
     background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.75) 50%, transparent 65%) 0 0 / 300% 100% no-repeat;
-    animation: oeShine 7s ease-in-out 1.5s infinite; }
+    animation: oeShine 7s ease-in-out 1.5s 2; }
 ${OE} .channelToolbar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; pointer-events: none;
-    background: linear-gradient(90deg, transparent, #fffbd0, transparent) -200px 0 / 200px 2px no-repeat; animation: oeGlint 6s ease-in-out 2s infinite; }
+    background: linear-gradient(90deg, transparent, #fffbd0, transparent) -200px 0 / 200px 2px no-repeat; animation: oeGlint 6s ease-in-out 2s 2; }
 /* your main slides in, then breathes */
 ${OE}.dc-oe-hero body::before { will-change: transform; transform-origin: 80% 100%;
-    animation: oeHeroIn .7s cubic-bezier(.2,.8,.2,1) both, oeBreathe 16s ease-in-out .7s infinite alternate; }
+    animation: oeHeroIn .7s cubic-bezier(.2,.8,.2,1) both; }
 /* a settings page's title wipes in; the chosen Look's corners pulse */
 ${OE} #fcordModal .fcordHead h2 { animation: oeWipe .32s cubic-bezier(.2,.8,.2,1) both; }
-${OE} .dcLook.on::before { animation: oeCornerA 1.6s ease-in-out infinite; }
-${OE} .dcLook.on::after { animation: oeCornerB 1.6s ease-in-out infinite; }
+${OE} .dcLook.on::before { animation: oeCornerA 1.6s ease-in-out 3; }
+${OE} .dcLook.on::after { animation: oeCornerB 1.6s ease-in-out 3; }
 /* pop-ups land with a punch, toasts slide in, a challenge still waiting glows on Accept */
 ${OE} .fc-mask:not(.fc-out) > .fc-modal { animation: oeSlam .26s cubic-bezier(.2,.9,.3,1) both; }
 ${OE} .fc-toast:not(.out) { animation: oeToastIn .3s cubic-bezier(.2,.9,.3,1) both; }
-${OE} .chatContent .messageWrapper.dc-live .accept-challenge { animation: oeGlow 1.2s ease-in-out infinite alternate; }
+/* (the glow fades a ready-made shadow in and out: opacity runs on the graphics card, an animated box-shadow repaints every frame) */
+${OE} .chatContent .messageWrapper.dc-live .accept-challenge { position: relative; }
+${OE} .chatContent .messageWrapper.dc-live .accept-challenge::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 3px;
+    pointer-events: none; box-shadow: 0 0 14px rgba(120,220,60,.75); animation: oeGlow 1.2s ease-in-out infinite alternate; }
 /* Animations off: the rules above are more specific than the core's html.fc-still, so they get their own stop (two :not(#id) outrank any of them) */
 ${OE}.fc-still:not(#oe-a):not(#oe-b) *, ${OE}.fc-still:not(#oe-a):not(#oe-b) *::before, ${OE}.fc-still:not(#oe-a):not(#oe-b) *::after { animation: none; transition: none; }
 `;
@@ -841,13 +851,12 @@ const OE_KEYFRAMES = `
 @keyframes oeShine { 0% { background-position: 100% 0; } 22%, 100% { background-position: 0% 0; } }
 @keyframes oeGlint { 0% { background-position: -200px 0; } 40%, 100% { background-position: calc(100% + 200px) 0; } }
 @keyframes oeHeroIn { from { opacity: 0; transform: translateX(60px); } to { opacity: .2; transform: none; } }
-@keyframes oeBreathe { from { transform: scale(1); } to { transform: scale(1.035) translateX(-1%); } }
 @keyframes oeWipe { from { clip-path: inset(0 100% 0 0); transform: translateX(-14px); } to { clip-path: inset(0 0 0 0); transform: none; } }
 @keyframes oeCornerA { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(2px, -2px); } }
 @keyframes oeCornerB { 0%, 100% { transform: rotate(180deg) translate(0, 0); } 50% { transform: rotate(180deg) translate(2px, -2px); } }
 @keyframes oeSlam { from { opacity: 0; transform: scale(1.07); filter: brightness(1.8); } 60% { opacity: 1; filter: brightness(1.15); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes oeToastIn { from { opacity: 0; transform: translateX(40px); clip-path: inset(0 0 0 100%); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
-@keyframes oeGlow { from { box-shadow: 0 0 0 rgba(120,220,60,0); } to { box-shadow: 0 0 14px rgba(120,220,60,.75); } }
+@keyframes oeGlow { from { opacity: 0; } to { opacity: 1; } }
 `;
 
 // Every declaration gets !important (see the note above COLORS). Only touches "prop: value;"
@@ -1022,6 +1031,7 @@ function applyOwn(html, on) {
             return face;
         });
     }
+    oeWall(!!t);
     const hero = t ? ownHero() : '';
     html.classList.toggle('dc-oe-hero', !!hero);
     // every picture as --dc-oe-<key> (none when this copy doesn't have it)
@@ -1031,6 +1041,17 @@ function applyOwn(html, on) {
         const val = pics[k] ? 'url("' + pics[k] + '")' : 'none';
         if (html.style.getPropertyValue('--dc-oe-' + k) !== val) html.style.setProperty('--dc-oe-' + k, val);
     });
+}
+// the wall behind everything (3.12): one element, so it gets its own layer and is painted once
+function oeWall(on) {
+    let w = document.getElementById('dcOeWall');
+    if (!on) { if (w) w.remove(); return; }
+    if (w || !document.body) return;
+    w = document.createElement('div');
+    w.id = 'dcOeWall';
+    w.setAttribute('aria-hidden', 'true');
+    w.appendChild(document.createElement('i'));
+    document.body.insertBefore(w, document.body.firstChild);
 }
 // the pictures the CSS uses (so a missing one is 'none', never an unset var)
 const OE_PICS = ['concrete', 'hero', 'bar', 'row', 'frame', 'ring', 'logo', 'oe', 'strip', 'line', 'panel', 'card', 'cursor', 'corner', 'brush', 'green',
@@ -1370,6 +1391,7 @@ function start(f) {
         fc.ui.style('dcThemeStyle', null);
         const html = document.documentElement;
         ['dc-theme', 'dc-layout', 'dc-chat-art', 'dc-clean-names', 'dc-has-bg', 'dc-oe-own', 'dc-oe-hero'].concat(Object.keys(PRESETS).map(p => 'dc-preset-' + p)).forEach(c => html.classList.remove(c));
+        oeWall(false);
         OE_PICS.forEach(k => html.style.removeProperty('--dc-oe-' + k));
         dropOwnFonts();
         const gl = document.getElementById('dcThemeFontPick'); if (gl) gl.remove();

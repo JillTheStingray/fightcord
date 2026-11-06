@@ -177,13 +177,21 @@ public static class FcFightReader {
                 if ((DateTime.UtcNow - lost).TotalSeconds > 60) { Say("{\"e\":\"gone\"}"); return; }
                 Thread.Sleep(1000); continue;
             }
-            h = OpenProcess(VM_READ | QUERY_LIMITED | 0x0400, false, ps[0].Id);
-            if (h == IntPtr.Zero) { Say("{\"e\":\"err\",\"m\":\"open\"}"); return; }
-            long off; long ram = 0;
-            for (int i = 0; i < 20 && ram == 0; i++) { ram = FindRam(ps[0], hint, out off); if (ram != 0) { Say("{\"e\":\"ready\",\"off\":" + off + "}"); hint = off; } else Thread.Sleep(3000); }
-            if (ram == 0) { Say("{\"e\":\"err\",\"m\":\"ram\"}"); CloseHandle(h); return; }
-            Watch(ram);
-            CloseHandle(h); h = IntPtr.Zero;
+            // (3.11.1: the emulator closes at the end of every set, often while we look at it -- its
+            // module list or memory goes away mid-read. That's the normal end, not a failure: wait for it to go)
+            try {
+                h = OpenProcess(VM_READ | QUERY_LIMITED | 0x0400, false, ps[0].Id);
+                if (h == IntPtr.Zero) { Say("{\"e\":\"err\",\"m\":\"open\"}"); return; }
+                long off; long ram = 0;
+                for (int i = 0; i < 20 && ram == 0 && !ps[0].HasExited; i++) { ram = FindRam(ps[0], hint, out off); if (ram != 0) { Say("{\"e\":\"ready\",\"off\":" + off + "}"); hint = off; } else Thread.Sleep(3000); }
+                if (ram == 0 && !ps[0].HasExited) { Say("{\"e\":\"err\",\"m\":\"ram\"}"); return; }
+                if (ram != 0) Watch(ram);
+            } catch (Exception) {
+                Thread.Sleep(1000);
+            } finally {
+                if (h != IntPtr.Zero) CloseHandle(h);
+                h = IntPtr.Zero;
+            }
             lost = DateTime.UtcNow;
         }
     }
@@ -260,8 +268,10 @@ function csFile() {
     return f;
 }
 
-function setStatus(ok, msg) {
+function setStatus(ok, msg, detail) {
     cfg.status = { at: Date.now(), ok: !!ok, msg: msg || '' };
+    // what PowerShell said, for Settings (a line or two: enough to tell a blocked script from a missing .NET)
+    if (!ok && detail) cfg.status.detail = String(detail).replace(/\s+/g, ' ').trim().slice(0, 220);
     store.save();
     fc.settings.refresh('goals');
 }
@@ -303,13 +313,15 @@ function begin(ev) {
     c.stdout.on('data', (d) => {
         buf += d;
         let i;
-        while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); onLine(parseLine(line), key); }
+        while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); const o = parseLine(line); if (o && o.e === 'ready') c.__ready = true; onLine(o, key); }
     });
     c.stderr.on('data', (d) => { err = (err + d).slice(-400); });
     c.on('error', () => { if (child === c) { child = null; setStatus(false, 'start'); } });
     c.on('exit', (code) => {
         if (child === c) child = null;
-        if (code && err) { fc.log('reader exited', code, err.trim()); setStatus(false, 'compile'); }
+        // (3.11.1: only a reader that never found the game counts as a failure. One that counted and then
+        // stopped -- the set is over, Fightcord stopped it -- is fine, whatever its exit code)
+        if (code && !c.__ready) { fc.log('reader exited', code, err.trim()); setStatus(false, /Add-Type|error CS\d+/.test(err) ? 'compile' : 'start', err); }
     });
     fc.log('reader started for', ev.quark);
 }

@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.12.0
+
+- **Matchmaking, only in Fightcord** (Find a match → Matchmaking): pick Ranked and the FT (FT2, 3, 5 or 10)
+  or Casual and press Search. Fightcord looks for another Fightcord player queued in the same game who
+  fits you (Find a match's rank range and ping, your challenge filters). When it finds one, you both get
+  a Match found pop-up with 15 seconds to accept. Once you both accept, the match starts by itself.
+  Whoever doesn't accept leaves the queue, and the other goes back in. The header button shows how long
+  you've been searching, so you can keep chatting. Ranked needs Fightcade's ranked setting on for both of
+  you. Matchmaking needs your Fightcord ID (Friends & DMs) and "Show that I use Fightcord" on. Every
+  message is signed with it, so nobody can queue or accept as someone else.
+- **The Online Edition Look is much lighter:**
+  - the concrete wall is painted once, not on every scroll;
+  - the scanlines no longer sit in a blended layer over the whole window;
+  - nothing animates forever any more: pointers nudge a few times, the shine and glint play twice, and
+    your main's art slides in and then stays still;
+  - text shadows are cheaper.
+- **Fixed: parry goals said "Couldn't read 3rd Strike" after every set,** even when they had counted. The
+  counter tripped over the emulator closing at the end of the set. It now just waits for the next set. If
+  it really can't read the game, Settings → Goals shows why, so you can send a screenshot.
+
 ## 3.11.0
 
 More of your own 3rd Strike art (only if you have 3rd Strike Online Edition, and only on your screen).

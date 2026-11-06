@@ -96,6 +96,8 @@ function context() {
     const chRanked = ch.ranked != null ? !!ch.ranked : !!document.querySelector('.channelToolbar .channelInfo .rankedWrapper');
     return { ch, me: meName, myRank: (meInfo && meInfo.rank) || 0, rom: ch.gameid || fc.app.activeGameId(), chRanked, meRanked: !!(meUser.settings && meUser.settings.ranked) };
 }
+// what matchmaking needs to know about where you are
+const mmCtx = (ctx) => (ctx ? { ch: ctx.ch.id, chName: ctx.ch.name, myRank: ctx.myRank, chRanked: ctx.chRanked, meRanked: ctx.meRanked } : null);
 // ranked sets are on offer here at all (a ranked channel, your setting on)
 const rankedHere = (ctx) => !!(ctx && ctx.chRanked && ctx.meRanked);
 
@@ -159,8 +161,11 @@ function render(box) {
     const rk = rankedHere(ctx) ? `<div class="fcfmTop"><label class="fcfmSw" data-act="ranked-only"><input type="checkbox" class="fc-switch-in"${cfg.rankedOnly ? ' checked' : ''}><i class="fc-switch"></i>` +
         `<span>${E(T('Only players who take ranked sets'))}</span></label></div>`
         : ctx.chRanked && !ctx.meRanked ? `<div class="fcfmTop note">${fc.ui.ic('info')}<span>${E(T('Your ranked setting is off, so every set here is casual (Fightcade’s Settings → Ranked).'))}</span></div>` : '';
+    // 3.12: matchmaking (matchmaking.js) on top: queue up with other Fightcord players
+    const mmk = mod('matchmaking');
+    const mmStrip = mmk && mmk.stripHtml ? mmk.stripHtml(mmCtx(ctx)) : '';
     box.innerHTML = fc.ui.popHead({ icon: 'target', title: T('Find a match'), sub: E(sub) + ' · ' + E(shortName(ctx.ch.name)) }) +
-        `<div class="fc-pb">${rk}${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(c => rowHtml(c, ctx)).join('')}</div>`
+        `<div class="fc-pb">${mmStrip}${rk}${all.length ? `<div class="fcfmList">${all.slice(0, SHOW).map(c => rowHtml(c, ctx)).join('')}</div>`
             : `${fc.ui.empty({ title: T('Nobody fits right now.'), sub: T('Free players in this channel show up here.'), icon: 'target' })}${widened < 2 ? `<div class="fcfmWiden">${fc.ui.btn('Widen the search', { kind: 'sec', size: 'sm', icon: 'search', act: 'widen' })}</div>` : ''}`}</div>` +
         fc.ui.popFoot(all.length > SHOW ? E(T('{n} more', { n: all.length - SHOW })) : '',
             fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'refresh', title: 'Refresh' }) + fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'gear', act: 'settings', title: 'Settings' }));
@@ -214,6 +219,7 @@ function onClick(box, e) {
     const a = e.target.closest('[data-act]');
     const act = a && a.getAttribute('data-act');
     if (!act) return;
+    if (act.indexOf('mm-') === 0) { const mmk = mod('matchmaking'); if (mmk && mmk.click) mmk.click(act, a, mmCtx(context())); return; }
     if (act === 'ranked-only') { e.preventDefault(); cfg.rankedOnly = !cfg.rankedOnly; store.save(); render(box); return; }
     if (act === 'refresh') render(box);
     else if (act === 'widen') { widened++; render(box); }
@@ -316,8 +322,9 @@ const api = {
     open: (anchor) => open(anchor),
     candidates: (users, o) => candidates(users, o),
     _list: () => { const c = context(); return c ? list(c) : []; },
+    _context: () => mmCtx(context()),
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'find-match', name: 'Find a match', needs: ['match-screens'], start, candidates, score };
+module.exports = { id: 'find-match', name: 'Find a match', needs: ['match-screens'], start, candidates, score, rankedHere };
 Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });

@@ -305,7 +305,8 @@ function fightStatus() {
     const st = m && m.status ? m.status() : null;
     if (!st) return `<div class="fc-note">${E(T('Parries and the rest are counted from your next 3rd Strike match.'))}</div>`;
     if (st.ok) return `<div class="fc-note">${E(T('Counting works: last checked {when}.', { when: fc.fmt.ago(st.at) }))}</div>`;
-    return `<div class="fc-note fcglWarn">${E(T('Couldn’t read 3rd Strike during your last match, so nothing was counted. It tries again next match.'))}</div>`;
+    return `<div class="fc-note fcglWarn">${E(T('Couldn’t read 3rd Strike during your last match, so nothing was counted. It tries again next match.'))}` +
+        (st.detail ? `<small class="fcglWhy">${E(st.detail)}</small>` : '') + '</div>';
 }
 
 function wire(el) {
@@ -362,6 +363,7 @@ html.fc-still .fcglBars > i { animation: none !important; }
 .fcglAdd input[type="number"] { width: 70px; }
 .fcglAdd [hidden], .fcglFight[hidden] { display: none; }
 .fcglWarn { color: var(--fc-warning); }
+.fcglWhy { display: block; margin-top: 4px; color: var(--fc-muted); font: var(--fc-fs-xs)/1.35 var(--fc-mono, monospace); word-break: break-word; }
 .fcglSum { margin-top: 10px; }
 .fcglSum > span { font-size: var(--fc-fs-2xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
 .fcglSum .fcglRow { padding: 3px 0; }

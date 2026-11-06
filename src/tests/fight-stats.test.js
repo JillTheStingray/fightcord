@@ -106,3 +106,52 @@ test('the reader compiles (Windows PowerShell)', { skip: process.platform !== 'w
         assert.equal(out.trim(), 'FcFightReader');
     } finally { fs.unlinkSync(f); }
 });
+
+// 3.11.1: the emulator closes at the end of every set; a reader that counted and then exits isn't a failure
+test('a reader that worked and then exits is not reported as a failure', () => {
+    const EventEmitter = require('events');
+    const cpMod = require('child_process');
+    const realSpawn = cpMod.spawn;
+    const kids = [];
+    cpMod.spawn = () => {
+        const k = new EventEmitter();
+        k.stdout = new EventEmitter(); k.stderr = new EventEmitter();
+        k.stdin = { end() {} }; k.kill = () => {};
+        kids.push(k);
+        return k;
+    };
+    try {
+        const handlers = {};
+        const data = { enabled: true, events: [], base: null, status: null };
+        const fake = {
+            config: () => ({ data, save() {} }),
+            on: (n, fn) => { handlers[n] = fn; }, tick() {}, own() {}, log: Object.assign(() => {}, { warn() {} }),
+            emit() {}, settings: { refresh() {} },
+            modules: { get: (id) => (id === 'goals' ? { wantsFight: () => true } : null) },
+            emu: { match: () => ({ p1: { name: 'Me' }, p2: { name: 'Them' } }) },
+            app: { me: () => 'Me' }
+        };
+        const F2 = require('../fight-stats.js');
+        F2.start(fake);
+        // a set: the reader finds the game, counts a parry, then the emulator closes and it exits with 1
+        handlers['match:start']({ quark: 'q1', rom: 'sfiii3nr1' });
+        const k = kids[0];
+        k.stdout.emit('data', '{"e":"ready","off":112691444}\n{"e":"parry","p":1,"f":10}\n');
+        k.stderr.emit('data', 'Exception calling "Run": Only part of a ReadProcessMemory request was completed');
+        k.emit('exit', 1);
+        assert.equal(data.status.ok, true, 'still fine');
+        assert.equal(data.events.length, 1);
+        // a reader that dies before it finds the game: that is a failure, with what PowerShell said
+        handlers['match:start']({ quark: 'q2', rom: 'sfiii3nr1' });
+        const k2 = kids[1];
+        k2.stderr.emit('data', 'Add-Type : Cannot add type. Compilation errors occurred.');
+        k2.emit('exit', 1);
+        assert.equal(data.status.ok, false);
+        assert.equal(data.status.msg, 'compile');
+        assert.ok(/Compilation errors/.test(data.status.detail));
+    } finally {
+        cpMod.spawn = realSpawn;
+        // (starting a set writes fight-reader.cs next to the module: not in the project)
+        try { fs.unlinkSync(path.join(__dirname, '..', 'fight-reader.cs')); } catch (e) { /* not written */ }
+    }
+});
