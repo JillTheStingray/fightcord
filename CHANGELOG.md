@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.13.2
+
+- **Smaller chat text:** Settings → Appearance → Chat text size now goes down to 12 px (and 13 px).
+
 ## 3.13.1
 
 - **Matchmaking says why it isn't matching you.** It used to show "1 other in the queue" and then do

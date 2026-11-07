@@ -1241,7 +1241,7 @@ function blockHtml() {
         <div class="fc-field"><span class="fc-field-text"><b>${E(T('Accent colour'))}</b></span><span class="dcSwatches">
             ${Object.keys(SWATCHES).map(n => `<span class="dcSwatch${SWATCHES[n] === config.accent ? ' on' : ''}" data-hex="${SWATCHES[n]}" title="${E(T(n))}" style="background:${SWATCHES[n]}"></span>`).join('')}
             <input type="color" class="fc-input fc-color" data-opt="accent" value="${E(config.accent)}" title="${E(T('Pick any colour'))}"></span></div>
-        ${sel('chatSize', 'Chat text size', [14, 15, 16, 17, 18, 20, 22].map(n => [n, n + 'px']), N_('Discord’s default is 16'))}
+        ${sel('chatSize', 'Chat text size', [12, 13, 14, 15, 16, 17, 18, 20, 22].map(n => [n, n + 'px']), N_('Discord’s default is 16'))}
         ${sw('gameIcons', 'Game artwork icons', 'In the left rail')}
         ${sw('chatArt', 'Artwork behind chat', 'Fightcade’s game picture, faded')}
         ${sw('cleanNames', 'Cleaner name line', 'Hide the 🔍 scout badge next to names')}
