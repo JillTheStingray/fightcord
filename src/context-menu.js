@@ -102,7 +102,7 @@ function decorate() {
 const CSS = `
 .mask > .menu.fccm { padding: 6px 8px !important; border-radius: var(--fc-r2) !important; min-width: 200px !important;
     background: var(--fc-s0) !important; background-image: none !important; border: 0 !important;
-    box-shadow: 0 0 0 1px var(--fc-tint-2), 0 8px 24px var(--fc-scrim-3) !important;
+    box-shadow: var(--fc-elev-2) !important;
     font-family: var(--fc-font) !important; animation: fccmIn .12s ease-out both; }
 @keyframes fccmIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 .mask > .menu.fccm::before, .mask > .menu.fccm::after { display: none !important; }

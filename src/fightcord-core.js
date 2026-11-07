@@ -1788,7 +1788,15 @@ const STYLE = `
   --fc-btn: var(--dc-btn, #4e5058); --fc-btn-h: var(--dc-btn-h, #6d6f78);
   --fc-text: var(--dc-text, #dbdee1); --fc-head: var(--dc-head, #f2f3f5); --fc-muted: var(--dc-muted, #949ba4); --fc-faint: var(--dc-faint, #6d6f78);
   --fc-r1: 4px; --fc-r2: 8px; --fc-r3: 12px; --fc-r4: 16px; --fc-pill: 999px;
-  --fc-sh1: 0 1px 3px rgba(0,0,0,.3); --fc-sh2: 0 4px 14px rgba(0,0,0,.35); --fc-sh3: 0 12px 40px rgba(0,0,0,.5); --fc-glow: 0 0 24px rgba(79,99,240,.45);
+  --fc-sh1: 0 1px 3px rgba(0,0,0,.3); --fc-sh2: 0 2px 6px rgba(0,0,0,.22), 0 12px 32px -6px rgba(0,0,0,.5); --fc-sh3: 0 8px 24px rgba(0,0,0,.35), 0 32px 80px -12px rgba(0,0,0,.7);
+  --fc-glow: 0 0 24px rgba(79,99,240,.45);
+  /* 3.13 elevation: how high a surface sits. Lit from above: a faint highlight along the top edge, a hairline,
+     and a shadow that grows softer and longer the higher it floats.
+     0 = the line under a bar, 1 = cards and groups on a page, 2 = pop-overs, menus, toasts, 3 = modals and Settings */
+  --fc-elev-0: 0 1px 0 rgba(0,0,0,.16), 0 2px 6px -2px rgba(0,0,0,.28);
+  --fc-elev-1: inset 0 1px 0 var(--fc-tint-1), inset 0 0 0 1px var(--fc-divider), 0 1px 2px rgba(0,0,0,.18);
+  --fc-elev-2: inset 0 1px 0 var(--fc-tint-2), 0 0 0 1px var(--fc-divider), var(--fc-sh2);
+  --fc-elev-3: inset 0 1px 0 var(--fc-tint-3), 0 0 0 1px var(--fc-divider), var(--fc-sh3);
   /* 3.9: outlines and selection rings (box-shadows that draw a border) */
   --fc-edge: inset 0 0 0 1px var(--fc-divider); --fc-edge-out: 0 0 0 1px var(--fc-divider);
   --fc-ring: 0 0 0 2px var(--fc-accent); --fc-ring-in: inset 0 0 0 2px var(--fc-accent);
@@ -1919,8 +1927,8 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-badge { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--fc-pill); text-align: center;
   font: 700 var(--fc-fs-xs)/16px var(--fc-font); color: #fff; background: var(--fc-danger); }
 
-.fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: var(--fc-edge); }
-.fc-card.raised { box-shadow: inset 0 0 0 1px var(--fc-divider), var(--fc-sh2); }
+.fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: var(--fc-elev-1); }
+.fc-card.raised { box-shadow: var(--fc-elev-2); }
 .fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
 .fc-card-h > .fc-ic { width: 14px; height: 14px; margin-right: 6px; }
 .fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r3); background: var(--fc-s1); box-shadow: var(--fc-edge); }
@@ -2000,7 +2008,7 @@ label.fc-field { cursor: pointer; }
 .fc-empty .fc-btn { margin-top: 14px; }
 
 .fc-pop { position: fixed; z-index: var(--fc-z-pop); min-width: 180px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto;
-  padding: 8px; border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3);
+  padding: 8px; border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); box-shadow: var(--fc-elev-2);
   font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcPop var(--fc-fast) var(--fc-ease) both; box-sizing: border-box; }
 .fc-pop.fc-pop-card:not(.fc-out) { animation: fcCardIn var(--fc-slow) var(--fc-spring) both; }
 .fc-menu-item { display: flex; align-items: center; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--fc-text); }
@@ -2013,7 +2021,7 @@ label.fc-field { cursor: pointer; }
 .fc-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: var(--fc-z-modal); display: flex; align-items: center; justify-content: center;
   background: rgba(0,0,0,.72); animation: fcIn var(--fc-med) ease both; }
 .fc-modal { width: var(--w, 440px); max-width: calc(100vw - 32px); max-height: calc(100vh - 48px); display: flex; flex-direction: column;
-  border-radius: var(--fc-r2); background: var(--fc-s3); color: var(--fc-text); box-shadow: var(--fc-sh3); overflow: hidden;
+  border-radius: var(--fc-r2); background: var(--fc-s3); color: var(--fc-text); box-shadow: var(--fc-elev-3); overflow: hidden;
   font: var(--fc-fs-md)/1.45 var(--fc-font); animation: fcPop var(--fc-med) var(--fc-ease) both; }
 .fc-modal-h { display: flex; align-items: center; padding: 16px 16px 8px; font: 700 var(--fc-fs-xl)/1.25 var(--fc-font); color: var(--fc-head); }
 .fc-modal-h .fc-btn.icon { margin-left: auto; }
@@ -2031,7 +2039,7 @@ label.fc-field { cursor: pointer; }
 html.fc-still .fc-skel i { animation: none !important; }
 /* the Discover browse sidebar takes another 232px */
 html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
-.fc-page-h { flex: none; display: flex; align-items: center; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--fc-divider); box-shadow: var(--fc-sh1); }
+.fc-page-h { flex: none; display: flex; align-items: center; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--fc-divider); box-shadow: var(--fc-elev-0); }
 .fc-page-h .t { display: flex; align-items: center; font: 600 var(--fc-fs-lg)/1 var(--fc-font); color: var(--fc-head); }
 .fc-page-h .t > .fc-ic { margin-right: 8px; color: var(--fc-muted); }
 .fc-page-h .tools { display: flex; align-items: center; margin-left: auto; }
@@ -2041,7 +2049,7 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-toasts { position: fixed; right: 24px; bottom: 24px; z-index: var(--fc-z-toast); display: flex; flex-direction: column-reverse; align-items: flex-end; pointer-events: none; }
 .fc-toast { pointer-events: auto; width: 340px; max-width: calc(100vw - 48px); margin-top: 8px; padding: 12px 14px; box-sizing: border-box;
   border-radius: var(--fc-r2); border-left: 3px solid var(--c, var(--fc-accent)); background: var(--fc-s0); color: var(--fc-text);
-  box-shadow: var(--fc-sh3); font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; cursor: pointer; }
+  box-shadow: var(--fc-elev-2); font: var(--fc-fs-md)/1.4 var(--fc-font); animation: fcSlide var(--fc-med) var(--fc-ease) both; cursor: pointer; }
 .fc-toast.out { opacity: 0; transform: translateX(24px); transition: opacity var(--fc-med), transform var(--fc-med); }
 .fc-toast.success { --c: var(--fc-success); }
 .fc-toast.danger { --c: var(--fc-danger); }

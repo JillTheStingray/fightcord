@@ -1028,7 +1028,7 @@ html body .chatContent .messageWrapper.fcx-new-first::after {
 
 #fcxBar { position: fixed; z-index: var(--fc-z-float); display: none; padding: 0; height: 32px; border-radius: var(--fc-r2);
     background: var(--fc-s0); border: 1px solid var(--fc-divider);
-    box-shadow: 0 4px 12px var(--fc-scrim-2); overflow: hidden; }
+    box-shadow: inset 0 1px 0 var(--fc-tint-2), var(--fc-sh2); overflow: hidden; }
 #fcxBar .fcxBtn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;
     color: var(--dc-icon, #b5bac1); }
 #fcxBar .fcxBtn:hover { background: var(--fc-s4); color: var(--fc-head); }

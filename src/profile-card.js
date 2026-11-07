@@ -658,7 +658,7 @@ const CSS = `
 html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; pointer-events: none !important; }
 #pcCard { position: fixed; bottom: 12px; z-index: calc(var(--fc-z-pop) + 4); width: 320px; max-height: calc(100vh - 24px); overflow-x: hidden; overflow-y: auto;
     border-radius: var(--fc-r3); background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px var(--fc-divider), var(--fc-sh3); transform-origin: left bottom; }
+    box-shadow: var(--fc-elev-3); transform-origin: left bottom; }
 #pcCard .fc-ch-banner { image-rendering: pixelated; }
 #pcCard .fc-ch-sec > :first-child { margin-top: 0; }
 .fc-avatar > .st.dnd { background: var(--fc-danger); }

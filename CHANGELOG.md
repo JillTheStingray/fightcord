@@ -1,5 +1,42 @@
 # Changelog
 
+## 3.13.0
+
+- **How many people have Fightcord:** My Fightcord now shows how many people have Fightcord in total,
+  how many used it this month and how many are online right now (also `/players` in the chat). Every few
+  days each Fightcord leaves an anonymous mark on public relays (a random key and the time, no name), and
+  Fightcord counts the different marks; linked PCs count once. Settings → Voice chat → Fightcord player
+  count → Count me turns it off.
+- **New VS and result screens**, styled like a tournament broadcast:
+  - **VS:** the two players' colours meet at a lit seam. Each character's name stands huge behind its
+    side. VS slams in, in chrome, and the tale of the tape sits in a lower third.
+  - **A banner on top:** RANKED · FT3 or CASUAL, with MATCHMAKING in front when the queue found them.
+  - **READY... FIGHT!** as the VS screen closes.
+  - **After the set:** the games flip in one by one while the score counts up (1–0, 1–1, 2–1...), then
+    the final score lands with a hit.
+- **Stamps on the result screen** when they apply: PERFECT SET (you didn't drop a game), COMEBACK (you
+  were behind), CLUTCH (you won the deciding game), UPSET (you beat a higher rank), RANK UP! and SO
+  CLOSE (you lost in the deciding game).
+- **A fighting-game font:** names, VS and WIN / LOSE use Anton, a free font that's now part of Fightcord
+  (SIL Open Font License, see licenses/OFL-Anton.txt). The Online Edition Look keeps the game's own
+  lettering.
+- **The bar in the emulator matches** (Settings → Appearance → Emulator overlay, new Broadcast style): your
+  colour on the left, a second colour on the right, and a dark plate in the middle for the score with
+  lit slanted edges, like the VS screen. The names and score are in Anton, unless you picked another
+  font there. The neon bar from 2.7 is still one click away.
+- **More depth everywhere:**
+  - pop-ups, menus, toasts, the profile card and the Settings window now float on one consistent scale of
+    shadows, with a faint light along their top edge, so they lift off the page instead of blending into it;
+  - the channel header casts a soft line onto the chat.
+  - the right-click menu, hover cards, the challenge card, the :emoji: and font pickers, the message
+    toolbar and Discover's menus use the same scale.
+- **Fixed:** in lobbies and DMs, the message toolbar covered the red NEW tag on the first new message. It
+  now sits just below it.
+- **Rankings podium:** the top three sit in taller rows tinted gold, silver and bronze, and the rank badges
+  are bigger.
+- **Lighter:** the rays behind the result no longer spin forever, and nothing on these screens keeps
+  moving once they've settled. Reduce motion shows them without the movement.
+
 ## 3.12.1
 
 - **Fixed: Find a match rows ran into each other** when a player had the CASUAL ONLY tag: the tag

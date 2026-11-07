@@ -134,6 +134,7 @@ test('emu skin: the font list, and the old font switch carried over', () => {
     assert.equal(new Set(ids).size, ids.length);
     assert.deepEqual(ids.slice(0, 2), ['theme', 'fightcade']);
     es.FONTS.slice(2).forEach(f => {
+        if (f.embedded) { assert.ok(f.family && f.weight && !f.gf, f.id + ': built in (display-font.js), nothing to download'); return; }
         assert.ok(f.gf && f.family && f.weight, f.id + ' needs a Google Fonts family and a weight');
         assert.ok(f.gf.replace(/\+/g, ' ').startsWith(f.family), f.id + ': family and Google Fonts name agree');
     });
@@ -143,4 +144,26 @@ test('emu skin: the font list, and the old font switch carried over', () => {
     es.start(fake);
     assert.equal(data.fontChoice, 'fightcade');
     assert.equal('font' in data, false);
+});
+
+// 3.13: the broadcast bar is the default, Anton comes built in, and a font still on its default moves to Anton once
+test('emu skin: broadcast style and Anton by default', () => {
+    assert.deepEqual(es.STYLES.map(x => x.id), ['broadcast', 'neon']);
+    assert.ok(es.FONTS.some(f => f.id === 'anton' && f.embedded && f.family === 'FC Display'));
+    assert.deepEqual(es.secondOf([88, 101, 242]), [34, 227, 242], 'blurple accent: cyan on the right');
+    assert.deepEqual(es.secondOf([30, 220, 240]), [255, 79, 163], 'a cyan accent: pink instead');
+    const run = (data) => {
+        const fake = { t: (s) => s, log() {}, own() {}, on() {}, tick() {}, settings: { block() {}, refresh() {} }, ui: { style() {} },
+            config: () => ({ data, save() {} }), modules: { get: () => null }, files: { path: (n) => n }, emu: { uiDir: () => 'x', running: () => Promise.resolve(true) } };
+        es.start(fake);
+        return data;
+    };
+    const old = run({ enabled: true, fontChoice: 'theme', written: {}, originals: {} });
+    assert.equal(old.fontChoice, 'anton');
+    assert.equal(old.style, 'broadcast');
+    const picked = run({ enabled: true, fontChoice: 'silkscreen', written: {}, originals: {} });
+    assert.equal(picked.fontChoice, 'silkscreen', 'a font you picked stays');
+    const again = run({ enabled: true, fontChoice: 'theme', style: 'neon', v313: true, written: {}, originals: {} });
+    assert.equal(again.fontChoice, 'theme', 'only once: choosing your theme font afterwards sticks');
+    assert.equal(again.style, 'neon');
 });

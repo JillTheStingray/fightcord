@@ -145,14 +145,14 @@ function play(kind) {
 
 /* ------------------------------------------------------------------ overlay */
 
-let overlayTimer = null;
+let overlayTimer = null, fightTimer = null;
 let unlayer = null;
 
 function closeOverlay() {
     const o = document.getElementById('fcmsOverlay');
     if (!o || o.classList.contains('out')) return;
     o.classList.add('out');
-    clearTimeout(overlayTimer);
+    clearTimeout(overlayTimer); clearTimeout(fightTimer);
     if (unlayer) { unlayer(); unlayer = null; }
     setTimeout(() => { o.remove(); fc.sound.duck(false); }, 450);
 }
@@ -160,7 +160,7 @@ function closeOverlay() {
 function openOverlay(cls, html, ms) {
     const old = document.getElementById('fcmsOverlay');
     if (old) old.remove();
-    clearTimeout(overlayTimer);
+    clearTimeout(overlayTimer); clearTimeout(fightTimer);
     const o = document.createElement('div');
     o.id = 'fcmsOverlay';
     o.className = cls;
@@ -240,13 +240,13 @@ function tapeHtml(t, me, opp) {
 /* ---------------------------------------------------------------- screens */
 
 function playerHtml(p, side, o) {
-    const picks = (o.picks || []).length ? `<div class="picks"><small>${E(o.picksLabel)}</small>${o.picks.map(([c, n]) => `<span>${E(c)}<i>${n}</i></span>`).join('')}</div>` : '';
-    return `<div class="player ${side}">
+    const picks = (o.picks || []).length ? `<div class="picks"><small><b>${E(o.picksLabel)}</b></small>${o.picks.map(([c, n]) => `<span>${E(c)}<i>${n}</i></span>`).join('')}</div>` : '';
+    return `<div class="player ${side}" style="--c:${p.color}">
         <div class="av"><img class="avatar" src="${E(p.avatar)}"></div>
         <div class="plate"><span class="pname">${E(p.name)}</span></div>
-        ${o.rq ? rqBadge(o.rq) : ''}
-        <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${E(p.country)}` +
+        <div class="pmeta">${p.cc ? `<img src="static/flags/${E(p.cc)}.png">` : ''}${p.country ? `<span class="cty">${E(p.country)}</span>` : ''}` +
             `${o.ping ? `<span class="ping">${E(o.ping + ' ms')}</span>` : ''}${p.rank ? `<span class="rank">${fc.ui.tag(p.rank)}</span>` : ''}</div>
+        ${o.rq ? rqBadge(o.rq) : ''}
         ${o.char ? `<div class="cplate">${o.charNote ? `<small>${E(o.charNote)}</small>` : ''}${o.face || ''}<b>${E(o.char)}</b></div>` : ''}
         ${picks}
     </div>`;
@@ -288,6 +288,17 @@ function bigArt(rom, ch, side) {
 const faceOf = (rom, ch) => { const mg = fc.modules.get('matchup-guide'); return mg && ch ? mg.faceHtml(rom, ch, 40) : ''; };
 
 let vsShown = 0;                          // for tests: how many VS screens were opened
+// 3.13: the banner at the top: RANKED · FT3 / CASUAL, with MATCHMAKING in front ('' when unknown)
+function bannerHtml(m) {
+    const parts = [];
+    if (m.mm) parts.push(['mm', T('MATCHMAKING')]);
+    if (m.mode === 'ranked') parts.push(['ranked', T('RANKED · FT{n}', { n: m.ft })]);
+    else if (m.mode === 'casual') parts.push(['casual', T('CASUAL')]);
+    return parts.length ? `<div class="banner">${parts.map(([k, s]) => `<span class="bn ${k}"><i>${E(s)}</i></span>`).join('')}</div>` : '';
+}
+// their character's name, huge and faint behind each side (not when your own art stands there)
+const ghostHtml = (ch, side, art) => (ch && !art ? `<div class="ghost ${side}"><span>${E(ch)}</span></div>` : '');
+
 function showVs(meName, oppName) {
     if (!cfg.enabled || !cfg.vs) return;
     vsShown++;
@@ -305,21 +316,32 @@ function showVs(meName, oppName) {
     const face = faceoff(meName, oppName, rom);
     const tips = tipsHtml(rom, myChar, oppChar, 3);
     const oaMod = fc.modules.get('own-art'), vsBg = oaMod && oaMod.vsBackground ? oaMod.vsBackground(rom) : '';
+    const h = hintFor(oppName);
+    const mode = modeOf(h && h.ft != null ? h.ft : knownFt(oppName), h && h.via);
+    const artL = vsArt(rom, myChar, 'l'), artR = vsArt(rom, oppChar, 'r');
+    const cc = `--ca:${me.color};--cb:${opp.color}`;
     const sparks = Array.from({ length: 12 }, (x, i) => `<span class="spark" style="--a:${i * 30 + 8}deg;--d:${(26 + (i % 3) * 9)}vmin"></span>`).join('');
-    openOverlay('vs', `
+    const ms = (tips ? 6600 : 4600) + 900;
+    openOverlay('vs' + (tips ? ' tips' : ''), `
         ${rom ? `<div class="art${vsBg ? ' own' : ''}" style="background-image:url('${E(vsBg || fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
         <div class="half l" style="--c:${me.color}"></div>
         <div class="half r" style="--c:${opp.color}"></div>
-        ${vsArt(rom, myChar, 'l')}${vsArt(rom, oppChar, 'r')}
+        <div class="seam" style="${cc}"></div><div class="sweep"></div>
+        ${ghostHtml(myChar, 'l', artL)}${ghostHtml(oppChar, 'r', artR)}
+        ${artL}${artR}
         ${playerHtml(me, 'l', { char: myChar, face: faceOf(rom, myChar), charNote: ch.me ? '' : myChar ? T('usually') : '', picks: myPicks, picksLabel: T('Your picks') })}
         ${playerHtml(opp, 'r', { char: oppChar, face: faceOf(rom, oppChar), charNote: ch.opp && ch.live ? '' : oppChar ? (ch.opp ? T('last time') : T('usually')) : '', picks: oppPicks,
             picksLabel: T('Their picks vs you'), ping: typeof u.ping === 'number' && u.ping > 0 ? Math.round(u.ping) : 0, rq: rqFor(oppName) })}
+        ${bannerHtml(mode)}
         <div class="sparks">${sparks}</div><div class="vsword">VS</div><div class="ring"></div>
-        <div class="tape">${tapeHtml(tapeOf(face), me, opp)}</div>
+        <div class="tape" style="${cc}">${tapeHtml(tapeOf(Object.assign({}, face, mode.mode ? { ft: mode.ft || face.ft } : {})), me, opp)}</div>
         ${tips}
-        <div class="game">${E(gameName())}${t.w || t.l || t.d ? `<small>${E(T('Tonight {record}', { record: fc.fmt.wl(t) }))}</small>` : ''}</div>`, tips ? 6600 : 4600);
+        <div class="game"><div class="gw">${E(gameName())}${t.w || t.l || t.d ? `<small>${E(T('Tonight {record}', { record: fc.fmt.wl(t) }))}</small>` : ''}</div></div>
+        <div class="fightw"><span class="rdy">${E(T('READY'))}</span><span class="fgt">${E(T('FIGHT!'))}</span><i class="fflash"></i></div>`, ms);
     const o = document.getElementById('fcmsOverlay');
     if (o) o.dataset.opp = oppName;
+    // READY... FIGHT! as it closes (a click or Esc skips it with the rest)
+    fightTimer = setTimeout(() => { const ov = document.getElementById('fcmsOverlay'); if (ov === o && !ov.classList.contains('out')) ov.classList.add('fight'); }, ms - 1250);
     play('vs');
     // the scout can come back with exact ELO (Fightcade sends it for its supporters) while it's up:
     // those replace the estimates (an estimate of its own could disagree with the badges shown)
@@ -329,11 +351,11 @@ function showVs(meName, oppName) {
             const ov = document.getElementById('fcmsOverlay');
             if (!d || d.error || !ov || ov.dataset.opp !== oppName || ov.classList.contains('out')) return;
             // the scout just tagged them (their recent sets): the badge, late
-            const rq = rqFor(oppName), plate = ov.querySelector('.player.r .plate');
+            const rq = rqFor(oppName), plate = ov.querySelector('.player.r .pmeta');
             if (rq && plate && !ov.querySelector('.player.r .rqb')) plate.insertAdjacentHTML('afterend', rqBadge(rq));
             const exact = (e) => (e && !e.est ? e : null);
             if (!exact(d.elo) && !exact(d.myElo)) return;
-            const fresh = Object.assign({}, face, { myElo: exact(d.myElo) || face.myElo, oppElo: exact(d.elo) || face.oppElo });
+            const fresh = Object.assign({}, face, { myElo: exact(d.myElo) || face.myElo, oppElo: exact(d.elo) || face.oppElo }, mode.mode ? { ft: mode.ft || face.ft } : {});
             fc.ui.setHtml(ov.querySelector('.tape'), tapeHtml(tapeOf(fresh), me, opp));
         }).catch(() => {});
     }
@@ -346,7 +368,7 @@ function noteChatOff(oppName) {
     pr.check(oppName, 3000).then(i => {
         if (!i || !i.chatOff) return;
         const ov = document.getElementById('fcmsOverlay');
-        const plate = ov && ov.dataset.opp === oppName && !ov.classList.contains('out') ? ov.querySelector('.player.r .plate') : null;
+        const plate = ov && ov.dataset.opp === oppName && !ov.classList.contains('out') ? ov.querySelector('.player.r .pmeta') : null;
         if (plate) { if (!ov.querySelector('.mcb')) plate.insertAdjacentHTML('afterend', chatOffBadge()); }
         else fc.ui.toast(T('{name} has in-game chat off: GGs in the lobby after', { name: oppName }), { icon: 'chatoff' });
     }).catch(() => {});
@@ -396,9 +418,9 @@ function eloPanel(ex) {
         const d = e.end - e.start, up = r1 > r0, down = r1 < r0;
         const a = up ? 0 : p0 ? p0.frac : 0, b = p1 ? p1.frac : 0;
         const next = p1 && p1.next ? T('{pct}% to {rank}', { pct: Math.round(b * 100), rank: fc.data.rankLetter(p1.next) }) : T('Top rank');
-        return { from: e.start, to: e.end, html: `<div class="elo${up ? ' rankup' : ''}${down ? ' rankdown' : ''}" style="--a:${a.toFixed(3)};--b:${b.toFixed(3)};--c:${fc.data.rankColor(r1)}">` +
+        return { up, from: e.start, to: e.end, html: `<div class="elo${up ? ' rankup' : ''}${down ? ' rankdown' : ''}" style="--a:${a.toFixed(3)};--b:${b.toFixed(3)};--c:${fc.data.rankColor(r1)}">` +
             `${fc.ui.tag(r1)}<div class="nums"><b class="n">${e.start.toLocaleString('en-US')}</b>` +
-            `${d ? `<span class="d ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</span>` : ''}<small>ELO</small>${up ? `<span class="burst">${E(T('RANK UP!'))}</span>` : ''}</div>` +
+            `${d ? `<span class="d ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</span>` : ''}<small>ELO</small></div>` +
             `<div class="bar"><i></i></div><span class="nx">${E(next)}</span></div>` };
     }
     // no exact ELO (most players): your rank, and where you sit in it from the leaderboard
@@ -429,7 +451,31 @@ function countUp(el, from, to, ms) {
     requestAnimationFrame(step);
 }
 
-// extras: { streak, hot, lines: ["You're 4–2 vs X", "Tonight 7–3"], rematch, myChar, oppChar, games, elo: { start, end }, rank, rom }
+// 3.13: the score counts up game by game with the plates (1–0, 1–1, 2–1...), then the final lands
+// with a hit. Only the numbers' text nodes change, so nothing else in Fightcord wakes up for it.
+const GAME_STEP = 280, GAMES_AT = 900;
+function revealScore(o, games, mine, theirs) {
+    const ns = o ? o.querySelectorAll('.score .n') : [];
+    if (ns.length !== 2) return;
+    const land = () => {
+        if (!ns[0].isConnected) return;
+        ns[0].firstChild.nodeValue = mine; ns[1].firstChild.nodeValue = theirs;
+        ns[0].classList.toggle('w', mine > theirs); ns[1].classList.toggle('w', theirs > mine);
+        ns[0].classList.add('land'); ns[1].classList.add('land');
+        const sh = o.querySelector('.shake');
+        if (sh) sh.classList.add('hit');
+    };
+    if (document.documentElement.classList.contains('fc-still')) return land();
+    let a = 0, b = 0;
+    games.forEach((g, i) => setTimeout(() => {
+        if (!ns[0].isConnected) return;
+        if (g.w) a++; else b++;
+        ns[0].firstChild.nodeValue = a; ns[1].firstChild.nodeValue = b;
+    }, GAMES_AT + i * GAME_STEP + 140));
+    setTimeout(land, GAMES_AT + games.length * GAME_STEP + 160);
+}
+
+// extras: { streak, hot, lines: ["You're 4–2 vs X", "Tonight 7–3"], rematch, myChar, oppChar, games, elo: { start, end }, rank, oppRank, ft, rom }
 function showResult(kind, mine, theirs, oppName, game, extras) {
     if (!cfg.enabled || !cfg.result) return;
     const title = E(T({ won: 'YOU WON!', lost: 'YOU LOST!', draw: 'DRAW' }[kind]));
@@ -446,22 +492,34 @@ function showResult(kind, mine, theirs, oppName, game, extras) {
     const rom = gameRom();
     const me = card(fc.app.me() || T('You')), opp = oppName ? card(oppName) : null;
     const known = mine != null && theirs != null;
-    const side = (p, ch, cls) => p ? `<div class="side ${cls}"><img class="avatar" src="${E(p.avatar)}"><b>${E(p.name)}</b>${ch ? `<small>${E(ch)}</small>` : ''}</div>` : '';
+    // the games one by one only when there's one for every point of the score
+    const games = known && Array.isArray(ex.games) && ex.games.length && ex.games.length === mine + theirs ? ex.games : [];
+    const side = (p, ch, cls) => p ? `<div class="side ${cls}" style="--c:${p.color}"><img class="avatar" src="${E(p.avatar)}"><b>${E(p.name)}</b>${ch ? `<small>${E(ch)}</small>` : ''}</div>` : '';
     const ep = eloPanel(Object.assign({ rom }, ex, { rank: ex.rank || fc.data.rankNum(me.rank) }));
+    const ft = typeof ex.ft === 'number' ? ex.ft : ex.rematch && typeof ex.rematch.ft === 'number' ? ex.rematch.ft : null;
+    const calls = calloutsOf({ kind, mine, theirs, games, ft, myRank: ex.rank || fc.data.rankNum(me.rank), oppRank: ex.oppRank, rankUp: ep.up });
+    // when the score lands (seconds), so the stamps come after it
+    const landAt = games.length ? (GAMES_AT + games.length * GAME_STEP + 160) / 1000 : 0.75;
+    const callsHtml = calls.length ? `<div class="calls">${calls.map((k, i) => `<span class="call ${k}" style="animation-delay:${(landAt + 0.25 + i * 0.3).toFixed(2)}s">${E(T(CALLOUT[k]))}</span>`).join('')}</div>` : '';
+    const num = (n, w) => `<span class="n${!games.length && w ? ' w land0' : ''}">${games.length ? 0 : n}</span>`;
+    const score = known ? `${num(mine, mine > theirs)}<i>–</i>${num(theirs, theirs > mine)}` : '<i>vs</i>';
+    const ms = (ex.rematch && ex.rematch.opp ? 8500 : 5600) + Math.max(0, games.length - 3) * GAME_STEP + (calls.length ? 600 : 0);
     openOverlay('res ' + kind, `
         ${rom ? `<div class="art" style="background-image:url('${E(fc.data.artUrl(rom, 'https://web.fightcade.com/'))}')"></div>` : ''}
+        ${kind === 'draw' ? `<div class="dsplit l" style="--c:${me.color}"></div><div class="dsplit r" style="--c:${opp ? opp.color : me.color}"></div>` : ''}
         ${bigArt(rom, ex.myChar, 'l')}${bigArt(rom, ex.oppChar, 'r')}
         <div class="rays"></div>${bits}
-        <div class="big"><span data-t="${title}">${title}</span>${kind === 'lost' ? '<svg class="crack" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 11 L14 9 L22 13 L31 7 L43 12 L52 8 L61 13 L70 9 L82 12 L90 8 L100 10"/></svg>' : ''}</div>
-        <div class="stack"><div class="board">${side(me, ex.myChar, 'l')}<div class="score">${known ? `<span class="n${mine > theirs ? ' w' : ''}">${mine}</span><i>–</i><span class="n${theirs > mine ? ' w' : ''}">${theirs}</span>` : '<i>vs</i>'}</div>${side(opp, ex.oppChar, 'r')}</div>
-        ${gamesHtml(ex.games)}
+        <div class="big"><span data-t="${title}">${title}</span>${kind === 'lost' ? '<svg class="crack" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M0 11 L14 9 L22 13 L31 7 L43 12 L52 8 L61 13 L70 9 L82 12 L90 8 L100 10"/></svg>' : ''}${callsHtml}</div>
+        <div class="stack"><div class="board">${side(me, ex.myChar, 'l')}<div class="score">${score}</div>${side(opp, ex.oppChar, 'r')}</div>
+        ${gamesHtml(games)}
         ${ep.html}
-        <div class="sub"><small>${E(game || '')}</small>
+        <div class="sub"><div class="row">
             ${ex.streak ? `<span class="streak ${kind === 'won' ? 'hot' : 'cold'}">${ex.hot ? fc.ui.ic('flame', 'fill') : ''}${E(ex.streak)}</span>` : ''}
-            ${(ex.lines || []).length ? `<span class="extra">${ex.lines.map(E).join('  ·  ')}</span>` : ''}
+            ${(ex.lines || []).length ? `<span class="extra">${ex.lines.map(E).join('  ·  ')}</span>` : ''}</div>
             ${rematchHtml(ex.rematch)}
-        </div></div>`, ex.rematch && ex.rematch.opp ? 8500 : 5600);
+        </div></div>`, ms);
     wireRematch(ex.rematch);
+    if (games.length) revealScore(document.getElementById('fcmsOverlay'), games, mine, theirs);
     countUp(document.querySelector('#fcmsOverlay .elo .n'), ep.from, ep.to, 1100);
     play(kind === 'won' ? 'win' : kind === 'lost' ? 'lose' : 'draw');
 }
@@ -576,6 +634,46 @@ function knownFt(opp) {
     const f = scout && scout.knownFt ? scout.knownFt(k) : null;
     return typeof f === 'number' ? f : null;
 }
+
+// 3.13: how a set was set up, for the VS banner. Matchmaking tells us (hint) before it challenges or
+// accepts; otherwise the FT we know from the challenge. -> { mm, mode: 'ranked' | 'casual' | '', ft }
+const hints = new Map();         // lowercased name -> { via, ft, at }
+function hint(opp, o) {
+    if (!opp || !o) return;
+    hints.set(String(opp).toLowerCase(), { via: o.via || '', ft: typeof o.ft === 'number' ? o.ft : null, at: Date.now() });
+}
+function hintFor(opp) {
+    const h = hints.get(String(opp || '').toLowerCase());
+    return h && Date.now() - h.at < 3 * 60000 ? h : null;
+}
+function modeOf(ft, via) {
+    const n = typeof ft === 'number' && ft >= 0 ? ft : null;
+    return { mm: via === 'matchmaking', mode: n === null ? '' : n ? 'ranked' : 'casual', ft: n || 0 };
+}
+
+// 3.13: the stamps on the result screen, most telling first, at most two (pure).
+//   o: { kind, mine, theirs, games: [{ w }], ft, myRank, oppRank, rankUp }
+// -> ['rankup' | 'perfect' | 'comeback' | 'clutch' | 'upset' | 'close', ...]
+function calloutsOf(o) {
+    const x = o || {}, out = [];
+    const won = x.kind === 'won', lost = x.kind === 'lost';
+    const known = typeof x.mine === 'number' && typeof x.theirs === 'number';
+    const ft = typeof x.ft === 'number' ? x.ft : null;
+    // the last game decided it: both were one game away (a casual set has no last game)
+    const decider = (w, l) => known && ft !== 0 && w >= 2 && l === w - 1 && (ft === null || w === ft);
+    if (x.rankUp) out.push('rankup');
+    if (won && known && x.mine > 0 && x.theirs === 0) out.push('perfect');
+    if (won && Array.isArray(x.games) && x.games.length) {
+        let a = 0, b = 0, behind = false;
+        x.games.forEach(g => { if (g && g.w) a++; else b++; if (b > a) behind = true; });
+        if (behind) out.push('comeback');
+    }
+    if (won && decider(x.mine, x.theirs)) out.push('clutch');
+    if (won && x.myRank > 0 && x.oppRank > x.myRank) out.push('upset');
+    if (lost && decider(x.theirs, x.mine)) out.push('close');
+    return out.slice(0, 2);
+}
+const CALLOUT = { rankup: N_('RANK UP!'), perfect: N_('PERFECT SET'), comeback: N_('COMEBACK'), clutch: N_('CLUTCH'), upset: N_('UPSET'), close: N_('SO CLOSE') };
 
 /* ------------------------------------------------------- session tracker */
 
@@ -806,7 +904,7 @@ async function resolveResult(m) {
             games: games.length ? games : undefined });
         fc.emit('match:end', { quark: m.quark, opp: m.opp, result: v || null, mine, theirs });
         if (v) whenFocused(() => showResult(v, mine, theirs, m.opp, m.game,
-            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar, games, rank: m.myRank, rom: m.rom })), 60000);
+            Object.assign(extrasFor(v, m.opp, before, elo) || {}, { rematch: { opp: m.opp, channel: m.channel, ft }, myChar, oppChar, games, rank: m.myRank, oppRank: m.oppRank, ft, rom: m.rom })), 60000);
     };
     // 1. Fightcade's own end-of-match message (up to ~8 s): its score, else its won/lost line
     for (let i = 0; i < 16; i++) {
@@ -975,46 +1073,79 @@ function onAcceptClick(e) {
 const CSS = `
 #fcmsOverlay { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: var(--fc-z-top); overflow: hidden;
     cursor: pointer; user-select: none; font-family: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
+    --fcms-display: 'FC Display', 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
     animation: fcms-in .25s ease-out both; }
+/* the Online Edition Look with your own files keeps the game's lettering */
+html.dc-oe-own #fcmsOverlay { --fcms-display: 'FC OE District', 'FC Display', 'Noto Sans', 'Segoe UI', sans-serif; }
 #fcmsOverlay.out { animation: fcms-out .45s ease-in both; }
 @keyframes fcms-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fcms-out { from { opacity: 1; } to { opacity: 0; } }
 #fcmsOverlay .shake { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+/* the big lettering: one weight, never a made-up bold or italic */
+#fcmsOverlay .pname, #fcmsOverlay .cplate b, #fcmsOverlay .vsword, #fcmsOverlay .banner, #fcmsOverlay .ghost, #fcmsOverlay .tape .row span:not(.k),
+#fcmsOverlay .fightw span, #fcmsOverlay.res .big > span, #fcmsOverlay.res .side b, #fcmsOverlay.res .score .n,
+#fcmsOverlay.res .games .g b, #fcmsOverlay.res .call, #fcmsOverlay.res .streak, #fcmsOverlay.res .elo .nums .n, #fcmsOverlay.res .rematch {
+    font-family: var(--fcms-display); font-weight: 400; font-style: normal; font-synthesis: none; }
 
-/* ---------- VS (3.1: arcade) ---------- */
-#fcmsOverlay.vs { background: var(--fc-arc-bg); }
-/* the game's art behind everything, the slanted halves in the players' rank colours over it */
+/* ---------- VS (3.13: broadcast) ---------- */
+#fcmsOverlay.vs { background: #07070b; }
+/* the game's art behind everything, the slanted panels in the players' rank colours over it */
 #fcmsOverlay .art { position: absolute; left: -4%; top: -4%; right: -4%; bottom: -4%; background-size: cover; background-position: center;
     image-rendering: pixelated; filter: saturate(1.2) brightness(.5); animation: fcms-art 4.6s ease-out both; }
 @keyframes fcms-art { from { transform: scale(1.12); } to { transform: scale(1); } }
-#fcmsOverlay.vs .half { position: absolute; top: -10%; bottom: -10%; width: 62%; opacity: .86; }
-#fcmsOverlay.vs .half.l { left: -12%; background: linear-gradient(90deg, var(--c) 0%, var(--c) 45%, transparent 100%); transform: skewX(-14deg);
-    animation: fcms-left .5s cubic-bezier(.2,.9,.2,1) both; }
-#fcmsOverlay.vs .half.r { right: -12%; background: linear-gradient(270deg, var(--c) 0%, var(--c) 45%, transparent 100%); transform: skewX(-14deg);
-    animation: fcms-right .5s cubic-bezier(.2,.9,.2,1) both; }
-#fcmsOverlay.vs .half::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 2px, transparent 2px 6px), linear-gradient(180deg, rgba(0,0,0,0) 25%, rgba(0,0,0,.7)); }
+#fcmsOverlay.vs .half { position: absolute; top: -10%; bottom: -10%; overflow: hidden; background: var(--c); opacity: .92; }
+#fcmsOverlay.vs .half.l { left: -14%; width: 64%; transform: skewX(-14deg); animation: fcms-left .5s cubic-bezier(.2,.9,.2,1) both; }
+#fcmsOverlay.vs .half.r { left: 50%; right: -14%; transform: skewX(-14deg); animation: fcms-right .5s cubic-bezier(.2,.9,.2,1) both; }
+/* fine slanted stripes (vertical in the skewed panel), light from the top, dark towards the floor and the edges */
+#fcmsOverlay.vs .half::before { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 .3vmin, transparent .3vmin 1.8vmin); }
+#fcmsOverlay.vs .half::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+#fcmsOverlay.vs .half.l::after { background: linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,.78) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 82%, rgba(0,0,0,.4) 100%); }
+#fcmsOverlay.vs .half.r::after { background: linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,.78) 100%),
+    linear-gradient(270deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 45%, rgba(0,0,0,0) 82%, rgba(0,0,0,.4) 100%); }
 @keyframes fcms-left { from { transform: translateX(calc(-100% * var(--fc-move, 1))) skewX(-14deg); } to { transform: translateX(0) skewX(-14deg); } }
 @keyframes fcms-right { from { transform: translateX(calc(100% * var(--fc-move, 1))) skewX(-14deg); } to { transform: translateX(0) skewX(-14deg); } }
+/* the light seam where the two meet, and one sweep of light across */
+#fcmsOverlay.vs .seam { position: absolute; left: 50%; top: -10%; bottom: -10%; width: .6vmin; margin-left: -.3vmin; background: #fff;
+    box-shadow: -.4vmin 0 2.6vmin .2vmin var(--ca), .4vmin 0 2.6vmin .2vmin var(--cb), 0 0 1.2vmin rgba(255,255,255,.9);
+    transform: skewX(-14deg); animation: fcms-seam .45s .3s cubic-bezier(.2,.9,.2,1) both; }
+@keyframes fcms-seam { from { opacity: 0; transform: skewX(-14deg) scaleY(0); } to { opacity: 1; transform: skewX(-14deg) scaleY(1); } }
+#fcmsOverlay.vs .sweep { position: absolute; top: -10%; bottom: -10%; left: -26%; width: 20%; pointer-events: none;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.18) 50%, rgba(255,255,255,0));
+    opacity: 0; transform: skewX(-14deg); animation: fcms-sweep 1.2s .75s cubic-bezier(.4,0,.2,1) both; }
+@keyframes fcms-sweep { 0% { opacity: 1; transform: skewX(-14deg) translateX(0); } 85% { opacity: 1; }
+    100% { opacity: 0; transform: skewX(-14deg) translateX(calc(760% * var(--fc-move, 1))); } }
+/* each character's name, huge and faint behind its side */
+#fcmsOverlay.vs .ghost { position: absolute; top: 31vh; width: 50vw; overflow: hidden; white-space: nowrap; pointer-events: none;
+    font-size: 30vmin; line-height: 1; text-transform: uppercase; letter-spacing: .01em;
+    color: rgba(255,255,255,.1); -webkit-text-stroke: .22vmin rgba(255,255,255,.28); }
+#fcmsOverlay.vs .ghost.l { left: 0; text-align: left; animation: fcms-ghl 5s .2s cubic-bezier(.1,.6,.3,1) both; }
+#fcmsOverlay.vs .ghost.r { right: 0; text-align: right; animation: fcms-ghr 5s .2s cubic-bezier(.1,.6,.3,1) both; }
+#fcmsOverlay.vs .ghost span { display: inline-block; padding: 0 2vw; }
+@keyframes fcms-ghl { from { opacity: 0; transform: translateX(calc(-8vw * var(--fc-move, 1))); } 25% { opacity: 1; } to { opacity: 1; transform: translateX(calc(1.5vw * var(--fc-move, 1))); } }
+@keyframes fcms-ghr { from { opacity: 0; transform: translateX(calc(8vw * var(--fc-move, 1))); } 25% { opacity: 1; } to { opacity: 1; transform: translateX(calc(-1.5vw * var(--fc-move, 1))); } }
 
-#fcmsOverlay.vs .player { position: absolute; top: 5vh; width: 40%; display: flex; flex-direction: column; align-items: center; text-align: center; }
-#fcmsOverlay.vs .player.l { left: 4%; animation: fcms-inl .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
-#fcmsOverlay.vs .player.r { right: 4%; animation: fcms-inr .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
+#fcmsOverlay.vs .player { position: absolute; top: 6.5vh; width: 40%; display: flex; flex-direction: column; align-items: center; text-align: center; }
+#fcmsOverlay.vs .player.l { left: 2%; animation: fcms-inl .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
+#fcmsOverlay.vs .player.r { right: 2%; animation: fcms-inr .55s .3s cubic-bezier(.2,1.3,.4,1) both; }
 @keyframes fcms-inl { from { opacity: 0; transform: translateX(calc(-30vw * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
 @keyframes fcms-inr { from { opacity: 0; transform: translateX(calc(30vw * var(--fc-move, 1))); } to { opacity: 1; transform: none; } }
-#fcmsOverlay .av { overflow: hidden; padding: .9vmin; background: #fff; transform: skewX(-8deg); box-shadow: 0 1.4vmin 5vmin rgba(0,0,0,.6), 1.2vmin 1.2vmin 0 rgba(0,0,0,.35); }
-#fcmsOverlay .av .avatar { display: block; width: 21vmin; height: 21vmin; object-fit: cover; background: #222; transform: skewX(8deg) scale(1.1); }
-#fcmsOverlay .plate { position: relative; margin-top: 2.6vmin; max-width: 100%; padding: .4vmin 4vmin; background: var(--fc-arc-bg); transform: skewX(-14deg);
-    box-shadow: inset 0 -.6vmin 0 rgba(255,255,255,.12), 1vmin 1vmin 0 rgba(0,0,0,.45); }
+#fcmsOverlay .av { overflow: hidden; padding: .7vmin; background: #fff; transform: skewX(-8deg);
+    box-shadow: 0 0 0 .6vmin var(--c, #fff), 0 1.4vmin 5vmin rgba(0,0,0,.6), 1.6vmin 1.6vmin 0 rgba(0,0,0,.4); }
+#fcmsOverlay .av .avatar { display: block; width: 17vmin; height: 17vmin; object-fit: cover; background: #222; transform: skewX(8deg) scale(1.1); }
+#fcmsOverlay .plate { position: relative; margin-top: 2.8vmin; max-width: 100%; padding: .2vmin 4vmin .4vmin; background: #0b0b10; transform: skewX(-14deg);
+    box-shadow: inset 0 -.9vmin 0 var(--c, #fff), 1.2vmin 1.2vmin 0 rgba(0,0,0,.45); }
 #fcmsOverlay .player.l .plate { border-left: 1.4vmin solid #fff; }
 #fcmsOverlay .player.r .plate { border-right: 1.4vmin solid #fff; }
-#fcmsOverlay .pname { display: block; transform: skewX(14deg); color: #fff; font-weight: 900; font-style: italic; font-size: 6.6vmin; line-height: 1.15;
-    letter-spacing: -.01em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw;
-    text-shadow: 0 .5vmin 0 rgba(0,0,0,.6); }
-#fcmsOverlay .pmeta { display: flex; align-items: center; justify-content: center; margin-top: 1.6vmin; color: rgba(255,255,255,.9); font-size: 2.4vmin; font-weight: 700;
-    text-shadow: 0 .3vmin .8vmin rgba(0,0,0,.6); }
+#fcmsOverlay .pname { display: block; padding-bottom: .9vmin; transform: skewX(14deg); color: #fff; font-size: 7vmin; line-height: 1.12;
+    letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 34vw; }
+#fcmsOverlay .pmeta { display: flex; align-items: center; justify-content: center; margin-top: 1.8vmin; padding: .5vmin 1.4vmin; background: rgba(6,6,10,.62);
+    clip-path: polygon(1vmin 0, 100% 0, calc(100% - 1vmin) 100%, 0 100%); color: #fff; font-size: 2.4vmin; font-weight: 700; }
+#fcmsOverlay .pmeta:empty { display: none; }
+#fcmsOverlay .pmeta .cty { padding: 0 .4vmin; }
 #fcmsOverlay .pmeta > img { width: 3.4vmin; height: 2.4vmin; object-fit: cover; border-radius: .3vmin; margin-right: 1vmin; }
-#fcmsOverlay .rqb { position: relative; display: flex; flex-direction: column; align-items: center; margin: 1.2vmin auto 0; padding: .8vmin 1.8vmin; max-width: 36vmin;
+#fcmsOverlay .rqb { position: relative; display: flex; flex-direction: column; align-items: center; margin: 1.4vmin auto 0; padding: .8vmin 1.8vmin; max-width: 36vmin;
     border-radius: 1vmin; background: rgba(255,106,43,.92); color: #fff; box-shadow: 0 .6vmin 2vmin rgba(0,0,0,.4); animation: fcms-rq .5s .9s cubic-bezier(.2,1.4,.4,1) both; }
 #fcmsOverlay .mcb { position: relative; display: flex; flex-direction: column; align-items: center; margin: 1.2vmin auto 0; padding: .8vmin 1.8vmin .8vmin 4.4vmin; max-width: 36vmin;
     border-radius: 1vmin; background: var(--fc-scrim-2); color: #fff; }
@@ -1025,41 +1156,61 @@ const CSS = `
 #fcmsOverlay .rqb b { font-size: 2.4vmin; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 #fcmsOverlay .rqb small { margin-top: .3vmin; font-size: 1.5vmin; font-weight: 600; opacity: .9; text-align: center; }
 @keyframes fcms-rq { from { opacity: 0; transform: scale(1.6) rotate(-4deg); } }
-#fcmsOverlay .pmeta .ping { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; background: rgba(0,0,0,.45); font-size: 2vmin; }
+#fcmsOverlay .pmeta .ping { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; background: rgba(0,0,0,.5); font-size: 2vmin; }
 #fcmsOverlay .rank { display: inline-flex; align-items: center; margin-left: 1.2vmin; }
 #fcmsOverlay .rank .fc-tag { --sz: 4.4vmin; }
 /* the character, on a big slanted plate */
-#fcmsOverlay .cplate { position: relative; margin-top: 2.2vmin; padding: .6vmin 5vmin .8vmin; background: linear-gradient(180deg, var(--fc-arc-gold), #f0923a);
-    transform: skewX(-14deg); box-shadow: 1vmin 1vmin 0 rgba(0,0,0,.45); animation: fcms-plate .45s .7s cubic-bezier(.2,1.6,.4,1) both; }
-#fcmsOverlay .cplate b { display: block; transform: skewX(14deg); color: #1a0d00; font-weight: 900; font-style: italic; font-size: 5vmin; line-height: 1.05;
-    letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+#fcmsOverlay .cplate { position: relative; margin-top: 2.4vmin; padding: .2vmin 5vmin .4vmin; background: linear-gradient(180deg, #ffe08a 0%, var(--fc-arc-gold) 45%, #f0923a 100%);
+    transform: skewX(-14deg); box-shadow: inset 0 .4vmin 0 rgba(255,255,255,.55), 1.2vmin 1.2vmin 0 rgba(0,0,0,.45); animation: fcms-plate .45s .7s cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay .cplate b { display: block; transform: skewX(14deg); color: #1a0d00; font-size: 5vmin; line-height: 1.12;
+    letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
 #fcmsOverlay .cplate small { position: absolute; left: 50%; top: -1.6vmin; transform: translateX(-50%) skewX(14deg); padding: .1vmin 1.2vmin; border-radius: .5vmin;
-    background: var(--fc-arc-bg); color: var(--fc-arc-gold); font-size: 1.6vmin; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
+    background: #0b0b10; color: var(--fc-arc-gold); font-size: 1.6vmin; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
 @keyframes fcms-plate { from { opacity: 0; transform: skewX(-14deg) scale(calc(1 + .6 * var(--fc-move, 1))); } to { opacity: 1; transform: skewX(-14deg) scale(1); } }
 #fcmsOverlay .cplate .fc-mu-face { position: absolute; left: -6vmin; top: 50%; width: 9vmin; height: 9vmin; margin-top: -4.5vmin; border-radius: .8vmin;
-    transform: skewX(14deg); box-shadow: 0 0 0 .4vmin var(--fc-arc-bg), .6vmin .6vmin 0 rgba(0,0,0,.45); font-size: 3vmin; }
+    transform: skewX(14deg); box-shadow: 0 0 0 .4vmin #0b0b10, .6vmin .6vmin 0 rgba(0,0,0,.45); font-size: 3vmin; }
 #fcmsOverlay .cplate .fc-mu-face b { font-size: 3.2vmin; }
 /* beside the tape, under their side */
-#fcmsOverlay .mutips { position: absolute; left: calc(50% + 35vmin); right: 3%; bottom: 13vh; max-width: 62vmin; margin-left: auto; padding: 1.4vmin 2.2vmin 1.5vmin; border-radius: .8vmin; background: rgba(8,7,12,.8); text-align: left;
-    box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.14); animation: fcms-in .4s 1.1s both; }
+#fcmsOverlay .mutips { position: absolute; left: calc(50% + 36vmin); right: 3%; bottom: 11vh; max-width: 58vmin; margin-left: auto; padding: 1.6vmin 2.2vmin 1.5vmin; background: rgba(8,8,12,.9); text-align: left;
+    box-shadow: inset 0 .5vmin 0 var(--fc-arc-gold), 0 2vmin 6vmin rgba(0,0,0,.5); animation: fcms-in .4s 1.1s both; }
 #fcmsOverlay .mutips small { display: block; margin-bottom: .6vmin; color: var(--fc-arc-gold); font-size: 1.6vmin; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
 #fcmsOverlay .mutips p { position: relative; margin: .5vmin 0 0; padding-left: 2vmin; color: #fff; font-size: 2.1vmin; font-weight: 600; line-height: 1.3; }
-#fcmsOverlay .mutips p::before { content: ''; position: absolute; left: .2vmin; top: .8vmin; width: .8vmin; height: .8vmin; border-radius: 50%; background: var(--fc-arc-gold); }
+#fcmsOverlay .mutips p::before { content: ''; position: absolute; left: .2vmin; top: .8vmin; width: .8vmin; height: .8vmin; background: var(--fc-arc-gold); transform: skewX(-14deg); }
 #fcmsOverlay .mutips p.own { padding-left: 2.8vmin; color: var(--fc-arc-gold); }
 #fcmsOverlay .mutips p.own::before { display: none; }
 #fcmsOverlay .mutips p.own svg { position: absolute; left: 0; top: .3vmin; width: 2vmin; height: 2vmin; }
-#fcmsOverlay .picks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 1.8vmin; animation: fcms-in .4s .95s both; }
-#fcmsOverlay .picks small { width: 100%; margin-bottom: .8vmin; color: rgba(255,255,255,.75); font-size: 1.7vmin; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
-#fcmsOverlay .picks span { display: inline-flex; align-items: center; margin: 0 .5vmin .6vmin; padding: .35vmin 1.2vmin; border-radius: .6vmin; background: rgba(0,0,0,.5);
-    color: #fff; font-size: 2.1vmin; font-weight: 800; box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.18); }
+#fcmsOverlay .picks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 2vmin; animation: fcms-in .4s .95s both; }
+/* with the matchup tips under their side, the tips say more than their picks */
+#fcmsOverlay.vs.tips .player.r .picks { display: none; }
+#fcmsOverlay .picks small { width: 100%; margin-bottom: .8vmin; }
+#fcmsOverlay .picks small b { display: inline-block; padding: .3vmin 1.2vmin .3vmin 1.4vmin; background: rgba(6,6,10,.62); color: #fff; font-size: 1.7vmin; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+#fcmsOverlay .picks span { display: inline-flex; align-items: center; margin: 0 .5vmin .6vmin; padding: .35vmin 1.2vmin; background: rgba(0,0,0,.55);
+    color: #fff; font-size: 2.1vmin; font-weight: 800; transform: skewX(-10deg); box-shadow: inset 0 -.3vmin 0 var(--c, rgba(255,255,255,.3)); }
 #fcmsOverlay .picks span i { margin-left: .9vmin; font-style: normal; color: var(--fc-arc-gold); }
 
-#fcmsOverlay .vsword { position: absolute; left: 50%; top: 33vh; font-weight: 900; font-style: italic; font-size: 22vmin;
-    line-height: 1; color: #fff; transform: translate(-50%,-50%);
-    text-shadow: 0 0 3vmin #fff, 0 0 8vmin #f0b232, .8vmin 1vmin 0 #b3261e, -.4vmin -.4vmin 0 var(--fc-cyan);
+/* the banner on top: RANKED · FT3 / CASUAL, MATCHMAKING in front */
+#fcmsOverlay.vs .banner { position: absolute; left: 50%; top: 2.4vh; display: flex; transform: translateX(-50%); white-space: nowrap;
+    animation: fcms-ban .45s .5s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes fcms-ban { from { opacity: 0; transform: translateX(-50%) translateY(calc(-6vh * var(--fc-move, 1))); } to { opacity: 1; transform: translateX(-50%); } }
+#fcmsOverlay.vs .bn { display: block; margin: 0 .4vmin; padding: .3vmin 2.6vmin .5vmin; background: #0b0b10; transform: skewX(-14deg);
+    box-shadow: inset 0 -.5vmin 0 var(--fc-arc-gold), .8vmin .8vmin 0 rgba(0,0,0,.45); }
+#fcmsOverlay.vs .bn i { display: block; transform: skewX(14deg); color: #fff; font-style: normal; font-size: 3.2vmin; line-height: 1.2; letter-spacing: .14em; }
+#fcmsOverlay.vs .bn.casual { box-shadow: inset 0 -.5vmin 0 var(--fc-cyan, #00d1ff), .8vmin .8vmin 0 rgba(0,0,0,.45); }
+#fcmsOverlay.vs .bn.mm { background: #5865f2; box-shadow: inset 0 -.5vmin 0 rgba(255,255,255,.45), .8vmin .8vmin 0 rgba(0,0,0,.45); }
+
+/* VS in chrome: it slams in, and the light sweep passes over it */
+#fcmsOverlay .vsword { position: absolute; left: 50%; top: 33vh; font-size: 26vmin; line-height: 1.05; padding: 0 2vmin; color: transparent;
+    background: linear-gradient(180deg, #ffffff 0%, #eef2f8 36%, #8d98ad 50%, #f7f9fc 63%, #b9c3d6 100%); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-stroke: .35vmin #11131a; transform: translate(-50%,-50%) skewX(-8deg);
+    filter: drop-shadow(.9vmin 1.1vmin 0 #b3261e) drop-shadow(-.5vmin -.5vmin 0 var(--fc-cyan, #00d1ff)) drop-shadow(0 0 3.5vmin rgba(255,255,255,.4));
     animation: fcms-slam .42s .7s cubic-bezier(.3,1.6,.5,1) both; }
-@keyframes fcms-slam { from { opacity: 0; transform: translate(-50%,-50%) scale(calc(1 + 2.2 * var(--fc-move, 1))) rotate(-10deg); }
-                       to { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0); } }
+/* one shine over the result's title (VS gets the light sweep instead: a shine there repaints the big letters every frame) */
+#fcmsOverlay.res .big > span::after { content: attr(data-t); position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: inherit;
+    color: transparent; -webkit-text-stroke: 0; background: linear-gradient(105deg, rgba(255,255,255,0) 38%, rgba(255,255,255,.95) 50%, rgba(255,255,255,0) 62%);
+    background-size: 300% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; animation: fcms-shine .9s 1.2s ease-in-out both; }
+@keyframes fcms-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes fcms-slam { from { opacity: 0; transform: translate(-50%,-50%) skewX(-8deg) scale(calc(1 + 2.2 * var(--fc-move, 1))) rotate(-10deg); }
+                       to { opacity: 1; transform: translate(-50%,-50%) skewX(-8deg) scale(1) rotate(0); } }
 #fcmsOverlay.vs .ring { position: absolute; left: 50%; top: 33vh; width: 30vmin; height: 30vmin; margin: -15vmin 0 0 -15vmin; border-radius: 50%;
     border: 1vmin solid #fff; opacity: 0; pointer-events: none; animation: fcms-ring .7s .9s ease-out both; }
 @keyframes fcms-ring { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(3.2); } }
@@ -1076,18 +1227,19 @@ const CSS = `
     40% { transform: translate(calc(1vmin * var(--fc-move, 1)), calc(-.8vmin * var(--fc-move, 1))); } 60% { transform: translate(calc(-.8vmin * var(--fc-move, 1)), calc(-.4vmin * var(--fc-move, 1))); }
     80% { transform: translate(calc(.6vmin * var(--fc-move, 1)), calc(.6vmin * var(--fc-move, 1))); } }
 
-/* the tale of the tape */
-#fcmsOverlay .tape { position: absolute; left: 50%; bottom: 13vh; width: 64vmin; transform: translateX(-50%); padding: 1.6vmin 2.6vmin 1.4vmin;
-    background: rgba(8,7,12,.82); box-shadow: inset 0 0 0 .2vmin rgba(255,255,255,.14), 0 2vmin 6vmin rgba(0,0,0,.5);
+/* the tale of the tape: a lower third in both players' colours */
+#fcmsOverlay .tape { position: absolute; left: 50%; bottom: 13vh; width: 62vmin; transform: translateX(-50%); padding: 2vmin 4.4vmin 1.4vmin;
+    background: rgba(8,8,12,.9); box-shadow: 0 2vmin 6vmin rgba(0,0,0,.5);
     clip-path: polygon(3vmin 0, 100% 0, calc(100% - 3vmin) 100%, 0 100%); animation: fcms-tape .45s 1.05s cubic-bezier(.2,1.2,.4,1) both; }
+#fcmsOverlay .tape::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: .6vmin; background: linear-gradient(90deg, var(--ca, #fff), var(--cb, #fff)); }
 #fcmsOverlay .tape:empty { display: none; }
 @keyframes fcms-tape { from { opacity: 0; transform: translateX(-50%) translateY(calc(4vmin * var(--fc-move, 1))); } to { opacity: 1; transform: translateX(-50%); } }
-#fcmsOverlay .tape .row { display: flex; align-items: center; height: 4.4vmin; border-bottom: .15vmin solid rgba(255,255,255,.08); }
-#fcmsOverlay .tape .row span { flex: 1; font-weight: 900; font-size: 3vmin; color: rgba(255,255,255,.88); font-style: italic; }
+#fcmsOverlay .tape .row { display: flex; align-items: center; height: 4.6vmin; border-bottom: .15vmin solid rgba(255,255,255,.08); }
+#fcmsOverlay .tape .row span { flex: 1; font-size: 3.4vmin; color: rgba(255,255,255,.9); letter-spacing: .02em; }
 #fcmsOverlay .tape .row .a { text-align: left; }
 #fcmsOverlay .tape .row .b { text-align: right; }
-#fcmsOverlay .tape .row .k { flex: none; width: 22vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.8vmin; font-style: normal; font-weight: 800;
-    letter-spacing: .22em; text-transform: uppercase; }
+#fcmsOverlay .tape .row .k { flex: none; width: 22vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.7vmin; font-style: normal; font-weight: 800;
+    letter-spacing: .24em; text-transform: uppercase; }
 #fcmsOverlay .tape .row .up { color: var(--fc-arc-gold); }
 #fcmsOverlay .odds { display: flex; flex-wrap: wrap; align-items: center; margin-top: 1.4vmin; }
 #fcmsOverlay .odds .pa, #fcmsOverlay .odds .pb { width: 8vmin; font-size: 3vmin; font-weight: 900; font-style: italic; color: #fff; }
@@ -1099,10 +1251,32 @@ const CSS = `
 @keyframes fcms-oddsa { from { transform: scaleX(.5); } to { transform: scaleX(var(--p)); } }
 @keyframes fcms-oddsb { from { transform: scaleX(.5); } to { transform: scaleX(calc(1 - var(--p))); } }
 #fcmsOverlay .odds small { width: 100%; margin-top: .8vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.6vmin; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-#fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 4.5vh; text-align: center; color: rgba(255,255,255,.8);
-    font-size: 2.4vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase; animation: fcms-in .5s 1.1s both; }
-#fcmsOverlay .game small { display: block; margin-top: 1vmin; font-size: 2vmin; letter-spacing: .08em; text-transform: none; color: rgba(255,255,255,.9); }
-html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still #fcmsOverlay .spark, html.fc-still #fcmsOverlay .oeArt { animation: none !important; }
+#fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 3.5vh; text-align: center; animation: fcms-in .5s 1.1s both; }
+#fcmsOverlay .game .gw { display: inline-block; max-width: 80vw; padding: 1vmin 4vmin 1.1vmin; background: rgba(6,6,10,.85); color: rgba(255,255,255,.88);
+    clip-path: polygon(2vmin 0, 100% 0, calc(100% - 2vmin) 100%, 0 100%); font-size: 2.2vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase; }
+#fcmsOverlay .game small { display: block; margin-top: .6vmin; font-size: 2vmin; letter-spacing: .08em; text-transform: none; color: #fff; }
+
+/* READY... FIGHT! as the VS screen closes */
+#fcmsOverlay .fightw { position: absolute; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none; opacity: 0; }
+#fcmsOverlay.fight .fightw { opacity: 1; background: rgba(5,5,8,.62); animation: fcms-in .2s both; }
+#fcmsOverlay .fightw span { position: absolute; left: 50%; top: 46vh; line-height: 1.05; white-space: nowrap; opacity: 0; transform: translate(-50%,-50%) skewX(-8deg); }
+#fcmsOverlay .fightw .rdy { color: #fff; font-size: 9vmin; letter-spacing: .4em; padding-left: .4em; }
+#fcmsOverlay .fightw .fgt { font-size: 24vmin; padding: 0 2vmin; color: transparent;
+    background: linear-gradient(180deg, #fffbe6 0%, var(--fc-arc-gold) 40%, #f0923a 55%, #ffe9a8 70%, #f0b232 100%); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-stroke: .35vmin #3a1d00; filter: drop-shadow(0 1.2vmin 0 #3a1d00) drop-shadow(0 0 4vmin rgba(240,178,50,.55)); }
+#fcmsOverlay.fight .fightw .rdy { animation: fcms-rdy .5s both; }
+#fcmsOverlay.fight .fightw .fgt { animation: fcms-fgt .4s .45s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes fcms-rdy { 0% { opacity: 0; transform: translate(-50%,-50%) skewX(-8deg) scale(calc(1 + .2 * var(--fc-move, 1))); } 25%, 75% { opacity: 1; transform: translate(-50%,-50%) skewX(-8deg) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-50%) skewX(-8deg) scale(1); } }
+@keyframes fcms-fgt { from { opacity: 0; transform: translate(-50%,-50%) skewX(-8deg) scale(calc(1 + 2 * var(--fc-move, 1))); } to { opacity: 1; transform: translate(-50%,-50%) skewX(-8deg) scale(1); } }
+#fcmsOverlay .fflash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #fff; opacity: 0; }
+#fcmsOverlay.fight .fflash { animation: fcms-flash .4s .45s ease-out both; }
+
+/* the big moving layers get their own layer, so nothing under them is painted again while they move */
+#fcmsOverlay.vs .half, #fcmsOverlay.vs .ghost, #fcmsOverlay.vs .sweep, #fcmsOverlay.vs .seam, #fcmsOverlay .vsword, #fcmsOverlay.vs .player { will-change: transform; }
+html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still #fcmsOverlay .spark, html.fc-still #fcmsOverlay .oeArt,
+html.fc-still #fcmsOverlay .sweep, html.fc-still #fcmsOverlay .flash, html.fc-still #fcmsOverlay .fflash { animation: none !important; }
+html.fc-still #fcmsOverlay .sweep { opacity: 0; }
 /* your own 3rd Strike art: facing each other from the edges, under the names */
 #fcmsOverlay .oeArt { position: absolute; bottom: 0; height: 86vh; width: 40vw; pointer-events: none; display: flex; align-items: flex-end; }
 #fcmsOverlay .oeArt img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 3vmin rgba(0,0,0,.55)); }
@@ -1120,39 +1294,57 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
 @keyframes fcms-oe-l { from { opacity: 0; transform: translateX(-8vw); } }
 @keyframes fcms-oe-r { from { opacity: 0; transform: translateX(8vw); } }
 
-/* ---------- results (3.1: arcade) ---------- */
+/* ---------- results (3.13: broadcast) ---------- */
 #fcmsOverlay.res .art { filter: saturate(1.1) brightness(.26) blur(.4vmin); }
+/* the rays turn once and settle (nothing spins forever) */
 #fcmsOverlay.res .rays { position: absolute; left: 50%; top: 19vh; width: 220vmax; height: 220vmax; margin: -110vmax 0 0 -110vmax;
-    opacity: .35; animation: fcms-spin 14s linear infinite; }
-@keyframes fcms-spin { to { transform: rotate(360deg); } }
+    opacity: .35; animation: fcms-spin 5s cubic-bezier(.15,.7,.3,1) both; }
+@keyframes fcms-spin { from { transform: rotate(-40deg) scale(.9); } to { transform: rotate(0) scale(1); } }
 #fcmsOverlay.res .big { position: absolute; left: 0; right: 0; top: 19vh; text-align: center; transform: translateY(-50%); }
-#fcmsOverlay.res .stack { position: absolute; left: 0; right: 0; top: 33vh; display: flex; flex-direction: column; align-items: center; }
-#fcmsOverlay.res .big span { display: inline-block; font-weight: 900; font-style: italic; font-size: 16vmin; line-height: 1.05; letter-spacing: -.02em; white-space: nowrap;
+#fcmsOverlay.res .stack { position: absolute; left: 0; right: 0; top: 34vh; display: flex; flex-direction: column; align-items: center; }
+#fcmsOverlay.res .big > span { position: relative; display: inline-block; font-size: 18vmin; line-height: 1.08; letter-spacing: .01em; white-space: nowrap;
     padding: 0 3vmin; transform: skewX(-6deg); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#fcmsOverlay.res .big > span::after { animation-delay: .8s; }
+/* the stamps: PERFECT SET, COMEBACK, CLUTCH, UPSET, RANK UP!, SO CLOSE */
+#fcmsOverlay.res .calls { position: absolute; left: 0; right: 0; top: calc(50% + 6.4vmin); display: flex; justify-content: center; pointer-events: none; }
+#fcmsOverlay.res .call { margin: 0 1.2vmin; padding: .1vmin 2.4vmin .3vmin; font-size: 4.4vmin; line-height: 1.15; letter-spacing: .1em; color: #2a1a00;
+    background: linear-gradient(180deg, #fff3c4 0%, var(--fc-arc-gold) 55%, #f0923a 100%); transform: rotate(-5deg) skewX(-10deg);
+    box-shadow: 0 0 0 .4vmin #2a1a00, .9vmin .9vmin 0 rgba(0,0,0,.45), 0 0 3vmin rgba(255,209,102,.55); animation: fcms-stamp .42s cubic-bezier(.3,1.6,.5,1) both; }
+#fcmsOverlay.res .call.upset, #fcmsOverlay.res .call.comeback { background: linear-gradient(180deg, #ffd0ea 0%, #ff4fa3 55%, #c2186b 100%); color: #fff; box-shadow: 0 0 0 .4vmin #3a0020, .9vmin .9vmin 0 rgba(0,0,0,.45), 0 0 3vmin rgba(255,79,163,.5); }
+#fcmsOverlay.res .call.rankup { background: linear-gradient(180deg, #d9fff0 0%, #3be59a 55%, #13a86b 100%); color: #032a18; box-shadow: 0 0 0 .4vmin #032a18, .9vmin .9vmin 0 rgba(0,0,0,.45), 0 0 3vmin rgba(59,229,154,.5); }
+#fcmsOverlay.res .call.close { background: rgba(255,255,255,.92); color: #3a0003; box-shadow: 0 0 0 .4vmin #3a0003, .9vmin .9vmin 0 rgba(0,0,0,.45); }
+@keyframes fcms-stamp { from { opacity: 0; transform: rotate(-5deg) skewX(-10deg) scale(calc(1 + 1.6 * var(--fc-move, 1))); } to { opacity: 1; transform: rotate(-5deg) skewX(-10deg) scale(1); } }
 #fcmsOverlay.res .board { display: flex; align-items: center; animation: fcms-in .4s .55s both; }
-#fcmsOverlay.res .side { display: flex; flex-direction: column; align-items: center; width: 24vmin; color: #fff; }
-#fcmsOverlay.res .side .avatar { width: 9vmin; height: 9vmin; object-fit: cover; background: #222; border: .5vmin solid #fff; transform: skewX(-8deg); box-shadow: .8vmin .8vmin 0 rgba(0,0,0,.4); }
-#fcmsOverlay.res .side b { margin-top: 1.2vmin; max-width: 24vmin; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 3vmin; font-weight: 900; font-style: italic; text-transform: uppercase; }
-#fcmsOverlay.res .side small { margin-top: .4vmin; color: var(--fc-arc-gold); font-size: 2vmin; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+#fcmsOverlay.res .side { display: flex; flex-direction: column; align-items: center; width: 26vmin; color: #fff; }
+#fcmsOverlay.res .side .avatar { width: 11vmin; height: 11vmin; object-fit: cover; background: #222; border: .6vmin solid #fff; transform: skewX(-8deg);
+    box-shadow: 0 0 0 .5vmin var(--c, #fff), 1vmin 1vmin 0 rgba(0,0,0,.4); }
+#fcmsOverlay.res .side b { margin-top: 1.6vmin; max-width: 26vmin; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 4vmin; line-height: 1.15; letter-spacing: .03em; text-transform: uppercase; }
+#fcmsOverlay.res .side small { margin-top: .2vmin; color: var(--fc-arc-gold); font-size: 2vmin; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 #fcmsOverlay.res .score { display: flex; align-items: center; margin: 0 2vmin; }
-#fcmsOverlay.res .score .n { display: inline-block; min-width: 11vmin; padding: .5vmin 2vmin; text-align: center; background: rgba(0,0,0,.6); color: rgba(255,255,255,.7);
-    font-size: 11vmin; font-weight: 900; font-style: italic; line-height: 1; transform: skewX(-12deg); box-shadow: inset 0 0 0 .3vmin rgba(255,255,255,.15), 1vmin 1vmin 0 rgba(0,0,0,.4); }
+#fcmsOverlay.res .score .n { display: inline-block; min-width: 12vmin; padding: .4vmin 2.2vmin .8vmin; text-align: center; background: rgba(0,0,0,.62); color: rgba(255,255,255,.7);
+    font-size: 12vmin; line-height: 1.05; transform: skewX(-12deg); box-shadow: inset 0 0 0 .3vmin rgba(255,255,255,.15), 1vmin 1vmin 0 rgba(0,0,0,.4); }
 #fcmsOverlay.res .score .n.w { color: #fff; box-shadow: inset 0 0 0 .4vmin rgba(255,255,255,.6), 1vmin 1vmin 0 rgba(0,0,0,.4), 0 0 4vmin var(--glow, rgba(255,209,102,.5)); }
+#fcmsOverlay.res .score .n.land { animation: fcms-land .38s cubic-bezier(.3,1.7,.5,1) both; }
+#fcmsOverlay.res .score .n.land0 { animation: fcms-land .38s .65s cubic-bezier(.3,1.7,.5,1) both; }
+@keyframes fcms-land { from { transform: skewX(-12deg) scale(calc(1 + .45 * var(--fc-move, 1))); } to { transform: skewX(-12deg) scale(1); } }
 #fcmsOverlay.res .score i { margin: 0 2vmin; color: rgba(255,255,255,.6); font-size: 6vmin; font-weight: 900; font-style: italic; }
-/* game by game */
+#fcmsOverlay.res .shake.hit { animation: fcms-hit .3s linear both; }
+@keyframes fcms-hit { 0%,100% { transform: translate(0,0); } 25% { transform: translate(calc(-.8vmin * var(--fc-move, 1)), calc(.6vmin * var(--fc-move, 1))); }
+    50% { transform: translate(calc(.7vmin * var(--fc-move, 1)), calc(-.5vmin * var(--fc-move, 1))); } 75% { transform: translate(calc(-.4vmin * var(--fc-move, 1)), 0); } }
+/* game by game, one plate after the other with the score */
 #fcmsOverlay.res .games { display: flex; flex-wrap: wrap; justify-content: center; max-width: 88vw; margin-top: 3vmin; }
-#fcmsOverlay.res .games .g { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 5.4vmin; margin: 0 .5vmin .8vmin; padding: .4vmin 1vmin;
-    transform: skewX(-12deg); font-style: italic; animation: fcms-game .35s calc(.9s + var(--i) * .09s) cubic-bezier(.2,1.6,.4,1) both; }
-#fcmsOverlay.res .games .g b { transform: skewX(12deg); font-size: 3.2vmin; font-weight: 900; line-height: 1.1; }
+#fcmsOverlay.res .games .g { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 5.8vmin; margin: 0 .5vmin .8vmin; padding: .2vmin 1.2vmin .4vmin;
+    transform: skewX(-12deg); animation: fcms-game .34s calc(.9s + var(--i) * .28s) cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay.res .games .g b { transform: skewX(12deg); font-size: 3.6vmin; line-height: 1.15; }
 #fcmsOverlay.res .games .g small { transform: skewX(12deg); font-size: 1.4vmin; font-weight: 800; font-style: normal; white-space: nowrap; opacity: .85; }
-#fcmsOverlay.res .games .g.w { background: var(--fc-arc-gold); color: #2a1a00; }
-#fcmsOverlay.res .games .g.l { background: rgba(242,63,67,.85); color: #fff; }
-@keyframes fcms-game { from { opacity: 0; transform: skewX(-12deg) translateY(calc(2vmin * var(--fc-move, 1))) scale(.6); } to { opacity: 1; transform: skewX(-12deg); } }
+#fcmsOverlay.res .games .g.w { background: var(--fc-arc-gold); color: #2a1a00; box-shadow: 0 0 2vmin rgba(255,209,102,.45); }
+#fcmsOverlay.res .games .g.l { background: rgba(242,63,67,.88); color: #fff; }
+@keyframes fcms-game { from { opacity: 0; transform: skewX(-12deg) rotateX(90deg) scale(.7); } to { opacity: 1; transform: skewX(-12deg); } }
 /* ELO + rank progress */
 #fcmsOverlay.res .elo { display: flex; flex-wrap: wrap; align-items: center; width: 56vmin; margin-top: 3vmin; color: #fff; animation: fcms-in .4s .8s both; }
 #fcmsOverlay.res .elo > .fc-tag { --sz: 6vmin; margin-right: 2vmin; }
 #fcmsOverlay.res .elo .nums { display: flex; align-items: baseline; flex: 1; }
-#fcmsOverlay.res .elo .nums .n { font-size: 5vmin; font-weight: 900; font-style: italic; }
+#fcmsOverlay.res .elo .nums .n { font-size: 5.4vmin; letter-spacing: .02em; }
 #fcmsOverlay.res .elo .nums small { margin-left: 1.2vmin; color: rgba(255,255,255,.6); font-size: 1.8vmin; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 #fcmsOverlay.res .elo .d { margin-left: 1.4vmin; padding: .2vmin 1vmin; border-radius: .6vmin; font-size: 2.6vmin; font-weight: 900; animation: fcms-in .3s 2s both; }
 #fcmsOverlay.res .elo .d.up { background: #248046; }
@@ -1162,15 +1354,14 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
     animation: fcms-rank 1.1s .9s cubic-bezier(.2,.9,.2,1) both; }
 @keyframes fcms-rank { from { transform: scaleX(var(--a)); } to { transform: scaleX(var(--b)); } }
 #fcmsOverlay.res .elo .nx { width: 100%; margin-top: .8vmin; text-align: right; color: rgba(255,255,255,.65); font-size: 1.8vmin; font-weight: 700; }
-#fcmsOverlay.res .elo .burst { margin-left: auto; padding: .4vmin 1.6vmin; background: var(--fc-arc-gold); color: #2a1a00; transform: rotate(-8deg);
-    font-size: 2.8vmin; font-weight: 900; font-style: italic; box-shadow: 0 0 3vmin rgba(255,209,102,.7); animation: fcms-pop3 .5s 2s cubic-bezier(.2,1.6,.4,1) both; }
-#fcmsOverlay.res .sub { margin-top: 3vmin; text-align: center; color: rgba(255,255,255,.92);
+#fcmsOverlay.res .sub { margin-top: 2.6vmin; text-align: center; color: rgba(255,255,255,.92);
     font-size: 3vmin; font-weight: 800; animation: fcms-in .5s 1s both; }
-#fcmsOverlay.res .sub small { display: block; font-size: 2vmin; font-weight: 700; letter-spacing: .35em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+#fcmsOverlay.res .sub .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
+#fcmsOverlay.res .sub .row:empty { display: none; }
 
 #fcmsOverlay.won { background: radial-gradient(ellipse at 50% 30%, #6b4a00 0%, #2a1c00 45%, #0c0800 100%); }
 #fcmsOverlay.won .rays { background: repeating-conic-gradient(from 0deg, rgba(255,209,102,.45) 0deg 6deg, transparent 6deg 18deg); }
-#fcmsOverlay.won .big span { background-image: linear-gradient(180deg, #fffbe6 0%, var(--fc-arc-gold) 38%, #f0923a 52%, #ffe9a8 66%, #f0b232 100%);
+#fcmsOverlay.won .big > span { background-image: linear-gradient(180deg, #fffbe6 0%, var(--fc-arc-gold) 38%, #f0923a 52%, #ffe9a8 66%, #f0b232 100%);
     -webkit-text-stroke: .35vmin #5a3a00; filter: drop-shadow(0 1.2vmin 0 #5a3a00) drop-shadow(0 0 3vmin rgba(240,178,50,.6));
     animation: fcms-punch .55s .1s cubic-bezier(.2,1.7,.4,1) both; }
 @keyframes fcms-punch { from { opacity: 0; transform: skewX(-6deg) scale(calc(1 - .8 * var(--fc-move, 1))); } to { opacity: 1; transform: skewX(-6deg) scale(1); } }
@@ -1181,10 +1372,10 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
                         to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
 #fcmsOverlay.won .flash { animation: fcms-flash .45s .5s ease-out both; }
 
-#fcmsOverlay.lost { background: radial-gradient(ellipse at 50% 30%, #5a0d10 0%, #26070a 50%, #0a0203 100%); }
-#fcmsOverlay.lost .rays { background: repeating-conic-gradient(from 0deg, rgba(242,63,67,.25) 0deg 4deg, transparent 4deg 20deg); opacity: .22; }
-#fcmsOverlay.lost .big span { background-image: linear-gradient(180deg, #ffd0d0 0%, #f23f43 40%, #8b0000 60%, #f23f43 100%);
-    -webkit-text-stroke: .3vmin #2a0003; filter: drop-shadow(0 1.2vmin 0 #3a0003) drop-shadow(0 0 4vmin rgba(139,0,0,.8)) saturate(.85);
+#fcmsOverlay.lost { background: radial-gradient(ellipse at 50% 30%, #4a0c10 0%, #1f070a 50%, #080203 100%); }
+#fcmsOverlay.lost .rays { background: repeating-conic-gradient(from 0deg, rgba(242,63,67,.25) 0deg 4deg, transparent 4deg 20deg); opacity: .2; }
+#fcmsOverlay.lost .big > span { background-image: linear-gradient(180deg, #ffe0e0 0%, #c9ccd6 38%, #f23f43 52%, #8b0000 70%, #f23f43 100%);
+    -webkit-text-stroke: .3vmin #2a0003; filter: drop-shadow(0 1.2vmin 0 #3a0003) drop-shadow(0 0 4vmin rgba(139,0,0,.8));
     animation: fcms-drop .5s .1s cubic-bezier(.5,0,.8,.4) both; }
 @keyframes fcms-drop { from { opacity: 0; transform: skewX(-6deg) translateY(calc(-40vh * var(--fc-move, 1))) scale(1.3); } to { opacity: 1; transform: skewX(-6deg); } }
 #fcmsOverlay.lost .crack { position: absolute; left: 50%; top: 50%; width: 70vmin; height: 6vmin; margin: -3vmin 0 0 -35vmin; overflow: visible; pointer-events: none; }
@@ -1193,26 +1384,33 @@ html.fc-still #fcmsOverlay .art, html.fc-still #fcmsOverlay .ring, html.fc-still
 @keyframes fcms-crack { to { stroke-dashoffset: 0; } }
 #fcmsOverlay.lost .shake { animation: fcms-shake .45s .6s linear both; }
 #fcmsOverlay.lost .score .n.w { --glow: rgba(242,63,67,.5); }
+/* after a loss the rematch is the way out */
+#fcmsOverlay.lost .rematch:not(.off) { font-size: 3vmin; padding: 1.3vmin 4.4vmin; }
 
-#fcmsOverlay.draw { background: radial-gradient(ellipse at 50% 30%, #1f2c4a 0%, #0f1526 55%, #06080f 100%); }
-#fcmsOverlay.draw .rays { background: repeating-conic-gradient(from 0deg, rgba(160,180,220,.25) 0deg 5deg, transparent 5deg 20deg); }
-#fcmsOverlay.draw .big span { background-image: linear-gradient(180deg, #ffffff 0%, #cfd8ea 45%, #7f8db0 60%, #dfe6f5 100%);
+#fcmsOverlay.draw { background: #080a12; }
+#fcmsOverlay.draw .dsplit { position: absolute; top: -10%; bottom: -10%; background: var(--c); opacity: .28; }
+#fcmsOverlay.draw .dsplit.l { left: -14%; width: 64%; transform: skewX(-14deg); animation: fcms-left .6s cubic-bezier(.2,.9,.2,1) both; }
+#fcmsOverlay.draw .dsplit.r { left: 50%; right: -14%; transform: skewX(-14deg); animation: fcms-right .6s cubic-bezier(.2,.9,.2,1) both; }
+#fcmsOverlay.draw .dsplit::after { content: ''; position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(88,101,242,.3), rgba(0,0,0,.7)); }
+#fcmsOverlay.draw .rays { background: repeating-conic-gradient(from 0deg, rgba(160,180,220,.25) 0deg 5deg, transparent 5deg 20deg); opacity: .22; }
+#fcmsOverlay.draw .big > span { background-image: linear-gradient(180deg, #ffffff 0%, #cfd8ea 45%, #7f8db0 60%, #dfe6f5 100%);
     -webkit-text-stroke: .3vmin #20263a; filter: drop-shadow(0 1.2vmin 0 #20263a) drop-shadow(0 0 4vmin rgba(88,101,242,.6));
     animation: fcms-punch .55s .1s cubic-bezier(.2,1.5,.4,1) both; }
 #fcmsOverlay.draw .score .n { --glow: rgba(160,180,220,.4); }
-#fcmsOverlay.res .streak { display: inline-block; margin-top: 1.8vmin; padding: .6vmin 2.4vmin; font-size: 2.6vmin; font-weight: 900; font-style: italic; letter-spacing: .08em;
+#fcmsOverlay.res .streak { display: inline-block; margin: 0 1.6vmin; padding: .2vmin 2.4vmin .4vmin; font-size: 3vmin; letter-spacing: .08em;
     transform: skewX(-12deg); animation: fcms-pop2 .5s 1.2s cubic-bezier(.2,1.6,.4,1) both; }
+#fcmsOverlay.res .streak .fc-ic { width: 2.6vmin; height: 2.6vmin; margin-right: .6vmin; vertical-align: -.3vmin; }
 #fcmsOverlay.res .streak.hot { background: var(--fc-arc-gold); color: var(--fc-arc-gold-ink); box-shadow: 0 0 3vmin rgba(255,209,102,.6); }
 #fcmsOverlay.res .streak.cold { background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
 @keyframes fcms-pop2 { from { opacity: 0; transform: skewX(-12deg) scale(.4); } to { opacity: 1; transform: skewX(-12deg) scale(1); } }
-@keyframes fcms-pop3 { from { opacity: 0; transform: rotate(-8deg) scale(.4); } to { opacity: 1; transform: rotate(-8deg) scale(1); } }
-#fcmsOverlay.res .rematch { display: inline-block; margin: 1.8vmin 0 0 1.6vmin; padding: 1.1vmin 3.4vmin; cursor: pointer; transform: skewX(-12deg);
-    font-size: 2.4vmin; font-weight: 900; font-style: italic; letter-spacing: .04em; color: #fff; background: rgba(88,101,242,.95);
+#fcmsOverlay.res .rematch { display: inline-block; margin: 2.4vmin 0 0; padding: 1vmin 3.6vmin 1.2vmin; cursor: pointer; transform: skewX(-12deg);
+    font-size: 2.6vmin; letter-spacing: .08em; color: #fff; background: rgba(88,101,242,.95);
     box-shadow: 0 0 0 .2vmin rgba(255,255,255,.3), .8vmin .8vmin 0 rgba(0,0,0,.4), 0 0 2.4vmin rgba(88,101,242,.6); pointer-events: auto; transition: transform var(--fc-fast) ease, filter var(--fc-fast) ease; }
+#fcmsOverlay.res .rematch .fc-ic { width: 2.4vmin; height: 2.4vmin; margin-right: .8vmin; vertical-align: -.3vmin; }
 #fcmsOverlay.res .rematch:hover { transform: skewX(-12deg) translateY(-2px) scale(1.04); filter: brightness(1.12); }
-#fcmsOverlay.res .rematch.off { background: rgba(255,255,255,.12); box-shadow: none; cursor: default; font-size: 1.9vmin; transform: skewX(-12deg); }
+#fcmsOverlay.res .rematch.off { background: rgba(255,255,255,.12); box-shadow: none; cursor: default; font-family: inherit; font-weight: 700; font-size: 1.9vmin; letter-spacing: 0; transform: skewX(-12deg); }
 #fcmsOverlay.res .rematch.sent { background: #248046; box-shadow: 0 0 2.4vmin rgba(36,128,70,.6); }
-#fcmsOverlay.res .extra { display: block; margin-top: 1.4vmin; font-size: 2.2vmin; font-weight: 700; color: rgba(255,255,255,.75); animation: fcms-in .5s 1.3s both; }
+#fcmsOverlay.res .extra { display: block; margin: 0 1.2vmin; font-size: 2.2vmin; font-weight: 700; color: rgba(255,255,255,.75); animation: fcms-in .5s 1.3s both; }
 #fcmsOverlay .hint { position: absolute; right: 2.4vmin; bottom: 2vmin; font-size: 1.6vmin; color: rgba(255,255,255,.35); }
 .fcmsPill { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; margin-right: 8px; border-radius: var(--fc-r1);
     background: var(--fc-btn); color: #fff; font: 600 var(--fc-fs-md)/32px var(--fc-font); cursor: pointer; user-select: none; white-space: nowrap; }
@@ -1320,7 +1518,9 @@ const api = {
         recordVs: (o) => recordVs(o), extrasFor: (k, o, b, e) => extrasFor(k, o, b, e), load: () => ({ sets: H().all() }) },
     _showVs: (a, b) => showVs(a, b),
     _showResult: (...a) => showResult(...a),
-    picksOf, tapeOf,
+    picksOf, tapeOf, modeOf, calloutsOf,
+    // matchmaking (and others) say how a set came about, for the VS banner
+    hint: (opp, o) => hint(opp, o),
     _quarkResult: (...a) => quarkResult(...a),
     _poll: () => poll(),
     _vsOnce: (n) => vsOnce(n),

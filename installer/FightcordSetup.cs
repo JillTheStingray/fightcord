@@ -510,7 +510,7 @@ namespace Fightcord
 
     class SetupForm : Form
     {
-        const string Version = "3.12.1";
+        const string Version = "3.13.0";
         const string ReleasesUrl = "https://github.com/JillTheStingray/fightcord/releases/latest";
         const string Marker = "/* Fightcord loader */";
 

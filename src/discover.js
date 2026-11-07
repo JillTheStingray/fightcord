@@ -903,7 +903,7 @@ const CSS2 = `
 #fcdQuick {
     position: fixed; z-index: 950; display: none; max-height: 70vh; overflow-y: auto; padding: 6px; border-radius: 10px;
     background: var(--dc-float, #111214); color: var(--dc-text, #dbdee1); font-family: var(--dc-font, sans-serif);
-    box-shadow: 0 0 0 1px var(--fc-tint-2), 0 16px 40px var(--fc-scrim-4);
+    box-shadow: var(--fc-elev-2);
 }
 #fcdQuick.open { display: block; }
 #fcdQuick .fcdQHead { padding: 8px 10px 4px; font-size: var(--fc-fs-sm); font-weight: 800; text-transform: uppercase; color: var(--dc-muted, #949ba4); }

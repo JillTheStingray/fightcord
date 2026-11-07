@@ -228,7 +228,7 @@ const CSS = `
 #ccStack { position: fixed; top: 64px; left: 50%; z-index: var(--fc-z-stack); width: 420px; margin-left: -210px; pointer-events: none; }
 .ccCard { position: relative; overflow: hidden; margin-bottom: 12px; padding: 14px 16px 16px; border-radius: var(--fc-r4); pointer-events: auto;
     background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px var(--fc-tint-3), 0 18px 48px var(--fc-scrim-4), 0 0 42px var(--fc-accent-soft);
+    box-shadow: var(--fc-elev-3), 0 0 42px var(--fc-accent-soft);
     opacity: 0; transform: translateY(-18px) scale(.96); transition: opacity var(--fc-med) ease, transform var(--fc-med) cubic-bezier(.2,.9,.3,1.2); }
 .ccCard.in { opacity: 1; transform: none; }
 .ccCard.out { opacity: 0; transform: translateY(-10px) scale(.97); transition: opacity var(--fc-med) ease, transform var(--fc-med) ease; }

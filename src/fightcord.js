@@ -61,7 +61,7 @@ const PLUGINS = [
     ['match-screens.js', N_('Match screens & session tracker')], ['stats.js', N_('Stats, head-to-head & share card')],
     ['analytics.js', N_('Match analytics')], ['progress.js', N_('Rank & ELO history')], ['goals.js', N_('Training goals')], ['feed.js', N_('Lobby feed')], ['welcome.js', N_('Welcome screen & tour')], ['events.js', N_('Event reminders')], ['friends.js', N_('Friends')], ['notes.js', N_('Player notes & tags')],
     ['challenge-card.js', N_('Challenge card')], ['channel-banner.js', N_('Channel banner')], ['hover-cards.js', N_('Member hover cards')],
-    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')], ['game-hub.js', N_('Game hub (Rankings, Replays, Events, Profile)')], ['presence.js', N_('Fightcord players (who has Fightcord)')], ['rank-icons.js', N_('Rank icons')], ['system-logos.js', N_('System logos')], ['voice.js', N_('Voice chat with opponents')], ['lobbies.js', N_('Private lobbies')], ['uploads.js', N_('Pictures in chat')], ['layout3.js', N_('Fightcord 3.0 layout')],
+    ['profile-card.js', N_('Profile popout')], ['context-menu.js', N_('Right-click menu')], ['inbox.js', N_('Notification inbox')], ['backgrounds.js', N_('Animated backgrounds')], ['music.js', N_('Background music')], ['discord-rpc.js', N_('Discord status')], ['streamer.js', N_('Streamer mode & OBS overlay')], ['login-screen.js', N_('Login screen')], ['emu-skin.js', N_('Emulator overlay')], ['game-hub.js', N_('Game hub (Rankings, Replays, Events, Profile)')], ['presence.js', N_('Fightcord players (who has Fightcord)')], ['headcount.js', N_('Fightcord player count')], ['rank-icons.js', N_('Rank icons')], ['system-logos.js', N_('System logos')], ['voice.js', N_('Voice chat with opponents')], ['lobbies.js', N_('Private lobbies')], ['uploads.js', N_('Pictures in chat')], ['layout3.js', N_('Fightcord 3.0 layout')],
     ['snapshot.js', N_('Snapshot tool (dev)')]
 ];
 
@@ -211,6 +211,14 @@ function hero(sub) {
     return `<div class="fcordHero"><div class="logo">${fc.ui.icon('bolt')}</div><div><b>Fightcord ${E(version())}</b><span>${sub}</span></div></div>`;
 }
 
+// 3.13: how many people have Fightcord (headcount.js), under the hero
+function headcountHtml() {
+    const hc = fc.modules.get('headcount');
+    if (!hc || !hc.tilesHtml) return '';
+    hc.refresh();
+    return `<div class="fcordCount">${hc.tilesHtml()}</div>`;
+}
+
 function paneHtml(id) {
     if (id === 'home') {
         const m = manifest();
@@ -219,6 +227,7 @@ function paneHtml(id) {
         const running = fc.modules.list().filter(x => x.state === 'running').length;
         return `<h2>${ET('My Fightcord')}</h2>
             ${hero(ET('Discord-style Fightcade · {n} modules running', { n: running }) + (fc.safeMode ? ' · ' + ET('SAFE MODE') : ''))}
+            ${headcountHtml()}
             <div class="fc-set">${toggle(ET('Fightcord on'), ET('Off = plain Fightcade after a restart'), !m.disabled, 'data-man="disabled"')}
             ${toggle(ET('Startup splash screen'), ET('The FightCord logo while Fightcade logs in'), m.splash !== false, 'data-man="splash"')}</div>
             <h3>${ET('Profile')} <small>— ${ET('which modules run; applies after a restart')}</small></h3>
@@ -706,7 +715,7 @@ const CSS = `
 html.l3-tb #fcordModal { top: 32px; }
 #fcordModal.open { visibility: visible; opacity: 1; transition: opacity .18s ease; }
 #fcordModal .fcordWin { position: relative; display: flex; width: 100%; max-width: 1100px; height: 100%; max-height: 860px; overflow: hidden;
-    border-radius: 16px; background: var(--fc-s3); box-shadow: 0 0 0 1px var(--fc-divider), 0 24px 64px rgba(0,0,0,.6);
+    border-radius: 16px; background: var(--fc-s3); box-shadow: var(--fc-elev-3);
     transform: translateY(calc(10px * var(--fc-move, 1))) scale(calc(1 - .03 * var(--fc-move, 1))); transition: transform var(--fc-slow) var(--fc-spring); }
 #fcordModal.open .fcordWin { transform: none; }
 #fcordModal .fcordSide { flex: none; width: 248px; background: var(--fc-s2); overflow-y: auto; box-shadow: inset -1px 0 0 var(--fc-divider); }
@@ -751,10 +760,10 @@ html.l3-tb #fcordModal { top: 32px; }
 #fcordModal .fcordClose small { margin-top: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
 #fcordModal .fcordPane { display: none; }
 #fcordModal .fcordPane.on { display: block; animation: fcIn var(--fc-med) ease both; }
-#fcordModal .fcordPane > .fcBlock { margin: 0 0 16px; padding: 16px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+#fcordModal .fcordPane > .fcBlock { margin: 0 0 16px; padding: 16px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
 /* the built-in pages' lists of switches: one card each */
 #fcordModal .fcordHead > .fc-set > .fc-field:last-child { border-bottom: 0; }
-#fcordModal .fcordHead > .fc-set { padding: 4px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: inset 0 0 0 1px var(--fc-divider); }
+#fcordModal .fcordHead > .fc-set { padding: 4px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
 #fcordModal h2 { margin: 0 0 20px; font-size: 22px; font-weight: 800; color: var(--fc-head); }
 #fcordModal h3 { margin: 28px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--fc-muted); }
 #fcordModal h3 small { text-transform: none; font-weight: 500; }
@@ -767,6 +776,11 @@ html.l3-tb #fcordModal { top: 32px; }
 #fcordModal .fcordHero .logo .fc-ic { width: 28px; height: 28px; }
 #fcordModal .fcordHero b { display: block; font-size: 18px; color: var(--fc-head); }
 #fcordModal .fcordHero span { font-size: 14px; color: var(--fc-muted); }
+#fcordModal .fcordCount { margin: -4px 0 18px; }
+#fcordModal .fcordCount .fchcTiles { display: flex; gap: 10px; }
+#fcordModal .fcordCount .fc-tile { flex: 1; min-width: 0; background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
+#fcordModal .fcordCount .fc-tile .v { font-variant-numeric: tabular-nums; }
+#fcordModal .fcordCount .fchcNote { margin-top: 8px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 #fcordModal .fcordProfiles { display: flex; margin: 0 -6px; }
 #fcordModal .fcordProfile { flex: 1; margin: 0 6px; padding: 14px; border-radius: var(--fc-r2); background: var(--fc-s2); cursor: pointer;
     box-shadow: inset 0 0 0 1px var(--fc-divider); transition: box-shadow var(--fc-fast), background-color var(--fc-fast); }
@@ -853,6 +867,10 @@ function start(f) {
         fc.ui.style('fcordStyle', null);
         document.querySelectorAll('.fcordUpd').forEach(b => b.remove());
         window.__fcordCoreLoaded = false;
+    });
+    fc.on('headcount:changed', () => {
+        const el = document.querySelector('#fcordModal .fcordCount'), hc = fc.modules.get('headcount');
+        if (el && hc && hc.tilesHtml) el.innerHTML = hc.tilesHtml();
     });
     fc.cmd('fightcord', 'Open the Fightcord settings', () => open());
     fc.cmd('help', 'Fightcord: every chat command', () => {

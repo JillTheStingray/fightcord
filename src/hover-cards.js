@@ -226,7 +226,7 @@ function onDown(e) {
 const CSS = `
 #hcCard { position: fixed; z-index: 100001; width: 300px; overflow: hidden; border-radius: var(--fc-r3); pointer-events: auto;
     background: var(--fc-s0); color: var(--fc-text); font: var(--fc-fs-md)/1.35 var(--fc-font);
-    box-shadow: 0 0 0 1px var(--fc-tint-2), 0 12px 32px var(--fc-scrim-4); transform-origin: left center; }
+    box-shadow: var(--fc-elev-2); transform-origin: left center; }
 #hcCard .hcBody { padding: 0 14px 14px; }
 #hcCard .fc-ch-sec > :first-child { margin-top: 0; }
 #hcCard .hcStar { color: var(--fc-warning); display: inline-flex; }

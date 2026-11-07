@@ -173,7 +173,7 @@ function rankingsHtml() {
         fc.ui.btn('Jump to me', { kind: 'sec', size: 'sm', icon: 'user', act: 'jumpme' }) + `<span class="fc-grow"></span>${siteLink('rankings')}</div>`;
     if (!rk.rows.length && rk.busy) return head + shimmer(10);
     if (!rk.rows.length && rk.err) return head + failed(rk.err, 'rk-retry');
-    const list = rows.map(r => `<div class="ghRow${lc(r.name) === me ? ' me' : ''}" data-name="${E(r.name)}">` +
+    const list = rows.map(r => `<div class="ghRow${r.pos <= 3 ? ' pod p' + r.pos : ''}${lc(r.name) === me ? ' me' : ''}" data-name="${E(r.name)}">` +
         `<span class="pos${r.pos <= 3 ? ' top' + r.pos : ''}">${r.pos}</span>` +
         `<span class="who">${ava(r.name, 28, r.gravatar)}${onlineDot(r.name)}${flag(r.cc)}<b data-scout="${E(r.name)}">${E(r.name)}</b></span>` +
         `<span class="rk">${r.rank ? fc.ui.tag(r.rank) : ''}</span>` +
@@ -453,6 +453,18 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghDot { position: absolute; left: 20px; top: 22px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--fc-s1, #2b2d31); }
 #ghHub .ghDot.on { background: var(--fc-success); } #ghHub .ghDot.playing { background: var(--fc-danger); }
 #ghHub .ghRow .num { font-variant-numeric: tabular-nums; color: var(--fc-text); }
+/* 3.13: the podium -- the top three sit a little higher, tinted in their medal's colour with a lit edge */
+#ghHub .ghRow .rk .fc-tag { --sz: 22px; }
+#ghHub .ghRow.pod { --m: 240,178,50; min-height: 52px; margin: 0 0 4px; background: linear-gradient(90deg, rgba(var(--m),.16), rgba(var(--m),.04) 45%, transparent 80%);
+    box-shadow: inset 3px 0 0 rgb(var(--m)), inset 0 1px 0 rgba(var(--m),.25), var(--fc-elev-0); }
+#ghHub .ghRow.pod.p2 { --m: 195,202,211; }
+#ghHub .ghRow.pod.p3 { --m: 208,138,78; }
+#ghHub .ghRow.pod + .ghRow { box-shadow: none; }
+#ghHub .ghRow.pod:hover { background: linear-gradient(90deg, rgba(var(--m),.22), rgba(var(--m),.07) 45%, var(--fc-hover) 80%); box-shadow: inset 3px 0 0 rgb(var(--m)), inset 0 1px 0 rgba(var(--m),.25), var(--fc-elev-0); }
+#ghHub .ghRow.pod .who b { font-size: var(--fc-fs-lg); }
+#ghHub .ghRow.pod .pos { width: 30px; height: 30px; box-shadow: 0 0 12px rgba(var(--m),.45); }
+#ghHub .ghRow.pod .rk .fc-tag { --sz: 26px; }
+#ghHub .ghRow.pod.me { background: linear-gradient(90deg, rgba(var(--m),.16), var(--fc-accent-soft) 60%); }
 #ghHub .ghMore { display: flex; justify-content: center; padding: 14px 0; }
 #ghHub .ghEmpty { padding: 18px 10px; color: var(--fc-muted); }
 #ghHub .ghEmpty .fc-btn { margin-left: 8px; }

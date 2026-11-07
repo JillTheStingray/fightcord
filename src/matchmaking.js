@@ -588,11 +588,12 @@ function start(f) {
         challenge: (x) => {
             const { name } = opponent(x);
             const ms = mod('match-screens');
+            if (ms && ms.hint) ms.hint(name, { via: 'matchmaking', ft: x.mode === 'ranked' ? x.ft : 0 });      // for the VS banner
             const st = ms && ms.challenge ? ms.challenge(name, x.mode === 'ranked' ? x.ft : 0, x.ch) : { ok: false };
             if (!st.ok) fc.log.warn('matchmaking challenge failed', st.why || '');
             return !!st.ok;
         },
-        arm: (x) => { const { name } = opponent(x); armed = { opp: lc(name), ch: x.ch, until: Date.now() + FOUND_MS + START_MS }; }
+        arm: (x) => { const { name } = opponent(x); const ms = mod('match-screens'); if (ms && ms.hint) ms.hint(name, { via: 'matchmaking', ft: x.mode === 'ranked' ? x.ft : 0 }); armed = { opp: lc(name), ch: x.ch, until: Date.now() + FOUND_MS + START_MS }; }
     });
     fc.ui.style('fcmmStyle', CSS);
     fc.own(() => { fc.ui.style('fcmmStyle', null); if (mm) mm.leave('quit'); closeModal(); stopUi(); disconnect(); });

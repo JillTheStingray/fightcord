@@ -332,7 +332,7 @@ function updatePopup(input) {
         el.id = 'emojiSuggest';
         el.style.cssText = 'position:fixed;z-index:var(--fc-z-float);box-sizing:border-box;padding:4px;' +
             'background:var(--mainColor-darker,#14161a);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
-            'border-radius:6px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);';
+            'border-radius:6px;font-size:13px;color:#fff;box-shadow:var(--fc-elev-2, 0 8px 24px rgba(0,0,0,.5));';
         // mousedown, not click: keep focus in the chat box
         el.addEventListener('mousedown', (e) => {
             e.preventDefault(); e.stopPropagation();
@@ -461,7 +461,7 @@ function openPicker(anchor, onPick) {
     box.id = 'emojiPicker';
     box.style.cssText = 'position:fixed;z-index:var(--fc-z-float);box-sizing:border-box;width:' + W + 'px;' +
         'background:var(--mainColor-darker,#14161a);border:1px solid var(--mainColor-light,rgba(255,255,255,.25));' +
-        'border-radius:6px;padding:6px;font-size:13px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);' +
+        'border-radius:6px;padding:6px;font-size:13px;color:#fff;box-shadow:var(--fc-elev-2, 0 8px 24px rgba(0,0,0,.5));' +
         'left:' + Math.max(8, rect.right - W) + 'px;bottom:' + (window.innerHeight - rect.top + 8) + 'px;';
     box.innerHTML = `
         <input class="emjSearch" type="text" placeholder="${escapeHtml(T('Search emoji…'))}" style="display:block;box-sizing:border-box;

@@ -256,7 +256,7 @@ html.l3-tb #l3Title { position: fixed; top: 0; left: 0; right: 0; height: ${TOP}
 #l3Panel { display: none; }
 html.l3-panel #l3Panel { position: fixed; bottom: 8px; left: 8px; height: 52px; z-index: 46; display: flex; align-items: center; padding: 0 8px 0 6px; box-sizing: border-box;
     --l3-panel-bg: var(--dc-input, #222327);
-    border-radius: 10px; background: var(--l3-panel-bg); box-shadow: 0 0 0 1px var(--dc-divider), 0 6px 18px var(--fc-scrim-2); font-family: var(--fc-font);
+    border-radius: 10px; background: var(--l3-panel-bg); box-shadow: var(--fc-elev-2); font-family: var(--fc-font);
     animation: l3Up var(--fc-slow) var(--fc-ease) both; }
 @keyframes l3Up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 html.l3-panel.l3-covered #l3Panel { opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity var(--fc-fast) ease, transform var(--fc-med) var(--fc-ease); }

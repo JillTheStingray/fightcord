@@ -90,3 +90,32 @@ test('casual sets the site lists as 0-0 count from the emulator’s own games (3
     assert.equal(ms.verdict(2, 2), 'draw');
     assert.equal(ms.verdict(3, 1), 'won');
 });
+
+// 3.13: the result screen's stamps
+test('callouts: perfect set, comeback, clutch, upset, rank up, so close', () => {
+    const G = (s) => s.split('').map(c => ({ w: c === 'W' ? 1 : 0 }));
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 0, ft: 3 }), ['perfect']);
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 1, games: G('LWWW'), ft: 3 }), ['comeback'], 'behind 0–1, then won');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 1, games: G('WLWW'), ft: 3 }), [], 'never behind: nothing');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 2, games: G('WWLLW'), ft: 3 }), ['clutch'], 'the last game decided it');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 2, games: G('LLWWW'), ft: 3 }), ['comeback', 'clutch']);
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 2, ft: 0 }), [], 'a casual set has no deciding game');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 2, ft: 5 }), [], 'FT5: 3–2 isn’t the end');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 1, ft: 3, myRank: 3, oppRank: 5 }), ['upset'], 'beat a higher rank');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 1, ft: 3, myRank: 5, oppRank: 3 }), []);
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 3, theirs: 0, ft: 3, myRank: 2, oppRank: 4, rankUp: true }), ['rankup', 'perfect'], 'at most two, rank up first');
+    assert.deepEqual(ms.calloutsOf({ kind: 'lost', mine: 2, theirs: 3, ft: 3 }), ['close']);
+    assert.deepEqual(ms.calloutsOf({ kind: 'lost', mine: 0, theirs: 3, ft: 3 }), []);
+    assert.deepEqual(ms.calloutsOf({ kind: 'draw', mine: 2, theirs: 2 }), []);
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: null, theirs: null }), [], 'no score known: no stamps');
+    assert.deepEqual(ms.calloutsOf({ kind: 'won', mine: 2, theirs: 1 }), ['clutch'], 'FT unknown: one game each from the end still counts');
+    assert.deepEqual(ms.calloutsOf(), []);
+});
+
+test('the VS banner: ranked FT, casual, matchmaking, unknown', () => {
+    assert.deepEqual(ms.modeOf(3), { mm: false, mode: 'ranked', ft: 3 });
+    assert.deepEqual(ms.modeOf(0), { mm: false, mode: 'casual', ft: 0 });
+    assert.deepEqual(ms.modeOf(null), { mm: false, mode: '', ft: 0 });
+    assert.deepEqual(ms.modeOf(undefined, 'matchmaking'), { mm: true, mode: '', ft: 0 });
+    assert.deepEqual(ms.modeOf(5, 'matchmaking'), { mm: true, mode: 'ranked', ft: 5 });
+});

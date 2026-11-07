@@ -116,6 +116,50 @@ function panel(x, w, h, accent, ends) {
     x.fillRect(0, h - 2, w, 2);
 }
 
+// 3.13 broadcast style, like the VS screen: your colour on the left, a second colour on the right,
+// a dark plate in the middle (the score) with lit slanted edges, fine slanted stripes. Symmetric, so it
+// works wherever the emulator puts the names.
+const PINK = [255, 79, 163], GOLD = [240, 178, 50];
+const SLANT = Math.tan(14 * Math.PI / 180);           // the VS screen's -14deg
+// the right-hand colour: cyan, or pink when your accent is close to cyan already
+function secondOf(a) { return Math.abs(a[0] - CYAN[0]) + Math.abs(a[1] - CYAN[1]) + Math.abs(a[2] - CYAN[2]) < 170 ? PINK : CYAN; }
+function broadcast(x, w, h, a, b, plateW) {
+    const k = h * SLANT, cx = w / 2, pl = cx - plateW / 2, pr = cx + plateW / 2;
+    const poly = (pts) => { x.beginPath(); pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.closePath(); };
+    x.fillStyle = 'rgba(8,8,12,0.86)';
+    x.fillRect(0, 0, w, h);
+    // the two panels: strongest at the outer ends, darker towards the plate and the bottom
+    [[a, [[0, 0], [pl + k / 2, 0], [pl - k / 2, h], [0, h]], 0, pl], [b, [[pr + k / 2, 0], [w, 0], [w, h], [pr - k / 2, h]], w, pr]].forEach(([col, pts, outer, inner]) => {
+        x.save();
+        poly(pts); x.clip();
+        const g = x.createLinearGradient(outer, 0, inner, 0);
+        g.addColorStop(0, rgba(col, 0.78)); g.addColorStop(0.55, rgba(col, 0.5)); g.addColorStop(1, rgba(col, 0.36));
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        const v = x.createLinearGradient(0, 0, 0, h);
+        v.addColorStop(0, 'rgba(255,255,255,0.16)'); v.addColorStop(0.35, 'rgba(255,255,255,0)'); v.addColorStop(1, 'rgba(0,0,0,0.45)');
+        x.fillStyle = v; x.fillRect(0, 0, w, h);
+        x.strokeStyle = 'rgba(255,255,255,0.07)'; x.lineWidth = 1;
+        for (let i = -h; i < w + h; i += 7) { x.beginPath(); x.moveTo(i, h); x.lineTo(i + k, 0); x.stroke(); }
+        x.restore();
+    });
+    // the plate under the score, and its lit edges in each side's colour
+    poly([[pl + k / 2, 0], [pr + k / 2, 0], [pr - k / 2, h], [pl - k / 2, h]]);
+    x.fillStyle = 'rgba(7,7,11,0.95)'; x.fill();
+    [[pl, a], [pr, b]].forEach(([ex, col]) => {
+        x.save();
+        x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.shadowColor = rgba(col, 1); x.shadowBlur = 10;
+        x.beginPath(); x.moveTo(ex + k / 2, 0); x.lineTo(ex - k / 2, h); x.stroke();
+        x.restore();
+    });
+    // top hairline; along the bottom each side's colour with gold under the plate
+    x.fillStyle = 'rgba(255,255,255,0.12)'; x.fillRect(0, 0, w, 1);
+    const l = x.createLinearGradient(0, 0, w, 0);
+    l.addColorStop(0, rgba(a, 1)); l.addColorStop(Math.max(0, pl / w - 0.02), rgba(a, 0.9));
+    l.addColorStop(pl / w, rgba(GOLD, 1)); l.addColorStop(pr / w, rgba(GOLD, 1));
+    l.addColorStop(Math.min(1, pr / w + 0.02), rgba(b, 0.9)); l.addColorStop(1, rgba(b, 1));
+    x.fillStyle = l; x.fillRect(0, h - 3, w, 3);
+}
+
 function canvas(file) {
     const c = document.createElement('canvas');
     c.width = SIZES[file][0];
@@ -123,19 +167,30 @@ function canvas(file) {
     return c;
 }
 
-function drawBar(accent) {
+function drawBar(accent, style) {
     const c = canvas('background.png');
-    panel(c.getContext('2d'), c.width, c.height, hexRgb(accent), true);
+    const a = hexRgb(accent);
+    if (style === 'neon') panel(c.getContext('2d'), c.width, c.height, a, true);
+    else broadcast(c.getContext('2d'), c.width, c.height, a, secondOf(a), 640);
     return c;
 }
 
 // the eye where Fightcade's is (x 14-56, y 14-38); the emulator writes the count to its right
 const EYE = 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z';
-function drawEye(accent) {
+function drawEye(accent, style) {
     const c = canvas('spectators.png');
     const x = c.getContext('2d');
     const a = hexRgb(accent);
-    panel(x, c.width, c.height, a, false);
+    const bc = style !== 'neon';
+    if (bc) {
+        // the dark plate with your colour as a slanted tab at the front and gold along the bottom
+        const h = c.height, k = h * SLANT;
+        x.fillStyle = 'rgba(7,7,11,0.92)'; x.fillRect(0, 0, c.width, h);
+        x.beginPath(); x.moveTo(0, 0); x.lineTo(6 + k / 2, 0); x.lineTo(6 - k / 2, h); x.lineTo(0, h); x.closePath();
+        x.fillStyle = rgba(a, 0.95); x.fill();
+        x.fillStyle = 'rgba(255,255,255,0.12)'; x.fillRect(0, 0, c.width, 1);
+        x.fillStyle = rgba(GOLD, 1); x.fillRect(0, h - 3, c.width, 3);
+    } else panel(x, c.width, c.height, a, false);
     x.save();
     x.translate(35 - 12 * 2.1, 26 - 12 * 2.1);
     x.scale(2.1, 2.1);
@@ -147,7 +202,7 @@ function drawEye(accent) {
     x.stroke(new Path2D(EYE));
     x.beginPath();
     x.arc(12, 12, 3, 0, Math.PI * 2);
-    x.fillStyle = rgba(CYAN, 1);
+    x.fillStyle = rgba(bc ? GOLD : CYAN, 1);
     x.fill();
     x.restore();
     return c;
@@ -211,6 +266,7 @@ function buildFnt(src, chars, kerning, name) {
 const FONTS = [
     { id: 'theme', name: N_('Your theme font'), style: N_('Follows Appearance → Theme'), weight: 700 },
     { id: 'fightcade', name: N_('Fightcade’s own'), style: N_('Source Sans Pro, as it comes'), card: 'Source Sans 3', gf: 'Source+Sans+3:wght@700' },
+    { id: 'anton', name: 'Anton', style: N_('Broadcast, like the VS screen'), family: 'FC Display', weight: 400, embedded: true },
     { id: 'press-start', name: 'Press Start 2P', style: N_('Arcade pixel'), family: 'Press Start 2P', gf: 'Press+Start+2P', weight: 400, grid: 8 },
     { id: 'pixelify', name: 'Pixelify Sans', style: N_('Modern pixel'), family: 'Pixelify Sans', gf: 'Pixelify+Sans:wght@700', weight: 700 },
     { id: 'silkscreen', name: 'Silkscreen', style: N_('Tiny pixel capitals'), family: 'Silkscreen', gf: 'Silkscreen:wght@700', weight: 700 },
@@ -397,7 +453,7 @@ const ranksOn = () => { const ri = fc.modules.get('rank-icons'); return !!(ri &&
 const wantKey = () => {
     if (!cfg.enabled && !ranksOn()) return null;
     const s = fontSpec(cfg.fontChoice);
-    return (cfg.enabled ? accent() + '|' + (s ? s.id + ':' + s.family : 'fightcade') : 'bar-off') + (ranksOn() ? '|ranks' : '');
+    return (cfg.enabled ? accent() + '|' + (cfg.style || 'broadcast') + '|' + (s ? s.id + ':' + s.family : 'fightcade') : 'bar-off') + (ranksOn() ? '|ranks' : '');
 };
 
 // Brings the files in line with the setting; waits while an emulator is open (or can't tell)
@@ -416,7 +472,7 @@ async function sync(force) {
         let files = null;
         if (want && cfg.enabled) {
             const a = accent();
-            files = { 'background.png': png(drawBar(a)), 'spectators.png': png(drawEye(a)) };
+            files = { 'background.png': png(drawBar(a, cfg.style)), 'spectators.png': png(drawEye(a, cfg.style)) };
             const spec = fontSpec(cfg.fontChoice);
             if (spec) {
                 const src = originalFnt();
@@ -458,7 +514,7 @@ async function buildShot() {
     if (!key || shot.busy || shot.key === key) return;
     shot.busy = true;
     try {
-        const bar = drawBar(accent());
+        const bar = drawBar(accent(), cfg.style);
         const spec = fontSpec(cfg.fontChoice);
         let font = null, page = null;
         const src = originalFnt();
@@ -483,8 +539,8 @@ async function buildShot() {
 let barUrl = '', barFor = '';
 function previewHtml(d) {
     if (!d.enabled) return '';
-    const a = accent();
-    if (barFor !== a) { barFor = a; barUrl = drawBar(a).toDataURL('image/png'); }
+    const a = accent(), bk = a + '|' + (d.style || 'broadcast');
+    if (barFor !== bk) { barFor = bk; barUrl = drawBar(a, d.style).toDataURL('image/png'); }
     const choice = fontById(d.fontChoice);
     if (shot.key !== wantKey()) setTimeout(buildShot, 0);
     // until the exact one is drawn (or without Fightcade's font files, e.g. the dev harness): CSS text
@@ -517,6 +573,20 @@ function cardSize(f, text, cap, maxW) {
     return (sizeCache[k] = Math.max(8, Math.min(100 * cap / h, 100 * maxW / w)).toFixed(1));
 }
 
+// 3.13: the bar's look: Broadcast (like the VS screen) or the 2.7 neon bar
+const STYLES = [{ id: 'broadcast', name: N_('Broadcast'), style: N_('Like the VS screen') }, { id: 'neon', name: N_('Neon'), style: N_('The neon bar from 2.7') }];
+const styleUrls = {};
+function stylesHtml(d) {
+    if (!d.enabled) return '';
+    const a = accent();
+    return `<div class="fcesStyles">${STYLES.map(st => {
+        const k = a + '|' + st.id;
+        if (!styleUrls[k]) styleUrls[k] = drawBar(a, st.id).toDataURL('image/png');
+        return `<div class="fcesFont fcesStyle${st.id === (d.style || 'broadcast') ? ' on' : ''}" data-style="${st.id}"><div class="smp" style="background-image:url(${styleUrls[k]})"></div>` +
+            `<b>${fc.fmt.esc(T(st.name))}</b><small>${fc.fmt.esc(T(st.style))}</small></div>`;
+    }).join('')}</div>`;
+}
+
 function pickerHtml(d) {
     if (!d.enabled) return '';
     return `<div class="fcesFonts">${FONTS.map(f => `<div class="fcesFont${f.id === (d.fontChoice || 'theme') ? ' on' : ''}" data-font="${f.id}" title="${fc.fmt.esc(T(f.name))}">
@@ -527,6 +597,8 @@ function pickerHtml(d) {
 // the gallery shows every font: load them (once) when the settings open
 let galleryLoaded = false;
 function onSettingsClick(e) {
+    const st = e.target.closest && e.target.closest('.fcesStyle[data-style]');
+    if (st) { cfg.style = st.getAttribute('data-style') === 'neon' ? 'neon' : 'broadcast'; store.save(); fc.settings.refresh('emu-skin'); sync(true); return; }
     const card = e.target.closest && e.target.closest('.fcesFont[data-font]');
     if (!card) return;
     cfg.fontChoice = card.getAttribute('data-font');
@@ -542,6 +614,9 @@ const CSS = `
 .fcesLine { position: absolute; left: 0; right: 0; top: 0; line-height: 50px; text-align: center; font-size: var(--fc-fs-2xl); white-space: nowrap; }
 .fcesLine span, .fcesFont .smp span { text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 2px 0 0 #000, -2px 0 0 #000; }
 .fcesLine span { margin: 0 12px; }
+.fcesStyles { display: flex; margin: 8px -4px 0; }
+.fcesStyles .fcesStyle { width: calc(50% - 8px); }
+.fcesStyles .smp { height: 30px; }
 .fcesFonts { display: flex; flex-wrap: wrap; margin: 8px -4px 0; }
 .fcesFont { width: calc(33.333% - 8px); margin: 4px; padding: 6px 6px 8px; border-radius: var(--fc-r2); box-sizing: border-box; cursor: pointer;
     background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px var(--fc-tint-2); transition: box-shadow var(--fc-fast), background var(--fc-fast); }
@@ -558,8 +633,9 @@ const CSS = `
 
 function start(f) {
     fc = f;
-    store = fc.config('emu-skin', { enabled: false, fontChoice: 'theme', written: {}, originals: {} });
+    store = fc.config('emu-skin', { enabled: false, fontChoice: 'anton', style: 'broadcast', written: {}, originals: {} });
     cfg = store.data;
+    if (!cfg.v313) { if (cfg.fontChoice === 'theme') cfg.fontChoice = 'anton'; if (!cfg.style) cfg.style = 'broadcast'; cfg.v313 = true; }
     // 2.7 test builds had a font switch
     if (cfg.font === false && !cfg.fontChoice) cfg.fontChoice = 'fightcade';
     if (!cfg.fontChoice || !FONTS.some(x => x.id === cfg.fontChoice)) cfg.fontChoice = 'theme';
@@ -581,6 +657,7 @@ function start(f) {
         fields: [
             { key: 'enabled', type: 'switch', label: 'Fightcord style for the in-game bar', hint: 'Drawn in your theme colour. Fightcade’s rank badges and flags stay',
                 onChange: () => sync(true) },
+            { type: 'html', id: 'emu-skin-styles', html: stylesHtml },
             { type: 'html', id: 'emu-skin-preview', html: previewHtml },
             { type: 'html', id: 'emu-skin-fonts', html: (d) => {
                 if (d.enabled && !galleryLoaded && typeof document !== 'undefined') {
@@ -591,7 +668,7 @@ function start(f) {
                 }
                 return pickerHtml(d);
             } },
-            { type: 'note', label: 'Fonts from Google Fonts (free, open licence). Changes apply to your next match; Fightcade’s own files are kept and put back when you turn this off.' }
+            { type: 'note', label: 'Every font is free (open licence): Anton comes with Fightcord, the others load from Google Fonts. Changes apply to your next match; Fightcade’s own files are kept and put back when you turn this off.' }
         ]
     });
     sync(true);
@@ -608,12 +685,12 @@ const api = {
         fc.settings.refresh('emu-skin');
         sync(true);
     },
-    _draw: { bar: (a) => drawBar(a || accent()), eye: (a) => drawEye(a || accent()), font: (src, id) => drawFont(src, fontSpec(id || cfg.fontChoice)), line: renderLine },
+    _draw: { bar: (a, st) => drawBar(a || accent(), st || cfg.style), eye: (a, st) => drawEye(a || accent(), st || cfg.style), font: (src, id) => drawFont(src, fontSpec(id || cfg.fontChoice)), line: renderLine },
     _fontReady: (id) => fontReady(fontSpec(id || cfg.fontChoice)),
     parseFnt,
     FONTS,
     get _config() { return cfg; }
 };
 
-module.exports = { id: 'emu-skin', name: 'Emulator overlay', start, applyFiles, hexRgb, parseFnt, buildFnt, SIZES, FILES, FONTS, BACKUP };
+module.exports = { id: 'emu-skin', name: 'Emulator overlay', start, applyFiles, hexRgb, parseFnt, buildFnt, SIZES, FILES, FONTS, BACKUP, STYLES, secondOf };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

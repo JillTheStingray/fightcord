@@ -315,13 +315,13 @@ html.dc-layout .mainToolbar .buttonBar .userButton .userState {
     width: 14px; height: 14px; right: -2px; bottom: -2px; border: 3px solid var(--dc-bg3); box-shadow: none;
 }
 html.dc-layout .mainToolbar .buttonBar .userButton .userStateMenu {
-    background: var(--dc-float); border-radius: var(--fc-r2); box-shadow: 0 8px 16px var(--fc-scrim-1); border: 0;
+    background: var(--dc-float); border-radius: var(--fc-r2); box-shadow: var(--fc-elev-2); border: 0;
 }
 
 /* ============================== channel header ============================== */
 html.dc-layout .channelToolbar {
     height: 48px; min-height: 48px; background: var(--dc-bg); padding: 0 8px 0 16px; position: relative; z-index: 3;
-    box-shadow: none; border-bottom: 1px solid var(--dc-divider); box-sizing: border-box;
+    box-shadow: var(--fc-elev-0); border-bottom: 1px solid var(--dc-divider); box-sizing: border-box;
 }
 html.dc-layout .channelToolbar .channelInfo { height: 48px; align-items: center; min-width: 0; flex: 1 1 auto; }
 html.dc-layout .channelToolbar .channelInfo .name:not(.title) { flex: 0 0 auto; overflow: visible; }

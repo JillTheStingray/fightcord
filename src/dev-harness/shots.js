@@ -146,7 +146,14 @@ const SCENES = [
     { name: 'vs', snap: CHANNEL, run: `
         const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
         fightcord.modules.get('match-screens')._showVs(fightcord.app.me(), others[3]);
-        await sleep(1400);` },
+        await sleep(2600);` },
+    // 3.13: matchmaking's banner (ranked FT3), half-way through the entrance, and FIGHT! at the end
+    ...[['vs-mm', 2600, ''], ['vs-mid', 820, ''], ['vs-fight', 0, 'fight']].map(([name, wait, end]) => ({ name, snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        const ms = fightcord.modules.get('match-screens');
+        ms.hint(others[3], { via: 'matchmaking', ft: 3 });
+        ms._showVs(fightcord.app.me(), others[3]);
+        ${end ? "await sleep(1600); document.getElementById('fcmsOverlay').classList.add('fight'); await sleep(950);" : 'await sleep(' + wait + ');'}` })),
     // 3.1 result screens: a win that crosses into the next rank (exact ELO), game by game; a loss with
     // nothing from the emulator or Fightcade's ELO; a draw
     { name: 'res-won', snap: CHANNEL, run: `
@@ -154,12 +161,26 @@ const SCENES = [
         const G = (w, m, t) => ({ w, m, t });
         fightcord.modules.get('match-screens')._showResult('won', 3, 1, others[3], 'Street Fighter III 3rd Strike', {
             streak: '3 WIN STREAK', hot: true, myChar: 'Ken', oppChar: 'Chun-Li', elo: { start: 1588, end: 1607 },
-            games: [G(1, 'Ken', 'Yun'), G(0, 'Ken', 'Yun'), G(1, 'Ken', 'Chun-Li'), G(1, 'Ken', 'Chun-Li')],
+            games: [G(0, 'Ken', 'Yun'), G(1, 'Ken', 'Yun'), G(1, 'Ken', 'Chun-Li'), G(1, 'Ken', 'Chun-Li')], ft: 3, rank: 3, oppRank: 4,
             lines: ["You're 4–2 vs " + others[3], 'Tonight 5–2'], rematch: { opp: others[3], ft: 3 } });
-        await sleep(2800);` },
+        await sleep(3400);` },
+    { name: 'res-mid', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        const G = (w, m, t) => ({ w, m, t });
+        fightcord.modules.get('match-screens')._showResult('won', 3, 1, others[3], 'Street Fighter III 3rd Strike', {
+            myChar: 'Ken', oppChar: 'Chun-Li', games: [G(0, 'Ken', 'Yun'), G(1, 'Ken', 'Yun'), G(1, 'Ken', 'Chun-Li'), G(1, 'Ken', 'Chun-Li')], ft: 3,
+            rematch: { opp: others[3], ft: 3 } });
+        await sleep(1500);` },
+    { name: 'res-perfect', snap: CHANNEL, run: `
+        const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
+        const G = (w, m, t) => ({ w, m, t });
+        fightcord.modules.get('match-screens')._showResult('won', 3, 0, others[2], 'Street Fighter III 3rd Strike', {
+            streak: '5 WIN STREAK', hot: true, myChar: 'Ken', oppChar: 'Dudley', games: [G(1, 'Ken', 'Dudley'), G(1, 'Ken', 'Dudley'), G(1, 'Ken', 'Dudley')], ft: 3,
+            lines: ['Tonight 7–2'], rematch: { opp: others[2], ft: 3 } });
+        await sleep(3400);` },
     { name: 'res-lost', snap: CHANNEL, run: `
         const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
-        fightcord.modules.get('match-screens')._showResult('lost', 1, 3, others[3], 'Street Fighter III 3rd Strike', {
+        fightcord.modules.get('match-screens')._showResult('lost', 2, 3, others[3], 'Street Fighter III 3rd Strike', { ft: 3,
             streak: 'Streak of 3 ended', lines: ["You're 4–3 vs " + others[3], 'Tonight 5–3'], rematch: { opp: others[3], ft: 3 } });
         await sleep(2800);` },
     { name: 'res-draw', snap: CHANNEL, run: `
@@ -175,11 +196,31 @@ const SCENES = [
         const t = document.querySelector('[data-fc-block="emu-skin"]');
         if (t) t.scrollIntoView({ block: 'start' });
         await sleep(1500);` },
+    // 3.13: the bar pictures at full size as the emulator gets them (broadcast, then neon), with the names and
+    // score drawn the way the emulator draws them (CSS stand-in: outlined text, cyan scores, orange FT)
+    { name: 'emu-bars', snap: CHANNEL, run: `
+        const es = fightcord.modules.get('emu-skin');
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:#3a4a3f;padding:30px 110px;';
+        const row = (st, accent) => {
+            const w = document.createElement('div'); w.style.cssText = 'position:relative;width:1220px;height:50px;margin:0 0 18px;';
+            w.appendChild(es._draw.bar(accent, st)); const eye = es._draw.eye(accent, st); eye.style.cssText = 'position:absolute;left:1240px;top:0'; w.appendChild(eye);
+            const t = document.createElement('div');
+            t.style.cssText = "position:absolute;left:0;top:0;width:1220px;height:50px;display:flex;align-items:center;justify-content:center;column-gap:26px;font:400 30px 'FC Display',sans-serif;color:#fff;-webkit-text-stroke:5px #000;paint-order:stroke fill;";
+            t.innerHTML = '<span>TurtleTime</span><span style=\\"color:#22e3f2\\">2</span><span style=\\"color:#f0b232\\">FT3</span><span style=\\"color:#22e3f2\\">1</span><span>JabKid52</span>';
+            w.appendChild(t);
+            box.appendChild(w);
+        };
+        [['broadcast', '#5865f2'], ['broadcast', '#f0b232'], ['broadcast', '#22e3f2'], ['broadcast', '#ed4245'], ['neon', '#5865f2']].forEach(([st, c]) => row(st, c));
+        document.body.appendChild(box);
+        await sleep(600);` },
     { name: 'visualizer', snap: CHANNEL, run: `
         __sim.music();
         fightcord.modules.get('backgrounds').setLook({ style: 'visualizer', look: 'bars', intensity: 0.85 });
         await sleep(3000);` },
     { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
+    // 3.13 the player count under the hero (made-up numbers: the harness has no relays)
+    { name: 'settings-count', snap: CHANNEL, run: `fightcord.modules.get('headcount')._demo({ total: 1284, month: 612 }); ['HadoKid', 'Parry4Days', 'SeaBreeze'].forEach(n => fightcord.modules.get('presence')._heard(n, false)); fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
     // private lobbies: made-up members and chat (the harness has no relays)
     // (3.0: the lobby's picture, banner, roles, reactions, a reply, a pin, the voice room, the hover toolbar)
     { name: 'lobby', snap: CHANNEL, run: `fightcord.modules.get('lobbies')._demo({ v3: true, voice: true, more: [{ id: 'demo1', name: 'Parry Club', seeds: ['0'], epoch: 0, lastRead: 0 }] }); await sleep(1500);

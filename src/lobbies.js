@@ -3057,7 +3057,11 @@ function placeTb(tb, ln) {
     hl.classList.add('on');
     tb.dataset.mid = ln.dataset.mid;
     if (!tb.firstChild) return;
-    tb.style.top = Math.max(top - 16, log.top - mr.top + 4) + 'px';
+    let ty = Math.max(top - 16, log.top - mr.top + 4);
+    // 3.13: right under the NEW line, the toolbar would cover its NEW tag: it sits just below the tag instead
+    const g = ln.closest('.fclbG'), nw = first && g && g.previousElementSibling && g.previousElementSibling.classList.contains('fclbNew') ? g.previousElementSibling.querySelector('span') : null;
+    if (nw) { const nr = nw.getBoundingClientRect(); if (nr.height) ty = Math.max(ty, nr.bottom - mr.top + 2); }
+    tb.style.top = ty + 'px';
     tb.classList.add('on');
     const pinned = ln.classList.contains('pinned');
     const p = tb.querySelector('[data-tb="pin"]');
@@ -3658,7 +3662,7 @@ const CSS = `
 .fclbHl { position: absolute; left: 0; right: 0; z-index: 0; display: none; background: var(--fc-hover); pointer-events: none; }
 .fclbHl.on { display: block; }
 .fclbTb { position: absolute; right: 20px; z-index: 3; display: none; align-items: center; padding: 2px; border-radius: var(--fc-r2); background: var(--fc-s2);
-    box-shadow: 0 0 0 1px var(--fc-divider), 0 4px 12px var(--fc-scrim-1); }
+    box-shadow: var(--fc-elev-2); }
 .fclbTb.on { display: flex; animation: fcPop .12s var(--fc-ease, ease-out) both; }
 .fclbTb .b { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; color: var(--fc-muted); cursor: pointer;
     font: var(--fc-fs-h3)/1 'Segoe UI Emoji', var(--fc-font); transition: transform var(--fc-fast) var(--fc-spring, ease-out), background-color var(--fc-fast); }
@@ -4286,6 +4290,8 @@ const api = {
     leaveVoice: () => voiceLeave(),
     // friends + DMs (3.6): the DMs module drives these
     myId: () => { const id = myId(); return id ? id.pk : ''; },
+    // 3.13: the key headcount.js counts you by (from the same secret, so linked PCs count once; not linkable to the ID)
+    countKey: () => (crypto && cfg && /^[0-9a-f]{64}$/.test(cfg.secret || '') ? memberKey(cfg.secret, 'fightcord-count-v1') : null),
     // 3.7: your profile's looks are signed with your ID (a 32-byte hash in, the signature's hex out)
     signId: (msg) => { const id = myId(); return id && V && V.sign && crypto ? V.sign(msg, id.sk, crypto.randomBytes(32)).toString('hex') : ''; },
     setDms(on) { dmsOn = !!on; if (dmsOn) boot(); else { rooms.forEach(L => { if ((L.lb.dm || L.lb.group) && L.sub) { L.sub.close(); L.sub = null; } }); if (view.mode === 'dm' && view.page) view.page.close(); } },
