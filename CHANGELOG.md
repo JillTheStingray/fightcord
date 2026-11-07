@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.13.3
+
+- **The share cards match the Online Edition Look:** with that Look on, Share your session and the Wrapped card are drawn in the
+  game's menu style: the concrete wall, its dark panels and olive bars, the game's lettering and the FightCord logo in
+  the menus' yellow. It's made from your own copy of the game, like the Look itself.
+
 ## 3.13.2
 
 - **Smaller chat text:** Settings → Appearance → Chat text size now goes down to 12 px (and 13 px).

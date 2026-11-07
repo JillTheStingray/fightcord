@@ -202,48 +202,79 @@ function close() {
 async function shareCard(w, p) {
     const st = mod('stats');
     if (!st || !st.shareImage || !st.draw) return;
-    const { FONT, loadImg, rr, glow, fit } = st.draw;
+    const { FONT, loadImg, rr, glow, fit, cover, oeKit, tinted, OE_FONT, OE_NUM, OE_YELLOW } = st.draw;
     const draw = async (withArt) => {
         const W = 1200, H = 630;
         const c = document.createElement('canvas');
         c.width = W; c.height = H;
         const x = c.getContext('2d');
-        const bg = x.createLinearGradient(0, 0, W, H);
-        bg.addColorStop(0, '#1b1140'); bg.addColorStop(0.55, '#0d0f1f'); bg.addColorStop(1, '#2a0f2e');
-        x.fillStyle = bg; x.fillRect(0, 0, W, H);
-        glow(x, 1060, 90, 420, 'rgba(235,69,158,.35)');
-        glow(x, 120, 620, 380, 'rgba(88,101,242,.35)');
+        // 3.13.3: the Online Edition Look's style when that Look is on (stats.js oeKit: your own copy of the game)
+        const oe = oeKit ? await oeKit() : null;
+        const L = oe ? { font: OE_FONT, num: OE_NUM, w1: '400', w2: '400', r: 4, accent: OE_YELLOW, sub: '#d9d9c8', muted: OE_YELLOW, val: '#f2f2e8', foot: '#b9b9a6',
+            win: '#7be84a', loss: '#ff5a3c', gold: OE_YELLOW }
+            : { font: FONT, num: FONT, w1: '800', w2: '900', r: 16, accent: '#ff73fa', sub: '#c9cdf0', muted: '#8a90b8', val: '#eef0ff', foot: '#6d7299',
+                win: '#2dd48f', loss: '#f24b5a', gold: '#f5b83d' };
+        const shadow = (on) => { x.shadowColor = on && oe ? 'rgba(0,0,0,.7)' : 'transparent'; x.shadowOffsetY = on && oe ? 3 : 0; x.shadowBlur = 0; };
+        if (oe) {
+            x.fillStyle = '#0b0c0b'; x.fillRect(0, 0, W, H);
+            if (oe.concrete) cover(x, oe.concrete, 0, 0, W, H);
+            if (oe.tag1) { x.globalAlpha = 0.5; x.drawImage(oe.tag1, W - 420, H - 300, 400, 400 * oe.tag1.height / oe.tag1.width); x.globalAlpha = 1; }
+            if (oe.tag2) { x.globalAlpha = 0.4; x.drawImage(oe.tag2, -60, -40, 360, 360 * oe.tag2.height / oe.tag2.width); x.globalAlpha = 1; }
+            const veil = x.createLinearGradient(0, 0, 0, H);
+            veil.addColorStop(0, 'rgba(8,9,8,.6)'); veil.addColorStop(1, 'rgba(8,9,8,.86)');
+            x.fillStyle = veil; x.fillRect(0, 0, W, H);
+            if (oe.scan) { const pt = x.createPattern(oe.scan, 'repeat'); if (pt) { x.globalAlpha = 0.1; x.fillStyle = pt; x.fillRect(0, 0, W, H); x.globalAlpha = 1; } }
+            glow(x, 120, 90, 380, 'rgba(226,213,28,.10)');
+        } else {
+            const bg = x.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#1b1140'); bg.addColorStop(0.55, '#0d0f1f'); bg.addColorStop(1, '#2a0f2e');
+            x.fillStyle = bg; x.fillRect(0, 0, W, H);
+            glow(x, 1060, 90, 420, 'rgba(235,69,158,.35)');
+            glow(x, 120, 620, 380, 'rgba(88,101,242,.35)');
+        }
         const br = mod('branding');
         const logo = await loadImg(br && br.LOGO);
-        if (logo) x.drawImage(logo, 60, 48, 200, 200 * logo.height / logo.width);
+        if (logo) x.drawImage(oe ? tinted(logo, L.accent) : logo, 60, 48, 200, 200 * logo.height / logo.width);
         const main = withArt && w.main ? await loadImg(face(w.rom, w.main.char)) : null;
         if (main) {
-            x.save(); rr(x, 900, 60, 240, 320, 18); x.clip();
+            x.save(); rr(x, 900, 60, 240, 320, oe ? L.r : 18); x.clip();
+            if (oe) { x.fillStyle = 'rgba(10,11,10,.7)'; x.fillRect(900, 60, 240, 320); }
             const s = Math.max(240 / main.width, 320 / main.height);
             x.drawImage(main, 900 + (240 - main.width * s) / 2, 60, main.width * s, main.height * s);
             x.restore();
-            x.strokeStyle = 'rgba(255,255,255,.18)'; x.lineWidth = 2; rr(x, 900, 60, 240, 320, 18); x.stroke();
+            x.strokeStyle = oe ? L.accent : 'rgba(255,255,255,.18)'; x.lineWidth = oe ? 3 : 2; rr(x, 900, 60, 240, 320, oe ? L.r : 18); x.stroke();
         }
         const tw = main ? 800 : 1080;
         x.textBaseline = 'alphabetic';
-        x.font = '800 22px ' + FONT; x.fillStyle = '#ff73fa';
+        shadow(true);
+        x.font = L.w1 + (oe ? ' 25px ' : ' 22px ') + L.font; x.fillStyle = L.accent;
         x.fillText((T('Wrapped') + '  ·  ' + monthName(p)).toUpperCase(), 60, 150);
-        x.font = '900 64px ' + FONT; x.fillStyle = '#ffffff';
+        x.font = L.w2 + (oe ? ' 70px ' : ' 64px ') + L.font; x.fillStyle = '#ffffff';
         x.fillText(fit(x, fc.app.me() || 'Me', tw - 60), 60, 218);
-        x.font = '500 24px ' + FONT; x.fillStyle = '#c9cdf0';
+        x.font = (oe ? '400 25px ' : '500 24px ') + L.font; x.fillStyle = L.sub;
         x.fillText(fit(x, w.game ? w.game + (w.main ? '  ·  ' + w.main.char : '') : '', tw - 60), 60, 258);
+        shadow(false);
         const tiles = [
-            [w.won + '–' + w.lost, T('RECORD'), w.won >= w.lost ? '#2dd48f' : '#f24b5a'],
+            [w.won + '–' + w.lost, T('RECORD'), w.won >= w.lost ? L.win : L.loss],
             [String(w.sets), T('SETS'), '#ffffff'],
             [String(w.hours), T('HOURS'), '#ffffff'],
-            [w.streak ? w.streak + 'W' : '—', T('BEST STREAK'), '#f5b83d']
+            [w.streak ? w.streak + 'W' : '—', T('BEST STREAK'), L.gold]
         ];
         const tW = main ? 196 : 258, gap = main ? 12 : 18;
         tiles.forEach(([v, label, col], k) => {
             const px = 60 + k * (tW + gap), py = 290;
-            rr(x, px, py, tW, 112, 16); x.fillStyle = 'rgba(255,255,255,.07)'; x.fill();
-            x.font = '800 44px ' + FONT; x.fillStyle = col; x.fillText(fit(x, v, tW - 36), px + 18, py + 62);
-            x.font = '700 14px ' + FONT; x.fillStyle = '#8a90b8'; x.fillText(label, px + 18, py + 94);
+            if (oe) {
+                x.save(); rr(x, px, py, tW, 112, L.r); x.clip();
+                x.fillStyle = 'rgba(10,11,10,.78)'; x.fillRect(px, py, tW, 112);
+                if (oe.panel) { x.globalAlpha = 0.85; x.drawImage(oe.panel, px, py, tW, 112); x.globalAlpha = 1; }
+                x.fillStyle = L.accent; x.fillRect(px, py, tW, 4);
+                x.restore();
+                x.strokeStyle = 'rgba(255,255,255,.1)'; x.lineWidth = 1.5; rr(x, px, py, tW, 112, L.r); x.stroke();
+            } else { rr(x, px, py, tW, 112, 16); x.fillStyle = 'rgba(255,255,255,.07)'; x.fill(); }
+            shadow(true);
+            x.font = (oe ? '400 52px ' : '800 44px ') + L.num; x.fillStyle = col; x.fillText(fit(x, v, tW - 36), px + 18, py + 64);
+            x.font = (oe ? '400 17px ' : '700 14px ') + L.font; x.fillStyle = L.muted; x.fillText(label, px + 18, py + 96);
+            shadow(false);
         });
         const lines = [];
         if (w.rival) lines.push([T('Rival'), w.rival.name + '  ' + w.rival.w + '–' + w.rival.l]);
@@ -252,10 +283,12 @@ async function shareCard(w, p) {
         if (w.climb && w.climb.to !== w.climb.from) lines.push(['ELO', fc.fmt.num(w.climb.from) + ' → ' + fc.fmt.num(w.climb.to)]);
         lines.slice(0, 4).forEach(([k, v], n) => {
             const px = 60 + (n % 2) * 420, py = 452 + Math.floor(n / 2) * 66;
-            x.font = '700 15px ' + FONT; x.fillStyle = '#8a90b8'; x.fillText(String(k).toUpperCase(), px, py);
-            x.font = '700 24px ' + FONT; x.fillStyle = '#eef0ff'; x.fillText(fit(x, v, 400), px, py + 30);
+            shadow(true);
+            x.font = (oe ? '400 18px ' : '700 15px ') + L.font; x.fillStyle = L.muted; x.fillText(String(k).toUpperCase(), px, py);
+            x.font = (oe ? '400 27px ' : '700 24px ') + L.font; x.fillStyle = L.val; x.fillText(fit(x, v, 400), px, py + 30);
+            shadow(false);
         });
-        x.font = '600 15px ' + FONT; x.fillStyle = '#6d7299'; x.textAlign = 'right';
+        x.font = (oe ? '400 17px ' : '600 15px ') + L.font; x.fillStyle = L.foot; x.textAlign = 'right';
         x.fillText('fightcord.pages.dev', W - 48, H - 32); x.textAlign = 'left';
         return c;
     };
@@ -368,6 +401,8 @@ const api = {
     close: () => close(),
     pick: (anchor) => { if (cfg && cfg.enabled) pickMenu(anchor); },
     enabled: () => !!(cfg && cfg.enabled),
-    _wrap: (y, m) => { const [a, b] = range(y, m); return wrapUp(fc.history.all(), points(), a, b); }
+    _wrap: (y, m) => { const [a, b] = range(y, m); return wrapUp(fc.history.all(), points(), a, b); },
+    // the dev harness: the share card straight away (the story's last slide has the button)
+    _share: (p) => { const [a, b] = range(p.y, p.m); const w = wrapUp(fc.history.all(), points(), a, b); if (w) shareCard(w, p); return !!w; }
 };
 Object.keys(api).forEach(k => Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)));

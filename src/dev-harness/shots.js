@@ -218,6 +218,35 @@ const SCENES = [
         __sim.music();
         fightcord.modules.get('backgrounds').setLook({ style: 'visualizer', look: 'bars', intensity: 0.85 });
         await sleep(3000);` },
+    // 3.13.3: the session card in the Online Edition Look (needs FC_OE_DIR = your own-art folder; check only, never publish)
+    { name: 'share-oe', snap: CHANNEL, run: `
+        const get = async (p) => { const r = await fetch('/__oe/' + p); if (!r.ok) throw new Error('FC_OE_DIR not set or missing ' + p); return URL.createObjectURL(await r.blob()); };
+        const font = async (fam, p) => { const b = await (await fetch('/__oe/' + p)).arrayBuffer(); const ff = new FontFace(fam, b); document.fonts.add(ff); await ff.load(); };
+        await font('FC OE District', 'theme/district.ttf'); await font('FC OE Numbers', 'theme/district-num.ttf');
+        const t = { font: 1 };
+        for (const k of ['panel', 'row', 'scan', 'tag1', 'tag2']) t[k] = await get('theme/' + k + '.png');
+        t.concrete = await get('bg/vs.png');
+        fightcord.modules.get('own-art').theme = () => t;
+        fightcord.emit('own-art:changed'); fightcord.modules.get('discord-theme').applyLook('oe', true); await sleep(1500);
+        if (!document.documentElement.classList.contains('dc-oe-own')) throw new Error('the Online Edition Look did not stick');
+        const st = fightcord.modules.get('stats'), at = Math.max(...fightcord.history.all().map(x => x.at));
+        st.share(st._sessionKey(at)); await sleep(2500);
+        const img = document.querySelector('.fcsPv img'); if (!img) throw new Error('no card');
+        window.__card = img.src;` },
+    { name: 'wrapped-oe', snap: CHANNEL, run: `
+        const get = async (p) => { const r = await fetch('/__oe/' + p); if (!r.ok) throw new Error('FC_OE_DIR not set or missing ' + p); return URL.createObjectURL(await r.blob()); };
+        const font = async (fam, p) => { const b = await (await fetch('/__oe/' + p)).arrayBuffer(); const ff = new FontFace(fam, b); document.fonts.add(ff); await ff.load(); };
+        await font('FC OE District', 'theme/district.ttf'); await font('FC OE Numbers', 'theme/district-num.ttf');
+        const t = { font: 1 };
+        for (const k of ['panel', 'row', 'scan', 'tag1', 'tag2']) t[k] = await get('theme/' + k + '.png');
+        t.concrete = await get('bg/vs.png');
+        fightcord.modules.get('own-art').theme = () => t;
+        fightcord.emit('own-art:changed'); fightcord.modules.get('discord-theme').applyLook('oe', true); await sleep(1500);
+        if (!document.documentElement.classList.contains('dc-oe-own')) throw new Error('the Online Edition Look did not stick');
+        const at = Math.max(...fightcord.history.all().map(x => x.at)), d = new Date(at);
+        if (!fightcord.modules.get('wrapped')._share({ y: d.getFullYear(), m: d.getMonth() })) throw new Error('no Wrapped for that month'); await sleep(2500);
+        const img = document.querySelector('.fcsPv img'); if (!img) throw new Error('no card');
+        window.__card = img.src;` },
     { name: 'settings', snap: CHANNEL, run: `fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
     // 3.13 the player count under the hero (made-up numbers: the harness has no relays)
     { name: 'settings-count', snap: CHANNEL, run: `fightcord.modules.get('headcount')._demo({ total: 1284, month: 612 }); ['HadoKid', 'Parry4Days', 'SeaBreeze'].forEach(n => fightcord.modules.get('presence')._heard(n, false)); fightcord.modules.get('fightcord').open('home'); await sleep(1000);` },
@@ -597,7 +626,16 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css
 function serve() {
     return new Promise(res => {
         const srv = http.createServer((req, rsp) => {
-            const p = path.normalize(path.join(ROOT, decodeURIComponent(req.url.split('?')[0])));
+            // (3.13.3: FC_OE_DIR = your own-art folder, for checking the Online Edition share card locally. Never for
+            // screenshots that get published: those pictures are Capcom's)
+            const OE = process.env.FC_OE_DIR, u = decodeURIComponent(req.url.split('?')[0]);
+            if (OE && u.startsWith('/__oe/')) {
+                const q = path.normalize(path.join(OE, u.slice(6)));
+                if (!q.startsWith(path.normalize(OE))) { rsp.writeHead(403); rsp.end(); return; }
+                fs.readFile(q, (err, buf) => { if (err) { rsp.writeHead(404); rsp.end(); return; } rsp.writeHead(200, { 'Content-Type': MIME[path.extname(q)] || 'application/octet-stream' }); rsp.end(buf); });
+                return;
+            }
+            const p = path.normalize(path.join(ROOT, u));
             if (!p.startsWith(ROOT)) { rsp.writeHead(403); rsp.end(); return; }
             fs.readFile(p, (err, buf) => {
                 if (err) { rsp.writeHead(404); rsp.end('not found'); return; }

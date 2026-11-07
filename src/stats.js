@@ -428,6 +428,35 @@ function fit(x, text, maxW) {
     return t + '…';
 }
 
+// 3.13.3: with the Online Edition Look on (your own copy of the game), the card wears it too: the menus'
+// concrete, their dark panel and olive bars, the District lettering, Fightcord's logo in the menus' yellow
+const OE_FONT = "'FC OE District', 'Noto Sans', sans-serif";
+const OE_NUM = "'FC OE Numbers', 'FC OE District', 'Noto Sans', sans-serif";
+const OE_YELLOW = '#e2d51c';
+async function oeKit() {
+    if (typeof document === 'undefined' || !document.documentElement.classList.contains('dc-oe-own')) return null;
+    const oa = mod('own-art');
+    const t = oa && oa.theme ? oa.theme() : null;
+    if (!t) return null;
+    try { await Promise.all([document.fonts.load("40px 'FC OE District'"), document.fonts.load("40px 'FC OE Numbers'")]); } catch (e) { /* falls back */ }
+    const keys = ['concrete', 'panel', 'row', 'scan', 'tag1', 'tag2'];
+    const imgs = await Promise.all(keys.map(k => loadImg(t[k])));
+    const kit = {};
+    keys.forEach((k, i) => { kit[k] = imgs[i]; });
+    return kit;
+}
+// the logo in one colour (it's a single-colour mark)
+function tinted(img, col) {
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = col;
+    x.fillRect(0, 0, c.width, c.height);
+    return c;
+}
+
 const daySets = (k) => allSets().filter(s => sessionKey(s.at) === k).sort((a, b) => a.at - b.at);
 
 // 1200 x 630 (the size Discord / Twitter show large)
@@ -445,10 +474,33 @@ async function drawShare(k, withArt) {
     const art = withArt && rom ? await loadImg(fc.data.artUrl(rom[0])) : null;
     const br = mod('branding');
     const logo = await loadImg(br && br.LOGO);
+    const oe = await oeKit();
+    // the look: fonts, colours, and how tiles and rows are filled
+    const L = oe ? {
+        font: OE_FONT, num: OE_NUM, w: '400', r: 4, accent: OE_YELLOW, head: '#ffffff', sub: '#d9d9c8', muted: '#b9b9a6', row: '#f2f2e8',
+        win: '#7be84a', loss: '#ff5a3c', gold: OE_YELLOW
+    } : {
+        font: FONT, num: FONT, w: '800', r: 16, accent: '#22e3f2', head: '#ffffff', sub: '#c9cdf0', muted: '#8a90b8', row: '#dde1f5',
+        win: '#2dd48f', loss: '#f24b5a', gold: '#f5b83d'
+    };
+    const shadow = (on) => { x.shadowColor = on && oe ? 'rgba(0,0,0,.7)' : 'transparent'; x.shadowOffsetY = on && oe ? 3 : 0; x.shadowBlur = 0; };
 
-    x.fillStyle = '#0d0f1f';
+    x.fillStyle = oe ? '#0b0c0b' : '#0d0f1f';
     x.fillRect(0, 0, W, H);
-    if (art) {
+    if (oe) {
+        // the menus' wall: concrete, two of its graffiti tags at the edges, a dark veil, faint scanlines
+        if (oe.concrete) cover(x, oe.concrete, 0, 0, W, H);
+        if (oe.tag1) { x.globalAlpha = 0.5; x.drawImage(oe.tag1, W - 420, H - 300, 400, 400 * oe.tag1.height / oe.tag1.width); x.globalAlpha = 1; }
+        if (oe.tag2) { x.globalAlpha = 0.4; x.drawImage(oe.tag2, -60, -40, 360, 360 * oe.tag2.height / oe.tag2.width); x.globalAlpha = 1; }
+        const veil = x.createLinearGradient(0, 0, 0, H);
+        veil.addColorStop(0, 'rgba(8,9,8,.6)');
+        veil.addColorStop(1, 'rgba(8,9,8,.86)');
+        x.fillStyle = veil;
+        x.fillRect(0, 0, W, H);
+        if (oe.scan) { const p = x.createPattern(oe.scan, 'repeat'); if (p) { x.globalAlpha = 0.1; x.fillStyle = p; x.fillRect(0, 0, W, H); x.globalAlpha = 1; } }
+        glow(x, 120, 90, 380, 'rgba(226,213,28,.10)');
+    }
+    if (art && !oe) {
         x.save();
         x.filter = 'blur(24px) brightness(.5) saturate(1.4)';
         cover(x, art, -80, -80, W + 160, H + 160);
@@ -458,87 +510,123 @@ async function drawShare(k, withArt) {
     shade.addColorStop(0, 'rgba(10,11,24,.94)');
     shade.addColorStop(0.62, 'rgba(10,11,24,.74)');
     shade.addColorStop(1, 'rgba(10,11,24,.4)');
-    x.fillStyle = shade;
-    x.fillRect(0, 0, W, H);
-    glow(x, 1040, 110, 420, 'rgba(79,99,240,.38)');
-    glow(x, 120, 640, 360, 'rgba(139,92,246,.28)');
-    glow(x, 1180, 600, 260, 'rgba(34,227,242,.16)');
+    if (!oe) {
+        x.fillStyle = shade;
+        x.fillRect(0, 0, W, H);
+        glow(x, 1040, 110, 420, 'rgba(79,99,240,.38)');
+        glow(x, 120, 640, 360, 'rgba(139,92,246,.28)');
+        glow(x, 1180, 600, 260, 'rgba(34,227,242,.16)');
+    }
 
     // the game, sharp, top right
     if (art) {
         x.save();
-        rr(x, 856, 48, 296, 222, 14);
+        rr(x, 856, 48, 296, 222, oe ? L.r : 14);
         x.clip();
         x.imageSmoothingEnabled = false;
         cover(x, art, 856, 48, 296, 222);
         x.restore();
-        x.strokeStyle = 'rgba(255,255,255,.16)';
-        x.lineWidth = 2;
-        rr(x, 856, 48, 296, 222, 14);
+        x.strokeStyle = oe ? L.accent : 'rgba(255,255,255,.16)';
+        x.lineWidth = oe ? 3 : 2;
+        rr(x, 856, 48, 296, 222, oe ? L.r : 14);
         x.stroke();
     }
 
-    if (logo) x.drawImage(logo, 60, 50, 230, 230 * logo.height / logo.width);
-    else { x.font = '800 40px ' + FONT; x.fillStyle = '#4f63f0'; x.fillText('FightCord', 60, 88); }
+    if (logo) x.drawImage(oe ? tinted(logo, L.accent) : logo, 60, 50, 230, 230 * logo.height / logo.width);
+    else { x.font = L.w + ' 40px ' + L.font; x.fillStyle = oe ? L.accent : '#4f63f0'; x.fillText('FightCord', 60, 88); }
 
     const date = new Date(k + 'T12:00:00').toLocaleDateString(fc.t.locale(), { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     x.textBaseline = 'alphabetic';
-    x.font = '700 20px ' + FONT;
-    x.fillStyle = '#22e3f2';
+    shadow(true);
+    x.font = (oe ? '400 24px ' : '700 20px ') + L.font;
+    x.fillStyle = L.accent;
     x.fillText(T('SESSION') + '  ·  ' + date.toUpperCase(), 60, 148);
-    x.font = '800 58px ' + FONT;
-    x.fillStyle = '#ffffff';
+    x.font = (oe ? '400 66px ' : '800 58px ') + L.font;
+    x.fillStyle = L.head;
     x.fillText(fit(x, fc.app.me() || 'Me', 770), 60, 212);
-    x.font = '500 24px ' + FONT;
-    x.fillStyle = '#c9cdf0';
+    x.font = (oe ? '400 25px ' : '500 24px ') + L.font;
+    x.fillStyle = L.sub;
     x.fillText(fit(x, games.slice(0, 2).join('  ·  ') + (games.length > 2 ? '  +' + (games.length - 2) : ''), 770), 60, 252);
 
     // stat tiles
     const tiles = [
-        [t.w + '–' + t.l + (t.d ? '–' + t.d : ''), T('RECORD'), t.w >= t.l ? '#2dd48f' : '#f24b5a'],
-        [t.rate == null ? '—' : Math.round(t.rate * 100) + '%', T('WIN RATE'), '#ffffff'],
-        [st.bestW ? st.bestW + 'W' : '—', T('BEST STREAK'), '#f5b83d'],
-        [String(t.n), T('SETS PLAYED'), '#ffffff']
+        [t.w + '–' + t.l + (t.d ? '–' + t.d : ''), T('RECORD'), t.w >= t.l ? L.win : L.loss],
+        [t.rate == null ? '—' : Math.round(t.rate * 100) + '%', T('WIN RATE'), L.head],
+        [st.bestW ? st.bestW + 'W' : '—', T('BEST STREAK'), L.gold],
+        [String(t.n), T('SETS PLAYED'), L.head]
     ];
+    shadow(false);
     tiles.forEach(([v, label, col], i) => {
         const px = 60 + i * 276, py = 292;
-        rr(x, px, py, 258, 118, 16);
-        x.fillStyle = 'rgba(255,255,255,.06)';
-        x.fill();
-        x.strokeStyle = 'rgba(255,255,255,.1)';
-        x.lineWidth = 1.5;
-        x.stroke();
-        x.font = '800 50px ' + FONT;
+        if (oe) {
+            // the game's dark panel, a yellow line along the top like its menu headers
+            x.save();
+            rr(x, px, py, 258, 118, L.r);
+            x.clip();
+            x.fillStyle = 'rgba(10,11,10,.78)';
+            x.fillRect(px, py, 258, 118);
+            if (oe.panel) { x.globalAlpha = 0.85; x.drawImage(oe.panel, px, py, 258, 118); x.globalAlpha = 1; }
+            x.fillStyle = L.accent;
+            x.fillRect(px, py, 258, 4);
+            x.restore();
+            x.strokeStyle = 'rgba(255,255,255,.1)';
+            x.lineWidth = 1.5;
+            rr(x, px, py, 258, 118, L.r);
+            x.stroke();
+        } else {
+            rr(x, px, py, 258, 118, 16);
+            x.fillStyle = 'rgba(255,255,255,.06)';
+            x.fill();
+            x.strokeStyle = 'rgba(255,255,255,.1)';
+            x.lineWidth = 1.5;
+            x.stroke();
+        }
+        shadow(true);
+        x.font = (oe ? '400 58px ' : '800 50px ') + L.num;
         x.fillStyle = col;
-        x.fillText(fit(x, v, 226), px + 22, py + 66);
-        x.font = '700 15px ' + FONT;
-        x.fillStyle = '#8a90b8';
-        x.fillText(label, px + 22, py + 98);
+        x.fillText(fit(x, v, 226), px + 22, py + 68);
+        x.font = (oe ? '400 18px ' : '700 15px ') + L.font;
+        x.fillStyle = oe ? L.accent : L.muted;
+        x.fillText(label, px + 22, py + 100);
+        shadow(false);
     });
 
     // the sets, newest first
     sets.slice().reverse().slice(0, 6).forEach((s, i) => {
         const px = 60 + (i % 3) * 368, py = 440 + Math.floor(i / 3) * 76;
-        const col = s.result === 'won' ? '#2dd48f' : s.result === 'lost' ? '#f24b5a' : '#8a90b8';
-        rr(x, px, py, 352, 62, 12);
-        x.fillStyle = 'rgba(255,255,255,.05)';
-        x.fill();
+        const col = s.result === 'won' ? L.win : s.result === 'lost' ? L.loss : L.muted;
+        if (oe) {
+            // the menus' dark olive bar
+            x.save();
+            rr(x, px, py, 352, 62, L.r);
+            x.clip();
+            x.fillStyle = 'rgba(20,21,16,.82)';
+            x.fillRect(px, py, 352, 62);
+            if (oe.row) x.drawImage(oe.row, px, py, 352, 62);
+            x.restore();
+        } else {
+            rr(x, px, py, 352, 62, 12);
+            x.fillStyle = 'rgba(255,255,255,.05)';
+            x.fill();
+        }
         x.fillStyle = col;
-        rr(x, px, py, 6, 62, 3);
+        rr(x, px, py, 6, 62, oe ? 2 : 3);
         x.fill();
         const mark = s.result === 'won' ? 'W' : s.result === 'lost' ? 'L' : s.result === 'draw' ? 'D' : '?';
         const score = s.mine != null && s.theirs != null ? ' ' + s.mine + '–' + s.theirs : '';
-        x.font = '800 24px ' + FONT;
+        shadow(true);
+        x.font = (oe ? '400 27px ' : '800 24px ') + L.num;
         x.fillStyle = col;
         x.fillText(mark + score, px + 22, py + 40);
         const w0 = x.measureText(mark + score).width;
-        x.font = '600 20px ' + FONT;
-        x.fillStyle = '#dde1f5';
+        x.font = (oe ? '400 22px ' : '600 20px ') + L.font;
+        x.fillStyle = L.row;
         x.fillText(fit(x, 'vs ' + (s.opp || '?'), 352 - 44 - w0), px + 34 + w0, py + 39);
+        shadow(false);
     });
     if (sets.length > 6) {
-        x.font = '600 16px ' + FONT;
-        x.fillStyle = '#8a90b8';
+        x.font = (oe ? '400 18px ' : '600 16px ') + L.font;
+        x.fillStyle = L.muted;
         x.textAlign = 'right';
         x.fillText(T('+{n} more sets', { n: sets.length - 6 }), W - 48, 612);
         x.textAlign = 'left';
@@ -767,7 +855,7 @@ const api = {
     share: (k) => share(k),
     // 3.9: for Wrapped -- the share modal, and the canvas helpers the session card draws with
     shareImage: (o) => shareImage(o),
-    draw: { FONT, loadImg, rr, cover, glow, fit },
+    draw: { FONT, loadImg, rr, cover, glow, fit, oeKit, tinted, OE_FONT, OE_NUM, OE_YELLOW },
     _tally: tally,
     _streaks: streaks,
     _drawShare: (k, art) => drawShare(k, art),
