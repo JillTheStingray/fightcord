@@ -74,7 +74,7 @@ function world() {
         p.m = M.Matcher({
             now: () => t, myHash: () => h,
             send: (msg) => { const out = Object.assign({ h }, msg); log.push(out); peers.forEach(q => { if (q !== p) q.m.receive(out); }); },
-            fits: (e) => p.fits(e), score: () => 1,
+            fits: (e) => p.fits(e), why: (e) => (p.why ? p.why(e) : (p.fits(e) ? '' : 'filter')), score: () => 1,
             found: (x) => p.events.push('found'), update: () => {}, done: (x, why) => p.events.push('done:' + why),
             toast: (k) => p.events.push('toast:' + k),
             challenge: (x) => { p.challenges.push({ ft: x.mode === 'ranked' ? x.ft : 0, to: x.h }); return true; },
@@ -262,4 +262,39 @@ test('the module signs what it sends and checks who sent what it hears', () => {
 test('a channel listed by name counts too', () => {
     const q = { ch: 'sfiii3nr1', mode: 'casual', ft: 0 };
     assert.equal(M.compatible(meAt(), q, user({ channels: ['SF3'] })), true);
+});
+
+// 3.13.1 (Mushn1k: "1 other in queue but then does nothing"): Find a match's filters turned the other one
+// down, silently. Now both sides see why, and "Match anyway" (a loose queue) gets them matched
+test('outside someone’s filters: both see why, and Match anyway gets them matched', () => {
+    const w = world();
+    const a = w.peer(H('a')), b = w.peer(H('b'));
+    b.why = () => (b.m.queue && b.m.queue.loose ? '' : 'ping');          // A's ping is over B's limit
+    b.fits = (e) => !b.why(e);
+    a.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    b.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    w.step(1000);
+    assert.equal(a.m.match, null, 'B turned the offer down');
+    assert.deepEqual(w.log.filter(m => m.t === 'no').map(m => m.why), ['filters']);
+    assert.deepEqual(a.m.stuck(), [{ h: H('b'), why: 'theirs' }]);
+    assert.deepEqual(b.m.stuck(), [{ h: H('a'), why: 'ping' }]);
+    b.m.loosen();
+    assert.deepEqual(b.m.stuck(), []);
+    w.step(5000);
+    assert.equal(a.m.match, null, 'A waits a little before asking again');
+    w.step(16000);
+    assert.deepEqual(a.events, ['found']);
+    assert.deepEqual(b.events, ['found']);
+});
+
+test('misfit names the reason', () => {
+    const me = { ch: 'sfiii3nr1', chName: 'SF3', mode: 'casual', ft: 0, myRank: 4, chRanked: true, meRanked: true };
+    const q = { ch: 'sfiii3nr1', mode: 'casual', ft: 0 };
+    const u = (x) => Object.assign({ name: 'Them', channels: ['sfiii3nr1'], channelRank: { SF3: 4 }, settings: { ranked: true }, ping: 40 }, x);
+    assert.equal(M.misfit(me, q, u()), '');
+    assert.equal(M.misfit(me, q, u({ ping: 200 }), { maxPing: 120 }), 'ping');
+    assert.equal(M.misfit(me, q, u({ channelRank: {} }), { window: 1 }), 'rank', 'no rank in this channel, with a rank range on');
+    assert.equal(M.misfit(me, q, u({ away: true })), 'away');
+    assert.equal(M.misfit(me, q, u({ channels: [] })), 'channel');
+    assert.equal(M.misfit(me, Object.assign({}, q, { mode: 'ranked', ft: 3 }), u()), 'queue');
 });

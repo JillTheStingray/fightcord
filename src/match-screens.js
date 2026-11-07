@@ -942,7 +942,7 @@ async function lateResult(m) {
     };
     for (const wait of [10000, 20000, 30000, 60000, 90000, 90000]) {
         await sleep(wait);
-        if (!cfg || !cfg.enabled) return;
+        if (!cfg) return;
         const s = endgameScore(m.endgameBefore, m.opp);
         if (s && fill(s.mine, s.theirs)) return;
         const q = await quarkResult(m.quark, me, m.opp);
@@ -992,8 +992,9 @@ function vsOnce(opp) {
     noteChatOff(opp);
 }
 
+// (3.13.1: always runs. The "Match screens" switch only hides the screens: sets are still saved, and
+// match:start / match:end still go out -- fight-stats counts parries on them, goals and ELO need them)
 function poll() {
-    if (!cfg.enabled) return;
     const me = fc.app.me();
     if (!me) return;
     const all = fc.app.users();
@@ -1487,7 +1488,7 @@ function start(f) {
         id: 'match-screens', section: 'match', title: 'Match screens', hint: '— only you see these · /vs test to preview',
         store, order: 10,
         fields: [
-            { key: 'enabled', type: 'switch', label: 'Match screens', onChange: refreshSessionPill },
+            { key: 'enabled', type: 'switch', label: 'Match screens', hint: 'Off hides them; your sets, ELO and goals still count', onChange: refreshSessionPill },
             { key: 'vs', type: 'switch', label: 'VS screen', hint: 'When a challenge is accepted', show: (d) => d.enabled },
             { key: 'result', type: 'switch', label: 'Result screen', hint: 'YOU WON! / YOU LOST! after the set', show: (d) => d.enabled },
             { key: 'vsTips', type: 'switch', label: 'Matchup tips on the VS screen', hint: 'How to beat the character they play, from the matchup guide', show: (d) => d.enabled && d.vs },

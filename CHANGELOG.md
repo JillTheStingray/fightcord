@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.13.1
+
+- **Matchmaking says why it isn't matching you.** It used to show "1 other in the queue" and then do
+  nothing when that player was outside your Find a match filters (ping limit, rank range), or you were
+  outside theirs. Now the queue lists who's waiting and why ("180 ms, over your limit of 120 ms",
+  "outside your rank range", "you're outside their filters"), with a **Match anyway** button that ignores
+  your rank range and ping limit for that search.
+- **Parry goals count with the match screens off.** Turning off Settings → Match screens also stopped
+  Fightcord from noticing matches, so parries, supers and perfect rounds were never counted (nor sets, ELO
+  and goals). The switch now only hides the screens.
+- **Goals say why nothing was counted:** Settings → Goals now tells you if Fightcord couldn't tell which
+  player you were, never saw a round, was blocked by your antivirus or by Windows, or couldn't find
+  3rd Strike, instead of one general warning. When it works, it says how many it counted in that match.
+
 ## 3.13.0
 
 - **How many people have Fightcord:** My Fightcord now shows how many people have Fightcord in total,

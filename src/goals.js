@@ -304,8 +304,22 @@ function fightStatus() {
     const m = fc.modules.get('fight-stats');
     const st = m && m.status ? m.status() : null;
     if (!st) return `<div class="fc-note">${E(T('Parries and the rest are counted from your next 3rd Strike match.'))}</div>`;
-    if (st.ok) return `<div class="fc-note">${E(T('Counting works: last checked {when}.', { when: fc.fmt.ago(st.at) }))}</div>`;
-    return `<div class="fc-note fcglWarn">${E(T('Couldn’t read 3rd Strike during your last match, so nothing was counted. It tries again next match.'))}` +
+    if (st.ok) {
+        const n = st.msg === 'counted' && st.n != null ? ' ' + fc.t.plural(st.n, '{n} counted in that match.', '{n} counted in that match.') : '';
+        return `<div class="fc-note">${E(T('Counting works: last checked {when}.', { when: fc.fmt.ago(st.at) }) + n)}</div>`;
+    }
+    // 3.13.1: why nothing counted, in words (what PowerShell or the emulator said goes in the small print)
+    const why = {
+        side: fc.t.plural(st.n || 0, 'Fightcord read 3rd Strike, but couldn’t tell which player you were, so {n} wasn’t counted.',
+            'Fightcord read 3rd Strike, but couldn’t tell which player you were, so {n} weren’t counted.'),
+        norounds: T('Fightcord watched your last match but never saw a round being played, so nothing was counted.'),
+        av: T('Your antivirus blocked the part of Fightcord that reads 3rd Strike, so nothing was counted. Allowing Fightcord there fixes it.'),
+        open: T('Windows didn’t let Fightcord look at the emulator, so nothing was counted. Antivirus, or the emulator running as administrator, can cause this.'),
+        ram: T('Fightcord couldn’t find 3rd Strike inside the emulator, so nothing was counted.'),
+        compile: T('PowerShell couldn’t build the part of Fightcord that reads 3rd Strike, so nothing was counted.'),
+        start: T('Fightcord couldn’t start PowerShell to read 3rd Strike, so nothing was counted.')
+    }[st.msg] || T('Couldn’t read 3rd Strike during your last match, so nothing was counted.');
+    return `<div class="fc-note fcglWarn">${E(why + ' ' + T('It tries again next match.'))}` +
         (st.detail ? `<small class="fcglWhy">${E(st.detail)}</small>` : '') + '</div>';
 }
 

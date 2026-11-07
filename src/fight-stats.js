@@ -21,6 +21,7 @@ const path = require('path');
 
 let fc = null;
 let store = null, cfg = null;          // fight-stats-config.json
+const T = (s, v) => (fc && fc.t ? fc.t(s, v) : String(s).replace(/\{(\w+)\}/g,(m, k) => (v && v[k] != null ? v[k] : m)));
 
 const KINDS = ['parry', 'red', 'super', 'perfect'];
 const KEEP_MS = 9 * 86400000;          // a week of goals + a bit
@@ -268,8 +269,8 @@ function csFile() {
     return f;
 }
 
-function setStatus(ok, msg, detail) {
-    cfg.status = { at: Date.now(), ok: !!ok, msg: msg || '' };
+function setStatus(ok, msg, detail, extra) {
+    cfg.status = Object.assign({ at: Date.now(), ok: !!ok, msg: msg || '' }, extra || {});
     // what PowerShell said, for Settings (a line or two: enough to tell a blocked script from a missing .NET)
     if (!ok && detail) cfg.status.detail = String(detail).replace(/\s+/g, ' ').trim().slice(0, 220);
     store.save();
@@ -282,8 +283,20 @@ function stop(why) {
     child = null;
     try { c.stdin.end(); } catch (e) { /* gone */ }
     setTimeout(() => { try { c.kill(); } catch (e) { /* gone */ } }, 3000);
-    flush(true);
+    endMatch();
     fc.log('reader stopped', why || '');
+}
+
+// 3.13.1: the match is over: say how it went, so Settings -> Goals can tell why nothing counted
+function endMatch() {
+    if (!cur) return;
+    flush(true);
+    const m = cur;
+    cur = null;
+    if (!m.ready) return;                     // never found the game: the reader's own error already says why
+    if (m.dropped) setStatus(false, 'side', m.names, { n: m.dropped });
+    else if (!m.rounds && !m.events) setStatus(false, 'norounds');
+    else setStatus(true, 'counted', '', { n: m.events, rounds: m.rounds });
 }
 
 function wanted() {
@@ -302,7 +315,7 @@ function begin(ev) {
     try { cs = csFile(); } catch (e) { fc.log('could not write the reader', e && e.message); return; }
     const key = exeKey();
     const hint = cfg.base && cfg.base.key === key ? +cfg.base.off || 0 : 0;
-    cur = { quark: ev.quark, side: 0, pending: [], at: Date.now(), events: 0 };
+    cur = { quark: ev.quark, side: 0, pending: [], at: Date.now(), events: 0, rounds: 0, dropped: 0, names: '', ready: false };
     const cmd = "Add-Type -Path '" + cs.replace(/'/g, "''") + "'; [FcFightReader]::Run(" + hint + ')';
     let c;
     try {
@@ -321,7 +334,12 @@ function begin(ev) {
         if (child === c) child = null;
         // (3.11.1: only a reader that never found the game counts as a failure. One that counted and then
         // stopped -- the set is over, Fightcord stopped it -- is fine, whatever its exit code)
-        if (code && !c.__ready) { fc.log('reader exited', code, err.trim()); setStatus(false, /Add-Type|error CS\d+/.test(err) ? 'compile' : 'start', err); }
+        if (code && !c.__ready) {
+            fc.log('reader exited', code, err.trim());
+            setStatus(false, /malicious|antivirus|virus|blocked by/i.test(err) ? 'av' : /Add-Type|error CS\d+/.test(err) ? 'compile' : 'start', err);
+        }
+        // it stopped by itself (the emulator closed long ago): the match is over too
+        if (!child) endMatch();
     });
     fc.log('reader started for', ev.quark);
 }
@@ -330,7 +348,10 @@ function onLine(o, key) {
     if (!o || !cur) return;
     if (o.e === 'ready') {
         if (!cfg.base || cfg.base.key !== key || cfg.base.off !== o.off) { cfg.base = { key, off: o.off }; store.save(); }
+        cur.ready = true;
         setStatus(true, 'ready');
+    } else if (o.e === 'round') {
+        cur.rounds++;
     } else if (o.e === 'err') {
         setStatus(false, o.m || 'err');
     } else if (KINDS.indexOf(o.e) >= 0 && (o.p === 1 || o.p === 2)) {
@@ -341,10 +362,18 @@ function onLine(o, key) {
 
 // events wait until we know which side you are (the emulator writes its files a moment after the start)
 function flush(final) {
-    if (!cur || !cur.pending.length) { if (final) cur = null; return; }
-    if (!cur.side) cur.side = sideOf(fc.emu.match(cur.quark), fc.app.me());
+    if (!cur || !cur.pending.length) return;
+    const mf = cur.side ? null : fc.emu.match(cur.quark);
+    if (!cur.side) cur.side = sideOf(mf, fc.app.me());
     if (!cur.side) {
-        if (final) { fc.log('dropped', cur.pending.length, 'fight events: side unknown'); cur = null; }
+        if (final) {
+            fc.log('dropped', cur.pending.length, 'fight events: side unknown');
+            cur.dropped += cur.pending.length;
+            cur.pending = [];
+            const nm = (p) => (p && p.name) || '?';
+            cur.names = mf ? T('The emulator’s match file says {p1} vs {p2}; on Fightcade you’re {me}.', { p1: nm(mf.p1), p2: nm(mf.p2), me: fc.app.me() || '?' })
+                : T('The emulator didn’t leave a match file for this set.');
+        }
         return;
     }
     const mine = cur.pending.filter(e => e.p === cur.side);
@@ -355,7 +384,6 @@ function flush(final) {
         cur.events += mine.length;
         store.save();
     }
-    if (final) cur = null;
 }
 
 /* ------------------------------------------------------------------- module */
@@ -379,9 +407,9 @@ const api = {
     status: () => (cfg ? cfg.status : null),
     running: () => !!child,
     // for the tests and the dev harness: a match as if the reader were running, fed line by line
-    _fake: (quark) => { cur = { quark, side: 0, pending: [], at: Date.now(), events: 0 }; },
+    _fake: (quark) => { cur = { quark, side: 0, pending: [], at: Date.now(), events: 0, rounds: 0, dropped: 0, names: '', ready: false }; },
     _line: (line) => onLine(parseLine(line), exeKey()),
-    _end: () => flush(true)
+    _end: () => endMatch()
 };
 
 module.exports = { id: 'fight-stats', name: 'Fight stats', start, count, prune, parseLine, sideOf, KINDS, IS_3S };

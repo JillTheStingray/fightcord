@@ -155,3 +155,30 @@ test('a reader that worked and then exits is not reported as a failure', () => {
         try { fs.unlinkSync(path.join(__dirname, '..', 'fight-reader.cs')); } catch (e) { /* not written */ }
     }
 });
+
+// 3.13.1: when nothing counted, the status says why
+test('fight-stats says why a match counted nothing', () => {
+    const data = { enabled: true, events: [], base: null, status: null };
+    let match = { p1: { name: 'Beta' }, p2: { name: 'Gamma' } };
+    const fake = {
+        config: () => ({ data, save() {} }), on() {}, tick() {}, own() {}, log() {}, emit() {},
+        t: (s, v) => String(s).replace(/\{(\w+)\}/g,(m, k) => (v && v[k] != null ? v[k] : m)),
+        settings: { refresh() {} }, modules: { get: () => null }, emu: { match: () => match }, app: { me: () => 'Alpha' }
+    };
+    const api = F.start(fake);
+    api._fake('q1'); api._line('{"e":"ready","off":1}'); api._line('{"e":"parry","p":1,"f":5}'); api._line('{"e":"round","l1":1,"l2":0}'); api._end();
+    assert.equal(data.status.ok, false);
+    assert.equal(data.status.msg, 'side');
+    assert.equal(data.status.n, 1);
+    assert.match(data.status.detail, /Beta vs Gamma; on Fightcade you’re Alpha/);
+    match = null;
+    api._fake('q2'); api._line('{"e":"ready","off":1}'); api._line('{"e":"parry","p":1,"f":5}'); api._end();
+    assert.match(data.status.detail, /didn’t leave a match file/);
+    api._fake('q3'); api._line('{"e":"ready","off":1}'); api._end();
+    assert.equal(data.status.msg, 'norounds');
+    match = { p1: { name: 'alpha' }, p2: { name: 'Beta' } };
+    api._fake('q4'); api._line('{"e":"ready","off":1}'); api._line('{"e":"round","l1":1,"l2":0}'); api._line('{"e":"parry","p":1,"f":5}'); api._line('{"e":"parry","p":2,"f":6}'); api._end();
+    assert.deepEqual([data.status.ok, data.status.msg, data.status.n, data.status.rounds], [true, 'counted', 1, 1]);
+    api._fake('q5'); api._end();
+    assert.equal(data.status.msg, 'counted', 'a reader that never found the game leaves its own error alone');
+});

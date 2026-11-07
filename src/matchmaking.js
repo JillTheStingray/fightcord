@@ -44,6 +44,7 @@ const FOUND_MS = 15000;                // the Accept pop-up
 const START_MS = 35000;                // both accepted: the match has this long to start
 const SKIP_MS = 10 * 60000;            // someone who didn't accept isn't offered again for this long
 const FRESH_MS = 90000;                // messages older (or newer) than this are ignored
+const FILTER_RETRY_MS = 20000;         // their filters said no: ask again after this (they may loosen)
 const FTS = [2, 3, 5, 10];
 const HASH = /^[0-9a-f]{32}$/;
 
@@ -51,25 +52,31 @@ const HASH = /^[0-9a-f]{32}$/;
 
 // does a queued player fit you? me = { ch, mode, ft, myRank, chRanked, meRanked }
 // them = { ch, mode, ft } (their "q"); u = their Fightcade user; o = { window, maxPing, skip(name) }
-function compatible(me, them, u, o) {
+// 3.13.1: misfit says why not ('' = they fit): 'queue' (another game / mode / FT), 'ranked', 'channel',
+// 'away', 'playing', 'rank', 'ping', 'filter'. Only 'rank' and 'ping' are yours to loosen (Match anyway).
+function misfit(me, them, u, o) {
     const p = o || {};
-    if (!me || !them || !u) return false;
-    if (them.ch !== me.ch || them.mode !== me.mode) return false;
+    if (!me || !them || !u) return 'queue';
+    if (them.ch !== me.ch || them.mode !== me.mode) return 'queue';
     if (me.mode === 'ranked') {
-        if (them.ft !== me.ft) return false;
-        if (!me.chRanked || !me.meRanked || !(u.settings && u.settings.ranked)) return false;
+        if (them.ft !== me.ft) return 'queue';
+        if (!me.chRanked || !me.meRanked || !(u.settings && u.settings.ranked)) return 'ranked';
     }
     // (Fightcade lists someone's channels by id or by name)
     const chans = Array.isArray(u.channels) ? u.channels : [];
-    if (chans.indexOf(me.ch) < 0 && !(me.chName && chans.indexOf(me.chName) >= 0)) return false;
-    if (u.away || (u.playing && u.playing.quarkId)) return false;
+    if (chans.indexOf(me.ch) < 0 && !(me.chName && chans.indexOf(me.chName) >= 0)) return 'channel';
+    if (u.away) return 'away';
+    if (u.playing && u.playing.quarkId) return 'playing';
+    if (p.skip && p.skip(u.name || '')) return 'filter';
     const rk = u.channelRank || {};
     const rank = +(rk[me.chName] || rk[me.ch] || 0);
-    if (p.window != null && me.myRank && (!rank || Math.abs(rank - me.myRank) > p.window)) return false;
-    if (p.maxPing && typeof u.ping === 'number' && u.ping > 0 && u.ping > p.maxPing) return false;
-    if (p.skip && p.skip(u.name || '')) return false;
-    return true;
+    if (p.window != null && me.myRank && (!rank || Math.abs(rank - me.myRank) > p.window)) return 'rank';
+    if (p.maxPing && typeof u.ping === 'number' && u.ping > 0 && u.ping > p.maxPing) return 'ping';
+    return '';
 }
+const compatible = (me, them, u, o) => !misfit(me, them, u, o);
+// the reasons "Match anyway" lifts
+const LOOSE = ['rank', 'ping'];
 
 // the pair's asker: the lower hash, so two people never both ask
 const asks = (mine, theirs) => String(mine) < String(theirs);
@@ -107,12 +114,12 @@ function cleanMsg(m, now) {
 //       found(match), update(match), done(match, why), challenge(match) -> bool, arm(match), toast(kind, match) }
 // match = { id, h, ch, mode, ft, asker, stage: 'offered'|'found'|'starting', meReady, themReady, until }
 function Matcher(d) {
-    const m = { queue: null, entries: new Map(), match: null, skips: new Map(), lastBeat: 0 };
+    const m = { queue: null, entries: new Map(), match: null, skips: new Map(), lastBeat: 0, outside: new Map() };     // outside: h -> until (their filters said no)
     const newId = () => (crypto ? crypto.randomBytes(6).toString('hex') : Math.random().toString(36).slice(2, 14));
     const skipped = (h) => (m.skips.get(h) || 0) > d.now();
 
     m.join = (q) => {
-        m.queue = { ch: q.ch, mode: q.mode, ft: q.mode === 'ranked' ? q.ft : 0, since: d.now() };
+        m.queue = { ch: q.ch, mode: q.mode, ft: q.mode === 'ranked' ? q.ft : 0, since: d.now(), loose: !!q.loose };
         m.lastBeat = 0;
         m.tick();
     };
@@ -138,6 +145,7 @@ function Matcher(d) {
         const now = d.now();
         m.entries.forEach((e, h) => { if (now - e.at > TTL) m.entries.delete(h); });
         m.skips.forEach((t, h) => { if (t <= now) m.skips.delete(h); });
+        m.outside.forEach((t, h) => { if (t <= now || !m.entries.has(h)) m.outside.delete(h); });
         const x = m.match;
         if (x && now > x.until) {
             if (x.stage === 'offered') { m.match = null; }
@@ -183,8 +191,9 @@ function Matcher(d) {
         if (msg.t === 'offer') {
             if (msg.to !== d.myHash()) return;
             const e = m.entries.get(msg.h);
-            const free = m.queue && !x && e && sameQueue(e) && !skipped(msg.h) && d.fits(e) && !asks(d.myHash(), msg.h);
-            if (!free) { d.send({ t: 'no', id: msg.id, why: 'busy' }); return; }
+            const open = m.queue && !x && e && sameQueue(e) && !skipped(msg.h) && !asks(d.myHash(), msg.h);
+            // (3.13.1: free, but outside your filters: say so, so their screen can tell them)
+            if (!open || !d.fits(e)) { d.send({ t: 'no', id: msg.id, why: open ? 'filters' : 'busy' }); return; }
             m.match = { id: msg.id, h: msg.h, ch: m.queue.ch, mode: m.queue.mode, ft: m.queue.ft, asker: false, stage: 'found', meReady: false, themReady: false, until: 0 };
             d.send({ t: 'ok', id: msg.id });
             found(m.match);
@@ -194,7 +203,13 @@ function Matcher(d) {
         if (msg.t === 'ok' && x.stage === 'offered' && x.asker) { found(x); return; }
         if (msg.t === 'ready' && x.stage === 'found') { x.themReady = true; d.update(x); go(); return; }
         if (msg.t === 'no') {
-            if (x.stage === 'offered') { m.match = null; if (msg.why !== 'busy') m.skips.set(x.h, now + SKIP_MS); return; }
+            if (x.stage === 'offered') {
+                m.match = null;
+                // their filters: ask again in a bit (they may press Match anyway); anything else: leave them be
+                if (msg.why === 'filters') { m.skips.set(x.h, now + FILTER_RETRY_MS); m.outside.set(x.h, now + TTL); }
+                else if (msg.why !== 'busy') m.skips.set(x.h, now + SKIP_MS);
+                return;
+            }
             if (x.stage === 'found') {
                 // their clock ran out first, and you hadn't accepted either: you're the one out, not them
                 if (msg.why === 'timeout' && !x.meReady) { m.queue = null; d.send({ t: 'bye' }); end('timeout'); return; }
@@ -240,6 +255,20 @@ function Matcher(d) {
     };
     // queued players heard in your queue (for "3 in the queue")
     m.count = () => { let n = 0; m.entries.forEach(e => { if (sameQueue(e)) n++; }); return n; };
+    // 3.13.1: the others in your queue that nobody is matching with, and why -> [{ h, why }]
+    //   why: a misfit reason from d.why(entry), or 'theirs' (their filters turned your offer down)
+    m.stuck = () => {
+        const out = [];
+        if (!m.queue || m.match) return out;
+        m.entries.forEach((e, h) => {
+            if (!sameQueue(e)) return;
+            if (m.outside.has(h)) { out.push({ h, why: 'theirs' }); return; }
+            const w = d.why ? d.why(e) : (d.fits(e) ? '' : 'filter');
+            if (w) out.push({ h, why: w });
+        });
+        return out;
+    };
+    m.loosen = () => { if (m.queue) { m.queue.loose = true; m.tick(); } };
     return m;
 }
 
@@ -292,12 +321,16 @@ function userFor(h, ch) {
     return u ? Object.assign({ name }, u) : null;
 }
 
-function fits(e) {
-    if (!mm || !mm.queue) return false;
+function why(e) {
+    if (!mm || !mm.queue) return 'queue';
     const me = here(mm.queue.ch);
     const u = userFor(e.h, mm.queue.ch);
-    return !!(me && u && compatible(Object.assign({ mode: mm.queue.mode, ft: mm.queue.ft }, me), e, u, fmOpts()));
+    if (!me || !u) return 'channel';
+    const o = fmOpts();
+    if (mm.queue.loose) { o.window = null; o.maxPing = 0; }                 // Match anyway: any rank, any ping
+    return misfit(Object.assign({ mode: mm.queue.mode, ft: mm.queue.ft }, me), e, u, o);
 }
+const fits = (e) => !why(e);
 function scoreOf(e) {
     const f = mod('find-match');
     const u = userFor(e.h, mm.queue.ch);
@@ -434,7 +467,7 @@ function stripInner(ctx) {
         const what = q.mode === 'ranked' ? T('Ranked FT{n}', { n: q.ft }) : T('Casual');
         return `<div class="fcmmOn"><span class="fc-spin"></span><div class="tx"><b>${E(T('Searching… {t}', { t: clock(Date.now() - q.since) }))}</b>` +
             `<span>${E(what)} · ${E(n === 1 ? T('1 other in the queue for this game') : T('{n} others in the queue for this game', { n }))}</span></div>` +
-            fc.ui.btn('Cancel', { kind: 'sec', size: 'sm', act: 'mm-cancel' }) + '</div>';
+            fc.ui.btn('Cancel', { kind: 'sec', size: 'sm', act: 'mm-cancel' }) + '</div>' + stuckHtml(q);
     }
     const why = blocker(ctx);
     if (why && why !== T('Open a game channel first.')) return `<div class="fcmmNote">${fc.ui.ic('info')}<span>${E(why)}</span></div>`;
@@ -449,6 +482,28 @@ function stripInner(ctx) {
         `<div class="fcmmRow"><span class="fcmmSegs">${seg('ranked', N_('Ranked'))}${seg('casual', N_('Casual'))}</span>${fts}` +
         fc.ui.btn('Search', { kind: 'success', size: 'sm', icon: 'search', act: 'mm-search' }) + `</div>${note}</div>`;
 }
+// 3.13.1: someone's in the queue but nothing happens: say why (it used to just wait)
+function stuckHtml(q) {
+    const st = mm.stuck();
+    if (!st.length) return '';
+    const name = (h) => nameIn(h, q.ch) || T('a Fightcord player');
+    const u = (h) => (fc.app.users() || {})[nameIn(h, q.ch)] || {};
+    const line = (x) => {
+        const n = name(x.h);
+        if (x.why === 'ping') return T('{name}: {ping} ms, over your limit of {max} ms', { name: n, ping: u(x.h).ping, max: fmOpts().maxPing });
+        if (x.why === 'rank') return T('{name}: outside your rank range', { name: n });
+        if (x.why === 'theirs') return T('{name}: you’re outside their Find a match filters (they can press Match anyway)', { name: n });
+        if (x.why === 'away') return T('{name}: away', { name: n });
+        if (x.why === 'playing') return T('{name}: in a match', { name: n });
+        if (x.why === 'filter') return T('{name}: your challenge filters decline them', { name: n });
+        if (x.why === 'ranked') return T('{name}: ranked is off for one of you', { name: n });
+        return T('{name}: not in this channel', { name: n });
+    };
+    const mine = st.some(x => LOOSE.indexOf(x.why) >= 0) && !q.loose;
+    return `<div class="fcmmWhy">${fc.ui.ic('info')}<div><b>${E(T('Not matched yet, because:'))}</b>` +
+        st.slice(0, 4).map(x => `<span>${E(line(x))}</span>`).join('') + '</div>' +
+        (mine ? fc.ui.btn('Match anyway', { size: 'sm', act: 'mm-loose', title: 'Ignore your rank range and ping limit for this search' }) : '') + '</div>';
+}
 function stripHtml(ctx) { return cfg && cfg.enabled ? `<div class="fcmmStrip">${stripInner(ctx)}</div>` : ''; }
 
 // a click in Find a match's pop-over: true when it was ours
@@ -457,6 +512,7 @@ function click(act, el, ctx) {
     if (act === 'mm-ft') { const n = +el.dataset.ft; if (FTS.indexOf(n) >= 0) { cfg.ft = n; store.save(); paint(); } return true; }
     if (act === 'mm-search') { search(ctx); return true; }
     if (act === 'mm-cancel') { cancel('cancel'); return true; }
+    if (act === 'mm-loose') { if (mm) { mm.loosen(); paint(); } return true; }
     return false;
 }
 
@@ -534,6 +590,12 @@ const CSS = `
 .fcmmNote { display: flex; align-items: center; color: var(--fc-muted); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
 .fcmmNote .fc-ic { flex: none; margin-right: 6px; }
 .fcmmOn { display: flex; align-items: center; }
+.fcmmWhy { display: flex; align-items: flex-start; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: var(--fc-tint-1); font-size: var(--fc-fs-sm); color: var(--fc-text); }
+.fcmmWhy > .fc-ic { flex: none; margin: 2px 8px 0 0; color: var(--fc-warning); }
+.fcmmWhy > div { flex: 1; min-width: 0; }
+.fcmmWhy b { display: block; color: var(--fc-head); }
+.fcmmWhy span { display: block; color: var(--fc-muted); overflow-wrap: anywhere; }
+.fcmmWhy .fc-btn { flex: none; margin-left: 8px; align-self: center; }
 .fcmmOn .fc-spin { flex: none; width: 22px; height: 22px; margin-right: 10px; }
 .fcmmOn .tx { flex: 1; min-width: 0; }
 .fcmmOn b { display: block; font: 700 var(--fc-fs-md)/1.25 var(--fc-font); color: var(--fc-head); font-variant-numeric: tabular-nums; }
@@ -565,7 +627,7 @@ function start(f) {
     try { P = require(path.join(__dirname, 'presence.js')); } catch (e) { P = null; }
     mm = Matcher({
         now: () => Date.now(), myHash, send,
-        fits, score: scoreOf,
+        fits, why, score: scoreOf,
         found: (x) => {
             showModal(x);
             const { name } = opponent(x);
@@ -650,6 +712,6 @@ const api = {
     get _mm() { return mm; }
 };
 
-module.exports = { id: 'matchmaking', name: 'Matchmaking', needs: ['match-screens', 'find-match'], start, compatible, asks, cleanMsg, signText, Matcher, KIND, TOPIC, FTS,
+module.exports = { id: 'matchmaking', name: 'Matchmaking', needs: ['match-screens', 'find-match'], start, compatible, misfit, asks, cleanMsg, signText, Matcher, KIND, TOPIC, FTS,
     TIMES: { BEAT, TTL, OFFER_MS, FOUND_MS, START_MS, SKIP_MS } };
 Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });
