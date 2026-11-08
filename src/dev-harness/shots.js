@@ -30,6 +30,23 @@ const BROWSE = '2026-09-28T22-53-10-browse-search';      // has Fightcade's full
 // run: code evaluated in the page once it has settled (await-able; sleep(ms) is there)
 const SCENES = [
     { name: 'channel', snap: CHANNEL, run: '' },
+    // 3.14.1: hovered member rows in the Online Edition Look, list on the right with details; every row gets the
+    // Fightcord voice badge + scout icon (Mushn1k: the badges wrapped and pushed country / ping out of the bar)
+    { name: 'members-hover-oe', snap: CHANNEL, run: `
+        const st = fightcord.config('member-list', {}); st.data.side = 'right'; st.data.details = true;
+        fightcord.modules.get('own-art').theme = () => ({ font: null }); fightcord.emit('own-art:changed');
+        fightcord.modules.get('discord-theme').applyLook('oe', true); fightcord.emit('presence:changed'); await sleep(2000);
+        // (no own files here, so no bar picture: a flat stand-in in the bar's yellow)
+        // (the theme writes --dc-oe-bar: none inline, so an !important rule)
+        document.head.insertAdjacentHTML('beforeend', '<style>html.dc-oe-own { --dc-oe-bar: linear-gradient(#ece02a, #d6c916) !important; }</style>');
+        for (const ss of document.styleSheets) { let rules; try { rules = ss.cssRules; } catch (e) { continue; }
+            for (const r of [...rules]) if (r.selectorText && /userItem/.test(r.selectorText) && /:hover/.test(r.selectorText)) { try { ss.insertRule(r.cssText.replace(/:hover/g, '.fcHov'), ss.cssRules.length); } catch (e) {} } }
+        const rows = [...document.querySelectorAll('.usersListWrapper .userItem.fcm-row')].filter(r => r.offsetParent && r.querySelector('.fcm-sub'));
+        rows.slice(0, 16).forEach((r, i) => { const nag = r.querySelector('.nameAndGame'), pn = nag.querySelector('.playerName');
+            if (!nag.querySelector('.fcm-pres')) pn.insertAdjacentHTML('afterend', '<span class="fcm-pres"><span class="fcPres v"><b>F</b>' + fightcord.ui.ic('mic') + '</span></span>');
+            if (!nag.querySelector('.fcScoutBadge')) nag.querySelector('.fcm-pres').insertAdjacentHTML('afterend', '<span class="fcScoutBadge">' + fightcord.ui.icon('search') + '</span>');
+            if (i % 3 === 0) r.classList.add('fcHov'); });
+        await sleep(600);` },
     { name: 'discover', snap: BROWSE, view: 'home', wait: 9000, run: `
         // a few friends, three events, rivals from the demo history
         const F = fightcord, us = Object.keys(F.app.users()), fr = F.modules.get('friends');

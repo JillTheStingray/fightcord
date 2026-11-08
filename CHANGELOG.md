@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.14.1
+
+- **Member list hover fix:** pointing at a player with several badges after their name (Fightcord, voice chat, the scout
+  magnifier) no longer pushes their country and ping out of the row. The name shortens to make room instead.
+- **Online Edition Look:** pointing at a Playing now row shows the yellow bar like every other row, so the name, the
+  opponent and Watch stay readable.
+
 ## 3.14.0
 
 - **Discover opens on your main game.** A big panel up top for the game you played last:

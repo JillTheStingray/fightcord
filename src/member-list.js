@@ -535,8 +535,15 @@ ${P} .userItem.fcm-row .rankWrapper,
 ${P} .userItem.fcm-row .pingWrapper { display: none !important; }
 ${P} .userItem.fcm-row .fcScoutBadge { display: none !important; }
 ${P} .userItem.fcm-row:hover .fcScoutBadge { display: inline !important; }
+/* 3.14.1: the name line is a flex row. The name gives way to its badges (Fightcord, voice, scout, friend...)
+   instead of a badge wrapping onto a second line, which pushed the country and ping out of the row (Mushn1k):
+   name flex-basis 1px (not 0: with 0 a 100% sub line still fits beside it and the name collapses) + grow up to
+   its own width; the sub line, live line and game take a full line each. */
+${P} .userItem.fcm-row .nameAndGame { display: flex !important; flex-wrap: wrap !important; align-items: center !important; align-content: center !important; }
+${P} .userItem.fcm-row .nameAndGame > * { flex: none; }
 ${P} .userItem.fcm-row .nameAndGame .playerName {
-    display: inline-block !important; max-width: calc(100% - 64px) !important; vertical-align: bottom !important; }
+    display: block !important; flex: 1 1 1px !important; min-width: 0 !important; max-width: max-content !important; }
+${P} .userItem.fcm-row .nameAndGame > .fcm-sub, ${P} .userItem.fcm-row .nameAndGame > .fcm-live, ${P} .userItem.fcm-row .nameAndGame > .game { flex: 0 0 100% !important; min-width: 0 !important; }
 ${P} .fcm-sub { display: block; font-size: var(--fc-fs-sm); line-height: 16px; color: var(--fc-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
 ${P} .fcm-flag { display: inline-block; width: 16px; height: 11px; margin-right: 5px; vertical-align: -1px;
@@ -553,7 +560,13 @@ ${P} .userItem .nameAndGame > .fcm-nt { display: inline-block !important; }
 ${P} .userItem .nameAndGame > .fcm-pres { display: inline-flex !important; align-items: center !important; }
 /* 3.14: the Playing now header already groups these rows; a tint on each one stacked into a heavy block */
 ${P} .userItem.fcm-playing { border-radius: var(--fc-r1) !important; }
-${P} .userItem.fcm-playing:hover { background: var(--fc-tint-2) !important; }
+/* (not in the Online Edition Look: its yellow select bar and dark text cover every hovered row, Playing now too) */
+html:not(.dc-oe-own) body .usersListWrapper .userItem.fcm-playing:hover { background: var(--fc-tint-2) !important; }
+html.dc-oe-own body .usersListWrapper .userItem:hover .nameAndGame > .fcm-live,
+html.dc-oe-own body .usersListWrapper .userItem:hover .nameAndGame > .fcm-live b,
+html.dc-oe-own body .usersListWrapper .userItem:hover .nameAndGame > .fcm-sub { color: #141400 !important; }
+html.dc-oe-own body .usersListWrapper .userItem:hover .nameAndGame > .fcm-live .w { color: #141400 !important; background: transparent !important; box-shadow: inset 0 0 0 1px rgba(20,20,0,.55) !important; }
+html.dc-oe-own body .usersListWrapper .userItem:hover .nameAndGame > .fcm-live .w:hover { color: #fff !important; background: var(--fc-danger) !important; box-shadow: none !important; }
 ${P} .userItem .nameAndGame > .fcm-live { display: flex !important; align-items: center !important; margin-top: 1px !important; font-size: var(--fc-fs-sm) !important;
     color: var(--fc-muted) !important; white-space: nowrap !important; overflow: hidden !important; }
 ${P} .userItem .nameAndGame > .fcm-live .dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--fc-danger); flex: none; }
