@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.14.3
+
+- **3rd Strike goals count for everyone.** Parries, red parries, supers and perfect rounds were read fine, but Fightcord
+  tells which player you are from the emulator's match files, and FBNeo ships with those turned off. So for most players
+  every parry was thrown away ("couldn't tell which player you were"). Fightcord now turns on the emulator's "Save
+  Fightcade overlay data to files" setting once, while the emulator is closed. Only that line of its settings changes.
+  This also fixes the characters on the result screens and casual scores for players who had it off.
+- **Clearer goal status:** Settings → Goals now always says why a match counted nothing, including when Fightcord was
+  still looking for 3rd Strike when the set ended, and no longer says "Counting works" when it saw none of your parries.
+  Settings → Diagnostics → Copy debug info includes the goal reader's details.
+
 ## 3.14.2
 
 - **Matchmaking works again.** One of the three free relays it talks over stopped passing messages on, and another

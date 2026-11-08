@@ -160,6 +160,12 @@ public static class FcFightReader {
     }
 
     static bool demo;
+    static string lastNote = "";
+    static string Esc(string s) {
+        var sb = new System.Text.StringBuilder();
+        foreach (char c in s) { if (c == '"' || c == '\\') sb.Append('\\').Append(c); else if (c < ' ' || c > '~') sb.Append("\\u").Append(((int)c).ToString("x4")); else sb.Append(c); }
+        return sb.Length > 200 ? sb.ToString(0, 200) : sb.ToString();
+    }
     public static void Run(long hint) { Run(hint, false); }
     public static void Run(long hint, bool anyFight) {
         demo = anyFight;
@@ -184,10 +190,14 @@ public static class FcFightReader {
                 h = OpenProcess(VM_READ | QUERY_LIMITED | 0x0400, false, ps[0].Id);
                 if (h == IntPtr.Zero) { Say("{\"e\":\"err\",\"m\":\"open\"}"); return; }
                 long off; long ram = 0;
+                Say("{\"e\":\"found\",\"pid\":" + ps[0].Id + "}");
                 for (int i = 0; i < 20 && ram == 0 && !ps[0].HasExited; i++) { ram = FindRam(ps[0], hint, out off); if (ram != 0) { Say("{\"e\":\"ready\",\"off\":" + off + "}"); hint = off; } else Thread.Sleep(3000); }
                 if (ram == 0 && !ps[0].HasExited) { Say("{\"e\":\"err\",\"m\":\"ram\"}"); return; }
                 if (ram != 0) Watch(ram);
-            } catch (Exception) {
+            } catch (Exception ex) {
+                // (3.14.3: say what went wrong, once per kind, so Settings can show it; then try again)
+                string m = ex.GetType().Name + ": " + ex.Message;
+                if (m != lastNote) { lastNote = m; Say("{\"e\":\"note\",\"m\":\"" + Esc(m) + "\"}"); }
                 Thread.Sleep(1000);
             } finally {
                 if (h != IntPtr.Zero) CloseHandle(h);
@@ -257,6 +267,8 @@ public static class FcFightReader {
 `;
 
 let child = null, cur = null;          // cur = { quark, side, pending: [], at }
+// seen = the reader found the emulator; note = the last thing it said went wrong; theirs = your opponent's events
+const fresh = (quark) => ({ quark, side: 0, pending: [], at: Date.now(), events: 0, theirs: 0, rounds: 0, dropped: 0, names: '', ready: false, seen: false, note: '', err: '', failed: false });
 
 function exePath() { return path.resolve(__dirname, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'fcadefbneo.exe'); }
 function exeKey() { try { const st = fs.statSync(exePath()); return st.size + ':' + Math.round(st.mtimeMs); } catch (e) { return ''; } }
@@ -293,10 +305,15 @@ function endMatch() {
     flush(true);
     const m = cur;
     cur = null;
-    if (!m.ready) return;                     // never found the game: the reader's own error already says why
+    if (!m.ready) {
+        // never found the game. The reader's own error (set during this match) already says why;
+        // (3.14.3) if it said nothing -- still looking, or stuck retrying -- say that, with its last note
+        if (!m.failed) setStatus(false, m.seen ? 'notready' : 'noemu', m.note || m.err || '');
+        return;
+    }
     if (m.dropped) setStatus(false, 'side', m.names, { n: m.dropped });
-    else if (!m.rounds && !m.events) setStatus(false, 'norounds');
-    else setStatus(true, 'counted', '', { n: m.events, rounds: m.rounds });
+    else if (!m.rounds && !m.events) setStatus(false, 'norounds', m.note || '');
+    else setStatus(true, 'counted', '', { n: m.events, rounds: m.rounds, theirs: m.theirs });
 }
 
 function wanted() {
@@ -315,7 +332,7 @@ function begin(ev) {
     try { cs = csFile(); } catch (e) { fc.log('could not write the reader', e && e.message); return; }
     const key = exeKey();
     const hint = cfg.base && cfg.base.key === key ? +cfg.base.off || 0 : 0;
-    cur = { quark: ev.quark, side: 0, pending: [], at: Date.now(), events: 0, rounds: 0, dropped: 0, names: '', ready: false };
+    const match = cur = fresh(ev.quark);
     const cmd = "Add-Type -Path '" + cs.replace(/'/g, "''") + "'; [FcFightReader]::Run(" + hint + ')';
     let c;
     try {
@@ -328,7 +345,7 @@ function begin(ev) {
         let i;
         while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); const o = parseLine(line); if (o && o.e === 'ready') c.__ready = true; onLine(o, key); }
     });
-    c.stderr.on('data', (d) => { err = (err + d).slice(-400); });
+    c.stderr.on('data', (d) => { err = (err + d).slice(-400); if (cur) cur.err = err; });
     c.on('error', () => { if (child === c) { child = null; setStatus(false, 'start'); } });
     c.on('exit', (code) => {
         if (child === c) child = null;
@@ -336,6 +353,7 @@ function begin(ev) {
         // stopped -- the set is over, Fightcord stopped it -- is fine, whatever its exit code)
         if (code && !c.__ready) {
             fc.log('reader exited', code, err.trim());
+            match.failed = true;
             setStatus(false, /malicious|antivirus|virus|blocked by/i.test(err) ? 'av' : /Add-Type|error CS\d+/.test(err) ? 'compile' : 'start', err);
         }
         // it stopped by itself (the emulator closed long ago): the match is over too
@@ -350,9 +368,15 @@ function onLine(o, key) {
         if (!cfg.base || cfg.base.key !== key || cfg.base.off !== o.off) { cfg.base = { key, off: o.off }; store.save(); }
         cur.ready = true;
         setStatus(true, 'ready');
+    } else if (o.e === 'found') {
+        cur.seen = true;
+    } else if (o.e === 'note') {
+        cur.note = String(o.m || '');
+        fc.log('reader note', cur.note);
     } else if (o.e === 'round') {
         cur.rounds++;
     } else if (o.e === 'err') {
+        cur.failed = true;
         setStatus(false, o.m || 'err');
     } else if (KINDS.indexOf(o.e) >= 0 && (o.p === 1 || o.p === 2)) {
         cur.pending.push({ k: o.e, p: o.p, at: Date.now() });
@@ -377,6 +401,7 @@ function flush(final) {
         return;
     }
     const mine = cur.pending.filter(e => e.p === cur.side);
+    cur.theirs += cur.pending.length - mine.length;
     cur.pending = [];
     if (mine.length) {
         mine.forEach(e => { cfg.events.push({ at: e.at, k: e.k, q: String(cur.quark) }); fc.emit('fight:event', { kind: e.k, at: e.at, quark: cur.quark }); });
@@ -406,8 +431,19 @@ const api = {
     events: () => (cfg ? cfg.events.slice() : []),
     status: () => (cfg ? cfg.status : null),
     running: () => !!child,
+    // 3.14.3: for Settings -> Diagnostics -> Copy debug info
+    diag: () => {
+        if (!cfg) return [];
+        const g = fc.modules.get('goals');
+        const by = {};
+        cfg.events.forEach(e => { by[e.k] = (by[e.k] || 0) + 1; });
+        return ['Fight stats: ' + (cfg.enabled ? 'on' : 'OFF') + ', 3rd Strike goal ' + (g && g.wantsFight && g.wantsFight() ? 'yes' : 'no') + ', reader ' + (child ? 'running' : 'stopped'),
+            '  last: ' + JSON.stringify(cfg.status || null),
+            '  offset: ' + JSON.stringify(cfg.base || null) + ', exe ' + (exeKey() || 'not found'),
+            '  events this week: ' + JSON.stringify(by)];
+    },
     // for the tests and the dev harness: a match as if the reader were running, fed line by line
-    _fake: (quark) => { cur = { quark, side: 0, pending: [], at: Date.now(), events: 0, rounds: 0, dropped: 0, names: '', ready: false }; },
+    _fake: (quark) => { cur = fresh(quark); },
     _line: (line) => onLine(parseLine(line), exeKey()),
     _end: () => endMatch()
 };

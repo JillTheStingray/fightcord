@@ -59,6 +59,39 @@ test('in-game chat mute comes from the emulator ini', () => {
     assert.equal(emu.iniMutesChat(''), false);
 });
 
+// 3.14.3: FBNeo ships with its match files off; without them 3rd Strike goals can't tell your side
+test('the emulator’s match files get turned on: that one line only, and never while it runs', async () => {
+    const INI = '// Show Fightcade overlay debug inputs\r\nbVidUnrankedScores 1\r\n\r\n// Save Fightcade overlay data to files in realtime (for Streaming)\r\nbVidSaveOverlayFiles 0\r\n\r\n// Save Fightcade chat history\r\nbVidSaveChatHistory 0\r\n';
+    const on = emu.iniWithOverlayFiles(INI);
+    assert.equal(on, INI.replace('bVidSaveOverlayFiles 0', 'bVidSaveOverlayFiles 1'));
+    assert.equal(emu.iniWithOverlayFiles(on), null, 'already on');
+    assert.equal(emu.iniWithOverlayFiles('nVidDepth 1\r\n'), null, 'no such line: left alone');
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fcini-'));
+    const cfgDir = path.join(root, 'emulator', 'fbneo', 'config');
+    fs.mkdirSync(cfgDir, { recursive: true });
+    const ini = path.join(cfgDir, 'fcadefbneo.ini');
+    fs.writeFileSync(ini, INI, 'latin1');
+    core._test.setDir(path.join(root, 'fc2-electron', 'resources', 'app', 'inject', 'fightcord'));
+    const realRunning = emu.running;
+    try {
+        emu.running = () => Promise.resolve(true);
+        assert.equal(await emu.overlayFilesOn(), 'busy');
+        assert.equal(fs.readFileSync(ini, 'latin1'), INI, 'untouched while the emulator is open');
+        emu.running = () => Promise.resolve(null);
+        assert.equal(await emu.overlayFilesOn(), 'busy', 'can’t tell = don’t touch');
+        emu.running = () => Promise.resolve(false);
+        assert.equal(await emu.overlayFilesOn(), 'done');
+        assert.equal(fs.readFileSync(ini, 'latin1'), on);
+        assert.equal(await emu.overlayFilesOn(), 'on');
+        fs.unlinkSync(ini);
+        assert.equal(await emu.overlayFilesOn(), 'none');
+    } finally {
+        emu.running = realRunning;
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
+
 test('characters per set: each finished game counts for the characters on screen', () => {
     const side = (ms_, ts, mc, tc) => ({ mine: { score: ms_, char: mc }, theirs: { score: ts, char: tc } });
     let c = ms.charStep(null, side(0, 0, 'Akuma', 'Yang'));

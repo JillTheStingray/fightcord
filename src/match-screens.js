@@ -1465,6 +1465,20 @@ function start(f) {
     ['connectionCallbacks', 'genericCallbacks'].forEach(k => fc.hooks.method(() => { const r = fc.app.root(); return r && r[k]; }, 'onChallengeAccept', { before(user) { accepted(user); } }));
     fc.watch(() => { scanAccepted(); refreshSessionPill(); });
     fc.tick(poll, 500, { whileHidden: true });
+    // 3.14.3: the emulator's match files (who's P1, characters, scores) are an FBNeo setting that's off
+    // by default -- without them 3rd Strike goals can't tell which player you are. Turn it on once, while
+    // the emulator is closed (an open one writes its old settings back when it closes: try after the set)
+    const overlayFiles = () => {
+        if (cfg.overlayFiles || !fc.emu.overlayFilesOn) return;
+        fc.emu.overlayFilesOn().then((r) => {
+            if (r === 'busy') return;
+            cfg.overlayFiles = r;
+            store.save();
+            if (r === 'done') fc.log('turned on the emulator’s match files (bVidSaveOverlayFiles 1)');
+        }).catch(() => { /* next time */ });
+    };
+    setTimeout(overlayFiles, 3000);
+    fc.on('match:end', () => setTimeout(overlayFiles, 10000));
     fc.on('set:recorded', refreshSessionPill);
     fc.on('history:merged', refreshSessionPill);
 

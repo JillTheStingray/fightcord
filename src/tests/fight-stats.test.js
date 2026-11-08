@@ -179,6 +179,14 @@ test('fight-stats says why a match counted nothing', () => {
     match = { p1: { name: 'alpha' }, p2: { name: 'Beta' } };
     api._fake('q4'); api._line('{"e":"ready","off":1}'); api._line('{"e":"round","l1":1,"l2":0}'); api._line('{"e":"parry","p":1,"f":5}'); api._line('{"e":"parry","p":2,"f":6}'); api._end();
     assert.deepEqual([data.status.ok, data.status.msg, data.status.n, data.status.rounds], [true, 'counted', 1, 1]);
+    assert.equal(data.status.theirs, 1, 'your opponent’s count is kept for the diagnostics');
+    // 3.14.3: a reader that never found the game always leaves a reason
     api._fake('q5'); api._end();
-    assert.equal(data.status.msg, 'counted', 'a reader that never found the game leaves its own error alone');
+    assert.equal(data.status.msg, 'noemu', 'never saw the emulator');
+    api._fake('q6'); api._line('{"e":"found","pid":4}'); api._line('{"e":"note","m":"Win32Exception: Access is denied"}'); api._end();
+    assert.deepEqual([data.status.ok, data.status.msg, data.status.detail], [false, 'notready', 'Win32Exception: Access is denied']);
+    // ...but its own error from this match stays
+    api._fake('q7'); api._line('{"e":"found","pid":4}'); api._line('{"e":"err","m":"ram"}'); api._end();
+    assert.equal(data.status.msg, 'ram', 'the reader’s own error from this match stays');
+    assert.ok(api.diag().some(l => /last: .*"ram"/.test(l)), 'Copy debug info carries the last status');
 });

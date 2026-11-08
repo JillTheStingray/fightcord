@@ -1639,12 +1639,36 @@ const EMU_PROCS = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/;
 let emuRunAt = 0, emuRunVal = null;
 // "bVidMuteChat 1" in fcadefbneo.ini = the emulator's Mute chat is on
 const iniMutesChat = (text) => /^\s*bVidMuteChat\s+1\s*$/m.test(String(text || ''));
+// 3.14.3: "bVidSaveOverlayFiles 0" -> 1. That's the emulator's "Save Fightcade overlay data to files" (for
+// streaming): the match files (names, characters, scores) Fightcord reads. FBNeo ships with it off.
+// -> the new text, or null when there's nothing to change
+const iniWithOverlayFiles = (text) => {
+    const t = String(text || '');
+    const re = /^([ \t]*bVidSaveOverlayFiles[ \t]+)0([ \t\r]*)$/m;
+    return re.test(t) ? t.replace(re, (m, a, b) => a + '1' + b) : null;
+};
+const emuIni = () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'config', 'fcadefbneo.ini');
 const emu = {
     dir: emuDir,
     iniMutesChat,
+    iniWithOverlayFiles,
+    // turn the match files on -> Promise<'on' (already) | 'done' | 'busy' (emulator open: it would write
+    // its old settings back on exit) | 'none' (no ini / no such line)>. Only that one line changes.
+    overlayFilesOn() {
+        return emu.running().then((busy) => new Promise((resolve) => {
+            fs.readFile(emuIni(), 'latin1', (e, text) => {
+                if (e) { resolve('none'); return; }
+                if (/^[ \t]*bVidSaveOverlayFiles[ \t]+1[ \t\r]*$/m.test(text)) { resolve('on'); return; }
+                const next = iniWithOverlayFiles(text);
+                if (next == null) { resolve('none'); return; }
+                if (busy !== false) { resolve('busy'); return; }
+                fs.writeFile(emuIni(), next, 'latin1', (e2) => resolve(e2 ? 'none' : 'done'));
+            });
+        }));
+    },
     // is FBNeo's in-game chat muted? -> Promise<boolean>; only reads its settings, false when there are none
     chatMuted: () => new Promise((resolve) => {
-        const ini = path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'config', 'fcadefbneo.ini');
+        const ini = emuIni();
         fs.readFile(ini, 'utf8', (e, text) => resolve(!e && iniMutesChat(text)));
     }),
     // the folder FBNeo draws its in-game bar from (background.png, spectators.png, rank badges, flags)
@@ -3017,6 +3041,12 @@ function diagText() {
         'API: ' + JSON.stringify(d.api),
         'Missing Fightcade anchors: ' + (Object.keys(d.anchors).filter(k => !d.anchors[k]).join(', ') || 'none'),
         '',
+        // (3.14.3) a module can add its own lines: an api.diag() that returns them
+        ...d.modules.filter(m => m.state === 'running').reduce((out, m) => {
+            const a = modules.get(m.id);
+            if (!a || typeof a.diag !== 'function') return out;
+            try { return out.concat(a.diag().map(String), ''); } catch (e) { return out.concat(m.id + ': diag failed ' + (e && e.message), ''); }
+        }, []),
         'Recent problems:',
         ...(d.errors.length ? d.errors.map(e => '  ' + new Date(e.at).toISOString().slice(11, 19) + ' ' + e.level + ' [' + e.scope + '] ' + e.text.split('\n')[0]) : ['  none'])
     ];
