@@ -1254,7 +1254,7 @@ html.dc-oe-own #fcmsOverlay { --fcms-display: 'FC OE District', 'FC Display', 'N
 #fcmsOverlay .odds small { width: 100%; margin-top: .8vmin; text-align: center; color: rgba(255,255,255,.55); font-size: 1.6vmin; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 #fcmsOverlay .game { position: absolute; left: 0; right: 0; bottom: 3.5vh; text-align: center; animation: fcms-in .5s 1.1s both; }
 #fcmsOverlay .game .gw { display: inline-block; max-width: 80vw; padding: 1vmin 4vmin 1.1vmin; background: rgba(6,6,10,.85); color: rgba(255,255,255,.88);
-    clip-path: polygon(2vmin 0, 100% 0, calc(100% - 2vmin) 100%, 0 100%); font-size: 2.2vmin; font-weight: 700; letter-spacing: .4em; text-transform: uppercase; }
+    clip-path: polygon(2vmin 0, 100% 0, calc(100% - 2vmin) 100%, 0 100%); font-size: 2.2vmin; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 #fcmsOverlay .game small { display: block; margin-top: .6vmin; font-size: 2vmin; letter-spacing: .08em; text-transform: none; color: #fff; }
 
 /* READY... FIGHT! as the VS screen closes */

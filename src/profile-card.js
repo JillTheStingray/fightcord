@@ -77,7 +77,9 @@ function quickHtml() {
     const m = mod('music');
     const vol = m && m._config && m._config.track && m._config.enabled
         ? `<label class="qsVol">${fc.ui.icon('music')}<input type="range" min="0" max="100" value="${Math.round((+m._config.volume || 0) * 100)}" data-qs-vol title="${E(T('Music volume'))}"></label>` : '';
-    return `<div class="qs">${sw ? `<div class="qsLooks">${sw}</div>` : ''}<div class="qsTgs">${toggles}</div>${vol}</div>`;
+    const curName = looks[cur] ? T(looks[cur].name) : '';
+    // 3.14: the swatches are colours only, so the Look you are on is named under them
+    return `<div class="qs">${sw ? `<div class="qsLooks">${sw}</div>${curName ? `<div class="qsLookName">${E(T('Look: {name}', { name: curName }))}</div>` : ''}` : ''}<div class="qsTgs">${toggles}</div>${vol}</div>`;
 }
 
 function onQuick(e, redraw) {
@@ -674,16 +676,16 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 #pcCard .pcShare { flex: 1; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
 #pcCard .pcShare.on { color: var(--fc-success); }
 .pcEdit label { display: block; margin-bottom: 12px; position: relative; }
-.pcEdit label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdit label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .pcEdit .fc-input, .pcEdit .fc-select { width: 100%; box-sizing: border-box; }
 .pcEdit textarea { height: 70px; padding: 8px 10px; resize: none; line-height: 1.4; }
 .pcEdit .cnt { position: absolute; right: 8px; bottom: 6px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
-.pcEditBadges > span { display: block; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEditBadges > span { display: block; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 /* 3.7: the editor, fields on the left and your card on the right (no flex gap: Chromium 80) */
 .pcEd { display: flex; align-items: flex-start; }
 .pcEdL { flex: 1; min-width: 0; padding-right: 4px; }
 .pcEdR { flex: none; width: 300px; margin-left: 18px; position: sticky; top: 0; }
-.pcEdH { margin-bottom: 8px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.pcEdH { margin-bottom: 8px; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .pcEdSec { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--fc-divider); }
 .pcEdRow { display: flex; align-items: center; flex-wrap: wrap; }
 .pcEdRow > .fc-btn { margin-right: 8px; }
@@ -772,7 +774,7 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 .pcCropZoom .fc-ic:last-child { width: 19px; height: 19px; }
 #pcCard .fc-stat > small .fc-ic { margin-right: 3px; color: var(--fc-warning); }
 #pcCard .pcSec { margin-top: 10px; }
-#pcCard .pcSec .fc-card-h { margin-bottom: 6px; font-size: var(--fc-fs-xs); }
+#pcCard .pcSec .fc-card-h { margin-bottom: 6px; }
 #pcCard .fcglSum { margin-top: 6px; }
 #pcCard .pcFriends { display: flex; align-items: center; }
 #pcCard .pcFriends img { width: 28px; height: 28px; margin-right: -6px; border-radius: 50%; box-shadow: 0 0 0 3px var(--fc-s0); background: var(--fc-s1); }
@@ -789,7 +791,8 @@ html.fcpc-on .buttonBar .userButton .userStateMenu { opacity: 0 !important; poin
 #pcCard .pcSeg .dot.on { background: var(--fc-success); } #pcCard .pcSeg .dot.away { background: var(--fc-warning); }
 
 /* quick settings (also in the ⋯ menu pop-up) */
-.qsLooks { display: flex; margin-bottom: 8px; }
+.qsLooks { display: flex; margin-bottom: 6px; }
+.qsLookName { margin: 0 0 8px 2px; font: 500 var(--fc-fs-sm)/16px var(--fc-font); color: var(--fc-muted); }
 .qsLook { width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px var(--fc-tint-4);
     transition: transform var(--fc-fast); }
 .qsLook:hover { transform: scale(1.1); }

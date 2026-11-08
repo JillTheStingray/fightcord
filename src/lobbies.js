@@ -473,6 +473,20 @@ function Room(o) {
             .sort((x, y) => y.elo - x.elo || y.w - x.w || x.l - y.l);
     };
     r.king = (since) => { const b = r.board(since).find(x => x.sets >= 5); return b ? b.pk : ''; };
+    // 3.14: the latest sets that count, newest first -> [{ at, win, lose, w, l }] (w-l from the winner's side)
+    r.recent = (n) => {
+        const out = [];
+        r.sets.forEach((reps) => {
+            const a = reps[0];
+            const other = reps.find(x => x.pk === a.o && x.o === a.pk);
+            if (reps.length > 1 && !other) return;
+            const aWon = a.w > a.l;
+            if (other && (other.w > other.l) === aWon) return;            // they disagree
+            if (!r.members.has(a.pk) || !r.members.has(a.o)) return;
+            out.push({ at: Math.min(...reps.map(x => x.at)), win: aWon ? a.pk : a.o, lose: aWon ? a.o : a.pk, w: Math.max(a.w, a.l), l: Math.min(a.w, a.l) });
+        });
+        return out.sort((x, y) => y.at - x.at).slice(0, n || 5);
+    };
     // the chat as shown: an old key's messages stop where that key was replaced; muted members' messages
     // (while muted) and pins by someone no longer a moderator are left out
     r.visible = () => {
@@ -2170,7 +2184,7 @@ function inviteModal(id) {
     const code = demo ? 'FC-7KQ2M9-XAPV3D-HT8W1C-NB4RZE' : encodeCode(lb.seeds[lb.epoch], L.room.owner || lb.owner || L.pk);
     const m = fc.ui.modal({
         title: T('Invite people to {lobby}', { lobby: lb.name }), width: 480,
-        body: `<div class="fclbInv"><p>${E(T('Send this code to people you want in. They need Fightcord: + in the server list → Join with an invite code.'))}</p>` +
+        body: `<div class="fclbInv"><p>${E(T('Send this code to people you want in. They need Fightcord: in the server list they press +, then Join with an invite code.'))}</p>` +
             `<div class="fclbCodeBox"><code>${E(code)}</code>${fc.ui.btn('Copy', { kind: 'brand', size: 'sm', icon: 'copy', act: 'copy' })}</div>` +
             `<p class="fc-note">${E(T('Anyone with the code can join and read the chat. If it gets around, the owner can make a new one (the old one stops working).'))}</p></div>`,
         actions: [{ label: T('Done') }]
@@ -2368,7 +2382,8 @@ function openLobby(id) {
     const mode = home || lb.dm || lb.group ? 'dm' : 'lobby';
     if (view.page && view.mode !== mode) view.page.close();
     if (view.id !== id) {
-        view.tab = 'chat'; view.re = ''; view.rx = null; view.limit = 0; view.ed = ''; view.q = ''; view.hold = '';
+        view.tab = lb && !lb.dm && !lb.group ? (lb.tab === 'chat' ? 'chat' : 'lhome') : 'chat';
+        view.re = ''; view.rx = null; view.limit = 0; view.ed = ''; view.q = ''; view.hold = '';
         if (view.srch) view.srch.querySelector('input').value = '';
         // the "New" line: where you'd stopped reading
         view.newAt = lb && unread(roomFor(lb)).n ? lb.lastRead || 0 : 0;
@@ -2504,11 +2519,12 @@ function sideHtml(L) {
     const pins = L.room.pinned().length, evs = L.room.events().length;
     const row = (tab, icon, label, n) => `<div class="fclbCh${view.tab === tab ? ' on' : ''}" data-act="lb-tab" data-tab="${tab}">${fc.ui.icon(icon)}<span>${E(label)}</span>${n ? `<small>${n}</small>` : ''}</div>`;
     return `<div class="fclbHd" data-act="lb-menu"><span class="nm">${E(lb.name)}</span>${L.pk ? marks(L, L.pk) : ''}${fc.ui.icon('chevronDown')}</div>` +
-        `<div class="fclbGame${look.bn ? ' own' : ''}"${bn ? ` style="--art:url('${E(bn)}')"` : ''}><span class="ico" style="--c:${colOf(lb.id, look)}">${iconInner(lb.name, look)}</span>` +
+        `<div class="fclbGame${look.bn ? ' own' : ''}" style="--lc:${colOf(lb.id, look)}${bn ? `;--art:url('${E(bn)}')` : ''}"><span class="ico" style="--c:${colOf(lb.id, look)}">${iconInner(lb.name, look)}</span>` +
         `<span class="gn">${fc.ui.icon('pad')}${E(gameName(lb))}</span></div>` +
         (look.desc ? `<div class="fclbDesc">${richText(look.desc, '')}</div>` : '') +
         (next ? `<div class="fclbNext" data-act="lb-tab" data-tab="events">${fc.ui.icon('calendar')}<span class="tx"><b>${E(next.title)}</b>` +
             `<small>${E([whenEv(next.when), next.ft ? 'FT' + next.ft : '', fc.t.plural(next.going.length, '{n} going', '{n} going')].filter(Boolean).join(' · '))}</small></span></div>` : '') +
+        row('lhome', 'home', T('Home')) +
         `<div class="fclbCat">${E(T('Text'))}</div>` + row('chat', 'hash', T('chat')) +
         `<div class="fclbCh" data-act="lb-pins">${fc.ui.icon('pin')}<span>${E(T('Pinned messages'))}</span>${pins ? `<small>${pins}</small>` : ''}</div>` +
         row('events', 'calendar', T('Events'), evs) + row('board', 'trophy', T('Leaderboard')) +
@@ -2527,6 +2543,10 @@ function sideHtml(L) {
 
 // the main column's bar: what's on screen, and its tools
 function topHtml(L) {
+    if (view.tab === 'lhome') {
+        return `<span class="ti">${fc.ui.icon('home')}<b>${E(T('Home'))}</b></span><span class="sub">${E(T('Who’s around in {lobby}', { lobby: L.lb.name }))}</span>` +
+            `<span class="tl">${pinsBtn(L)}</span>`;
+    }
     if (view.tab === 'events') {
         return `<span class="ti">${fc.ui.icon('calendar')}<b>${E(T('Events'))}</b></span><span class="sub">${E(T('Sets and meetups planned in this lobby'))}</span>` +
             `<span class="tl">${canMod(L) ? fc.ui.btn('Plan an event', { kind: 'brand', size: 'sm', icon: 'plus', act: 'lb-plan' }) : ''}</span>`;
@@ -2660,7 +2680,14 @@ function chatHtml(L) {
     };
     // where the messages you haven't read start ("New", like Discord)
     const newAt = view.newAt || 0;
+    // (3.14: a run of joins on the same day is one line: "Sensei and 5 others joined the lobby")
+    const glist = [];
     groups(msgs).forEach(g => {
+        const prev = glist[glist.length - 1];
+        if (g.sys === 'join' && !lb.group && prev && prev.sys === 'join' && sameDay(prev.at, g.at)) { prev.more = (prev.more || []).concat([g]); prev.at = g.at; return; }
+        glist.push(g.sys === 'join' ? Object.assign({}, g) : g);
+    });
+    glist.forEach(g => {
         const day = new Date(g.at).toDateString();
         if (day !== lastDay) { lastDay = day; out += `<div class="fclbDay"><span>${E(new Date(g.at).toLocaleDateString(locale(), { year: 'numeric', month: 'long', day: 'numeric' }))}</span></div>`; }
         if (!newShown && newAt && !g.sys && g.pk !== L.pk && g.items.some(it => it.at > newAt)) { newShown = true; out += `<div class="fclbNew"><span>${E(T('New'))}</span></div>`; }
@@ -2687,6 +2714,12 @@ function chatHtml(L) {
             const txt = lb.group
                 ? (g.sys === 'join' ? T('{name} joined the group', v) : g.sys === 'leave' ? T('{name} left the group', v) : T('{name} was removed from the group', v))
                 : (g.sys === 'join' ? T('{name} joined the lobby', v) : g.sys === 'leave' ? T('{name} left the lobby', v) : T('{name} was removed from the lobby', v));
+            if (g.more && g.more.length) {
+                const names = [g].concat(g.more).map(x => nameOf(L, x.pk, x.n));
+                const many = fc.t.plural(names.length - 1, '{name} and {n} other joined the lobby', '{name} and {n} others joined the lobby', { name: names[0] });
+                out += `<div class="fclbSys join many" title="${E(names.join(', '))}">${fc.ui.icon('plus')}<span>${E(many)}</span><time>${E(when(g.at))}</time></div>`;
+                return;
+            }
             out += `<div class="fclbSys ${g.sys}">${fc.ui.icon(g.sys === 'join' ? 'plus' : 'logout')}<span>${E(txt)}</span><time>${E(when(g.at))}</time></div>`;
             return;
         }
@@ -2881,6 +2914,94 @@ function membersHtml(L) {
         (off.length ? `<div class="fclbMh">${E(T('Offline — {n}', { n: off.length }))}</div>${off.map(row).join('')}` : '');
 }
 
+/* ------------------------------------------------------------ lobby home (3.14) */
+// The lobby at a glance: the next event, who's free (Challenge), who's in a set (Watch), the voice
+// room, the top of the leaderboard and the latest sets.
+
+// someone's running match, as Fightcade's own spectate link (channels that allow spectators only)
+function watchOf(name) {
+    const u = (fc.app.users() || {})[name];
+    const p = u && u.playing;
+    if (!p || !p.quarkId || fc.app.isMe(name)) return '';
+    const c = fc.app.channel(p.channelId);
+    if (!c || c.spectators === false) return '';
+    return fc.data.watchUrl({ emu: c.emulator, rom: p.gameId, quark: p.quarkId, port: p.port });
+}
+// who they're playing, when Fightcade shows the other player too
+function oppOf(name) {
+    const all = fc.app.users() || {};
+    const p = all[name] && all[name].playing;
+    if (!p || !p.quarkId) return '';
+    for (const k in all) if (k !== name && all[k] && all[k].playing && all[k].playing.quarkId === p.quarkId) return k;
+    return '';
+}
+function openUriL(u) {
+    try { (window.__fcdOpenUri || ((x) => window.location.assign(x)))(u); } catch (e) { fc.log('open failed', e.message); }
+}
+
+// the members for Home -> { free: [...], playing: [...] } (you left out), each { pk, n, name, v }
+function homePeople(L) {
+    const free = [], playing = [];
+    L.room.active().forEach(m => {
+        if (m.pk === L.pk) return;
+        const s = statusOf(L, m.pk);
+        if (!s.on) return;
+        const x = { pk: m.pk, n: m.n, g: m.g, name: nameOf(L, m.pk, m.n), v: s.v };
+        if (s.st === 'playing') playing.push(x); else if (s.st !== 'away') free.push(x);
+    });
+    const by = (a, b) => (b.v - a.v) || lc(a.name).localeCompare(lc(b.name));
+    return { free: free.sort(by), playing: playing.sort(by) };
+}
+
+function homeHtml(L) {
+    const king = L.room.king();
+    const p = homePeople(L);
+    const next = L.room.events()[0];
+    const card = (cls, title, n, body, tool) => `<section class="fclbHc ${cls}"><h4>${E(title)}${n ? `<span class="n">${n}</span>` : ''}${tool ? `<span class="tl">${tool}</span>` : ''}</h4>${body}</section>`;
+    const empty = (t) => `<div class="fclbHe">${E(t)}</div>`;
+    const who = (x, sub, act) => `<div class="fclbHm" data-who="${E(x.pk)}">${avatarOf(x.n, x.g, 32)}<span class="tx"><b><span class="nm">${E(x.name)}</span>${marks(L, x.pk, king)}</b>` +
+        `<small>${sub}</small></span>${act}</div>`;
+    const ev = next ? evHtml(L, next)
+        : canMod(L) ? `<div class="fclbHplan">${fc.ui.icon('calendar')}<span>${E(T('Nothing planned yet.'))}</span>${fc.ui.btn('Plan an event', { kind: 'sec', size: 'sm', icon: 'plus', act: 'lb-plan' })}</div>` : '';
+    // who's free: Challenge gets you both into the lobby's game
+    const free = p.free.length ? p.free.slice(0, 6).map(x => who(x, x.v ? fc.ui.icon('speaker') + E(T('In the voice room')) : E(T('Online')),
+        fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'swords', act: 'lb-hch', cls: 'fclbHgo', attrs: `data-pk="${E(x.pk)}"` }))).join('') : empty(T('Nobody else is free right now.'));
+    const sets = p.playing.length ? p.playing.slice(0, 6).map(x => {
+        const opp = oppOf(x.n);
+        const url = watchOf(x.n);
+        return who(x, `<i class="dot"></i>${E(opp ? T('vs {name}', { name: opp }) : T('In a match'))}`,
+            url ? fc.ui.btn('Watch', { kind: 'sec', size: 'sm', icon: 'eye', act: 'lb-hwatch', cls: 'fclbHwatch', attrs: `data-url="${E(url)}"` }) : '');
+    }).join('') : empty(T('Nobody’s in a set right now.'));
+    // the voice room
+    const inVoice = !!(vr && vr.id === L.lb.id);
+    const vs = [];
+    if (inVoice) vs.push({ n: me(), g: myGravatar() });
+    L.live.forEach((x, pk) => { if (x.v && liveOf(L, pk) && pk !== L.pk) { const m = L.room.members.get(pk) || {}; vs.push({ n: nameOf(L, pk, m.n || x.n), g: m.g || x.g }); } });
+    const voice = (vs.length ? `<div class="fclbHv">${vs.slice(0, 8).map(v => `<span class="f" title="${E(v.n)}">${avatarOf(v.n, v.g, 32)}<b>${E(v.n)}</b></span>`).join('')}</div>` : empty(T('Nobody’s talking right now.'))) +
+        `<div class="fclbHva">${inVoice ? fc.ui.btn('Leave the voice room', { kind: 'sec', size: 'sm', icon: 'logout', act: 'lb-vleave' })
+            : fc.ui.btn(vs.length ? 'Join them' : 'Join the voice room', { kind: 'success', size: 'sm', icon: 'speaker', act: 'lb-voice' })}</div>`;
+    // the top of the leaderboard
+    const rows = L.room.board(0).slice(0, 3);
+    const board = rows.length ? rows.map((x, i) => {
+        const m = L.room.members.get(x.pk) || {};
+        const name = nameOf(L, x.pk, m.n);
+        return `<div class="fclbHb${x.pk === L.pk ? ' me' : ''}" data-who="${E(x.pk)}"><span class="pos p${i + 1}">${i + 1}</span>${avatarOf(m.n || name, m.g, 28)}` +
+            `<b><span class="nm">${E(name)}</span>${marks(L, x.pk, king)}</b><span class="wl">${x.w}–${x.l}</span><span class="elo">${x.elo}</span></div>`;
+    }).join('') : empty(T('No sets yet. Sets between members count here by themselves.'));
+    // the latest sets
+    const recent = L.room.recent(5);
+    const latest = recent.map(s => {
+        const a = L.room.members.get(s.win) || {}, b = L.room.members.get(s.lose) || {};
+        return `<div class="fclbHr"><span class="w" data-who="${E(s.win)}">${avatarOf(a.n || '?', a.g, 20)}<b>${E(nameOf(L, s.win, a.n))}</b></span>` +
+            `<span class="sc">${s.w}–${s.l}</span><span class="l" data-who="${E(s.lose)}"><b>${E(nameOf(L, s.lose, b.n))}</b></span><time>${E(fc.fmt.ago(s.at))}</time></div>`;
+    }).join('');
+    const all = `<span class="fclbHlink" data-act="lb-tab" data-tab="board">${E(T('See the leaderboard'))}</span>`;
+    return `<div class="fclbHome">${ev ? `<div class="fclbHnext">${ev}</div>` : ''}` +
+        `<div class="fclbHrow">${card('free', T('Free to play'), p.free.length, free)}${card('sets', T('In a set'), p.playing.length, sets)}</div>` +
+        `<div class="fclbHrow">${card('voice', T('Voice room'), vs.length ? vs.length + '/' + voiceMax(L) : '', voice)}${card('board', T('Leaderboard'), 0, board, rows.length ? all : '')}</div>` +
+        (latest ? `<div class="fclbHrow">${card('latest', T('Latest sets'), 0, latest)}</div>` : '') + '</div>';
+}
+
 function eventsHtml(L) {
     const list = L.room.events();
     const mod = canMod(L);
@@ -2888,7 +3009,12 @@ function eventsHtml(L) {
         return fc.ui.empty({ icon: 'calendar', title: N_('No events planned'), sub: mod ? N_('Plan one: everyone who says they’re going gets a reminder.') : N_('The owner and moderators can plan events here.'),
             action: mod ? N_('Plan an event') : '', act: 'lb-plan' });
     }
-    return list.map(ev => {
+    return list.map(ev => evHtml(L, ev)).join('');
+}
+// one event's card (the Events tab, and the next one on Home)
+function evHtml(L, ev) {
+    const mod = canMod(L);
+    {
         const d = new Date(ev.when);
         const mine = ev.going.indexOf(L.pk) >= 0 ? true : ev.not.indexOf(L.pk) >= 0 ? false : null;
         const live = ev.when <= now();
@@ -2902,7 +3028,7 @@ function eventsHtml(L) {
             fc.ui.btn('Going', { kind: mine === true ? 'success' : 'sec', size: 'sm', icon: 'check', act: 'lb-rsvp', attrs: `data-e="${E(ev.e)}" data-go="1"` }) +
             fc.ui.btn('Can’t make it', { kind: mine === false ? 'danger' : 'ghost', size: 'sm', act: 'lb-rsvp', attrs: `data-e="${E(ev.e)}" data-go="0"` }) +
             (mod ? fc.ui.btn('', { kind: 'ghost', size: 'sm', icon: 'trash', act: 'lb-evx', title: 'Cancel the event', attrs: `data-e="${E(ev.e)}"` }) : '') + '</div></div>';
-    }).join('');
+    }
 }
 
 function monthStart() { const d = new Date(now()); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); }
@@ -2979,7 +3105,7 @@ function renderPage(first) {
         placeEditor(log, edFocus);
         // at the bottom stays at the bottom (also when the reply bar takes some room)
         if ((first || view.stick) && log.scrollTop < log.scrollHeight - log.clientHeight) log.scrollTop = log.scrollHeight;
-    } else set('.fclbPane', tab === 'events' ? eventsHtml(L) : boardHtml(L));
+    } else set('.fclbPane', tab === 'events' ? eventsHtml(L) : tab === 'lhome' ? homeHtml(L) : boardHtml(L));
     if (view.page.el.contains(document.activeElement) || first) markReadQuiet(L);
     voiceTickClasses();
     // a new member's first look at the lobby (once the owner's welcome has arrived)
@@ -3293,7 +3419,11 @@ function onPageClick(e) {
     const act = a && a.dataset.act;
     if (act === 'lb-invite') { inviteModal(L.lb.id); return; }
     if (act === 'lb-menu') { lobbyMenu(a, L); return; }
-    if (act === 'lb-tab') { view.tab = a.dataset.tab; renderPage(); if (view.tab === 'chat') { const log = view.page.body.querySelector('.fclbLog'); log.scrollTop = log.scrollHeight; } return; }
+    if (act === 'lb-tab') {
+        view.tab = a.dataset.tab;
+        // (remember Home or the chat for next time)
+        if ((view.tab === 'lhome' || view.tab === 'chat') && L.lb.tab !== view.tab) { L.lb.tab = view.tab; store.save(); }
+        renderPage(); if (view.tab === 'chat') { const log = view.page.body.querySelector('.fclbLog'); log.scrollTop = log.scrollHeight; } return; }
     if (act === 'lb-pins') { pinsPop(a, L); return; }
     if (act === 'lb-plan' || act === 'empty') { planModal(L.lb.id); return; }
     if (act === 'lb-rsvp') { rsvp(L.lb.id, a.dataset.e, a.dataset.go === '1'); return; }
@@ -3304,6 +3434,8 @@ function onPageClick(e) {
         return;
     }
     if (act === 'lb-reno') { view.re = ''; renderPage(); return; }
+    if (act === 'lb-hch') { challenge(L.lb.id, a.dataset.pk); return; }
+    if (act === 'lb-hwatch') { if (/^fcade:\/\//.test(a.dataset.url || '')) openUriL(a.dataset.url); return; }
     if (act === 'lb-voice') { if (!(vr && vr.id === L.lb.id)) voiceJoin(L.lb.id); return; }
     if (act === 'lb-mute') { voiceMute(); return; }
     if (act === 'lb-cam') { setCam(!(vr && vr.cam)); return; }
@@ -3655,6 +3787,59 @@ const CSS = `
 .fclbTopB .fc-ic { width: 22px; height: 22px; }
 .fclbTopB b { position: absolute; right: 0; bottom: 1px; min-width: 15px; height: 15px; padding: 0 3px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--lc, var(--fc-accent));
     color: #fff; font: 700 var(--fc-fs-2xs)/15px var(--fc-font); text-align: center; box-shadow: 0 0 0 2px var(--fc-s3); }
+/* lobby home (3.14). Chromium 80: margins, no flex gap */
+.fclbHome { max-width: 1080px; margin: 0 auto; padding: 4px 4px 24px; }
+.fclbHnext .fclbEv { margin-bottom: 12px; border-color: var(--lc, var(--fc-accent)); box-shadow: inset 4px 0 0 var(--lc, var(--fc-accent)); }
+.fclbHplan { display: flex; align-items: center; margin-bottom: 12px; padding: 12px 14px; border: 1px dashed var(--fc-divider); border-radius: 10px; color: var(--fc-muted); font: var(--fc-fs-md)/1.3 var(--fc-font); }
+.fclbHplan > .fc-ic { width: 18px; height: 18px; margin-right: 10px; flex: none; }
+.fclbHplan > span { flex: 1; min-width: 0; }
+.fclbHrow { display: flex; align-items: stretch; margin: 0 -6px; }
+.fclbHc { flex: 1 1 0; min-width: 0; margin: 0 6px 12px; padding: 14px 16px 10px; border: 1px solid var(--fc-divider); border-radius: 10px; background: var(--fc-s2); box-sizing: border-box; }
+.fclbHc h4 { display: flex; align-items: center; margin: 0 0 6px; color: var(--fc-head); font: 600 var(--fc-fs-md)/20px var(--fc-font); }
+.fclbHc h4 .n { margin-left: 8px; padding: 0 6px; border-radius: 8px; background: var(--fc-s4); color: var(--fc-text); font: 700 var(--fc-fs-sm)/16px var(--fc-font); }
+.fclbHc h4 .tl { margin-left: auto; }
+.fclbHlink { color: var(--fc-link); font: 500 var(--fc-fs-ui)/1 var(--fc-font); cursor: pointer; }
+.fclbHlink:hover { text-decoration: underline; }
+.fclbHe { padding: 6px 0 10px; color: var(--fc-muted); font: var(--fc-fs-ui)/1.4 var(--fc-font); }
+.fclbHm { display: flex; align-items: center; height: 48px; margin: 0 -8px; padding: 0 8px; border-radius: var(--fc-r2); cursor: pointer; }
+.fclbHm:hover { background: var(--fc-hover); }
+.fclbHm .fc-avatar { flex: none; margin-right: 10px; }
+.fclbHm .tx { flex: 1; min-width: 0; }
+.fclbHm .tx b { display: flex; align-items: center; color: var(--fc-head); font: 600 var(--fc-fs-md)/1.25 var(--fc-font); overflow: hidden; white-space: nowrap; }
+.fclbHm .tx b .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fclbHm .tx small { display: flex; align-items: center; color: var(--fc-muted); font: var(--fc-fs-sm)/1.35 var(--fc-font); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fclbHm .tx small .fc-ic { width: 12px; height: 12px; margin-right: 4px; color: var(--fc-success); flex: none; }
+.fclbHm .tx small .dot { flex: none; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--fc-danger); }
+.fclbHm .fc-btn { flex: none; margin-left: 10px; }
+/* one green Challenge at a time: the row you point at */
+.fclbHm:hover .fclbHgo, .fclbHgo:focus-visible { background: var(--fc-success); color: #fff; }
+.fclbHm:hover .fclbHwatch, .fclbHwatch:focus-visible { background: var(--fc-danger); color: #fff; }
+.fclbHv { display: flex; flex-wrap: wrap; margin: 4px -4px 0; }
+.fclbHv .f { display: flex; flex-direction: column; align-items: center; width: 64px; margin: 0 4px 8px; }
+.fclbHv .f b { max-width: 100%; margin-top: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--fc-text); font: 500 var(--fc-fs-sm)/1.2 var(--fc-font); }
+.fclbHva { padding: 4px 0 6px; }
+.fclbHb { display: flex; align-items: center; height: 40px; margin: 0 -8px; padding: 0 8px; border-radius: var(--fc-r2); cursor: pointer; }
+.fclbHb:hover { background: var(--fc-hover); }
+.fclbHb.me { background: var(--fc-accent-soft); }
+.fclbHb .pos { flex: none; width: 20px; color: var(--fc-muted); font: 700 var(--fc-fs-md)/1 var(--fc-font); }
+.fclbHb .pos.p1 { color: var(--fc-warning); } .fclbHb .pos.p2 { color: #c0c6cf; } .fclbHb .pos.p3 { color: #cd7f32; }
+.fclbHb .fc-avatar { flex: none; margin-right: 10px; }
+.fclbHb b { flex: 1; min-width: 0; display: flex; align-items: center; color: var(--fc-head); font: 600 var(--fc-fs-md)/1.2 var(--fc-font); overflow: hidden; white-space: nowrap; }
+.fclbHb b .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fclbHb .wl { flex: none; width: 56px; text-align: right; color: var(--fc-text); font: 500 var(--fc-fs-ui)/1 var(--fc-font); }
+.fclbHb .elo { flex: none; width: 56px; text-align: right; color: var(--fc-head); font: 700 var(--fc-fs-ui)/1 var(--fc-font); }
+.fclbHr { display: flex; align-items: center; height: 34px; color: var(--fc-text); font: var(--fc-fs-md)/1 var(--fc-font); }
+.fclbHr + .fclbHr { border-top: 1px solid var(--fc-divider); }
+.fclbHr .w, .fclbHr .l { display: flex; align-items: center; min-width: 0; cursor: pointer; }
+.fclbHr .w .fc-avatar { flex: none; margin-right: 8px; }
+.fclbHr .w b { color: var(--fc-head); font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fclbHr .l b { color: var(--fc-muted); font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fclbHr .w:hover b, .fclbHr .l:hover b { text-decoration: underline; }
+.fclbHr .sc { flex: none; margin: 0 10px; padding: 2px 7px; border-radius: var(--fc-r1); background: var(--fc-s4); color: var(--fc-head); font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); font-variant-numeric: tabular-nums; }
+.fclbHr time { flex: none; margin-left: auto; padding-left: 12px; color: var(--fc-muted); font: var(--fc-fs-sm)/1 var(--fc-font); }
+@media (max-width: 1100px) { .fclbHrow { display: block; margin: 0; } .fclbHc { margin: 0 0 12px; } }
+/* chat: a run of joins is one line (3.14) */
+.fclbSys.join.many span { cursor: default; }
 .fclbPane { display: none; flex: 1; min-height: 0; overflow-y: auto; padding: 16px; box-sizing: border-box; }
 .fclbMain:not([data-tab="chat"]) .fclbPane { display: block; }
 .fclbMain:not([data-tab="chat"]) .fclbLog, .fclbMain:not([data-tab="chat"]) .fclbFoot, .fclbMain:not([data-tab="chat"]) .fclbReply,
@@ -3675,7 +3860,9 @@ const CSS = `
 .fclbHd:hover { background: var(--fc-hover); }
 .fclbHd .nm { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fclbHd > .fc-ic { width: 18px; height: 18px; color: var(--fc-muted); }
-.fclbGame { position: relative; flex: none; height: 96px; margin: 8px; border-radius: var(--fc-r2, 8px); overflow: hidden; background: var(--fc-s1) var(--art, none) center 30% / cover; image-rendering: pixelated; }
+.fclbGame { position: relative; flex: none; height: 96px; margin: 8px; border-radius: var(--fc-r2, 8px); overflow: hidden; image-rendering: pixelated;
+    background-color: var(--fc-s1); background-image: var(--art, none), linear-gradient(135deg, var(--lc, var(--fc-accent)) 0%, var(--fc-s1) 90%);
+    background-position: center 30%, 0 0; background-size: cover, 100% 100%; background-repeat: no-repeat; }
 .fclbGame::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60%; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
 .fclbGame.own { image-rendering: auto; background-position: center; }
 .fclbGame .ico { position: absolute; left: 10px; bottom: 10px; z-index: 1; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--fc-r3);
@@ -3830,7 +4017,7 @@ i.mk.dup { color: var(--fc-danger); }
 .fclbM .tx small .fc-ic { width: 12px; height: 12px; margin-right: 4px; color: var(--fc-success); }
 
 .fclbForm label { display: block; margin-bottom: 14px; }
-.fclbForm label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.fclbForm label > span { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .fclbForm .fc-input, .fclbForm .fc-select { width: 100%; box-sizing: border-box; }
 .fclbForm textarea.fc-input { display: block; height: auto; min-height: 64px; padding: 8px 10px; resize: vertical; font: var(--fc-fs-md)/1.4 var(--fc-font); }
 .fclbForm .cnt { display: block; margin-top: 4px; text-align: right; color: var(--fc-muted); font: var(--fc-fs-xs)/1 var(--fc-font); }
@@ -3861,7 +4048,7 @@ i.mk.dup { color: var(--fc-danger); }
 
 /* 3.0: lobby settings */
 .fclbSet .fc-tabs { margin-bottom: 14px; }
-.fclbSet .lbl { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.fclbSet .lbl { display: block; margin-bottom: 6px; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .fclbSet .pane { animation: fcIn .15s ease both; }
 .fclbSet .bt { display: flex; align-items: center; }
 .fclbSet .bt .fc-btn { margin-right: 8px; }
@@ -3955,8 +4142,9 @@ i.mk.dup { color: var(--fc-danger); }
 .fclbEv .go .fc-avatar { border-radius: 50%; box-shadow: 0 0 0 2px var(--fc-s2); }
 .fclbEv .go .cnt { margin-left: 14px; }
 .fclbEv .go > .cnt:first-child { margin-left: 0; }
-.fclbEv .ac { flex: none; display: flex; flex-direction: column; align-items: stretch; margin-left: 12px; }
-.fclbEv .ac .fc-btn { margin-bottom: 6px; }
+/* 3.14: Going, Can't make it and Cancel in one row */
+.fclbEv .ac { flex: none; display: flex; align-items: center; margin-left: 12px; }
+.fclbEv .ac .fc-btn { margin: 0 0 0 6px; }
 
 /* 3.0: the leaderboard */
 .fclbBoard { overflow: hidden; border: 1px solid var(--fc-divider); border-radius: 10px; background: var(--fc-s2); }
@@ -4157,7 +4345,7 @@ i.mk.nf { color: var(--fc-muted); }
 .fclbScr .it:hover .th { box-shadow: var(--fc-ring); }
 .fclbScr .it span { display: block; margin-top: 6px; color: var(--fc-text); font: var(--fc-fs-ui)/1.3 var(--fc-font); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .fclbScr .q { display: flex; align-items: center; margin-top: 4px; }
-.fclbScr .q > span { margin-right: 12px; color: var(--fc-muted); font: 700 var(--fc-fs-sm)/1 var(--fc-font); text-transform: uppercase; }
+.fclbScr .q > span { margin-right: 12px; color: var(--fc-muted); font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); }
 .fclbScr .q .fc-tabs { border-bottom: 0; }
 `;
 
@@ -4443,7 +4631,7 @@ const api = {
         const p = o || {};
         const meName = me() || 'You';
         const lb = { id: 'demo0000000000000000000000000000', name: p.name || 'Friday Night Fights', ch: p.ch || 'Street Fighter III 3rd Strike: Fight for the Future (Japan 990512, NO CD)', rom: p.rom || 'sfiii3nr1',
-            owner: 'me', pre: 'me', seeds: ['0'], epoch: 0, joinedAt: now(), lastRead: now(), notify: 'mentions', welcomed: true };
+            owner: 'me', pre: 'me', seeds: ['0'], epoch: 0, joinedAt: now(), lastRead: now(), notify: 'mentions', welcomed: true, tab: p.tab || 'chat' };
         cfg.lobbies = [lb].concat(p.more || []);
         rooms.clear();
         const L = { lb, room: Room({ owner: 'me' }), live: new Map(), sk: null, pk: 'me', topics: new Map(), oldSubs: [], loaded: true, lastHere: 0 };

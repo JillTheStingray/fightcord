@@ -1124,12 +1124,14 @@ function fieldHtml(f, d, isNew) {
     }
 }
 
+// 3.14: hints are written "— who's free near your rank"; they show as a sentence under the title
+const hintText = (s) => String(s || '').replace(/^\s*[—–-]\s*/, '');
 function fieldsHtml(b) {
     const d = (b.store && b.store.data) || {};
     const newBlock = isNewKey('b:' + b.id);
     const changed = changedIn(b);
     return `<div class="fc-set-title">${b.store && b.reset !== false ? ui.btn('Reset', { kind: 'ghost', size: 'sm', act: 'fc-reset', cls: 'fc-set-reset', title: 'Put this block back to its defaults' }) : ''}` +
-        `${fmt.esc(tr(b.title || ''))}${newBlock ? ` <span class="fc-new">${fmt.esc(tr('New'))}</span>` : ''}${b.hint ? ` <small>${fmt.esc(tr(b.hint))}</small>` : ''}</div>` +
+        `${fmt.esc(tr(b.title || ''))}${newBlock ? ` <span class="fc-new">${fmt.esc(tr('New'))}</span>` : ''}${b.hint ? ` <small>${fmt.esc(hintText(tr(b.hint)))}</small>` : ''}</div>` +
         (b.fields || []).map((f, i) => `<div class="fc-set-row${changed.indexOf(f) >= 0 ? ' fc-changed' : ''}" data-i="${i}"${f.show && !f.show(d) ? ' hidden' : ''}>` +
             `${fieldHtml(f, d, !newBlock && f.key && isNewKey('f:' + b.id + '.' + f.key))}</div>`).join('');
 }
@@ -1929,11 +1931,13 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 
 .fc-card { background: var(--fc-s2); border-radius: var(--fc-r3); padding: 16px; color: var(--fc-text); font-family: var(--fc-font); box-shadow: var(--fc-elev-1); }
 .fc-card.raised { box-shadow: var(--fc-elev-2); }
-.fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
+/* 3.14: small labels in sentence case (Discord 2025), not tracked-out caps */
+.fc-card-h { display: flex; align-items: center; margin: 0 0 12px; font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); color: var(--fc-muted); }
 .fc-card-h > .fc-ic { width: 14px; height: 14px; margin-right: 6px; }
 .fc-tile { display: inline-block; vertical-align: top; min-width: 96px; padding: 12px 14px; border-radius: var(--fc-r3); background: var(--fc-s1); box-shadow: var(--fc-edge); }
 .fc-tile .v { font: 700 var(--fc-fs-2xl)/1.1 var(--fc-font); color: var(--fc-head); }
-.fc-tile .k { margin-top: 4px; font: 700 var(--fc-fs-xs)/1.2 var(--fc-font); letter-spacing: .02em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-tile .k { margin-top: 4px; font: 600 var(--fc-fs-sm)/1.25 var(--fc-font); color: var(--fc-muted); }
+.fc-tile .k::first-letter { text-transform: uppercase; }
 .fc-tile .s { margin-top: 2px; font: var(--fc-fs-sm)/1.3 var(--fc-font); color: var(--fc-muted); }
 .fc-tile.up .v { color: var(--fc-success); }
 .fc-tile.down .v { color: var(--fc-danger); }
@@ -1969,7 +1973,8 @@ html.fc-subtle { --fc-fast: .08s; --fc-med: .12s; --fc-slow: .18s; --fc-move: 0;
 .fc-set { color: var(--fc-text); font-family: var(--fc-font); }
 .fc-set-title { margin: 0 0 4px; font: 600 var(--fc-fs-lg)/1.3 var(--fc-font); color: var(--fc-head); }
 .fc-set-reset { float: right; margin: -2px 0 0 8px; color: var(--fc-muted); }
-.fc-set-title small { margin-left: 4px; font-size: var(--fc-fs-sm); font-weight: 400; color: var(--fc-muted); }
+.fc-set-title small { display: block; margin: 2px 0 4px; font: 400 var(--fc-fs-sm)/1.4 var(--fc-font); color: var(--fc-muted); }
+.fc-set-title small::first-letter { text-transform: uppercase; }
 .fc-set-row[hidden], .fc-set [hidden] { display: none !important; }
 .fc-field { position: relative; display: flex; align-items: center; min-height: 40px; padding: 8px 0; border-bottom: 1px solid var(--fc-divider); cursor: default; }
 label.fc-field { cursor: pointer; }
@@ -2095,13 +2100,14 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-ch-av { position: absolute; left: 12px; top: -50px; line-height: 0; padding: 5px; border-radius: 50%; background: var(--fc-s0); }
 .fc-ch-av .fc-avatar > .st { border-width: 4px; }
 /* the status as a speech bubble next to the avatar */
-.fc-ch-bub { position: absolute; left: 106px; right: 12px; top: 8px; display: flex; }
+/* 3.14: up beside the avatar, over the banner's edge, so a two-line status never runs into the name */
+.fc-ch-bub { position: absolute; left: 106px; right: 12px; top: -30px; display: flex; align-items: flex-end; min-height: 34px; }
 .fc-ch-bub > span { position: relative; max-width: 100%; box-sizing: border-box; padding: 6px 10px; border-radius: var(--fc-r3); background: var(--fc-s2);
   font: 500 var(--fc-fs-ui)/16px var(--fc-font); color: var(--fc-text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-wrap: break-word;
   box-shadow: 0 2px 8px var(--fc-scrim-1); }
 .fc-ch-bub::before { content: ''; position: absolute; left: -9px; top: 22px; width: 10px; height: 10px; border-radius: 50%; background: var(--fc-s2); }
 .fc-ch-bub::after { content: ''; position: absolute; left: -15px; top: 33px; width: 5px; height: 5px; border-radius: 50%; background: var(--fc-s2); }
-.fc-ch.has-bub .fc-ch-body { padding-top: 46px; }
+.fc-ch.has-bub .fc-ch-body { padding-top: 44px; }
 .fc-ch-name { display: flex; align-items: center; min-width: 0; font: 800 var(--fc-fs-xl)/26px var(--fc-font); color: var(--fc-head); }
 .fc-ch-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fc-ch-name > *:not(span) { flex: none; margin-left: 6px; }
@@ -2113,7 +2119,8 @@ html.fcd-browse .fc-page { left: calc(var(--fcd-left, 72px) + 232px); }
 .fc-stats { display: flex; flex-wrap: wrap; margin: 12px -4px 0; }
 .fc-stat { flex: 1 1 calc(50% - 8px); min-width: 0; margin: 0 4px 8px; padding: 8px 10px; box-sizing: border-box; border-radius: var(--fc-r2); background: var(--fc-s2); }
 .fc-stats.three .fc-stat { flex-basis: calc(33.3% - 8px); }
-.fc-stat > span { display: block; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fc-stat > span { display: block; font: 600 var(--fc-fs-sm)/16px var(--fc-font); color: var(--fc-muted); }
+.fc-stat > span::first-letter { text-transform: uppercase; }
 .fc-stat > b { display: block; margin-top: 2px; font: 800 var(--fc-fs-lg)/20px var(--fc-font); color: var(--fc-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fc-stat > small { display: block; margin-top: 1px; font-size: var(--fc-fs-sm); color: var(--fc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fc-stat.up > b { color: var(--fc-success); }

@@ -379,7 +379,7 @@ html.fc-still .fcglBars > i { animation: none !important; }
 .fcglWarn { color: var(--fc-warning); }
 .fcglWhy { display: block; margin-top: 4px; color: var(--fc-muted); font: var(--fc-fs-xs)/1.35 var(--fc-mono, monospace); word-break: break-word; }
 .fcglSum { margin-top: 10px; }
-.fcglSum > span { font-size: var(--fc-fs-2xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+.fcglSum > span { font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); color: var(--fc-muted); }
 .fcglSum .fcglRow { padding: 3px 0; }
 `;
 

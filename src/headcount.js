@@ -199,10 +199,10 @@ function refresh(force) {
 
 // the three numbers, for the My Fightcord page
 function tilesHtml() {
-    const s = stats(), n = (x) => (x ? x.toLocaleString(fc.t.locale()) : '…');
+    const s = stats(), n = (x) => (x ? x.toLocaleString(fc.t.locale()) : s.busy ? '…' : '—');
     const when = s.busy ? T('Counting…') : s.at ? T('Updated {when}', { when: new Date(s.at).toLocaleTimeString(fc.t.locale(), { hour: '2-digit', minute: '2-digit' }) }) : T('Not counted yet');
     return `<div class="fchcTiles">${fc.ui.tile(n(s.total), 'Have Fightcord')}${fc.ui.tile(n(s.month), 'This month')}${fc.ui.tile(n(s.online), 'Online now')}</div>` +
-        `<div class="fchcNote">${E(when)} · ${E(T('Counted from anonymous marks on public relays'))}</div>`;
+        `<div class="fchcNote">${E(when)}${/…$/.test(when) ? "" : "."} ${E(T('Counted from anonymous marks on public relays'))}.</div>`;
 }
 
 function start(f) {

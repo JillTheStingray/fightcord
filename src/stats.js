@@ -129,7 +129,9 @@ function filteredSets() {
     return allSets().filter(s => (!days || s.at >= now - days * 86400000) && (!view.game || gameOf(s) === view.game));
 }
 
-const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
+// (3.14: the "— note" after a title becomes a line under it)
+const cardTitle = (title) => title.replace(' <small>— ', ' <small>').replace(/<small>([\d.,\s]+)<\/small>/, '<small class="n">$1</small>');
+const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${cardTitle(title)}</h4>${body}</div>`;
 const bar = (rate) => rate == null ? '' : `<div class="fcsBar"><i style="width:${Math.round(rate * 100)}%"></i></div>`;
 const rec = (x) => `${x.w}–${x.l}${x.d ? '–' + x.d : ''}`;
 const tile = (v, label, cls) => `<div class="fc-tile fcsBig"><div class="v${cls ? ' ' + cls : ''}">${v}</div><div class="k">${label}</div></div>`;
@@ -765,8 +767,11 @@ const CSS = `
 #fcsStats .fcsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-gap: 12px; margin-top: 12px; }
 #fcsStats .fcsCard { padding: 14px 16px; }
 #fcsStats .fcsCard.wide { grid-column: 1 / -1; }
-#fcsStats h4 { margin: 0 0 10px; font-size: var(--fc-fs-sm); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
-#fcsStats h4 small { text-transform: none; font-weight: 500; letter-spacing: 0; }
+/* 3.14: card titles in sentence case, the note under them */
+#fcsStats h4 { margin: 0 0 12px; font: 600 var(--fc-fs-md)/1.3 var(--fc-font); color: var(--fc-head); }
+#fcsStats h4 small { display: block; margin-top: 2px; font: 400 var(--fc-fs-sm)/1.35 var(--fc-font); color: var(--fc-muted); }
+#fcsStats h4 small::first-letter { text-transform: uppercase; }
+#fcsStats h4 small.n { display: inline; margin: 0 0 0 6px; font-weight: 600; }
 #fcsStats .fcsRow { display: flex; align-items: center; padding: 4px 0; font-size: var(--fc-fs-md); }
 #fcsStats .fcsRow .n { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--fc-head); font-weight: 600; }
 #fcsStats .fcsRow .r { flex: none; margin-left: 10px; font-variant-numeric: tabular-nums; }

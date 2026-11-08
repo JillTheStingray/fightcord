@@ -551,15 +551,17 @@ ${P} .fcm-ms.good { color: var(--fc-success); } ${P} .fcm-ms.ok { color: var(--f
 ${P} .fcm-net { color: var(--fc-danger); font-weight: 700; }
 ${P} .userItem .nameAndGame > .fcm-nt { display: inline-block !important; }
 ${P} .userItem .nameAndGame > .fcm-pres { display: inline-flex !important; align-items: center !important; }
-${P} .userItem.fcm-playing { background: var(--fc-tint-1) !important; border-radius: var(--fc-r1) !important; }
+/* 3.14: the Playing now header already groups these rows; a tint on each one stacked into a heavy block */
+${P} .userItem.fcm-playing { border-radius: var(--fc-r1) !important; }
 ${P} .userItem.fcm-playing:hover { background: var(--fc-tint-2) !important; }
 ${P} .userItem .nameAndGame > .fcm-live { display: flex !important; align-items: center !important; margin-top: 1px !important; font-size: var(--fc-fs-sm) !important;
     color: var(--fc-muted) !important; white-space: nowrap !important; overflow: hidden !important; }
-${P} .userItem .nameAndGame > .fcm-live .dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--fc-danger); flex: none; box-shadow: 0 0 6px var(--fc-danger); }
+${P} .userItem .nameAndGame > .fcm-live .dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--fc-danger); flex: none; }
 ${P} .userItem .nameAndGame > .fcm-live b { color: var(--fc-text); font-weight: 600; margin-left: 3px; }
 ${P} .userItem .nameAndGame > .fcm-live .w { display: inline-flex; align-items: center; margin-left: 6px; padding: 0 6px; border-radius: var(--fc-r1); font-size: var(--fc-fs-xs);
-    font-weight: 600; line-height: 16px; color: var(--fc-text); background: var(--fc-tint-2); cursor: pointer; flex: none; transition: background var(--fc-fast) ease, color var(--fc-fast) ease; }
-${P} .userItem .nameAndGame > .fcm-live .w:hover { color: #fff; background: var(--fc-danger); }
+    font-weight: 600; line-height: 16px; color: var(--fc-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--fc-tint-4); cursor: pointer; flex: none; transition: background var(--fc-fast) ease, color var(--fc-fast) ease, box-shadow var(--fc-fast) ease; }
+${P} .userItem.fcm-playing:hover .nameAndGame > .fcm-live .w { color: var(--fc-text); background: var(--fc-tint-2); box-shadow: none; }
+${P} .userItem .nameAndGame > .fcm-live .w:hover, ${P} .userItem.fcm-playing:hover .nameAndGame > .fcm-live .w:hover { color: #fff; background: var(--fc-danger); box-shadow: none; }
 ${P} .userItem.fcm-playing .nameAndGame .game { display: none !important; }
 ${P} .userItem.fcm-playing .nameAndGame > .fcm-sub { display: none !important; }
 ${P} .userItem .nameAndGame > .fcm-fr { display: inline-block !important; margin-left: 5px !important; color: var(--fc-warning) !important; font-size: var(--fc-fs-sm) !important; }

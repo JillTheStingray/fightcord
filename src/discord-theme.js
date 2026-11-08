@@ -487,6 +487,15 @@ html.dc-layout .chatContent .endgameMessageWrapper .wrapUpWrapper.lost { color: 
 /* name, flag, rank, time -- like Discord */
 html.dc-layout.dc-clean-names .chatContent .message.chat header .fcScoutBadge { display: none; }
 html.dc-layout.dc-clean-names .chatContent .message.chat header .author .flagWrapper { margin-left: 6px; }
+/* 3.14: the online dot sits on the avatar (as in the member list and Discord), not in front of the name */
+html.dc-layout .chatContent .message.chat header .authorAndTime > .statusWrapper {
+    position: absolute !important; left: 43px !important; top: 29px !important; z-index: 2; margin: 0 !important;
+    width: 10px !important; height: 10px !important; box-shadow: 0 0 0 3px var(--dc-bg) !important; pointer-events: none;
+}
+html.dc-layout .chatContent .message.chat header .authorAndTime > .statusWrapper[title="Online"] { background-color: var(--fc-success) !important; }
+html.dc-layout .chatContent .message.chat header .authorAndTime > .statusWrapper[title="Away"] { background-color: var(--fc-warning) !important; }
+html.dc-layout .chatContent .message.chat header .authorAndTime > .statusWrapper[title^="Offline"] { background-color: var(--fc-faint) !important; }
+html.dc-layout .chatContent .message.chat:hover header .authorAndTime > .statusWrapper { box-shadow: 0 0 0 3px var(--dc-bg) !important; }
 
 /* ============================== message box ============================== */
 html.dc-layout .chatInput { padding: 0 16px 12px; background: var(--dc-bg); border: 0; height: auto; }

@@ -209,7 +209,7 @@ function tabHtml(ctx) {
     const a = analyze(ctx.sets);
     if (a.total.n < MIN_N) return fc.ui.empty({ icon: 'trend', title: 'Not enough sets yet',
         sub: T(ctx.game || ctx.period !== 'all' ? 'Analytics needs at least {n} sets with a known result in these filters. Keep playing — or import your history.' : 'Analytics needs at least {n} sets with a known result. Keep playing — or import your history.', { n: MIN_N }) });
-    const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
+    const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title.replace(' <small>— ', ' <small>').replace(/<small>([\d.,\s]+)<\/small>/, '<small class="n">$1</small>')}</h4>${body}</div>`;
     const t = a.tilt.after2;
     const bestHour = a.byHour.map((r, h) => ({ h, r })).filter(x => x.r.n >= MIN_N).sort((x, y) => y.r.rate - x.r.rate)[0];
     const missing = a.total.n - a.withRanks;

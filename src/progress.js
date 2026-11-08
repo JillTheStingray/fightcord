@@ -208,7 +208,7 @@ function tabHtml(ctx) {
         else segs.push({ rank: p.rank, start: p.at, end });
     });
     const span = Math.max(1, Date.now() - t0);
-    const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title}</h4>${body}</div>`;
+    const card = (title, body, wide) => `<div class="fc-card fcsCard${wide ? ' wide' : ''}"><h4>${title.replace(' <small>— ', ' <small>').replace(/<small>([\d.,\s]+)<\/small>/, '<small class="n">$1</small>')}</h4>${body}</div>`;
     const T = (s, v) => E(fc.t(s, v));
     return `<div class="prgGames">${romsWith.map(r => fc.ui.chip(gameName(r), { on: r === tabRom, act: 'prg-rom:' + r })).join('')}
             ${cfg.track ? fc.ui.btn('Check now', { kind: 'ghost', size: 'sm', icon: 'refresh', act: 'prg-now', title: 'Ask Fightcade for your rank in this game now' }) : ''}</div>

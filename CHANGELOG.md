@@ -1,5 +1,45 @@
 # Changelog
 
+## 3.14.0
+
+- **Discover opens on your main game.** A big panel up top for the game you played last:
+  - who's on, the live sets with Watch, your rank, ELO and record;
+  - your friends there (Watch when they're in a set) and your rivals who are free (Challenge);
+  - **Find a match** opens the channel and Find a match in one click, next to Open channel and the game's details.
+
+  The rows under it (Your other games, Live now, Friends playing now, Rivals online) leave out what the panel already shows. Off in Settings → Search tab → Discover → Your main game first; without a joined game you get the spotlight as before.
+- **Private lobbies get a Home.** A new first channel that shows the lobby at a glance:
+  - the next event, with Going and Can't make it;
+  - who's free to play (Challenge) and who's in a set (Watch);
+  - the voice room (Join them);
+  - the top 3 of the leaderboard and the latest sets.
+
+  A lobby opens where you left it: Home, or the chat.
+- **Lobby polish:**
+  - a run of joins is one line ("Sensei and 5 others joined the lobby");
+  - an event's Going, Can't make it and Cancel sit in one row;
+  - a lobby whose banner picture can't load shows its colour instead of an empty box;
+  - the invite window says plainly where to paste the code.
+- **A calmer, more consistent look** (first pass of the UI polish):
+  - **Chat:** the online dot sits on the avatar, as in the member list, instead of in front of the name.
+  - **Channel header:** online, live matches, your rank and your record are grouped with icons instead of a
+    line of dots.
+  - **Member list:** the Playing now rows lost their shaded boxes, and Watch stays quiet until you point at the row.
+  - **Find a match:** "New" (never played them) is quiet text now, and odds near 50% show in neutral white
+    instead of red or green. Notices sit in their own boxes.
+  - **Settings:** section headings in normal case with their explanation under them, plain words on My Fightcord
+    ("56 features on", "Features" instead of module file names), and the player count tiles no longer touch.
+  - **Profiles and cards:** labels in normal case (About me, Tonight, Goals, Recent sets), a two-line status no
+    longer runs into your name, and Quick settings names the Look you're on.
+  - **Scout card:** the ragequit warning shows once, not twice.
+- **Second pass:**
+  - **Your stats:** card titles in normal case, with their note on a line under them ("By rank gap", then
+    "Them minus you").
+  - **Discover:** the name, status and game lines on friend and rival cards no longer squeeze together, and
+    Challenge turns green only on the card you point at.
+  - **VS screen:** the game name at the bottom is easier to read (less spread out).
+  - **Lobbies, DMs, Friends and Edit profile:** form labels and headings in normal case.
+
 ## 3.13.3
 
 - **The share cards match the Online Edition Look:** with that Look on, Share your session and the Wrapped card are drawn in the

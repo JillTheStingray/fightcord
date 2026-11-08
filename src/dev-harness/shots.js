@@ -603,6 +603,8 @@ const SCENES = [
         if (document.querySelectorAll('.fclbEv').length !== 2) throw new Error('events: ' + document.querySelectorAll('.fclbEv').length);` },
     { name: 'lb3-plan', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._tab('events'); lb._plan(); await sleep(300);
         document.querySelector('.fc-modal [data-f="title"]').value = 'Saturday Oro mirror night'; await sleep(400);` },
+    // 3.14: the lobby's Home tab
+    { name: 'lb3-home', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true, tab: 'lhome' }); await sleep(1200);` },
     { name: 'lb3-board', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._tab('board'); await sleep(600);
         if (!document.querySelector('.fclbBoard .r.top1 .mk.kg')) throw new Error('no king on top');` },
     { name: 'lb3-settings', snap: CHANNEL, run: `const lb = fightcord.modules.get('lobbies'); lb._demo({ v3: true }); await sleep(900); lb._settings(null, 'look'); await sleep(600);` },

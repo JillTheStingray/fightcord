@@ -301,7 +301,7 @@ const CSS = `
 #frPage .frAddRow { display: flex; align-items: center; margin-bottom: 8px; }
 #frPage .frInput { width: 280px; margin-right: 8px; }
 #frPage .frNote { margin-left: 12px; font-size: var(--fc-fs-ui); color: var(--fc-success); }
-#frPage h4 { margin: 18px 0 6px; font: 700 var(--fc-fs-sm)/1.2 var(--fc-font); letter-spacing: .04em; text-transform: uppercase; color: var(--fc-muted); }
+#frPage h4 { margin: 18px 0 6px; font: 600 var(--fc-fs-ui)/1.2 var(--fc-font); color: var(--fc-muted); }
 #frPage .frRow { display: flex; align-items: center; min-height: 60px; padding: 8px 10px; margin: 0 -10px; border-radius: var(--fc-r2);
     border-top: 1px solid var(--fc-divider); transition: background-color var(--fc-fast); }
 #frPage .frRow:hover { background: var(--fc-hover); }

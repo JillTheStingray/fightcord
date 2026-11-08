@@ -704,7 +704,7 @@ const CSS = `
 .fcProfS > .fc-ic { flex: none; width: 13px; height: 13px; margin: 2px 7px 0 0; color: var(--fc-muted); }
 .fcProfS > span { min-width: 0; word-wrap: break-word; }
 .fcProfA { margin-top: 8px; font: var(--fc-fs-ui)/1.45 var(--fc-font); color: var(--fc-text); word-wrap: break-word; }
-.fcProfA > b { display: block; margin-bottom: 2px; font: 700 var(--fc-fs-xs)/14px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); }
+.fcProfA > b { display: block; margin-bottom: 2px; font: 600 var(--fc-fs-ui)/16px var(--fc-font); color: var(--fc-head); }
 .fcBadges { display: flex; flex-wrap: wrap; margin: 8px -4px 0 0; }
 .fcBadge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; margin: 0 4px 4px 0; border-radius: 10px; background: var(--fc-s2);
     font: 600 var(--fc-fs-xs)/20px var(--fc-font); color: var(--fc-text); cursor: default; }

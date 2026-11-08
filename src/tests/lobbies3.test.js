@@ -169,6 +169,22 @@ test('the leaderboard: both players agree or it doesn’t count; ELO order; king
     assert.deepEqual(r.board(10002).map(x => x.sets), [3, 3], 'since a date');
 });
 
+test('latest sets (Home, 3.14): the sets the board counts, newest first, the score from the winner’s side', () => {
+    const r = lobby();
+    const set = (q, pk, o, w, l, at) => r.apply({ id: id(), pk, at, b: { t: 'set', q, o, w, l } });
+    set('q1', 'aa', 'bb', 3, 1, 1000); set('q1', 'bb', 'aa', 1, 3, 1001);       // both agree: Ann 3-1
+    set('q2', 'bb', 'aa', 2, 3, 2000);                                          // one report: Ann won 3-2
+    set('q3', 'aa', 'bb', 3, 0, 3000); set('q3', 'bb', 'aa', 3, 0, 3001);       // they disagree: left out
+    set('q5', 'aa', 'zz', 3, 0, 5000);                                          // a stranger: left out
+    const rec = r.recent(5);
+    assert.deepEqual(rec.map(x => [x.win, x.lose, x.w, x.l, x.at]), [['aa', 'bb', 3, 2, 2000], ['aa', 'bb', 3, 1, 1000]]);
+    const wins = r.board().reduce((n, x) => n + x.w, 0);
+    assert.equal(rec.length, wins, 'the same sets as the leaderboard');
+    for (let i = 0; i < 8; i++) set('m' + i, 'bb', 'aa', 3, 1, 9000 + i);
+    assert.equal(r.recent(5).length, 5, 'no more than asked for');
+    assert.equal(r.recent(5)[0].at, 9007);
+});
+
 test('a Fightcord 2.19 in the same lobby: the 3.0 events don’t disturb its chat', () => {
     const old = Room219({ pre: 'own' });
     const evs = [

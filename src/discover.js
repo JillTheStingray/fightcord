@@ -26,6 +26,7 @@ let store = null, config = null;          // discover-config.json
 const FC_ORIGIN = 'https://web.fightcade.com/';
 const DEFAULTS = {
     enabled: true,
+    hub: true,             // 3.14: the live hub for your main game, on top
     yourGames: true,       // "Your games" row on the home view
     liveRow: true,         // "Live now" row on the home view
     friendsRow: true,      // "Friends playing now"
@@ -1059,6 +1060,112 @@ html.fcd-tilt .fcdLiveCard:hover::after, html.fcd-tilt .categoryPreviewWrapper:h
 // Motion, only under html.fcd-anim -- the Animations setting. (Not tied to the OS
 // "reduce motion" flag: Windows with animation effects off reports it, and motion
 // here is something the user asked for.)
+const CSS4 = `
+/* ============================ live hub (3.14) ============================ */
+/* Chromium 80: no flex gap, inset or aspect-ratio in here */
+#fcdHub {
+    display: none; order: -9; position: relative; overflow: hidden; margin: 16px 24px 0; border-radius: 14px;
+    background: var(--dc-float, #111214); box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 10px 32px rgba(0,0,0,.4);
+    font-family: var(--dc-font, 'gg sans', 'Noto Sans', sans-serif); color: var(--dc-text, #dbdee1);
+}
+html.fcd-on #fcdHub.has { display: block; }
+html.fcd-hub .welcomeWrapper .fcdSpot { display: none; }
+.fcdHubBg {
+    position: absolute; top: -24px; left: -24px; right: -24px; height: 300px; background-size: cover; background-position: center 30%;
+    filter: blur(3px) saturate(1.35) brightness(.55);
+}
+.fcdHubShade {
+    position: absolute; top: 0; left: 0; right: 0; height: 280px;
+    background: linear-gradient(90deg, rgba(17,18,20,.92) 0, rgba(17,18,20,.55) 55%, rgba(17,18,20,.25) 100%),
+        linear-gradient(180deg, rgba(17,18,20,0) 35%, var(--dc-float, #111214) 100%);
+}
+.fcdHubIn { position: relative; z-index: 1; padding: 30px 28px 22px; }
+.fcdHubHead { display: flex; align-items: flex-end; min-height: 112px; }
+.fcdHubName { flex: 1; min-width: 0; }
+.fcdHubName h2 {
+    margin: 0; max-width: 760px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    font-size: 34px; font-weight: 800; line-height: 38px; letter-spacing: -.015em; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.55);
+}
+.fcdHubMeta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 12px; font-size: 14px; color: rgba(255,255,255,.86); }
+.fcdHubMeta > span { display: inline-flex; align-items: center; margin: 0 22px 4px 0; line-height: 20px; white-space: nowrap; }
+.fcdHubMeta > span > .fc-ic { width: 16px; height: 16px; margin: 0 6px 0 0; opacity: .75; }
+.fcdHubMeta .on i { width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--dc-green, #23a55a); box-shadow: 0 0 8px var(--dc-green, #23a55a); }
+.fcdHubMeta b { color: #fff; font-weight: 700; }
+#fcdHub .fcdHubMeta > .fcdTileRank { flex-direction: row; align-items: center; width: auto; margin: 0 22px 4px 0; }
+#fcdHub .fcdHubMeta > .fcdTileRank .elo { margin: 0 0 0 6px; font-size: 14px; color: #fff; }
+#fcdHub .fcdHubMeta > .fcdTileRank .bar { width: 48px; margin: 0 0 0 8px; }
+.fcdHubBtns { flex: none; display: flex; align-items: center; margin-bottom: 4px; }
+.fcdHubCta, .fcdHubSec {
+    display: inline-flex; align-items: center; height: 40px; padding: 0 18px; margin-left: 8px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    font-size: 15px; font-weight: 600; outline: none; transition: background-color .15s ease, filter .15s ease;
+}
+.fcdHubCta { background: var(--dc-blurple, #5865f2); color: var(--fc-on-accent, #fff); box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+.fcdHubCta:hover { filter: brightness(1.12); }
+.fcdHubCta .fc-ic { width: 18px; height: 18px; margin: 0 8px 0 0; }
+.fcdHubSec { background: rgba(255,255,255,.1); color: #fff; }
+.fcdHubSec:hover { background: rgba(255,255,255,.18); }
+.fcdHubSec.ic { width: 40px; padding: 0; justify-content: center; }
+.fcdHubSec.ic .fc-ic { width: 18px; height: 18px; margin: 0; }
+#fcdHub [data-act]:focus-visible { box-shadow: 0 0 0 2px var(--dc-blurple, #5865f2); }
+.fcdHubBody { display: flex; align-items: stretch; margin-top: 24px; }
+.fcdHubLive, .fcdHubPeople {
+    min-width: 0; box-sizing: border-box; padding: 14px 16px 8px; border-radius: 10px;
+    background: rgba(8,9,10,.45); box-shadow: 0 0 0 1px rgba(255,255,255,.05);
+}
+.fcdHubLive { flex: 3 1 0; margin-right: 16px; }
+.fcdHubPeople { flex: 2 1 0; }
+#fcdHub h4 { display: flex; align-items: center; margin: 0 0 6px; font-size: 14px; font-weight: 600; line-height: 20px; color: var(--dc-head, #f2f3f5); }
+#fcdHub h4 .n { margin-left: 8px; padding: 0 6px; border-radius: 8px; font-size: 12px; font-weight: 700; line-height: 16px; background: rgba(255,255,255,.1); color: var(--dc-text, #dbdee1); }
+#fcdHub h4 .n.live { background: var(--dc-red, #f23f43); color: #fff; }
+.fcdHubPeople .grp + .grp { margin-top: 10px; }
+.fcdHubM, .fcdHubR { display: flex; align-items: center; height: 44px; margin: 0 -8px; padding: 0 8px; border-radius: 8px; }
+.fcdHubM:hover, .fcdHubR:hover { background: rgba(255,255,255,.05); }
+.fcdHubM > .fcdLiveDot { flex: none; margin-right: 10px; }
+.fcdHubP { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 0; max-width: 36%; cursor: pointer; }
+.fcdHubP .fcdAva { flex: none; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; }
+.fcdHubP .fcdFlag { flex: none; width: 16px; height: 11px; margin-right: 5px; border-radius: 2px; }
+.fcdHubP b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; color: var(--dc-head, #f2f3f5); }
+.fcdHubP:hover b { text-decoration: underline; }
+.fcdHubP .fcdRank { flex: none; margin-left: 5px; }
+.fcdHubM .vs { flex: none; margin: 0 10px; font-size: 12px; font-weight: 700; color: var(--dc-muted, #949ba4); }
+.fcdHubM .t { flex: none; margin-left: auto; padding-left: 10px; font-size: 12px; color: var(--dc-muted, #949ba4); font-variant-numeric: tabular-nums; }
+.fcdHubBtn {
+    flex: none; display: inline-flex; align-items: center; height: 28px; padding: 0 10px; margin-left: 10px; border-radius: 6px; cursor: pointer; outline: none;
+    font-size: 13px; font-weight: 600; transition: background-color .15s ease, color .15s ease;
+}
+.fcdHubBtn .fc-ic { width: 15px; height: 15px; margin: 0 5px 0 0; }
+.fcdHubBtn.watch { color: #ff9b9d; background: rgba(242,63,67,.16); }
+.fcdHubBtn.watch:hover { color: #fff; background: var(--dc-red, #f23f43); }
+.fcdHubBtn.go { color: var(--dc-text, #dbdee1); background: rgba(255,255,255,.08); }
+.fcdHubR:hover .fcdHubBtn.go, .fcdHubBtn.go:focus-visible { color: #fff; background: var(--dc-green, #23a55a); }
+.fcdHubBtn.sent { pointer-events: none; color: var(--dc-muted, #949ba4); background: rgba(255,255,255,.06); }
+.fcdHubMine { flex: none; margin-left: 10px; font-size: 12px; font-weight: 700; color: var(--dc-green, #23a55a); }
+.fcdHubR .fcdPAva .fcdAva { width: 32px; height: 32px; box-shadow: none; }
+.fcdHubR .fcdPAva .st { width: 12px; height: 12px; right: -2px; bottom: -2px; border-width: 2px; border-color: #16171a; }
+.fcdHubR .tx { flex: 1; min-width: 0; margin-left: 10px; }
+.fcdHubR .tx .nm { display: flex; align-items: center; min-width: 0; }
+.fcdHubR .tx b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14px; font-weight: 600; line-height: 18px; color: var(--dc-head, #f2f3f5); cursor: pointer; }
+.fcdHubR .tx b:hover { text-decoration: underline; }
+.fcdHubR .tx .fcdRank { flex: none; margin-left: 6px; }
+.fcdHubR .tx > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 16px; color: var(--dc-muted, #949ba4); }
+.fcdHubR .rec { margin-right: 6px; font-style: normal; font-weight: 700; }
+.fcdHubR .rec.up { color: var(--dc-green, #23a55a); } .fcdHubR .rec.down { color: var(--dc-red, #f23f43); }
+.fcdHubEmpty { padding: 4px 0 10px; font-size: 13px; line-height: 18px; color: var(--dc-muted, #949ba4); }
+@media (max-width: 1180px) {
+    .fcdHubHead { flex-wrap: wrap; }
+    .fcdHubBtns { width: 100%; margin-top: 16px; }
+    .fcdHubBtns > :first-child { margin-left: 0; }
+    .fcdHubBody { display: block; }
+    .fcdHubLive { margin: 0 0 12px; }
+}
+`;
+const HUB_ANIM = `
+@keyframes fcdHubIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+html.fcd-anim #fcdHub.has { animation: fcdHubIn .45s cubic-bezier(.2,.8,.2,1) both; }
+html.fc-still #fcdHub.has { animation: none; }
+`;
+
 const ANIM = `
 @keyframes fcdRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes fcdPop { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -1104,13 +1211,13 @@ html:not(.fcd-anim) .fcdAmbient > i, html:not(.fcd-anim) .fcdDotNav.on::after { 
 html.fcd-on:not(.fcd-anim) .fcdCard:hover, html.fcd-on:not(.fcd-anim) .fcdLiveCard:hover { transform: none !important; }
 `;
 
-const CSS3 = "\n/* ============================ for you rows ============================== */\n#fcdFriends { order: -5; } #fcdRivals { order: -3; } #fcdEvents { order: -2; }\n.fcdXRow { display: none; margin: 14px 0 0; }\nhtml.fcd-on .fcdXRow.has { display: block; }\nhtml.fcd-on .fcdXRow .fcdRowHead { display: flex; align-items: center; padding: 14px 24px 0; }\nhtml.fcd-on .fcdXRow .fcdRowHead h3 {\n    flex: 1; display: flex; align-items: center; margin: 0; font-family: var(--dc-font, sans-serif); font-size: 18px; font-weight: 700;\n    line-height: 24px; color: var(--dc-head, #f2f3f5);\n}\nhtml.fcd-on .fcdXRow .fcdRowHead h3 > .fc-ic { width: 20px; height: 20px; margin-right: 8px; color: var(--dc-blurple, #5865f2); vertical-align: middle; }\nhtml.fcd-on .fcdXRow .fcdShowAll { margin-right: 8px; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid {\n    display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: var(--fcd-col, 260px); grid-gap: 16px; width: auto;\n    overflow-x: auto; overflow-y: hidden; padding: 14px 24px 18px; scroll-snap-type: x proximity; scroll-padding: 0 24px; scroll-behavior: smooth;\n    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 56px), transparent 100%);\n}\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"] .fcdYoursGrid { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 56px), transparent 100%); }\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"][data-fcd-edge~=\"end\"] .fcdYoursGrid { -webkit-mask-image: none; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid::-webkit-scrollbar { height: 0; display: none; }\n.fcdXRow:hover .fcdArrows { opacity: 1; }\n\n.fcdPCard {\n    position: relative; height: 132px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start; display: flex; flex-direction: column;\n    background: var(--dc-bg3, #1e1f22); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdPCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-blurple, #5865f2), 0 12px 26px rgba(0,0,0,.45); }\n.fcdPCard.playing { box-shadow: 0 0 0 1px rgba(242,63,67,.35), 0 2px 8px rgba(0,0,0,.3); }\n.fcdPArt {\n    position: absolute; top: 0; left: 0; right: 0; height: 64px; background-size: cover; background-position: center 30%;\n    filter: saturate(1.2) brightness(.55); image-rendering: pixelated;\n}\n.fcdPArt::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent 20%, var(--dc-bg3, #1e1f22)); }\n.fcdPMain { position: relative; z-index: 1; flex: 1; display: flex; align-items: flex-end; padding: 0 12px; min-height: 0; }\n.fcdPAva { position: relative; flex: none; margin-right: 10px; line-height: 0; }\n.fcdPAva .fcdAva { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 3px var(--dc-bg3, #1e1f22); }\n.fcdPAva .st { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--dc-bg3, #1e1f22); }\n.fcdPAva .st.on { background: var(--dc-green, #23a55a); }\n.fcdPAva .st.playing { background: var(--dc-red, #f23f43); }\n.fcdPTx { flex: 1; min-width: 0; padding-bottom: 2px; }\n.fcdPTx b { display: inline-block; max-width: calc(100% - 26px); vertical-align: middle; font-size: 15px; font-weight: 700; color: var(--dc-head, #f2f3f5);\n    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }\n.fcdPTx b:hover { text-decoration: underline; }\n.fcdPTx .sub { display: flex; align-items: center; margin-top: 2px; font-size: 12.5px; color: var(--dc-text, #dbdee1); white-space: nowrap; overflow: hidden; }\n.fcdPTx .game { display: block; font-size: 11.5px; color: var(--dc-muted, #949ba4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdPTx .rec { font-weight: 700; } .fcdPTx .rec.up { color: var(--dc-green, #23a55a); } .fcdPTx .rec.down { color: var(--dc-red, #f23f43); }\n.fcdLiveDot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--dc-red, #f23f43); }\n.fcdPAct { position: relative; z-index: 1; display: flex; justify-content: flex-end; padding: 8px 12px 10px; }\n.fcdPBtn {\n    display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin-left: 6px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;\n    color: #fff; background: var(--dc-btn, #4e5058); transition: filter .15s ease, background-color .15s ease;\n}\n.fcdPBtn:hover { filter: brightness(1.15); }\n.fcdPBtn.watch { background: var(--dc-red, #f23f43); }\n.fcdPBtn.go { background: var(--dc-green, #23a55a); }\n.fcdPBtn.sent { background: var(--dc-btn, #4e5058); pointer-events: none; }\n.fcdPBtn.ghost { background: rgba(255,255,255,.08); color: var(--dc-text, #dbdee1); }\n.fcdPBtn .fc-ic { margin-right: 5px; }\n\n.fcdEvCard {\n    position: relative; height: 164px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start;\n    background: var(--dc-float, #111214); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdEvCard.mine { box-shadow: 0 0 0 1px rgba(240,178,50,.45), 0 2px 8px rgba(0,0,0,.3); }\n.fcdEvCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-yellow, #f0b232), 0 12px 26px rgba(0,0,0,.45); }\n.fcdEvArt { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; filter: brightness(.4) saturate(1.2); }\n.fcdEvIn { position: relative; z-index: 1; height: 100%; padding: 10px 12px; display: flex; flex-direction: column; color: #fff; }\n.fcdEvWhen { display: flex; align-items: center; font-size: 12px; font-weight: 800; letter-spacing: .02em; }\n.fcdEvWhen .d { padding: 2px 8px; border-radius: 4px; background: rgba(240,178,50,.22); color: var(--dc-yellow, #f0b232); text-transform: uppercase; }\n.fcdEvWhen .t { margin-left: 8px; color: rgba(255,255,255,.85); }\n.fcdEvBell { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n    color: rgba(255,255,255,.8); background: rgba(0,0,0,.35); transition: background-color .15s ease, color .15s ease; }\n.fcdEvBell .fc-ic { width: 16px; height: 16px; }\n.fcdEvBell:hover { background: rgba(255,255,255,.18); }\n.fcdEvBell.on { color: #1a1300; background: var(--dc-yellow, #f0b232); }\n.fcdEvName { margin-top: 10px; font-size: 16px; font-weight: 800; line-height: 20px; max-height: 40px; overflow: hidden; }\n.fcdEvMeta { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdEvMeta span + span::before { content: '·'; margin: 0 6px; }\n.fcdEvFoot { margin-top: auto; display: flex; align-items: center; }\n.fcdEvCount { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--dc-yellow, #f0b232); }\n.fcdEvCard.live .fcdEvCount { color: var(--dc-red, #f23f43); }\n\n.fcdTileRank { flex: none; width: 66px; margin-right: 12px; display: flex; flex-direction: column; align-items: center; }\n.fcdTileRank .elo { margin-top: 3px; font-size: 11.5px; font-weight: 700; color: var(--dc-text, #dbdee1); font-variant-numeric: tabular-nums; }\n.fcdTileRank .bar { display: block; width: 52px; height: 3px; margin-top: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }\n.fcdTileRank .bar > i { display: block; height: 100%; }\n.fcdTile:hover .fcdTileRank { display: none; }\n";
+const CSS3 = "\n/* ============================ for you rows ============================== */\n#fcdFriends { order: -5; } #fcdRivals { order: -3; } #fcdEvents { order: -2; }\n.fcdXRow { display: none; margin: 14px 0 0; }\nhtml.fcd-on .fcdXRow.has { display: block; }\nhtml.fcd-on .fcdXRow .fcdRowHead { display: flex; align-items: center; padding: 14px 24px 0; }\nhtml.fcd-on .fcdXRow .fcdRowHead h3 {\n    flex: 1; display: flex; align-items: center; margin: 0; font-family: var(--dc-font, sans-serif); font-size: 18px; font-weight: 700;\n    line-height: 24px; color: var(--dc-head, #f2f3f5);\n}\nhtml.fcd-on .fcdXRow .fcdRowHead h3 > .fc-ic { width: 20px; height: 20px; margin-right: 8px; color: var(--dc-blurple, #5865f2); vertical-align: middle; }\nhtml.fcd-on .fcdXRow .fcdShowAll { margin-right: 8px; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid {\n    display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: var(--fcd-col, 260px); grid-gap: 16px; width: auto;\n    overflow-x: auto; overflow-y: hidden; padding: 14px 24px 18px; scroll-snap-type: x proximity; scroll-padding: 0 24px; scroll-behavior: smooth;\n    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 56px), transparent 100%);\n}\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"] .fcdYoursGrid { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 56px), transparent 100%); }\nhtml.fcd-on .fcdXRow[data-fcd-edge~=\"start\"][data-fcd-edge~=\"end\"] .fcdYoursGrid { -webkit-mask-image: none; }\nhtml.fcd-on .fcdXRow .fcdYoursGrid::-webkit-scrollbar { height: 0; display: none; }\n.fcdXRow:hover .fcdArrows { opacity: 1; }\n\n.fcdPCard {\n    position: relative; height: 132px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start; display: flex; flex-direction: column;\n    background: var(--dc-bg3, #1e1f22); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdPCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-blurple, #5865f2), 0 12px 26px rgba(0,0,0,.45); }\n.fcdPCard.playing { box-shadow: 0 0 0 1px rgba(242,63,67,.35), 0 2px 8px rgba(0,0,0,.3); }\n.fcdPArt {\n    position: absolute; top: 0; left: 0; right: 0; height: 64px; background-size: cover; background-position: center 30%;\n    filter: saturate(1.2) brightness(.55); image-rendering: pixelated;\n}\n.fcdPArt::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent 20%, var(--dc-bg3, #1e1f22)); }\n.fcdPMain { position: relative; z-index: 1; flex: 1; display: flex; align-items: flex-end; padding: 0 12px; min-height: 0; }\n.fcdPAva { position: relative; flex: none; margin-right: 10px; line-height: 0; }\n.fcdPAva .fcdAva { width: 48px; height: 48px; border-radius: 50%; box-shadow: 0 0 0 3px var(--dc-bg3, #1e1f22); }\n.fcdPAva .st { position: absolute; right: -1px; bottom: -1px; width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--dc-bg3, #1e1f22); }\n.fcdPAva .st.on { background: var(--dc-green, #23a55a); }\n.fcdPAva .st.playing { background: var(--dc-red, #f23f43); }\n.fcdPTx { flex: 1; min-width: 0; padding-bottom: 2px; }\n.fcdPTx b { display: inline-block; max-width: calc(100% - 26px); vertical-align: middle; font-size: 15px; line-height: 20px; font-weight: 700; color: var(--dc-head, #f2f3f5);\n    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }\n.fcdPTx b:hover { text-decoration: underline; }\n.fcdPTx .sub { display: flex; align-items: center; margin-top: 1px; font-size: 12.5px; line-height: 16px; color: var(--dc-text, #dbdee1); white-space: nowrap; overflow: hidden; }\n.fcdPTx .game { display: block; margin-top: 1px; font-size: 11.5px; line-height: 15px; color: var(--dc-muted, #949ba4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdPTx .rec { font-weight: 700; } .fcdPTx .rec.up { color: var(--dc-green, #23a55a); } .fcdPTx .rec.down { color: var(--dc-red, #f23f43); }\n.fcdLiveDot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--dc-red, #f23f43); }\n.fcdPAct { position: relative; z-index: 1; display: flex; justify-content: flex-end; padding: 8px 12px 10px; }\n.fcdPBtn {\n    display: inline-flex; align-items: center; height: 26px; padding: 0 10px; margin-left: 6px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;\n    color: #fff; background: var(--dc-btn, #4e5058); transition: filter .15s ease, background-color .15s ease;\n}\n.fcdPBtn:hover { filter: brightness(1.15); }\n.fcdPBtn.watch { background: var(--dc-red, #f23f43); }\n/* 3.14: a row of green Challenge buttons is noise; the card you point at gets the green one */\n.fcdPBtn.go { background: rgba(255,255,255,.08); color: var(--dc-text, #dbdee1); }\n.fcdPCard:hover .fcdPBtn.go, .fcdPBtn.go:focus-visible { background: var(--dc-green, #23a55a); color: #fff; }\n.fcdPBtn.sent { background: var(--dc-btn, #4e5058); pointer-events: none; }\n.fcdPBtn.ghost { background: rgba(255,255,255,.08); color: var(--dc-text, #dbdee1); }\n.fcdPBtn .fc-ic { margin-right: 5px; }\n\n.fcdEvCard {\n    position: relative; height: 164px; overflow: hidden; border-radius: 12px; cursor: pointer; scroll-snap-align: start;\n    background: var(--dc-float, #111214); box-shadow: 0 0 0 1px var(--dc-divider, rgba(255,255,255,.05)), 0 2px 8px rgba(0,0,0,.3);\n    transition: transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease;\n}\n.fcdEvCard.mine { box-shadow: 0 0 0 1px rgba(240,178,50,.45), 0 2px 8px rgba(0,0,0,.3); }\n.fcdEvCard:hover { transform: translateY(-4px); z-index: 5; box-shadow: 0 0 0 1px var(--dc-yellow, #f0b232), 0 12px 26px rgba(0,0,0,.45); }\n.fcdEvArt { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; filter: brightness(.4) saturate(1.2); }\n.fcdEvIn { position: relative; z-index: 1; height: 100%; padding: 10px 12px; display: flex; flex-direction: column; color: #fff; }\n.fcdEvWhen { display: flex; align-items: center; font-size: 12px; font-weight: 800; letter-spacing: .02em; }\n.fcdEvWhen .d { padding: 2px 8px; border-radius: 4px; background: rgba(240,178,50,.22); color: var(--dc-yellow, #f0b232); text-transform: uppercase; }\n.fcdEvWhen .t { margin-left: 8px; color: rgba(255,255,255,.85); }\n.fcdEvBell { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;\n    color: rgba(255,255,255,.8); background: rgba(0,0,0,.35); transition: background-color .15s ease, color .15s ease; }\n.fcdEvBell .fc-ic { width: 16px; height: 16px; }\n.fcdEvBell:hover { background: rgba(255,255,255,.18); }\n.fcdEvBell.on { color: #1a1300; background: var(--dc-yellow, #f0b232); }\n.fcdEvName { margin-top: 10px; font-size: 16px; font-weight: 800; line-height: 20px; max-height: 40px; overflow: hidden; }\n.fcdEvMeta { margin-top: 4px; font-size: 12px; color: rgba(255,255,255,.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.fcdEvMeta span + span::before { content: '·'; margin: 0 6px; }\n.fcdEvFoot { margin-top: auto; display: flex; align-items: center; }\n.fcdEvCount { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--dc-yellow, #f0b232); }\n.fcdEvCard.live .fcdEvCount { color: var(--dc-red, #f23f43); }\n\n.fcdTileRank { flex: none; width: 66px; margin-right: 12px; display: flex; flex-direction: column; align-items: center; }\n.fcdTileRank .elo { margin-top: 3px; font-size: 11.5px; font-weight: 700; color: var(--dc-text, #dbdee1); font-variant-numeric: tabular-nums; }\n.fcdTileRank .bar { display: block; width: 52px; height: 3px; margin-top: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }\n.fcdTileRank .bar > i { display: block; height: 100%; }\n.fcdTile:hover .fcdTileRank { display: none; }\n";
 
 function ensureStyle() {
     if (document.getElementById('fcdStyle')) return;
     const st = document.createElement('style');
     st.id = 'fcdStyle';
-    st.textContent = important(CSS) + important(CSS2) + important(CSS3) + ANIM;
+    st.textContent = important(CSS) + important(CSS2) + important(CSS3) + important(CSS4) + ANIM + HUB_ANIM;
     document.head.appendChild(st);
 }
 
@@ -1781,7 +1888,7 @@ function renderYours(content) {
         row?.remove();
         row = document.createElement('div');
         row.id = 'fcdYours';
-        row.innerHTML = `<div class="fcdRowHead"><h3>${ET('Your games')}<span class="fcdCount fcdYoursCount"></span></h3><span class="fcdShowAll"></span></div>
+        row.innerHTML = `<div class="fcdRowHead"><h3><span class="fcdYoursT">${ET('Your games')}</span><span class="fcdCount fcdYoursCount"></span></h3><span class="fcdShowAll"></span></div>
             <div class="fcdYoursGrid"></div>`;
         row.addEventListener('click', onYoursClick);
         content.appendChild(row);          // at the end; CSS order puts it under the hero
@@ -1791,7 +1898,10 @@ function renderYours(content) {
     const now = Date.now();
     if (yoursKeys && now - yoursAt < 3000) return;
     yoursAt = now;
-    const list = yourGames();
+    const hubFull = hubNow && document.documentElement.classList.contains('fcd-hub') ? hubNow.it.full : '';
+    const list = yourGames().filter(it => it.full !== hubFull);
+    const ttl = row.querySelector('.fcdYoursT'), tt = hubFull ? T('Your other games') : T('Your games');
+    if (ttl && ttl.textContent !== tt) ttl.textContent = tt;
     const grid = row.querySelector('.fcdYoursGrid');
     const keys = list.map(it => it.full).join('\n');
     if (keys !== yoursKeys) {
@@ -1981,7 +2091,8 @@ function renderLive(content) {
         content.appendChild(row);          // after #fcdYours; CSS order keeps both under the hero
         liveKeys = '';
     }
-    const list = liveMatches();
+    const hs = hubShown(hubNow);
+    const list = liveMatches().filter(m => !hs.quarks.has(String(m.quark)));
     const grid = row.querySelector('.fcdYoursGrid');
     const keys = list.map(m => m.quark + ':' + m.players.join(',') + ':' + canWatch(m) + ':' + m.timed).join('|');
     if (keys !== liveKeys) {
@@ -2139,7 +2250,8 @@ function renderFriends(content) {
     const fr = plugin('friends');
     if (!config.friendsRow || !fr || !fr.list) { hideRow('fcdFriends'); return; }
     const row = ensureRow(content, 'fcdFriends', 'Friends playing now', 'users', onPeopleClick);
-    const list = friendsNow(fr.list(), users());
+    const hs = hubShown(hubNow);
+    const list = friendsNow(fr.list(), users()).filter(x => !hs.names.has(x.name.toLowerCase()));
     const keys = list.map(f => f.name + ':' + (f.playing ? f.playing.quarkId : '') + ':' + gameOf(f.channels)).join('|');
     fillRow(row, list, keys, friendCardHtml, 260);
     row.querySelectorAll('.fcdPCard').forEach(c => { if (c.dataset.art) setBg(c.querySelector('.fcdPArt'), c.dataset.art); });
@@ -2162,7 +2274,8 @@ function rivalCardHtml(r) {
 function renderRivals(content) {
     if (!config.rivalsRow) { hideRow('fcdRivals'); return; }
     const row = ensureRow(content, 'fcdRivals', 'Rivals online', 'swords', onPeopleClick);
-    const list = rivalsOnline(historySets(), users(), myName(), Date.now());
+    const hs = hubShown(hubNow);
+    const list = rivalsOnline(historySets(), users(), myName(), Date.now()).filter(x => !hs.names.has(x.name.toLowerCase()));
     fillRow(row, list, list.map(r => r.name + ':' + r.w + '-' + r.l + ':' + r.rank).join('|'), rivalCardHtml, 260);
     row.querySelectorAll('.fcdPCard').forEach(c => { if (c.dataset.art) setBg(c.querySelector('.fcdPArt'), c.dataset.art); });
 }
@@ -2265,6 +2378,181 @@ function setBg(el, url) {
     const img = new Image();
     img.onload = () => { if (el.__bg === url) el.style.setProperty('background-image', 'url("' + url + '")', 'important'); };
     img.src = url;
+}
+
+/* ---------------------------------------------------------- live hub (3.14) */
+// Discover opens on your main game: who's on, the sets going on now, your friends and rivals there.
+// The rows under it leave out what the hub already shows.
+
+const HUB_LIVE = 4, HUB_PEOPLE = 3;
+// group titles: N_('Friends here') N_('Rivals free')
+
+// your main game: the one you played last that you're in, else the first joined one
+// items: yourGames() -> [{ full, short, rom, chan, played, lastAt, w, l }]
+function hubGame(items) {
+    const list = (items || []).filter(it => it && it.chan);
+    return list.find(it => it.played) || list[0] || null;
+}
+// (Fightcade lists someone's channels by id or by name)
+const inChan = (chans, it) => Array.isArray(chans) && (chans.indexOf(it.full) >= 0 || (it.chan && it.chan.id != null && chans.indexOf(it.chan.id) >= 0));
+// what the hub shows for that game -> { it, live, friends, rivals }
+function hubOf(it, live, friends, rivals) {
+    if (!it) return null;
+    const id = it.chan && it.chan.id;
+    const here = (c) => c != null && (c === id || c === it.full);
+    return {
+        it,
+        live: (live || []).filter(m => here(m.channel)),
+        friends: (friends || []).filter(f => (f.playing && here(f.playing.channelId)) || (!f.playing && inChan(f.channels, it))),
+        rivals: (rivals || []).filter(r => r.channel === it.full || shortName(r.channel) === it.short)
+    };
+}
+// the names and matches the hub shows (the rows below skip them)
+function hubShown(h) {
+    const names = new Set(), quarks = new Set();
+    if (h) {
+        h.friends.slice(0, HUB_PEOPLE).forEach(f => names.add(f.name.toLowerCase()));
+        h.rivals.slice(0, HUB_PEOPLE).forEach(r => names.add(r.name.toLowerCase()));
+        h.live.slice(0, HUB_LIVE).forEach(m => quarks.add(String(m.quark)));
+    }
+    return { names, quarks };
+}
+
+let hubNow = null, hubAt = 0;
+function hubData() {
+    if (!config.hub) return null;
+    const it = hubGame(yourGames());
+    if (!it) return null;
+    const fr = plugin('friends');
+    return hubOf(it, liveMatches(), fr && fr.list ? friendsNow(fr.list(), users()) : [], rivalsOnline(historySets(), users(), myName(), Date.now()));
+}
+
+function hubHeadHtml(h) {
+    const it = h.it;
+    const meta = [`<span class="on"><i></i>${ET('{n} online', { n: fc.fmt.num(onlineIn(it.full)) })}</span>`];
+    if (it.played) { const rk = tileRank(it); if (rk) meta.push(rk); }
+    if (h.live.length) meta.push(`<span>${fc.ui.ic('swords')}${esc(T.plural(h.live.length, '{n} live match', '{n} live matches'))}</span>`);
+    if (it.w || it.l) meta.push(`<span title="${ET('Your sets in this channel')}">${fc.ui.ic('trophy')}<b>${it.w}–${it.l}</b></span>`);
+    if (it.played) meta.push(`<span>${ET('Played {when}', { when: ago(it.lastAt) })}</span>`);
+    const find = plugin('find-match') ? `<span class="fcdHubCta" data-act="find" role="button" tabindex="0">${fc.ui.ic('target')}${ET('Find a match')}</span>` : '';
+    return `<div class="fcdHubHead"><div class="fcdHubName"><h2 title="${esc(it.full)}">${esc(it.short)}</h2><div class="fcdHubMeta">${meta.join('')}</div></div>
+        <div class="fcdHubBtns">${find}<span class="fcdHubSec" data-act="open" role="button" tabindex="0">${ET('Open channel')}</span>` +
+        `<span class="fcdHubSec ic" data-act="details" role="button" tabindex="0" title="${ET('Details')}">${fc.ui.ic('info')}</span></div></div>`;
+}
+
+function hubPlayer(n, channel) {
+    const b = playerBits(n, channel);
+    return `<span class="fcdHubP" data-act="scout" data-n="${esc(n)}"><img class="fcdAva" src="${esc(avatarUrl(n))}" alt="">${flagImg(b.cc)}` +
+        `<b>${esc(n === myName() ? T('You') : n)}</b>${rankPill(b.rank)}</span>`;
+}
+function hubMatchHtml(m) {
+    const [a, b] = m.players;
+    const act = m.players.includes(myName()) ? `<span class="fcdHubMine">${ET("You're playing")}</span>`
+        : canWatch(m) ? `<span class="fcdHubBtn watch" data-act="watch" role="button" tabindex="0">${fc.ui.ic('eye')}${ET('Watch')}</span>` : '';
+    return `<div class="fcdHubM" data-q="${esc(m.quark)}"><i class="fcdLiveDot"></i>${hubPlayer(a, m.channel)}` +
+        (b ? `<span class="vs">vs</span>${hubPlayer(b, m.channel)}` : `<span class="vs">${ET('in a match')}</span>`) +
+        `<span class="t">${m.timed ? durText(m.since) : ''}</span>${act}</div>`;
+}
+function hubLiveHtml(h) {
+    const n = h.live.length;
+    return `<h4>${ET('Live now')}${n ? `<span class="n live">${n}</span>` : ''}</h4>` +
+        (n ? h.live.slice(0, HUB_LIVE).map(hubMatchHtml).join('') : `<div class="fcdHubEmpty">${ET('Nobody’s in a set here right now. Find a match to start one.')}</div>`);
+}
+
+function hubFriendHtml(f) {
+    const m = f.playing ? liveMatches().find(x => String(x.quark) === String(f.playing.quarkId)) : null;
+    const opp = m ? m.players.find(n => n !== f.name) : '';
+    const sub = f.playing ? (opp ? ET('vs {name}', { name: opp }) : ET('in a match')) : ET('Online');
+    const act = m && canWatch(m) ? `<span class="fcdHubBtn watch" data-act="watch" role="button" tabindex="0">${fc.ui.ic('eye')}${ET('Watch')}</span>` : '';
+    return `<div class="fcdHubR" data-n="${esc(f.name)}"><span class="fcdPAva"><img class="fcdAva" src="${esc(avatarUrl(f.name))}" alt=""><i class="st ${f.playing ? 'playing' : 'on'}"></i></span>` +
+        `<div class="tx"><div class="nm"><b data-act="scout">${esc(f.name)}</b></div><span>${sub}</span></div>${act}</div>`;
+}
+function hubRivalHtml(r) {
+    const rec = r.w || r.l ? `<em class="rec ${r.w >= r.l ? 'up' : 'down'}">${r.w}–${r.l}</em>` : '';
+    return `<div class="fcdHubR" data-n="${esc(r.name)}"><span class="fcdPAva"><img class="fcdAva" src="${esc(avatarUrl(r.name))}" alt=""><i class="st on"></i></span>` +
+        `<div class="tx"><div class="nm"><b data-act="scout">${esc(r.name)}</b>${r.rank ? rankPill(r.rank) : ''}</div><span>${rec}${ET('last played {when}', { when: ago(r.last) })}</span></div>` +
+        `<span class="fcdHubBtn go" data-act="challenge" role="button" tabindex="0">${fc.ui.ic('swords')}${ET('Challenge')}</span></div>`;
+}
+function hubPeopleHtml(h) {
+    const grp = (title, list, html) => list.length
+        ? `<div class="grp"><h4>${ET(title)}<span class="n">${list.length}</span></h4>${list.slice(0, HUB_PEOPLE).map(html).join('')}</div>` : '';
+    const body = grp('Friends here', h.friends, hubFriendHtml) + grp('Rivals free', h.rivals, hubRivalHtml);
+    return body || `<h4>${ET('Friends here')}</h4><div class="fcdHubEmpty">${ET('None of your friends or rivals are on in this game right now.')}</div>`;
+}
+
+function renderHub(content) {
+    let el = document.getElementById('fcdHub');
+    const now = Date.now();
+    if (now - hubAt > 1000 || !el) { hubAt = now; hubNow = hubData(); }
+    const h = hubNow;
+    setHtmlClass('fcd-hub', !!h);
+    if (!h) { el?.classList.remove('has'); return null; }
+    if (!el || el.parentNode !== content) {
+        el?.remove();
+        el = document.createElement('section');
+        el.id = 'fcdHub';
+        el.innerHTML = '<div class="fcdHubBg"></div><div class="fcdHubShade"></div><div class="fcdHubIn"><div class="fcdHubTop"></div>' +
+            '<div class="fcdHubBody"><div class="fcdHubLive"></div><div class="fcdHubPeople"></div></div></div>';
+        el.addEventListener('click', onHubClick);
+        el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-act]')) { e.preventDefault(); onHubClick(e); } });
+        content.appendChild(el);          // CSS order puts it under the search bar
+        el.__liveKey = null;
+    }
+    if (h.it.rom) setBg(el.querySelector('.fcdHubBg'), artUrl(h.it.rom));
+    fc.ui.setHtml(el.querySelector('.fcdHubTop'), hubHeadHtml(h));
+    // the live list is rebuilt when a match starts or ends; the clocks tick in place
+    const shown = h.live.slice(0, HUB_LIVE);
+    const key = h.it.full + '|' + shown.map(m => m.quark + ':' + m.players.join(',') + ':' + canWatch(m) + ':' + m.timed).join('|') + '|' + h.live.length;
+    if (key !== el.__liveKey) { el.__liveKey = key; el.querySelector('.fcdHubLive').innerHTML = hubLiveHtml(h); }
+    else el.querySelectorAll('.fcdHubM').forEach((r, i) => {
+        const t = r.querySelector('.t'), m = shown[i];
+        const txt = m && m.timed ? durText(m.since) : '';
+        if (t && t.textContent !== txt) t.textContent = txt;
+    });
+    fc.ui.setHtml(el.querySelector('.fcdHubPeople'), hubPeopleHtml(h));
+    el.__h = h;
+    if (!el.classList.contains('has')) el.classList.add('has');
+    return h;
+}
+
+// open the channel, then Find a match once its header is there
+function hubFind(it) {
+    if (!openChannel(it.full)) return;
+    const id = it.chan && it.chan.id;
+    let n = 0;
+    const go = () => {
+        const ch = fc.app.activeChannel();
+        const pill = document.querySelector('.channelToolbar .fcfmPill');
+        if (ch && ch.id === id && pill && pill.offsetWidth) { pill.click(); return; }
+        if (++n < 25) setTimeout(go, 160);
+    };
+    setTimeout(go, 160);
+}
+
+function onHubClick(e) {
+    const el = document.getElementById('fcdHub');
+    const h = el && el.__h;
+    const a = e.target.closest('[data-act]');
+    if (!h || !a) return;
+    const act = a.dataset.act;
+    const row = a.closest('[data-q], .fcdHubR');
+    const name = a.dataset.n || (row && row.dataset.n) || '';
+    if (act === 'open') { openChannel(h.it.full); return; }
+    if (act === 'details') { openGame(channelByName(h.it.full, h.it.rom)); return; }
+    if (act === 'find') { hubFind(h.it); return; }
+    if (act === 'scout' && name) { const sc = plugin('scout'); if (sc && sc.openCard) sc.openCard(name, a.getBoundingClientRect(), 'right'); return; }
+    if (act === 'watch') {
+        let m = row && row.dataset.q ? h.live.find(x => String(x.quark) === row.dataset.q) : null;
+        if (!m && name) { const p = (users()[name] || {}).playing; if (p && p.quarkId) m = liveMatches().find(x => String(x.quark) === String(p.quarkId)); }
+        if (m) watch(m);
+        return;
+    }
+    if (act === 'challenge' && name) {
+        const ms = plugin('match-screens');
+        const st = ms && ms.challenge ? ms.challenge(name) : { ok: false, why: T('Match screens are off') };
+        if (st.ok) { a.classList.add('sent'); a.innerHTML = fc.ui.ic('check') + ET('Sent'); }
+        else fc.ui.toast(st.why || T('Couldn’t challenge'), { kind: 'warning', icon: 'sword' });
+    }
 }
 
 /* --------------------------------------------------------------- game page */
@@ -2878,7 +3166,7 @@ function setHtmlClass(name, on) {
 
 function tick() {
     if (!config.enabled) {
-        ['fcd-on', 'fcd-browse', 'fcd-anim', 'fcd-tilt', 'fcd-glow', 'fcd-own-results'].forEach(c => setHtmlClass(c, false));
+        ['fcd-on', 'fcd-browse', 'fcd-anim', 'fcd-tilt', 'fcd-glow', 'fcd-own-results', 'fcd-hub'].forEach(c => setHtmlClass(c, false));
         closeQuick();
         closeGame();
         return;
@@ -2901,6 +3189,7 @@ function tick() {
         const hi = document.querySelector('.welcomeWrapper .text-filter');
         if (hi && hi.value && quick.q === hi.value) { hi.value = ''; quick.q = ''; }
     } else if (quick.open) placeQuick();
+    if (view !== 'home') setHtmlClass('fcd-hub', false);
     if (!view) { setHtmlClass('fcd-own-results', false); return; }
     if (config.tilt) updateAmbient(view);
     if (view === 'home') {
@@ -2908,6 +3197,7 @@ function tick() {
         const content = document.querySelector('.welcomeWrapper > .contentWrapper');
         if (content) {
             decorateSpotlight(content);
+            renderHub(content);
             renderYours(content);
             renderFriends(content);
             renderLive(content);
@@ -2955,6 +3245,7 @@ function start(f) {
         id: 'discover', section: 'search', title: 'Discover', hint: '— the search tab', store, order: 10,
         fields: [
             opt('enabled', 'Discover layout', 'Sidebar, spotlight, instant search, game pages, card rows'),
+            opt('hub', 'Your main game first', 'The game you play most, on top: who’s on, live sets with Watch, your friends and rivals there', (d) => d.enabled),
             opt('yourGames', 'Your games row', 'Played, joined and favourite games up top', (d) => d.enabled),
             opt('liveRow', 'Live now row', 'Matches in your channels, with Watch', (d) => d.enabled),
             opt('friendsRow', 'Friends playing now', 'Friends in your channels: who’s in a match, with Watch', (d) => d.enabled),
@@ -2977,10 +3268,11 @@ const api = {
     _quickResults: (q) => quickResults(q).map(e => e.name),
     _openGame: (name) => openGame(channelByName(name)),
     _liveMatches: () => liveMatches(),
+    _hub: () => hubNow,
     _state: () => ({ spot, R, quick, game, amb }),
     get _config() { return config; }
 };
 
-module.exports = { id: 'discover', name: 'Search tab (Discover)', start, friendsNow, rivalsOnline, eventsWeek, nextBand };
+module.exports = { id: 'discover', name: 'Search tab (Discover)', start, friendsNow, rivalsOnline, eventsWeek, nextBand, hubGame, hubOf, hubShown };
 Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });
 

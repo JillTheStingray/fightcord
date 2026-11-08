@@ -245,7 +245,8 @@ function renderCard(card, name, data) {
     const fr = mod('friends');
     const isFriend = !!(fr && fr.isFriend && fr.isFriend(name));
     const nt = mod('notes');
-    const notes = nt && nt.chips ? nt.chips(name) : '';
+    // (3.14: the yellow warning below already says how many sets they left; don't say it twice)
+    const notes = nt && nt.chips ? nt.chips(name, { noWhy: !!(data && !data.error && quitsNote(data.quits)) }) : '';
     const ms = mod('match-screens');
     const chal = !me && ms && ms.challengeState ? ms.challengeState(name) : null;
     const pr = mod('presence');
@@ -345,7 +346,8 @@ const CSS = `
 .fcsc b.up { color: var(--fc-success); }
 .fcsc b.down { color: var(--fc-danger); }
 .fcsc-recent { margin-top: 8px; font-size: var(--fc-fs-ui); }
-.fcsc-recent > summary { cursor: pointer; font: 700 var(--fc-fs-xs)/18px var(--fc-font); letter-spacing: .03em; text-transform: uppercase; color: var(--fc-muted); outline: none; }
+.fcsc-recent > summary { cursor: pointer; font: 600 var(--fc-fs-ui)/18px var(--fc-font); color: var(--fc-muted); outline: none; }
+.fcsc-recent > summary:focus-visible { box-shadow: var(--fc-ring); border-radius: var(--fc-r1); }
 .fcsc-recent > summary:hover { color: var(--fc-text); }
 .fcsc-sets { width: 100%; margin-top: 4px; border-collapse: collapse; table-layout: fixed; }
 .fcsc-sets td { padding: 3px 0; }

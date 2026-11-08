@@ -226,18 +226,18 @@ function paneHtml(id) {
         const prof = currentProfile();
         const running = fc.modules.list().filter(x => x.state === 'running').length;
         return `<h2>${ET('My Fightcord')}</h2>
-            ${hero(ET('Discord-style Fightcade · {n} modules running', { n: running }) + (fc.safeMode ? ' · ' + ET('SAFE MODE') : ''))}
+            ${hero(ET('{n} features on', { n: running }) + (fc.safeMode ? ' <em class="fcordSafe">' + ET('SAFE MODE') + '</em>' : ''))}
             ${headcountHtml()}
             <div class="fc-set">${toggle(ET('Fightcord on'), ET('Off = plain Fightcade after a restart'), !m.disabled, 'data-man="disabled"')}
             ${toggle(ET('Startup splash screen'), ET('The FightCord logo while Fightcade logs in'), m.splash !== false, 'data-man="splash"')}</div>
-            <h3>${ET('Profile')} <small>— ${ET('which modules run; applies after a restart')}</small></h3>
+            <h3>${ET('Profile')} <small>${ET('Which features run. Changes apply after a restart.')}</small></h3>
             <div class="fcordProfiles">${Object.keys(PROFILES).map(k => `<div class="fcordProfile${prof === k ? ' on' : ''}" data-profile="${k}">
                 ${fc.ui.icon(PROFILES[k].icon)}<b>${ET(PROFILES[k].label)}</b><span>${ET(PROFILES[k].desc)}</span></div>`).join('')}</div>
-            <h3>${ET('Modules')} <small>— ${prof ? ET('{name} profile', { name: T(PROFILES[prof].label) }) : ET('your own mix')}</small></h3>
+            <h3>${ET('Features')} <small>${prof ? ET('Set by the {name} profile', { name: T(PROFILES[prof].label) }) : ET('Your own mix')}</small></h3>
             <div class="fc-set">${PLUGINS.filter(([f]) => fs.existsSync(path.join(DIR, f))).map(([f, label]) => {
                 const mod = fc.modules.list().find(x => x.file === f);
                 const why = mod && mod.state === 'failed' ? ' — ' + T('couldn’t start: {error}', { error: (mod.error || '').split('\n')[0] }) : '';
-                return toggle(ET(label) + (why ? ' <em class="bad">' + E(why) + '</em>' : ''), f, !off.has(f), `data-plugin="${E(f)}"`);
+                return toggle(ET(label) + (why ? ' <em class="bad">' + E(why) + '</em>' : ''), '', !off.has(f), `data-plugin="${E(f)}" title="${E(f)}"`);
             }).join('')}</div>
             <div class="fcordBtns">${fc.ui.btn('Restart Fightcade', { kind: 'sec', icon: 'refresh', act: 'restart' })}<span class="fcordNote" data-note="restart"></span></div>`;
     }
@@ -765,8 +765,10 @@ html.l3-tb #fcordModal { top: 32px; }
 #fcordModal .fcordHead > .fc-set > .fc-field:last-child { border-bottom: 0; }
 #fcordModal .fcordHead > .fc-set { padding: 4px 18px; border-radius: var(--fc-r3); background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
 #fcordModal h2 { margin: 0 0 20px; font-size: 22px; font-weight: 800; color: var(--fc-head); }
-#fcordModal h3 { margin: 28px 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--fc-muted); }
-#fcordModal h3 small { text-transform: none; font-weight: 500; }
+/* 3.14: section headings in sentence case, with their note as a line under them (was caps + "— fragment") */
+#fcordModal h3 { margin: 32px 0 10px; font: 600 var(--fc-fs-lg)/1.3 var(--fc-font); color: var(--fc-head); }
+#fcordModal h3 small { display: block; margin-top: 2px; font: 400 var(--fc-fs-sm)/1.4 var(--fc-font); color: var(--fc-muted); }
+#fcordModal .fcordSafe { margin-left: 8px; padding: 1px 6px; border-radius: var(--fc-r1); font: 700 var(--fc-fs-2xs)/16px var(--fc-font); font-style: normal; color: var(--fc-warning); background: rgba(240,178,50,.16); }
 #fcordModal .lead { margin: 0 0 16px; font-size: 14px; color: var(--fc-muted); }
 #fcordModal .lead.small { font-size: 12px; margin-top: 24px; }
 #fcordModal .fcordHero { display: flex; align-items: center; margin-bottom: 16px; padding: 16px; border-radius: var(--fc-r2);
@@ -777,8 +779,9 @@ html.l3-tb #fcordModal { top: 32px; }
 #fcordModal .fcordHero b { display: block; font-size: 18px; color: var(--fc-head); }
 #fcordModal .fcordHero span { font-size: 14px; color: var(--fc-muted); }
 #fcordModal .fcordCount { margin: -4px 0 18px; }
-#fcordModal .fcordCount .fchcTiles { display: flex; gap: 10px; }
-#fcordModal .fcordCount .fc-tile { flex: 1; min-width: 0; background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
+/* (Chromium 80: no flex gap, so margins) */
+#fcordModal .fcordCount .fchcTiles { display: flex; margin: 0 -5px; }
+#fcordModal .fcordCount .fc-tile { flex: 1; min-width: 0; margin: 0 5px; background: var(--fc-s2); box-shadow: var(--fc-elev-1); }
 #fcordModal .fcordCount .fc-tile .v { font-variant-numeric: tabular-nums; }
 #fcordModal .fcordCount .fchcNote { margin-top: 8px; font-size: var(--fc-fs-xs); color: var(--fc-muted); }
 #fcordModal .fcordProfiles { display: flex; margin: 0 -6px; }

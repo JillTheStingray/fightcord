@@ -99,8 +99,9 @@ function update(b, ch) {
     const bits = [`<span class="on"><i></i>${E(T('{n} online', { n: s.online }))}</span>`];
     if (s.live) bits.push(`<span>${fc.ui.ic('swords')}${E(T.plural(s.live, '{n} live match', '{n} live matches'))}</span>`);
     if (s.rank) bits.push(`<span class="cbnRk">${E(T('your rank'))} ${fc.ui.tag(s.rank, '', 26)}</span>`);
-    if (s.w + s.l) bits.push(`<span>${E(T('you'))} <b>${s.w}–${s.l}</b> (${Math.round(s.w / (s.w + s.l) * 100)}%)</span>`);
-    const line = bits.join('<span class="dot">·</span>');
+    // (3.14: grouped by spacing and icons instead of a dot-joined line)
+    if (s.w + s.l) bits.push(`<span class="cbnRec" title="${E(T('Your sets in this channel'))}">${fc.ui.ic('trophy')}<b>${s.w}–${s.l}</b><em>${Math.round(s.w / (s.w + s.l) * 100)}%</em></span>`);
+    const line = bits.join('');
     const ln = b.querySelector('.cbnLine');
     fc.ui.setHtml(ln, line);
     const fr = s.friends.slice(0, 5).map(n => `<img data-fr="${E(n)}" src="${E(fc.data.avatarUrl(n, (fc.app.user(n)[1] || {}).gravatar, 64))}" title="${E(T('{name} (friend) is here', { name: n }))}" alt="" onerror="this.style.visibility='hidden'">`).join('') +
@@ -173,7 +174,11 @@ const CSS = `
     image-rendering: pixelated; box-shadow: 0 0 0 1px var(--fc-tint-4), 0 6px 16px var(--fc-scrim-3); transition: width var(--fc-med) ease, height var(--fc-med) ease, opacity var(--fc-med) ease; }
 .cbnText { position: relative; flex: 1; min-width: 0; margin-left: 14px; }
 .cbnName { font-size: var(--fc-fs-xl); font-weight: 800; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-shadow: 0 2px 10px var(--fc-scrim-3); }
-.cbnLine { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; font-size: var(--fc-fs-ui); color: rgba(255,255,255,.82); }
+.cbnLine { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; font-size: var(--fc-fs-ui); color: rgba(255,255,255,.82); }
+.cbnLine > span { display: inline-flex; align-items: center; white-space: nowrap; margin-right: 18px; }
+.cbnLine > span:last-child { margin-right: 0; }
+.cbnLine > span > .fc-ic { width: 15px; height: 15px; margin: 0 6px 0 0; opacity: .7; }
+.cbnLine .cbnRec em { margin-left: 6px; font-style: normal; color: rgba(255,255,255,.6); }
 .cbnLine .on { display: inline-flex; align-items: center; }
 .cbnLine .on i { width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--fc-success); box-shadow: 0 0 8px var(--fc-success); }
 .cbnLine .dot { margin: 0 8px; opacity: .45; }

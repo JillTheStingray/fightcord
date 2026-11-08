@@ -140,7 +140,7 @@ function rowHtml(c, ctx) {
             <span class="fcfmMeta">${c.rank ? fc.ui.tag(c.rank) : ''}${rankedHere(ctx) ? (c.ranked ? `<i class="fcfmRk" title="${E(T('Ranked sets on: you pick the FT when you challenge'))}">${E(T('Ranked'))}</i>`
                 : `<i class="fcfmCas" title="${E(T('Their ranked setting is off: Fightcade only offers a casual set, no FT to pick'))}">${E(T('Casual only'))}</i>`) : ''}<em class="fcfmPing">${conn ? fc.fmt.connHtml({ ping: c.ping, wlan: c.wlan, proxy: c.proxy }) : E(T('ping unknown'))}</em></span></div>
         ${rec}
-        ${odds != null ? `<span class="fcfmOdds ${odds >= 50 ? 'good' : 'bad'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
+        ${odds != null ? `<span class="fcfmOdds ${odds >= 55 ? 'good' : odds <= 45 ? 'bad' : 'even'}" title="${E(T('Your odds in an FT3'))}">${odds}%</span>` : ''}
         ${fc.ui.btn('Challenge', { kind: 'sec', size: 'sm', icon: 'sword', act: 'challenge', attrs: `data-who="${E(c.name)}"`, title: rankedHere(ctx) && !c.ranked ? T('A casual set: their ranked setting is off') : '' })}</div>`;
 }
 
@@ -278,9 +278,11 @@ const CSS = `
 .fcfmMeta > .fc-tag { flex: none; margin-right: 5px; }
 .fcfmPing { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-style: normal; }
 .fcfmNew, .fcfmRec, .fcfmOdds { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 10px; font-size: var(--fc-fs-sm); font-weight: 700; }
-.fcfmNew { background: var(--fc-accent-soft); color: var(--fc-head); }
+/* 3.14: never played them is the usual case, so it reads quietly; a record you have stands out instead */
+.fcfmNew { background: none; color: var(--fc-faint); font-weight: 600; }
 .fcfmRec { background: var(--fc-tint-3); color: var(--fc-text); }
-.fcfmOdds.good { color: var(--fc-success); } .fcfmOdds.bad { color: var(--fc-danger); }
+.fcfmOdds.good { color: var(--fc-success); } .fcfmOdds.bad { color: var(--fc-danger); } .fcfmOdds.even { color: var(--fc-text); }
+.fcfmOdds { min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
 .fcfmRow .fc-btn { flex: none; margin-left: 8px; transition: background var(--fc-fast) ease; }
 /* one green button at a time: the row you point at (a wall of green buttons reads as noise) */
 .fcfmRow:hover .fc-btn, .fcfmRow .fc-btn:focus-visible { background: var(--fc-success); color: #fff; }
@@ -290,7 +292,9 @@ const CSS = `
 .fcfmRk { background: rgba(240,178,50,.16); color: var(--fc-warning); }
 .fcfmCas { background: var(--fc-tint-3); color: var(--fc-muted); }
 .fcfmTop { display: flex; align-items: center; margin: -2px 0 8px; padding: 0 4px 8px; border-bottom: 1px solid var(--fc-divider); color: var(--fc-text); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
-.fcfmTop.note { color: var(--fc-muted); }
+.fcfmTop.note { align-items: flex-start; margin: 0 0 6px; padding: 8px 10px; border: 0; border-radius: var(--fc-r2); background: var(--fc-tint-1); color: var(--fc-muted); }
+.fcfmTop.note + .fcfmTop:not(.note) { margin-top: 4px; }
+.fcfmTop.note .fc-ic { margin-top: 2px; }
 .fcfmTop.note .fc-ic { flex: none; margin-right: 6px; }
 .fcfmSw { display: flex; align-items: center; cursor: pointer; }
 .fcfmSw .fc-switch { margin-right: 8px; }

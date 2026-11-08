@@ -1132,7 +1132,7 @@ const CSS = `
 .fcdmF .ac .pend { color: var(--fc-muted); font: var(--fc-fs-sm)/1 var(--fc-font); }
 .fcdmF .ac .fc-btn { margin-left: 8px; }
 .fcdmAdd { padding-top: 12px; }
-.fcdmAdd h3 { margin: 4px 0 6px; color: var(--fc-head); font: 700 var(--fc-fs-lg)/1.2 var(--fc-font); text-transform: uppercase; letter-spacing: .02em; }
+.fcdmAdd h3 { margin: 4px 0 6px; color: var(--fc-head); font: 700 var(--fc-fs-xl)/1.2 var(--fc-font); }
 .fcdmAdd > p { margin: 0 0 14px; color: var(--fc-muted); font: var(--fc-fs-md)/1.45 var(--fc-font); }
 .fcdmAddBox { display: flex; align-items: center; padding: 0 12px 0 14px; height: 50px; border-radius: var(--fc-r2); background: var(--fc-s1); box-shadow: var(--fc-edge); }
 .fcdmAddBox:focus-within { box-shadow: inset 0 0 0 1px var(--fc-accent); }

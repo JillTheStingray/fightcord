@@ -454,6 +454,8 @@ function paint() {
         const f = mod('find-match');
         const html = stripInner(f && f._context ? f._context() : null);
         if (s.__html !== html) { s.__html = html; s.innerHTML = html; }
+        // 3.14: a strip that only holds a note is a callout, without the rule under it
+        s.classList.toggle('note', /^<div class="fcmmNote"/.test(html));
     });
     paintModal();
 }
@@ -504,7 +506,11 @@ function stuckHtml(q) {
         st.slice(0, 4).map(x => `<span>${E(line(x))}</span>`).join('') + '</div>' +
         (mine ? fc.ui.btn('Match anyway', { size: 'sm', act: 'mm-loose', title: 'Ignore your rank range and ping limit for this search' }) : '') + '</div>';
 }
-function stripHtml(ctx) { return cfg && cfg.enabled ? `<div class="fcmmStrip">${stripInner(ctx)}</div>` : ''; }
+function stripHtml(ctx) {
+    if (!cfg || !cfg.enabled) return '';
+    const inner = stripInner(ctx);
+    return `<div class="fcmmStrip${/^<div class="fcmmNote"/.test(inner) ? ' note' : ''}">${inner}</div>`;
+}
 
 // a click in Find a match's pop-over: true when it was ours
 function click(act, el, ctx) {
@@ -587,8 +593,9 @@ const CSS = `
 .fcmmSeg.on, .fcmmFt.on { background: var(--fc-accent); color: var(--fc-on-accent, #fff); }
 .fcmmSeg.off { opacity: .45; cursor: default; }
 .fcmmPick small { display: block; margin-top: 5px; font-size: var(--fc-fs-sm); color: var(--fc-muted); }
-.fcmmNote { display: flex; align-items: center; color: var(--fc-muted); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
-.fcmmNote .fc-ic { flex: none; margin-right: 6px; }
+.fcmmNote { display: flex; align-items: flex-start; color: var(--fc-muted); font: var(--fc-fs-ui)/1.35 var(--fc-font); }
+.fcmmNote .fc-ic { flex: none; margin: 2px 6px 0 0; }
+.fcmmStrip.note { margin: 0 0 6px; padding: 8px 10px; border: 0; border-radius: var(--fc-r2); background: var(--fc-tint-1); }
 .fcmmOn { display: flex; align-items: center; }
 .fcmmWhy { display: flex; align-items: flex-start; margin-top: 10px; padding: 8px 10px; border-radius: var(--fc-r2); background: var(--fc-tint-1); font-size: var(--fc-fs-sm); color: var(--fc-text); }
 .fcmmWhy > .fc-ic { flex: none; margin: 2px 8px 0 0; color: var(--fc-warning); }
