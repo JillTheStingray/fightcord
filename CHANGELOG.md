@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.14.2
+
+- **Matchmaking works again.** One of the three free relays it talks over stopped passing messages on, and another
+  turns some connections away, so most searches never heard each other. Fightcord now also uses four more relays (for
+  matchmaking, voice chat and "who has Fightcord"), and a match-up survives a lost message: the offer, the answer and
+  Accept are sent again until they arrive, and a new search is announced every few seconds at first instead of every 15.
+  Both players need 3.14.2 for the new relays.
+
 ## 3.14.1
 
 - **Member list hover fix:** pointing at a player with several badges after their name (Fightcord, voice chat, the scout

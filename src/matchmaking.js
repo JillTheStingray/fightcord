@@ -45,6 +45,12 @@ const START_MS = 35000;                // both accepted: the match has this long
 const SKIP_MS = 10 * 60000;            // someone who didn't accept isn't offered again for this long
 const FRESH_MS = 90000;                // messages older (or newer) than this are ignored
 const FILTER_RETRY_MS = 20000;         // their filters said no: ask again after this (they may loosen)
+// 3.14.2: a relay can drop a message (one relay eats them all, another refuses a connection), and one lost
+// offer / ok / ready used to end the match-up. Now: "q" every 3 s for the first 10 s (the relays are still
+// opening when you press Search), the offer again every 2.5 s until answered, "ok" again for a repeated offer,
+// and "ready" again every 2.5 s until the match starts.
+const EARLY_MS = 10000, EARLY_BEAT = 3000;
+const RESEND_MS = 2500;
 const FTS = [2, 3, 5, 10];
 const HASH = /^[0-9a-f]{32}$/;
 
@@ -154,8 +160,13 @@ function Matcher(d) {
                 else { m.skips.set(x.h, now + SKIP_MS); d.send({ t: 'no', id: x.id, why: 'timeout' }); requeue('them'); }
             } else if (x.stage === 'starting') { m.skips.set(x.h, now + SKIP_MS); requeue('nostart'); }
         }
+        // (resends: the offer until answered, "ready" until the match starts)
+        const y = m.match;
+        if (y && y.stage === 'offered' && y.asker && now - (y.sentAt || 0) >= RESEND_MS) { y.sentAt = now; d.send({ t: 'offer', to: y.h, id: y.id }); }
+        if (y && y.meReady && (y.stage === 'found' || y.stage === 'starting') && now - (y.readyAt || 0) >= RESEND_MS) { y.readyAt = now; d.send({ t: 'ready', id: y.id }); }
         if (!m.queue) return;
-        if (now - m.lastBeat >= BEAT) { m.lastBeat = now; d.send({ t: 'q', ch: m.queue.ch, mode: m.queue.mode, ft: m.queue.ft }); }
+        const beat = now - m.queue.since < EARLY_MS ? EARLY_BEAT : BEAT;
+        if (now - m.lastBeat >= beat) { m.lastBeat = now; d.send({ t: 'q', ch: m.queue.ch, mode: m.queue.mode, ft: m.queue.ft }); }
         if (m.match) return;
         // ask the best fit, if we're the asker of that pair
         let best = null, bestScore = -Infinity;
@@ -166,7 +177,7 @@ function Matcher(d) {
             if (s > bestScore || (s === bestScore && best && h < best.h)) { best = e; bestScore = s; }
         });
         if (best) {
-            m.match = { id: newId(), h: best.h, ch: m.queue.ch, mode: m.queue.mode, ft: m.queue.ft, asker: true, stage: 'offered', meReady: false, themReady: false, until: now + OFFER_MS };
+            m.match = { id: newId(), h: best.h, ch: m.queue.ch, mode: m.queue.mode, ft: m.queue.ft, asker: true, stage: 'offered', meReady: false, themReady: false, until: now + OFFER_MS, sentAt: now };
             d.send({ t: 'offer', to: best.h, id: m.match.id });
         }
     };
@@ -190,6 +201,8 @@ function Matcher(d) {
         }
         if (msg.t === 'offer') {
             if (msg.to !== d.myHash()) return;
+            // the same offer again (our "ok" got lost): say ok again, it's not a second match-up
+            if (x && x.id === msg.id && x.h === msg.h && !x.asker) { if (x.stage === 'found' || x.stage === 'starting') d.send({ t: 'ok', id: msg.id }); return; }
             const e = m.entries.get(msg.h);
             const open = m.queue && !x && e && sameQueue(e) && !skipped(msg.h) && !asks(d.myHash(), msg.h);
             // (3.13.1: free, but outside your filters: say so, so their screen can tell them)
@@ -211,6 +224,8 @@ function Matcher(d) {
                 return;
             }
             if (x.stage === 'found') {
+                // (an older Fightcord answers our repeated offer with "busy": it means "already on it", not no)
+                if (msg.why === 'busy') return;
                 // their clock ran out first, and you hadn't accepted either: you're the one out, not them
                 if (msg.why === 'timeout' && !x.meReady) { m.queue = null; d.send({ t: 'bye' }); end('timeout'); return; }
                 m.skips.set(x.h, now + SKIP_MS);
@@ -224,6 +239,7 @@ function Matcher(d) {
         const x = m.match;
         if (!x || x.stage !== 'found' || x.meReady) return;
         x.meReady = true;
+        x.readyAt = d.now();
         d.send({ t: 'ready', id: x.id });
         // the one who doesn't ask takes that one challenge from now on (it can come before their "ready")
         if (!x.asker) d.arm(x);

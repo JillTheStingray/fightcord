@@ -66,6 +66,7 @@ test('messages: clean, fresh, and signed by the ID that sent them', () => {
 // two (or three) Fightcords on a fake relay, with a fake clock
 function world() {
     let t = 1793900000000;
+    let drop = null;                               // (msg) -> true: the relay loses it
     const peers = [];
     const log = [];
     function peer(h, o) {
@@ -73,7 +74,7 @@ function world() {
         Object.assign(p, o || {});
         p.m = M.Matcher({
             now: () => t, myHash: () => h,
-            send: (msg) => { const out = Object.assign({ h }, msg); log.push(out); peers.forEach(q => { if (q !== p) q.m.receive(out); }); },
+            send: (msg) => { const out = Object.assign({ h }, msg); log.push(out); if (drop && drop(out)) return; peers.forEach(q => { if (q !== p) q.m.receive(out); }); },
             fits: (e) => p.fits(e), why: (e) => (p.why ? p.why(e) : (p.fits(e) ? '' : 'filter')), score: () => 1,
             found: (x) => p.events.push('found'), update: () => {}, done: (x, why) => p.events.push('done:' + why),
             toast: (k) => p.events.push('toast:' + k),
@@ -83,7 +84,7 @@ function world() {
         peers.push(p);
         return p;
     }
-    return { peer, log, step: (ms) => { t += ms; peers.forEach(p => p.m.tick()); }, now: () => t };
+    return { peer, log, drop: (f) => { drop = f; }, step: (ms) => { t += ms; peers.forEach(p => p.m.tick()); }, now: () => t };
 }
 
 test('both accept: one challenge with the right FT, and the other side takes it', () => {
@@ -297,4 +298,53 @@ test('misfit names the reason', () => {
     assert.equal(M.misfit(me, q, u({ away: true })), 'away');
     assert.equal(M.misfit(me, q, u({ channels: [] })), 'channel');
     assert.equal(M.misfit(me, Object.assign({}, q, { mode: 'ranked', ft: 3 }), u()), 'queue');
+});
+
+// 3.14.2: relays lose messages; one lost offer / ok / ready used to end the match-up
+const lose = (t, n) => { let left = n; return (m) => m.t === t && left-- > 0; };
+for (const [what, t] of [['the offer', 'offer'], ['the ok', 'ok'], ['a ready', 'ready']]) {
+    test('a lost message (' + what + ') is sent again, and both still get the match', () => {
+        const w = world();
+        const a = w.peer(H('a')), b = w.peer(H('b'));
+        w.drop(lose(t, 1));
+        a.m.join({ ch: 'sfiii3nr1', mode: 'ranked', ft: 3 });
+        b.m.join({ ch: 'sfiii3nr1', mode: 'ranked', ft: 3 });
+        for (let i = 0; i < 4; i++) w.step(1000);
+        assert.ok(a.m.match && b.m.match, 'both in the match-up');
+        assert.equal(a.m.match.stage, 'found');
+        assert.equal(b.m.match.stage, 'found');
+        assert.equal(a.m.match.id, b.m.match.id, 'one match-up, not two');
+        a.m.accept(); b.m.accept();
+        for (let i = 0; i < 4; i++) w.step(1000);
+        assert.deepEqual(a.challenges, [{ ft: 3, to: H('b') }]);
+        assert.equal(a.m.match.stage, 'starting');
+        assert.equal(b.m.match.stage, 'starting');
+        assert.ok(!a.events.some(e => /^done|^toast/.test(e)) && !b.events.some(e => /^done|^toast/.test(e)), a.events.concat(b.events).join());
+    });
+}
+
+test('the first q goes out again within seconds (the relays are still opening when you press Search)', () => {
+    const w = world();
+    const a = w.peer(H('a')), b = w.peer(H('b'));
+    w.drop(lose('q', 2));                          // both first beats lost
+    a.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    b.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    for (let i = 0; i < 4; i++) w.step(1000);
+    assert.ok(a.m.match && a.m.match.stage === 'found', 'matched in seconds, not after the 15 s beat');
+    const qs = w.log.filter(m => m.t === 'q' && m.h === H('a')).length;
+    w.step(30000);
+    assert.ok(w.log.filter(m => m.t === 'q' && m.h === H('a')).length - qs <= 3, 'back to the slow beat after the first seconds');
+});
+
+test('an older Fightcord answering our repeated offer with busy doesn’t end the match-up', () => {
+    const w = world();
+    const a = w.peer(H('a')), b = w.peer(H('b'));
+    a.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    b.m.join({ ch: 'sfiii3nr1', mode: 'casual' });
+    w.step(1000);
+    const id = a.m.match.id;
+    a.m.receive({ t: 'no', h: H('b'), id, why: 'busy' });
+    assert.ok(a.m.match && a.m.match.stage === 'found', 'still on');
+    a.m.receive({ t: 'no', h: H('b'), id, why: 'declined' });
+    assert.equal(a.m.match, null, 'a real no still ends it');
 });

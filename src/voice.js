@@ -26,7 +26,11 @@ const E = (s) => fc.fmt.esc(s);
 const N_ = (s) => s;
 const lc = (s) => String(s || '').toLowerCase();
 
-const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+// 3.14.2: nos.lol answers EOSE but forwards no event (no OK either), and damus refuses some IPs, which left
+// primal alone and matchmaking broken. These four forwarded ephemeral events in about a second (2026-11-08).
+// The first three stay so Fightcords up to 3.14.1 (those three only) still hear and are heard.
+const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net',
+    'wss://relay.snort.social', 'wss://relay.nostr.net', 'wss://offchain.pub', 'wss://nostr.oxtr.dev'];
 const KIND = 25050;                       // ephemeral: relays forward it, never store it
 const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }];
 const HOTKEY = 'CommandOrControl+Shift+M';
