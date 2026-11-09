@@ -1637,6 +1637,29 @@ const emuDir = () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator',
 // Fightcade's emulators, by process name (a running one = a match / training / replay)
 const EMU_PROCS = /fcadefbneo|flycast|ggpofba|fcadesnes|fcv39|duckstation/;
 let emuRunAt = 0, emuRunVal = null;
+// A process list to search, or null when we can't get one. Windows asks tasklist; Linux and
+// macOS read /proc (the Linux client runs the emulator through Wine, so its .exe path shows in
+// the command line) and fall back to ps. No shell, so a path with spaces is no problem.
+function procList(cb) {
+    let cp = null;
+    try { cp = require('child_process'); } catch (e) { cb(null); return; }
+    if (typeof process !== 'undefined' && process.platform === 'win32') {
+        cp.exec('tasklist /fo csv /nh', { timeout: 8000, windowsHide: true }, (e, out) => cb(e ? null : String(out)));
+        return;
+    }
+    try {
+        if (fs.existsSync('/proc')) {
+            const lines = [];
+            fs.readdirSync('/proc').forEach((pid) => {
+                if (!/^\d+$/.test(pid)) return;
+                try { lines.push(fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').replace(/\0/g, ' ')); } catch (e) { /* gone */ }
+            });
+            cb(lines.join('\n'));
+            return;
+        }
+    } catch (e) { /* no /proc: try ps */ }
+    cp.exec('ps -eo args=', { timeout: 8000 }, (e, out) => cb(e ? null : String(out)));
+}
 // "bVidMuteChat 1" in fcadefbneo.ini = the emulator's Mute chat is on
 const iniMutesChat = (text) => /^\s*bVidMuteChat\s+1\s*$/m.test(String(text || ''));
 // 3.14.3: "bVidSaveOverlayFiles 0" -> 1. That's the emulator's "Save Fightcade overlay data to files" (for
@@ -1675,14 +1698,13 @@ const emu = {
     uiDir: () => path.resolve(DIR, '..', '..', '..', '..', '..', 'emulator', 'fbneo', 'ui'),
     PROCS: EMU_PROCS,
     // is an emulator open? -> Promise<true | false | null (can't tell)>; asked at most every 3 s
-    running() {
-        if (now() - emuRunAt < 3000) return Promise.resolve(emuRunVal);
+    // (pass true to ask now, e.g. before restarting Fightcade)
+    running(fresh) {
+        if (!fresh && now() - emuRunAt < 3000) return Promise.resolve(emuRunVal);
         return new Promise((resolve) => {
-            let cp = null;
-            try { cp = require('child_process'); } catch (e) { resolve(null); return; }
-            cp.exec('tasklist /fo csv /nh', { timeout: 8000, windowsHide: true }, (e, out) => {
+            procList((out) => {
                 emuRunAt = now();
-                emuRunVal = e ? null : EMU_PROCS.test(String(out).toLowerCase());
+                emuRunVal = out == null ? null : EMU_PROCS.test(String(out).toLowerCase());
                 resolve(emuRunVal);
             });
         });

@@ -253,9 +253,10 @@ function togglePop(anchor) {
 
 function blockHtml() {
     const rs = results();
+    const fightOk = !(fc.modules.get('fight-stats') && fc.modules.get('fight-stats').supported === false);
     const opt = (k) => `<option value="${k}">${E(T(TYPES[k].label))}</option>`;
     const types = Object.keys(TYPES).filter(k => !isFight(k)).map(opt).join('') +
-        `<optgroup label="${E(T('In 3rd Strike matches'))}">${Object.keys(TYPES).filter(isFight).map(opt).join('')}</optgroup>`;
+        (fightOk ? `<optgroup label="${E(T('In 3rd Strike matches'))}">${Object.keys(TYPES).filter(isFight).map(opt).join('')}</optgroup>` : '');
     const scopes = Object.keys(SCOPES).map(k => `<option value="${k}">${E(T(SCOPES[k]))}</option>`).join('');
     return `<div class="fc-set-title">${E(T('Training goals'))} <small>— ${E(T('days and sessions run 5 AM to 5 AM'))}</small></div>
         ${rs.length ? `<div class="fcglList">${rs.map(({ g, r }) => `<div class="fcglRow${r.done ? ' done' : ''}">${fc.ui.ring(r.frac, { size: 36, stroke: 4, color: r.done ? 'var(--fc-success)' : 'var(--fc-accent)', label: r.done ? '✓' : Math.round(r.frac * 100) + '%' })}` +
@@ -269,6 +270,7 @@ function blockHtml() {
             <input class="fc-input" type="number" min="10" max="100" value="60" data-f="rate" title="${E(T('Win rate %'))}" hidden>
             <select class="fc-select" data-f="scope">${scopes}</select>${fc.ui.btn('Add', { kind: 'success', size: 'sm', icon: 'plus', act: 'add' })}</div>
         <div class="fc-note fcglFight" hidden>${E(T('3rd Strike only. Fightcord counts these during your matches by reading the game from outside, like a stream overlay. It only reads, so it can’t change the game or cause a desync.'))}</div>
+        ${fightOk ? '' : `<div class="fc-note">${E(T('3rd Strike goals need Windows PowerShell, so they can’t be counted here.'))}</div>`}
         ${fightStatus()}
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Pop-up when a goal is done'))}</b><small>${E(T('With a chime'))}</small></span><input type="checkbox" class="fc-switch-in" data-opt="notify"${cfg.notify ? ' checked' : ''}><i class="fc-switch"></i></label>
         <label class="fc-field"><span class="fc-field-text"><b>${E(T('Ring by the session pill'))}</b></span><input type="checkbox" class="fc-switch-in" data-opt="pill"${cfg.pill ? ' checked' : ''}><i class="fc-switch"></i></label>
@@ -302,6 +304,7 @@ const wantsFight = () => !!(cfg && cfg.goals.some(g => isFight(g.type)));
 function fightStatus() {
     if (!wantsFight()) return '';
     const m = fc.modules.get('fight-stats');
+    if (m && m.supported === false) return `<div class="fc-note fcglWarn">${E(T('3rd Strike goals need Windows PowerShell, so they can’t be counted here.'))}</div>`;
     const st = m && m.status ? m.status() : null;
     if (!st) return `<div class="fc-note">${E(T('Parries and the rest are counted from your next 3rd Strike match.'))}</div>`;
     if (st.ok && st.msg === 'counted' && !st.n && st.rounds) {

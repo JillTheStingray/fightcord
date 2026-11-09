@@ -60,12 +60,36 @@
     } catch (e) {}
   }
 
-  var TASKLIST = (function () {
-    var root = (process && process.env && process.env.SystemRoot) ? process.env.SystemRoot : 'C:\\Windows';
-    return '"' + root + '\\System32\\tasklist.exe"';
-  })();
+  // Fightcade's emulators, by process name. On Linux/macOS the emulator runs through Wine,
+  // so its Windows .exe name is still in the command line we read from /proc (or ps).
+  var EMULATOR_PROCS = /fcadefbneo|flycast|fcadesnes9x|ggpofba|fcv39|duckstation/;
 
-  var EMULATOR_EXES = ['fcadefbneo.exe', 'flycast.exe', 'fcadesnes9x.exe', 'ggpofba-ng.exe', 'fcv39.exe'];
+  // Command lines of every process, or null when we can't tell. Windows asks tasklist;
+  // Linux/macOS read /proc and fall back to ps.
+  function procList(cb) {
+    if (!cp) { cb(null); return; }
+    if (typeof process !== 'undefined' && process.platform === 'win32') {
+      var root = (process.env && process.env.SystemRoot) ? process.env.SystemRoot : 'C:\\Windows';
+      cp.exec('"' + root + '\\System32\\tasklist.exe" /fo csv /nh', { timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, function (err, stdout) {
+        cb(err ? null : String(stdout));
+      });
+      return;
+    }
+    try {
+      if (fsm && fsm.existsSync('/proc')) {
+        var pids = fsm.readdirSync('/proc'), lines = [];
+        for (var i = 0; i < pids.length; i++) {
+          if (!/^\d+$/.test(pids[i])) continue;
+          try { lines.push(fsm.readFileSync('/proc/' + pids[i] + '/cmdline', 'utf8').replace(/\0/g, ' ')); } catch (e) { /* gone */ }
+        }
+        cb(lines.join('\n'));
+        return;
+      }
+    } catch (e) { /* no /proc: try ps */ }
+    cp.exec('ps -eo args=', { timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, function (err, stdout) {
+      cb(err ? null : String(stdout));
+    });
+  }
 
   var rpc        = null;
   var rpcReady   = false;
@@ -130,15 +154,8 @@
     var now = Date.now();
     if (now - procCache.at < PROC_CACHE_MS) { cb(procCache.open); return; }
 
-    cp.exec(TASKLIST + ' /fo csv /nh', { timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, function (err, stdout) {
-      var open = false;
-      if (!err && stdout) {
-        var lines = stdout.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-          var m = /^"([^"]+)"/.exec(lines[i].trim());
-          if (m && EMULATOR_EXES.indexOf(m[1].toLowerCase()) !== -1) { open = true; break; }
-        }
-      }
+    procList(function (out) {
+      var open = out != null && EMULATOR_PROCS.test(String(out).toLowerCase());
       procCache = { at: Date.now(), open: open };
       cb(open);
     });

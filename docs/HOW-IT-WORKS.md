@@ -1,7 +1,8 @@
 # Fightcord
 
 Discord-style Fightcade, as one installer: **`dist\FightcordSetup.exe`** (about 650 KB, no other
-downloads, runs on any Windows 10/11).
+downloads, runs on any Windows 10/11). On Linux the same files ship as
+**`dist/fightcord-<version>-linux.tar.gz`** with `install.sh`; see `docs/LINUX.md`.
 
 ## What it installs
 
@@ -53,6 +54,12 @@ single plugins.
 Command line (used for testing):
 `FightcordSetup.exe --root=<Fightcade folder> --install | --uninstall [--restore] [--log=<file>]`
 
+On Linux, `installer/linux/install.sh` does the same with the same options (`--install`,
+`--uninstall`, `--restore`, `--root=`, `--log=`, plus `--yes`/`--force`). It finds the official
+tarball or a running Fightcade, backs up another loader, migrates settings, and restores the
+emulator UI on uninstall. The Flatpak build is read-only, so it explains that instead of modifying
+it (see `docs/LINUX.md`).
+
 ## Settings and updates
 
 Everything is configured in one Discord-style screen: **Ctrl+,**, the gear in the Discover sidebar,
@@ -88,5 +95,9 @@ Collects the plugins, `node --check`s them, strips native-build leftovers from `
 resource and compiles `installer\FightcordSetup.cs` with the .NET Framework 4 C# compiler that
 ships with Windows (C# 5, so no newer syntax). The .cs file is kept ASCII-only.
 `installer\make_icon.py` redraws the icon (needs Pillow).
+
+On Linux, `./build.sh` reads the same plugin list (`build.ps1`) and version
+(`FightcordSetup.cs`), runs the same checks and tests, and writes the Linux tarball. `--release`
+also writes the in-app update zip and `latest.json`.
 
 Bump the version in `installer\FightcordSetup.cs` (`Version` + the assembly attributes).

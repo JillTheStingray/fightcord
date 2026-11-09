@@ -291,7 +291,7 @@ function paneHtml(id) {
         return `<h2>${ET('About')}</h2>
             <p class="lead">${ET('Fightcord turns Fightcade into something that looks and works like Discord: the theme, chat, member list, search tab, match screens, stats and your Discord status. Fightcord isn’t made by or affiliated with Fightcade or Discord.')}</p>
             <div class="fcordBtns">${fc.ui.btn('GitHub page', { kind: 'sec', icon: 'link', act: 'repo' })}${fc.ui.btn('Open Fightcord folder', { kind: 'sec', icon: 'copy', act: 'folder' })}</div>
-            <p class="lead small">${ET('Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.')}</p>`;
+            <p class="lead small">${ET('Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup in fightcord-backup next to it; Uninstall can put it back.')}</p>`;
     }
     const sec = fc.settings.sections().find(s => s.id === id);
     return `<h2>${ET(sec ? sec.label : id)}</h2>`;
@@ -588,25 +588,22 @@ function openExternal(target) {
 
 // Relaunch the app -- never while an emulator (a match) is running
 function restartFightcade(popup) {
-    let busyGame = false;
-    try {
-        const out = require('child_process').execSync('tasklist /fo csv /nh', { timeout: 8000 }).toString().toLowerCase();
-        busyGame = fc.emu.PROCS.test(out);
-    } catch (e) { /* can't tell: be careful */ busyGame = false; }
-    if (busyGame) {
-        note('restart', T('A match is running — restart after it.'));
-        if (popup) fc.ui.toast(T('A match is running — restart after it.'), { icon: 'refresh', kind: 'warning' });
-        return;
-    }
-    fc.config.flush();
-    try {
-        const { remote } = require('electron');
-        remote.app.relaunch();
-        remote.app.exit(0);
-    } catch (e) {
-        note('restart', T('Close Fightcade from its tray icon (Quit) and open it again.'));
-        if (popup) fc.ui.toast(T('Close Fightcade from its tray icon (Quit) and open it again.'), { icon: 'refresh' });
-    }
+    fc.emu.running(true).then((busyGame) => {
+        if (busyGame === true) {
+            note('restart', T('A match is running — restart after it.'));
+            if (popup) fc.ui.toast(T('A match is running — restart after it.'), { icon: 'refresh', kind: 'warning' });
+            return;
+        }
+        fc.config.flush();
+        try {
+            const { remote } = require('electron');
+            remote.app.relaunch();
+            remote.app.exit(0);
+        } catch (e) {
+            note('restart', T('Close Fightcade from its tray icon (Quit) and open it again.'));
+            if (popup) fc.ui.toast(T('Close Fightcade from its tray icon (Quit) and open it again.'), { icon: 'refresh' });
+        }
+    });
 }
 
 /* ----------------------------------------------- Fightcade's settings page */

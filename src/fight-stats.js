@@ -27,6 +27,10 @@ const KINDS = ['parry', 'red', 'super', 'perfect'];
 const KEEP_MS = 9 * 86400000;          // a week of goals + a bit
 const MAX_EVENTS = 6000;
 const IS_3S = /^sfiii3/i;              // sfiii3nr1, sfiii3, sfiii3n ...
+// The reader compiles C# with the Windows PowerShell that ships with Windows. On Linux and
+// macOS there is no equivalent (and the emulator runs inside Wine), so the feature stays off
+// and the goals screen says so instead of silently counting nothing.
+const SUPPORTED = typeof process !== 'undefined' && process.platform === 'win32';
 
 /* ---------------------------------------------------------------- the maths */
 
@@ -317,6 +321,7 @@ function endMatch() {
 }
 
 function wanted() {
+    if (!SUPPORTED) return false;
     if (!cfg.enabled) return false;
     const g = fc.modules.get('goals');
     return !!(g && g.wantsFight && g.wantsFight());
@@ -431,6 +436,7 @@ const api = {
     events: () => (cfg ? cfg.events.slice() : []),
     status: () => (cfg ? cfg.status : null),
     running: () => !!child,
+    supported: SUPPORTED,
     // 3.14.3: for Settings -> Diagnostics -> Copy debug info
     diag: () => {
         if (!cfg) return [];
@@ -448,5 +454,5 @@ const api = {
     _end: () => endMatch()
 };
 
-module.exports = { id: 'fight-stats', name: 'Fight stats', start, count, prune, parseLine, sideOf, KINDS, IS_3S };
+module.exports = { id: 'fight-stats', name: 'Fight stats', start, count, prune, parseLine, sideOf, KINDS, IS_3S, supported: SUPPORTED };
 Object.keys(api).forEach(k => { if (!(k in module.exports)) Object.defineProperty(module.exports, k, Object.getOwnPropertyDescriptor(api, k)); });

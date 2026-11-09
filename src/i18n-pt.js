@@ -524,7 +524,7 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "From github.com/{repo} (Releases). Plugin files only; a new installer is only needed if its dependencies change.": "De github.com/{repo} (Releases). Só os arquivos dos plugins; um instalador novo só é necessário se as dependências mudarem.",
     "Every Fightcord setting in one file: theme, friends, notes, filters, member list, music choice… (Not the match history or your music files — those stay in the Fightcord folder.)": "Todas as configurações do Fightcord num só arquivo: tema, amigos, notas, filtros, lista de membros, música escolhida… (Não inclui o histórico de partidas nem seus arquivos de música — eles ficam na pasta do Fightcord.)",
     "Fightcord turns Fightcade into something that looks and works like Discord: the theme, chat, member list, search tab, match screens, stats and your Discord status. Fightcord isn’t made by or affiliated with Fightcade or Discord.": "O Fightcord transforma o Fightcade em algo com a cara e o jeito do Discord: o tema, o chat, a lista de membros, a aba de busca, as telas de partida, as estatísticas e o seu status no Discord. O Fightcord não é feito pelo Fightcade nem pelo Discord, nem tem ligação com eles.",
-    "Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup in fightcord-backup next to it; FightcordSetup.exe → Uninstall can put it back.": "Configurações, histórico de partidas e sons ficam na pasta do Fightcord. O instalador guarda a sua configuração anterior em fightcord-backup ao lado; FightcordSetup.exe → Desinstalar pode trazê-la de volta.",
+    "Settings, match history and sounds are kept in the Fightcord folder. The installer keeps your previous setup in fightcord-backup next to it; Uninstall can put it back.": "Configurações, histórico de partidas e sons ficam na pasta do Fightcord. O instalador guarda a sua configuração anterior em fightcord-backup ao lado; Desinstalar pode trazê-la de volta.",
     "Safe mode: only the settings are running. Restart Fightcade to start normally.": "Modo seguro: só as configurações estão rodando. Reinicie o Fightcade para iniciar normalmente.",
     "old-style plugin": "plugin antigo",
     "Not found (a Fightcade update may have changed these): {list}": "Não encontrado (uma atualização do Fightcade pode ter mudado isso): {list}",
@@ -2713,5 +2713,6 @@ module.exports = { id: 'i18n-pt', name: "Português (Brasil)", start() {}, strin
     "Latest sets": "Últimos sets",
     "{name} and {n} other joined the lobby": "{name} e mais {n} pessoa entraram no lobby",
     "{name} and {n} others joined the lobby": "{name} e mais {n} pessoas entraram no lobby",
-    "Join them": "Entrar com eles"
+    "Join them": "Entrar com eles",
+    "3rd Strike goals need Windows PowerShell, so they can’t be counted here.": "Metas de 3rd Strike precisam do Windows PowerShell, então não podem ser contadas aqui."
 } };

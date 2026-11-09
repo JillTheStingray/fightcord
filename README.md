@@ -37,6 +37,26 @@ walks you through the rest.
   restart once an update is ready, and Settings → Updates shows what's new.
 - **Uninstall:** run the installer again → Uninstall. Your settings are kept in a backup folder.
 
+### Linux
+
+Fightcade for Linux (the official tarball) runs the same Electron app, so Fightcord works there
+too. Download **`fightcord-<version>-linux.tar.gz`** from the [latest release](https://github.com/JillTheStingray/fightcord/releases/latest), then:
+
+```sh
+tar xzf fightcord-<version>-linux.tar.gz
+cd fightcord-<version>-linux
+./install.sh --install
+```
+
+The script finds Fightcade (or takes `--root=<folder>`), closes nothing behind your back, keeps the
+previous setup in `fightcord-backup/`, and uninstalls with `./install.sh --uninstall`
+(`--restore` puts the previous setup back). Updates still arrive inside Fightcade.
+
+The **Flatpak** build is read-only and cannot take mods yet: `install.sh` explains this instead of
+failing halfway. See [docs/LINUX.md](docs/LINUX.md) for the Flatpak status, what differs on Linux
+(emulator detection and Discord status are ported; the 3rd Strike fight-stats reader is Windows-only
+for now) and how to build the Linux release.
+
 ## What you get
 
 **The look**
@@ -221,6 +241,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 This installs the Discord-status library (`rpc/`, npm), syntax-checks everything, runs the tests
 and writes `dist\FightcordSetup.exe`. `-Release` also writes the update zip and `latest.json`.
+
+On Linux, `./build.sh` does the same job (no C# compiler needed) and writes
+`dist/fightcord-<version>-linux.tar.gz` with `installer/linux/install.sh`; `--release` also writes
+the update zip and `latest.json`. See [docs/LINUX.md](docs/LINUX.md).
 
 | Folder | What's in it |
 |---|---|
