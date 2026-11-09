@@ -96,7 +96,7 @@ resource and compiles `installer\FightcordSetup.cs` with the .NET Framework 4 C#
 ships with Windows (C# 5, so no newer syntax). The .cs file is kept ASCII-only.
 `installer\make_icon.py` redraws the icon (needs Pillow).
 
-On Linux/macOS, `./build.sh` reads the same plugin list (`build.ps1`) and version
+On Linux, `./build.sh` reads the same plugin list (`build.ps1`) and version
 (`FightcordSetup.cs`), runs the same checks and tests, and writes the Linux tarball. `--release`
 also writes the in-app update zip and `latest.json`.
 

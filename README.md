@@ -242,7 +242,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 This installs the Discord-status library (`rpc/`, npm), syntax-checks everything, runs the tests
 and writes `dist\FightcordSetup.exe`. `-Release` also writes the update zip and `latest.json`.
 
-On Linux or macOS, `./build.sh` does the same job (no C# compiler needed) and writes
+On Linux, `./build.sh` does the same job (no C# compiler needed) and writes
 `dist/fightcord-<version>-linux.tar.gz` with `installer/linux/install.sh`; `--release` also writes
 the update zip and `latest.json`. See [docs/LINUX.md](docs/LINUX.md).
 

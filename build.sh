@@ -10,7 +10,7 @@
 #   dist/latest.json                      ({version, zip, sha256, notes, setup, linux})
 #
 # The version lives in installer/FightcordSetup.cs, like build.ps1. The Windows build is
-# unchanged: run this on Linux/macOS, build.ps1 on Windows.
+# unchanged: run this on Linux, build.ps1 on Windows.
 #
 # Run: ./build.sh [--release] [--notes "what changed" | --notes-file notes.md]
 
