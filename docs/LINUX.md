@@ -59,12 +59,14 @@ folder is not one of them. `install.sh` detects this and says so instead of fail
 
 Making it work needs a change in the Flathub packaging (a separate repository):
 
-1. symlink `fc2-electron/resources/app/inject` to writable storage under `/var/data/` (the
-   directory Flatpak keeps across updates), and
-2. create that directory when the app starts, before Electron loads `inject.js`.
+1. symlink `fc2-electron/resources/app/inject` to `/var/data/inject` (the directory Flatpak keeps
+   across updates) and `emulator/fbneo/ui` to `/var/data/ui`, and
+2. create those directories when the app starts, seeding `ui` from the shipped artwork.
 
 The installer already understands that layout: once `inject/` is writable it installs into it the
-same way as into the tarball. Until then, use the official tarball.
+same way as into the tarball, and it maps `/var/data/...` to
+`~/.var/app/com.fightcade.Fightcade/data/...` because a host process can't follow the Flatpak's
+`/var/data`. Until then, use the official tarball.
 
 ## Build
 
