@@ -108,7 +108,8 @@ test('the reader compiles (Windows PowerShell)', { skip: process.platform !== 'w
 });
 
 // 3.11.1: the emulator closes at the end of every set; a reader that counted and then exits isn't a failure
-test('a reader that worked and then exits is not reported as a failure', () => {
+// (the reader is Windows-only: on Linux/macOS fight-stats is off by design)
+test('a reader that worked and then exits is not reported as a failure', { skip: process.platform !== 'win32' }, () => {
     const EventEmitter = require('events');
     const cpMod = require('child_process');
     const realSpawn = cpMod.spawn;
