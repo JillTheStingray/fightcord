@@ -173,10 +173,21 @@ function editMatchup(rom, ch, rect, as) {
     // 3.5: the matchup guide's page on this character, above your own note
     const mg = fc.modules.get('matchup-guide');
     const guide = mg ? mg.cardHtml(rom, ch, as || myMain(rom)) : '';
+    // 3.16: a trial for this matchup (trials.js): practise it offline in Fightcade's training mode
+    const tr = fc.modules.get('trials'), trial = tr && tr.forMatchup ? tr.forMatchup(rom, canon(rom, ch))[0] : null;
+    const tres = trial && tr.result ? tr.result(trial.id) : null;
+    // 3.16: the same in a window of its own (matchup-window.js), to keep open during matches
+    const mw = fc.modules.get('matchup-window');
+    const trialHtml = trial ? `<div class="ntTrial">${fc.ui.ic('target')}<div class="tx"><b>${E(T(trial.title))}</b><span>${E(tres && tres.best
+        ? T('Best {best} in a row of {goal}', { best: tres.best, goal: trial.goal }) + (tres.passed ? ' · ' + T('cleared') : '')
+        : T('Offline, in training mode: the dummy plays {char}', { char: trial.opp }))}</span></div>` +
+        fc.ui.btn('Practice', { size: 'sm', icon: 'play', act: 'practice', title: T(trial.hint) }) + '</div>' : '';
     box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Matchup notes vs {char}', { char: ch }), sub: r.w || r.l ? E(T('Your record: {wl}', { wl: fc.fmt.wl(r) })) : '' }) +
-        `<div class="fc-pb">${guide ? `<div class="ntGuide">${guide}</div><small class="ntMine">${E(T('Your note'))}</small>` : ''}` +
+        `<div class="fc-pb">${guide ? `<div class="ntGuide">${guide}</div>${trialHtml}<small class="ntMine">${E(T('Your note'))}</small>` : trialHtml}` +
         `<textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea></div>` +
-        fc.ui.popFoot(E(T('Shown when you face {char}', { char: ch })), fc.ui.btn('Save', { size: 'sm', act: 'save' }));
+        fc.ui.popFoot(E(T('Shown when you face {char}', { char: ch })),
+            (mw ? fc.ui.btn('Pop out', { size: 'sm', kind: 'sec', icon: 'expand', act: 'popout', title: T('Keep this in its own window next to the game, even during matches') }) : '') +
+            fc.ui.btn('Save', { size: 'sm', act: 'save' }));
     const save = () => { setMatchup(rom, ch, box.querySelector('textarea').value); closeEditor(); };
     box.addEventListener('keydown', (e) => {
         e.stopPropagation();
@@ -187,6 +198,13 @@ function editMatchup(rom, ch, rect, as) {
         const src = e.target.closest('.fc-mu-src');
         if (src) { e.preventDefault(); try { window.open(src.href, '_blank'); } catch (er) { /* ignore */ } return; }
         if (e.target.closest('[data-act="save"]')) save();
+        if (e.target.closest('[data-act="practice"]') && trial) { closeEditor(); tr.start(trial.id, rom); }
+        if (e.target.closest('[data-act="popout"]') && mw) {
+            // (what you typed here isn't lost: it's saved first, and the window shows it)
+            const t = box.querySelector('textarea').value;
+            if (t.trim() !== (cur ? cur.text : '')) setMatchup(rom, ch, t);
+            closeEditor(); mw.open(rom, ch, as || myMain(rom));
+        }
     });
     const w = guide ? 400 : 320;
     const at = rect || { left: window.innerWidth / 2 - w / 2, right: window.innerWidth / 2 - w / 2, top: window.innerHeight / 5, bottom: window.innerHeight / 5, width: 0, height: 0 };
@@ -470,7 +488,15 @@ const CSS = `
 #ntEdit textarea { width: 100%; height: 80px; padding: 8px 10px; resize: none; line-height: 1.4; }
 #ntEdit .ntGuide { max-height: 46vh; overflow-y: auto; margin: 0 -4px 10px; padding: 10px 12px; border-radius: var(--fc-r3); background: var(--fc-s1, rgba(0,0,0,.2)); }
 #ntEdit .ntMine { display: block; margin-bottom: 4px; color: var(--fc-muted); font-size: var(--fc-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
-#ntEdit .ntGuide + .ntMine + textarea { height: 64px; }
+#ntEdit .ntGuide + .ntMine + textarea, #ntEdit .ntTrial + .ntMine + textarea { height: 64px; }
+/* 3.16: the matchup's trial */
+#ntEdit .ntTrial { display: flex; align-items: center; margin: 0 -4px 10px; padding: 8px 10px; border-radius: var(--fc-r3);
+    background: var(--fc-accent-soft); box-shadow: inset 3px 0 0 var(--fc-accent); }
+#ntEdit .ntTrial > .fc-ic { flex: none; width: 18px; height: 18px; margin-right: 10px; color: var(--fc-accent); }
+#ntEdit .ntTrial .tx { flex: 1; min-width: 0; }
+#ntEdit .ntTrial b { display: block; color: var(--fc-head); font-size: var(--fc-fs-ui); }
+#ntEdit .ntTrial span { display: block; color: var(--fc-muted); font-size: var(--fc-fs-xs); }
+#ntEdit .ntTrial .fc-btn { flex: none; margin-left: 10px; }
 #ntEdit .f { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: var(--fc-fs-sm); }
 .ntTagRow .fc-input[type="text"] { width: 180px; margin-left: 8px; height: 30px; }
 .ntTagRow .fc-color { height: 30px; }

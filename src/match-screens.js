@@ -566,7 +566,7 @@ function trackEmu(m) {
     m.chars = charStep(m.chars, s);
     if (s.theirs.char && s.theirs.char !== m.oppCharSeen) {
         m.oppCharSeen = s.theirs.char;
-        fc.emit('match:character', { quark: m.quark, opp: m.opp, rom: m.rom || e.rom || '', char: s.theirs.char });
+        fc.emit('match:character', { quark: m.quark, opp: m.opp, rom: m.rom || e.rom || '', char: s.theirs.char, mine: s.mine.char || '' });
     }
     m.emuScore = { mine: s.mine.score, theirs: s.theirs.score };
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.16.0
+
+- **Matchup trials (first one: parry Chun-Li's cr.MK):** practise a matchup offline. In the Matchups tab, Chun-Li's
+  guide has a Practice button that opens Fightcade's own 3rd Strike training mode with a dummy that picks Chun-Li by
+  itself and pokes with cr.MK at random moments. Parry 5 in a row to clear it. The count shows on screen, and
+  Fightcord keeps your best. Normal training mode isn't changed: the trial only runs when you start it from Fightcord.
+- **Matchup notes in their own window (asked for by Mushn1k):** Pop out in a matchup's notes keeps the guide and
+  your note in a small window of its own, to put next to the emulator during matches. It switches to your
+  opponent's character when they pick one, stays on top of the game (both can be turned off), lets you write your
+  note mid-set, and comes back where you left it after Fightcade restarts.
+
 ## 3.15.0
 
 - **Names in the game picture:** in your FBNeo matches, each player's name, flag and rank can sit right under the life

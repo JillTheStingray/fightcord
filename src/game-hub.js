@@ -317,13 +317,14 @@ function matchupsHtml() {
         list.map(c => `<option value="${E(c)}"${lc(c) === lc(me) ? ' selected' : ''}>${E(c)}</option>`).join('') + '</select></label>' : '';
     const bar = `<div class="ghBar"><input class="fc-input ghSearch ghMuSearch" placeholder="${ET('Find a character…')}" value="${E(mu.q)}">${asSel}` +
         `<span class="fc-grow"></span><span class="ghMuHint">${ET('Click a character for the guide and your note')}</span></div>`;
+    const tr = mod('trials'), trialFor = (c) => !!(tr && tr.forMatchup && tr.forMatchup(view.rom, c).length);
     const cards = shown.map(c => {
         const note = nt.matchup(view.rom, c), r = nt.matchupRecord(view.rom, c);
         const tip = !note && mg ? mg.tips(view.rom, me, c, 1)[0] : '';
         const rate = r.w + r.l ? r.w / (r.w + r.l) : null;
         return `<div class="ghMu${note ? ' noted' : ''}" data-mu-char="${E(c)}" title="${ET('Matchup notes vs {char}', { char: c })}">` +
             (mg ? mg.faceHtml(view.rom, c, 44) : '') +
-            `<div class="tx"><div class="nm"><b>${E(c)}</b>${r.w || r.l ? `<span class="r ${rate >= 0.5 ? 'good' : 'bad'}">${E(fc.fmt.wl(r))}</span>` : ''}</div>` +
+            `<div class="tx"><div class="nm"><b>${E(c)}</b>${trialFor(c) ? `<span class="tr" title="${ET('Has a practice trial')}">${fc.ui.ic('target')}</span>` : ''}${r.w || r.l ? `<span class="r ${rate >= 0.5 ? 'good' : 'bad'}">${E(fc.fmt.wl(r))}</span>` : ''}</div>` +
             `<span class="n${note ? '' : ' empty'}">${note ? fc.ui.ic('note') : ''}${E(note ? note.text : tip || T('Add a note'))}</span></div></div>`;
     }).join('');
     // a game the guide doesn't know: type any character to start a note
@@ -584,6 +585,8 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghMu .nm { display: flex; align-items: baseline; }
 #ghHub .ghMu .nm b { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; color: var(--fc-head); }
 #ghHub .ghMu .nm .r { flex: none; margin-left: 6px; font-size: var(--fc-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+#ghHub .ghMu .nm .tr { flex: none; margin-left: 6px; color: var(--fc-accent); }
+#ghHub .ghMu .nm .tr .fc-ic { width: 13px; height: 13px; vertical-align: -2px; }
 #ghHub .ghMu .nm .r.good { color: var(--fc-success); } #ghHub .ghMu .nm .r.bad { color: var(--fc-danger); }
 #ghHub .ghMu .n { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px;
     font-size: var(--fc-fs-ui); line-height: 1.35; color: var(--fc-text); }
