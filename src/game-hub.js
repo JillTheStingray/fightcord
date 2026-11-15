@@ -7,6 +7,8 @@
  *   - Replays   recent matches in the game (All / Mine / Friends / Top 100), Watch = Fightcade's replay
  *   - Events    the game's upcoming events first, with countdowns and the reminder bell
  *   - Profile   you or any player: Fightcade's rank, matches and hours, plus Fightcord's own numbers
+ *   - Matchups  (3.15) every character of the game: the matchup guide and your own note, any time (not only
+ *               when you face them), your record against each
  * Everything goes through fc.api (one queue, cache and back-off for all of Fightcord). Each tab
  * keeps a link to the full page on fightcade.com.
  */
@@ -21,7 +23,7 @@ const mod = (id) => fc.modules.get(id);
 const lc = (s) => String(s || '').toLowerCase();
 const shortName = (full) => String(full || '').replace(/\s*\([^)]*\)\s*$/, '');
 
-const TABS = [['rankings', N_('Rankings'), 'trophy'], ['replays', N_('Replays'), 'play'], ['events', N_('Events'), 'clock'], ['profile', N_('Profile'), 'user']];
+const TABS = [['rankings', N_('Rankings'), 'trophy'], ['replays', N_('Replays'), 'play'], ['events', N_('Events'), 'clock'], ['profile', N_('Profile'), 'user'], ['matchups', N_('Matchups'), 'note']];
 const FILTERS = [['all', N_('All')], ['mine', N_('Mine')], ['friends', N_('Friends')], ['top', N_('Top 100')]];
 
 /* --------------------------------------------------------------- pure parts */
@@ -100,6 +102,7 @@ const view = { tab: 'rankings', channel: '', rom: '', links: {}, who: '' };
 const rk = { rows: [], done: false, busy: false, err: '', q: '', rom: '' };
 const rp = { rows: [], done: false, busy: false, err: '', filter: 'all', rom: '' };
 const pf = { name: '', user: null, busy: false, err: '' };
+const mu = { q: '', as: null };                     // the character search, and who you play (null = your most-played)
 let page = null;
 
 function resetFor(rom) {
@@ -284,6 +287,53 @@ function profileHtml() {
     </div>`;
 }
 
+// every character of the game (the guide's list, else the ones in your sets and notes)
+function matchupChars(rom) {
+    const mg = mod('matchup-guide'), nt = mod('notes');
+    const list = mg && mg.charsOf ? mg.charsOf(rom).slice() : [];
+    if (list.length || !nt) return { list, guide: !!list.length };
+    const seen = new Map();
+    const add = (c) => { const n = nt.canon ? nt.canon(rom, c) : c; if (n && !seen.has(lc(n))) seen.set(lc(n), n); };
+    (nt.pickable ? nt.pickable(rom) : []).forEach(add);
+    const cfg = nt._config;
+    if (cfg && cfg.matchups) Object.keys(cfg.matchups).forEach(k => { const m = cfg.matchups[k]; if (m && nt.gameKey && nt.gameKey(m.rom) === nt.gameKey(rom)) add(m.char); });
+    return { list: [...seen.values()].sort((a, b) => a.localeCompare(b)), guide: false };
+}
+function myChar() {
+    const nt = mod('notes');
+    if (mu.as != null) return mu.as;
+    const m = nt && nt.myMain ? nt.myMain(view.rom) : '';
+    return m && nt.canon ? nt.canon(view.rom, m) : m;
+}
+
+function matchupsHtml() {
+    const mg = mod('matchup-guide'), nt = mod('notes');
+    if (!view.rom || !nt) return fc.ui.empty({ icon: 'note', title: 'Open a game channel first', sub: 'The matchups are per game.' });
+    const { list, guide } = matchupChars(view.rom);
+    const q = lc(mu.q).trim(), shown = q ? list.filter(c => lc(c).indexOf(q) >= 0) : list;
+    const me = myChar();
+    const asSel = guide ? `<label class="ghAs"><span>${ET('You play')}</span><select class="fc-input ghAsSel">` +
+        `<option value=""${me ? '' : ' selected'}>${ET('Not set')}</option>` +
+        list.map(c => `<option value="${E(c)}"${lc(c) === lc(me) ? ' selected' : ''}>${E(c)}</option>`).join('') + '</select></label>' : '';
+    const bar = `<div class="ghBar"><input class="fc-input ghSearch ghMuSearch" placeholder="${ET('Find a character…')}" value="${E(mu.q)}">${asSel}` +
+        `<span class="fc-grow"></span><span class="ghMuHint">${ET('Click a character for the guide and your note')}</span></div>`;
+    const cards = shown.map(c => {
+        const note = nt.matchup(view.rom, c), r = nt.matchupRecord(view.rom, c);
+        const tip = !note && mg ? mg.tips(view.rom, me, c, 1)[0] : '';
+        const rate = r.w + r.l ? r.w / (r.w + r.l) : null;
+        return `<div class="ghMu${note ? ' noted' : ''}" data-mu-char="${E(c)}" title="${ET('Matchup notes vs {char}', { char: c })}">` +
+            (mg ? mg.faceHtml(view.rom, c, 44) : '') +
+            `<div class="tx"><div class="nm"><b>${E(c)}</b>${r.w || r.l ? `<span class="r ${rate >= 0.5 ? 'good' : 'bad'}">${E(fc.fmt.wl(r))}</span>` : ''}</div>` +
+            `<span class="n${note ? '' : ' empty'}">${note ? fc.ui.ic('note') : ''}${E(note ? note.text : tip || T('Add a note'))}</span></div></div>`;
+    }).join('');
+    // a game the guide doesn't know: type any character to start a note
+    const add = !guide && q && !list.some(c => lc(c) === q) ? `<div class="ghEmpty">${fc.ui.btn(T('Add a note for “{char}”', { char: mu.q.trim() }), { kind: 'sec', size: 'sm', icon: 'note', act: 'mu-add' })}</div>` : '';
+    if (!list.length && !add) return bar + fc.ui.empty({ icon: 'note', title: 'No characters here yet',
+        sub: 'Fightcord has no guide for this game. Type a character’s name above to write a note, or play a set: the characters you meet show up here.' });
+    if (!shown.length && !add) return bar + `<div class="ghEmpty">${ET('No character called “{q}”.', { q: mu.q.trim() })}</div>`;
+    return bar + (shown.length ? `<div class="ghMuGrid">${cards}</div>` : '') + add;
+}
+
 let shownKey = '';
 function render() {
     if (!page) return;
@@ -291,7 +341,7 @@ function render() {
     page.el.querySelectorAll('.ghTabs [data-tab]').forEach(t => t.classList.toggle('on', t.dataset.tab === view.tab));
     let inner = '';
     try {
-        inner = view.tab === 'replays' ? replaysHtml() : view.tab === 'events' ? eventsHtml() : view.tab === 'profile' ? profileHtml() : rankingsHtml();
+        inner = view.tab === 'replays' ? replaysHtml() : view.tab === 'events' ? eventsHtml() : view.tab === 'profile' ? profileHtml() : view.tab === 'matchups' ? matchupsHtml() : rankingsHtml();
     } catch (e) {
         fc.log.error('game hub ' + view.tab, e);
         inner = fc.ui.empty({ icon: 'warn', title: 'This tab couldn’t load', sub: e.message });
@@ -335,6 +385,8 @@ function onClick(e) {
     if (tab) { showTab(tab.dataset.tab); return; }
     const sc = t.closest('[data-scout]');
     if (sc) { const s = mod('scout'); if (s && s.openCard) s.openCard(sc.dataset.scout, sc.getBoundingClientRect(), 'right'); return; }
+    const muc = t.closest('[data-mu-char]');
+    if (muc) { const nt = mod('notes'); if (nt && nt.editMatchup) nt.editMatchup(view.rom, muc.dataset.muChar, muc.getBoundingClientRect(), myChar()); return; }
     const row = t.closest('.ghRow[data-name]');
     if (row) { view.who = row.dataset.name; showTab('profile'); return; }
     const f = t.closest('[data-filter]');
@@ -360,6 +412,7 @@ function onClick(e) {
     else if (act === 'rp-retry') { rp.rows = []; loadReplays(false); }
     else if (act === 'pf-retry') { const n = pf.name; pf.name = ''; loadProfile(n); }
     else if (act === 'jumpme') jumpToMe();
+    else if (act === 'mu-add') { const nt = mod('notes'); if (nt && nt.editMatchup) nt.editMatchup(view.rom, mu.q.trim(), a.getBoundingClientRect()); }
     else if (act === 'lookup') { view.who = rk.q.trim(); showTab('profile'); }
     else if (act === 'who') { const v = page.body.querySelector('.ghWho').value.trim(); if (v) { view.who = v; pf.name = ''; showTab('profile'); } }
     else if (act === 'challenge') { const ms = mod('match-screens'); if (ms && ms.challenge) ms.challenge(pf.name); }
@@ -368,7 +421,11 @@ function onClick(e) {
 }
 
 function onInput(e) {
-    if (e.target.classList.contains('ghSearch')) { rk.q = e.target.value; render(); }
+    if (e.target.classList.contains('ghMuSearch')) { mu.q = e.target.value; render(); }
+    else if (e.target.classList.contains('ghSearch')) { rk.q = e.target.value; render(); }
+}
+function onChange(e) {
+    if (e.target.classList.contains('ghAsSel')) { mu.as = e.target.value; render(); }
 }
 function onKey(e) {
     e.stopPropagation();                       // Fightcade's chat shortcuts stay out of the page
@@ -394,6 +451,7 @@ function open(opts) {
         page.el.id = 'ghHub';
         page.el.addEventListener('click', onClick);
         page.el.addEventListener('input', onInput);
+        page.el.addEventListener('change', onChange);
         page.el.addEventListener('keydown', onKey);
         page.el.addEventListener('mousedown', (e) => e.stopPropagation());
         if (view.rom) {
@@ -511,6 +569,26 @@ html.gh-on .channelToolbar .channelInfo .ghNative { display: none !important; }
 #ghHub .ghErr { display: flex; align-items: center; padding: 16px; border-radius: var(--fc-r2); background: rgba(242,63,67,.08); color: var(--fc-text); }
 #ghHub .ghErr .fc-ic { color: var(--fc-danger); margin-right: 8px; }
 #ghHub .ghErr .fc-btn { margin-left: auto; }
+/* 3.15: Matchups -- every character, the guide and your note one click away */
+#ghHub .ghAs { display: inline-flex; align-items: center; font-size: var(--fc-fs-ui); color: var(--fc-muted); }
+#ghHub .ghAs span { margin-right: 6px; }
+#ghHub .ghAsSel { height: 32px; width: auto; min-width: 130px; padding: 0 8px; }
+#ghHub .ghMuHint { font-size: var(--fc-fs-ui); color: var(--fc-muted); }
+#ghHub .ghMuGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); grid-gap: 8px; }
+#ghHub .ghMu { display: flex; align-items: center; min-width: 0; padding: 10px; border-radius: 10px; cursor: pointer;
+    background: var(--fc-s2, rgba(255,255,255,.04)); box-shadow: inset 0 0 0 1px var(--fc-tint-1); }
+#ghHub .ghMu:hover { background: var(--fc-hover); }
+#ghHub .ghMu.noted { box-shadow: inset 3px 0 0 var(--fc-accent), inset 0 0 0 1px var(--fc-tint-1); }
+#ghHub .ghMu > .fc-mu-face { margin-right: 10px; }
+#ghHub .ghMu .tx { flex: 1; min-width: 0; }
+#ghHub .ghMu .nm { display: flex; align-items: baseline; }
+#ghHub .ghMu .nm b { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; color: var(--fc-head); }
+#ghHub .ghMu .nm .r { flex: none; margin-left: 6px; font-size: var(--fc-fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+#ghHub .ghMu .nm .r.good { color: var(--fc-success); } #ghHub .ghMu .nm .r.bad { color: var(--fc-danger); }
+#ghHub .ghMu .n { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px;
+    font-size: var(--fc-fs-ui); line-height: 1.35; color: var(--fc-text); }
+#ghHub .ghMu .n.empty { color: var(--fc-muted); }
+#ghHub .ghMu .n .fc-ic { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; color: var(--fc-accent); }
 `;
 
 /* ------------------------------------------------------------------- module */
@@ -525,6 +603,9 @@ function start(f) {
     fc.own(fc.ui.header.more({ id: 'hub-replays', label: N_('Replays'), icon: 'play', order: 20, fn: hubAt('replays'), show: inGame }));
     fc.own(fc.ui.header.more({ id: 'hub-events', label: N_('Events'), icon: 'clock', order: 21, fn: hubAt('events'), show: inGame }));
     fc.own(fc.ui.header.more({ id: 'hub-profile', label: N_('Profile'), icon: 'user', order: 22, fn: hubAt('profile'), show: inGame }));
+    fc.own(fc.ui.header.more({ id: 'hub-matchups', label: N_('Matchups'), icon: 'note', order: 23, fn: hubAt('matchups'), show: inGame }));
+    // a note changed (the editor sits above the page): its card shows it
+    fc.on('notes:changed', () => { if (page && view.tab === 'matchups') render(); });
     seenStore = fc.config('game-hub', { avatars: {} });
     seen = seenStore.data.avatars || (seenStore.data.avatars = {});
     fc.tick(rememberAvatars, 30000, { delay: 5000 });

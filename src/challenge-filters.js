@@ -60,6 +60,7 @@ function check(name, channel, ranked) {
     const lower = name.toLowerCase();
 
     if (nameList(R.block.names).includes(lower)) add('block', T('on your block list'));
+    else if (u.ignored) add('block', T('on your Fightcade ignore list'));      // 3.14.4 (Mushn1k)
     if (typeof u.ping === 'number' && u.ping > 0 && u.ping > +R.ping.max) add('ping', u.ping + ' ms');
     if (u.proxy) add('vpn', 'VPN');
     else if (u.wlan) add('wifi', 'Wi-Fi');

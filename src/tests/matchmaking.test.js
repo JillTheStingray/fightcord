@@ -296,6 +296,7 @@ test('misfit names the reason', () => {
     assert.equal(M.misfit(me, q, u({ ping: 200 }), { maxPing: 120 }), 'ping');
     assert.equal(M.misfit(me, q, u({ channelRank: {} }), { window: 1 }), 'rank', 'no rank in this channel, with a rank range on');
     assert.equal(M.misfit(me, q, u({ away: true })), 'away');
+    assert.equal(M.misfit(me, q, u({ ignored: true })), 'ignored', 'on your Fightcade ignore list');
     assert.equal(M.misfit(me, q, u({ channels: [] })), 'channel');
     assert.equal(M.misfit(me, Object.assign({}, q, { mode: 'ranked', ft: 3 }), u()), 'queue');
 });

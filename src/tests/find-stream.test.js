@@ -36,6 +36,12 @@ test('find a match: only free players in this channel, in range, on a good ping'
     assert.deepEqual(names, ['Close', 'NoPing', 'OneUp']);
 });
 
+// 3.14.4 (Mushn1k): people on your Fightcade ignore list never show up
+test('find a match: leaves out players you ignore on Fightcade', () => {
+    const us = { Me: user(4, 0), Fine: user(4, 40), Pest: user(4, 40, { ignored: true }) };
+    assert.deepEqual(fm.candidates(us, base).map(c => c.name), ['Fine']);
+});
+
 test('find a match: rank window "any" and a wider ping let more in', () => {
     const names = fm.candidates(USERS, Object.assign({}, base, { window: null, maxPing: 250 })).map(c => c.name).sort();
     assert.deepEqual(names, ['Blocked', 'Close', 'Laggy', 'NoPing', 'OneUp', 'TwoUp', 'Unranked']);

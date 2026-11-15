@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.15.0
+
+- **Names in the game picture:** in your FBNeo matches, each player's name, flag and rank can sit right under the life
+  bars, like training scripts draw them (Settings → Appearance → Names in the game picture, off until you turn it on).
+  Fightcord shows them in a see-through layer over the emulator's picture that follows its window; clicks go through to
+  the game and the game itself is never touched. 3rd Strike has an exact position; for every other game you set the
+  height, side margin and size once (with a preview over the open emulator) and Fightcord remembers it per game. Works
+  with the emulator in a window or in borderless fullscreen, not in its default exclusive fullscreen.
+- **Ignore works as a block:** players on your Fightcade ignore list no longer show up in Find a match, are never
+  matched with you by matchmaking, and their challenges are declined like the ones from your block list (the block rule
+  in Challenge filters, which is on by default).
+- **Matchups any time:** the game hub has a new Matchups tab (also in the channel header's ⋯ menu): every character of
+  the game with your record against them and your note. Click one for the matchup guide and to write or edit your note,
+  without waiting to face them. Pick who you play for that character's own tips. Notes now match the character whatever
+  the emulator calls them ("Remya" is Remy) and on every 3rd Strike version.
+- **Your own matchup tips for every 3rd Strike character:** the guide's "As …" tips used to exist only for Akuma (and a
+  few for Ken and Ryu). Every character except Gill now has its own tips for most matchups, in the guide, the Matchups
+  tab and under your side of the VS screen. Matchups without their own tips still show the general ones.
+
 ## 3.14.3
 
 - **3rd Strike goals count for everyone.** Parries, red parries, supers and perfect rounds were read fine, but Fightcord

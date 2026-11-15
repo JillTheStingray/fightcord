@@ -160,6 +160,15 @@ const SCENES = [
         const ch = fightcord.app.channel(fightcord.app.activeChannelId());
         fightcord.modules.get('game-hub').open({ tab: '${tab}', channel: ch.name, rom: ch.gameid${tab === 'profile' ? ", who: fightcord.app.me()" : ''} });
         await sleep(3500);` })),
+    // 3.15: every character's guide and your note, any time
+    ...[['hub-matchups', false], ['hub-matchups-note', true]].map(([name, edit]) => ({ name, snap: CHANNEL, run: `
+        const ch = fightcord.app.channel(fightcord.app.activeChannelId());
+        const nt = fightcord.modules.get('notes');
+        nt.setMatchup(ch.gameid, 'Ken', 'Block low after his dash, then punish the shoryu');
+        nt.setMatchup(ch.gameid, 'Yun', 'Don’t jump: he anti-airs everything. Parry the dive kick');
+        fightcord.modules.get('game-hub').open({ tab: 'matchups', channel: ch.name, rom: ch.gameid });
+        await sleep(2500);
+        ${edit ? "document.querySelector('#ghHub [data-mu-char=\"Makoto\"]').click(); await sleep(1500);" : ''}` })),
     { name: 'vs', snap: CHANNEL, run: `
         const others = Object.keys(fightcord.app.users()).filter(n => !fightcord.app.isMe(n));
         fightcord.modules.get('match-screens')._showVs(fightcord.app.me(), others[3]);

@@ -41,6 +41,7 @@ function candidates(users, opts) {
         const chans = Array.isArray(u.channels) ? u.channels : [];
         if (!chans.includes(o.channel) && !(o.channelName && chans.includes(o.channelName))) return;
         if (u.away || (u.playing && u.playing.quarkId)) return;
+        if (u.ignored) return;                       // 3.14.4 (Mushn1k): on your Fightcade ignore list
         const rk = u.channelRank || {};
         const rank = +(rk[o.channelName] || rk[o.channel] || 0);
         if (o.window != null && o.myRank) {

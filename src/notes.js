@@ -130,20 +130,29 @@ function rqWhy(rq) {
 /* ------------------------------------------------------------------ matchups */
 
 const muKey = (rom, ch) => String(rom || '') + '|' + String(ch || '').toLowerCase();
-const matchup = (rom, ch) => (cfg && cfg.matchups[muKey(rom, ch)]) || null;
+// (3.15) the same character in the same game, whatever the spelling or rom version: a note written in the game
+// hub ("Remy", sfiii3nr1) is the one the match shows when the emulator says "Remya"
+const sameChar = (romA, chA, romB, chB) => gameKey(romA) === gameKey(romB) && canon(romA, chA).toLowerCase() === canon(romB, chB).toLowerCase();
+function muFind(rom, ch) {
+    if (!cfg || !ch) return null;
+    const k = muKey(rom, ch);
+    if (cfg.matchups[k]) return { k, m: cfg.matchups[k] };
+    const hit = Object.keys(cfg.matchups).find(x => { const m = cfg.matchups[x]; return m && sameChar(m.rom, m.char, rom, ch); });
+    return hit ? { k: hit, m: cfg.matchups[hit] } : null;
+}
+const matchup = (rom, ch) => { const f = muFind(rom, ch); return f ? f.m : null; };
 
 function setMatchup(rom, ch, text) {
     if (!cfg || !ch) return;
-    const k = muKey(rom, ch), t = String(text || '').trim().slice(0, 500);
-    if (t) cfg.matchups[k] = { rom: rom || '', char: ch, text: t, updated: Date.now() };
+    const f = muFind(rom, ch), k = f ? f.k : muKey(rom, ch), t = String(text || '').trim().slice(0, 500);
+    if (t) cfg.matchups[k] = { rom: f ? f.m.rom : rom || '', char: f ? f.m.char : ch, text: t, updated: Date.now() };
     else delete cfg.matchups[k];
     changed('');
 }
 
 // your record vs a character in a game, from the sets that know the characters (2.6+)
 function matchupRecord(rom, ch) {
-    const k = String(ch || '').toLowerCase();
-    const sets = fc.history.all().filter(s => String(s.oppChar || '').toLowerCase() === k && (!rom || !s.rom || s.rom === rom));
+    const sets = fc.history.all().filter(s => s.oppChar && (!rom || !s.rom ? String(s.oppChar).toLowerCase() === String(ch || '').toLowerCase() : sameChar(s.rom, s.oppChar, rom, ch)));
     return Object.assign({ n: sets.length }, fc.data.recordOf(sets));
 }
 
@@ -154,7 +163,8 @@ function myMain(rom) {
     return Object.keys(n).sort((a, b) => n[b] - n[a])[0] || '';
 }
 
-function editMatchup(rom, ch, rect) {
+// as: the character you play (the game hub's choice), else your most-played one
+function editMatchup(rom, ch, rect, as) {
     if (!cfg || !ch) return;
     closeEditor();
     const box = document.createElement('div');
@@ -162,7 +172,7 @@ function editMatchup(rom, ch, rect) {
     const r = matchupRecord(rom, ch), cur = matchup(rom, ch);
     // 3.5: the matchup guide's page on this character, above your own note
     const mg = fc.modules.get('matchup-guide');
-    const guide = mg ? mg.cardHtml(rom, ch, myMain(rom)) : '';
+    const guide = mg ? mg.cardHtml(rom, ch, as || myMain(rom)) : '';
     box.innerHTML = fc.ui.popHead({ icon: 'note', title: T('Matchup notes vs {char}', { char: ch }), sub: r.w || r.l ? E(T('Your record: {wl}', { wl: fc.fmt.wl(r) })) : '' }) +
         `<div class="fc-pb">${guide ? `<div class="ntGuide">${guide}</div><small class="ntMine">${E(T('Your note'))}</small>` : ''}` +
         `<textarea class="fc-input" maxlength="500" placeholder="${E(T('What works against {char}…', { char: ch }))}">${E(cur ? cur.text : '')}</textarea></div>` +
@@ -511,7 +521,7 @@ const api = {
     get, has, set, toggleTag, chips, dots, edit, quitEvidence, rqWhy, mains, setMains, myAutoMains, gameKey, gameName, pickable,
     faceHtml: (rom, ch, size) => faceOf(rom, ch, size),
     isRagequitter: (name) => get(name).tags.some(t => t.id === RQ),
-    matchup, setMatchup, matchupRecord, editMatchup, _onCharacter: (ev) => onCharacter(ev),
+    matchup, setMatchup, matchupRecord, editMatchup, myMain, canon, _onCharacter: (ev) => onCharacter(ev),
     tags: () => (cfg ? cfg.tags : DEFAULT_TAGS),
     get _config() { return cfg; }
 };

@@ -59,7 +59,7 @@ const HASH = /^[0-9a-f]{32}$/;
 // does a queued player fit you? me = { ch, mode, ft, myRank, chRanked, meRanked }
 // them = { ch, mode, ft } (their "q"); u = their Fightcade user; o = { window, maxPing, skip(name) }
 // 3.13.1: misfit says why not ('' = they fit): 'queue' (another game / mode / FT), 'ranked', 'channel',
-// 'away', 'playing', 'rank', 'ping', 'filter'. Only 'rank' and 'ping' are yours to loosen (Match anyway).
+// 'away', 'playing', 'rank', 'ping', 'ignored', 'filter'. Only 'rank' and 'ping' are yours to loosen (Match anyway).
 function misfit(me, them, u, o) {
     const p = o || {};
     if (!me || !them || !u) return 'queue';
@@ -73,6 +73,7 @@ function misfit(me, them, u, o) {
     if (chans.indexOf(me.ch) < 0 && !(me.chName && chans.indexOf(me.chName) >= 0)) return 'channel';
     if (u.away) return 'away';
     if (u.playing && u.playing.quarkId) return 'playing';
+    if (u.ignored) return 'ignored';                 // 3.14.4: on your Fightcade ignore list
     if (p.skip && p.skip(u.name || '')) return 'filter';
     const rk = u.channelRank || {};
     const rank = +(rk[me.chName] || rk[me.ch] || 0);
@@ -502,7 +503,7 @@ function stripInner(ctx) {
 }
 // 3.13.1: someone's in the queue but nothing happens: say why (it used to just wait)
 function stuckHtml(q) {
-    const st = mm.stuck();
+    const st = mm.stuck().filter(x => x.why !== 'ignored');      // someone you ignore isn't named here
     if (!st.length) return '';
     const name = (h) => nameIn(h, q.ch) || T('a Fightcord player');
     const u = (h) => (fc.app.users() || {})[nameIn(h, q.ch)] || {};

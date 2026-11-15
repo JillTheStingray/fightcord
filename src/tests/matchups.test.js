@@ -68,3 +68,26 @@ test('matchups: the card when they pick a character shows once, and only with a 
     assert.equal(f.toasts.length, 2);
     assert.equal(f.toasts[1].o.sub, '“block low”');
 });
+
+test('matchups (3.15): a note written for the guide’s name is the one the match finds, any spelling or 3rd Strike rom', () => {
+    const guide = require('../matchup-guide.js');
+    const sets = [
+        { rom: 'sfiii3nr1', oppChar: 'Remya', result: 'won' },        // the emulator's spelling
+        { rom: 'sfiii3', oppChar: 'Remy', result: 'lost' },           // another 3rd Strike rom
+        { rom: 'kof98', oppChar: 'Remy', result: 'lost' }             // not the same game
+    ];
+    const f = fakeFc(sets);
+    const g = guide.start(Object.assign({}, f.fc, { ui: { style() {} } }));
+    f.fc.modules = { get: (id) => (id === 'matchup-guide' ? g : null) };
+    const api = notes.start(f.fc);
+    api.setMatchup('sfiii3nr1', 'Remy', 'jump the low fireball');     // written in the game hub
+    assert.equal(api.matchup('sfiii3nr1', 'Remya').text, 'jump the low fireball');
+    assert.equal(api.matchup('sfiii3', 'remy').text, 'jump the low fireball');
+    assert.equal(api.matchup('kof98', 'Remy'), null);
+    api.setMatchup('sfiii3', 'Remya', 'parry the low fireball');      // edited from a match: still one note
+    assert.equal(Object.keys(f.stored.matchups).length, 1);
+    assert.equal(api.matchup('sfiii3nr1', 'Remy').text, 'parry the low fireball');
+    const r = api.matchupRecord('sfiii3nr1', 'Remy');
+    assert.deepEqual([r.n, r.w, r.l], [2, 1, 1]);
+    assert.equal(api.canon('sfiii3nr1', 'Remya'), 'Remy');
+});

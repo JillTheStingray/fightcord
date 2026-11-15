@@ -80,9 +80,9 @@ test('matchup guide: your own matchup\'s tips come first, then the general ones'
     assert.match(t[0], /air fireballs/);
     assert.equal(t[2], mg.find('sfiii3nr1', 'Chun-Li').t[0]);
     assert.deepEqual(mg.tips('sfiii3nr1', '', 'Chun-Li', 2), mg.find('sfiii3nr1', 'Chun-Li').t.slice(0, 2), 'no character of yours: the general tips');
-    assert.deepEqual(mg.tips('sfiii3nr1', 'Twelve', 'Remya', 3), mg.find('sfiii3nr1', 'Remy').t, 'no pair: the general tips');
+    assert.deepEqual(mg.tips('sfiii3nr1', 'Gill', 'Remya', 3), mg.find('sfiii3nr1', 'Remy').t, 'no pair: the general tips');
     assert.ok(mg.hasPair('sfiii3nr1', 'Akuma', 'Chun-Li'));
-    assert.ok(!mg.hasPair('sfiii3nr1', 'Twelve', 'Chun-Li'));
+    assert.ok(!mg.hasPair('sfiii3nr1', 'Gill', 'Chun-Li'));
     assert.deepEqual(mg.tips('kof98', 'Terry', 'Andy'), []);
     for (const k of Object.keys(mg.GAMES[0].pairs)) {
         const [a, b] = k.split('|');
@@ -106,4 +106,16 @@ test('matchup guide: icons fall back to an initial; the card escapes and links t
     assert.match(card, /href="https:\/\/wiki\.supercombo\.gg\/w\/Street_Fighter_3:_3rd_Strike\/Chun-Li"/);
     assert.ok(card.includes('don&#39;t') || !card.includes("don't"), 'apostrophes escaped');
     assert.equal(mg.cardHtml('kof98', 'Terry'), '');
+});
+
+test('3rd Strike (3.15): every character (not Gill) has its own tips for most matchups, and every pair names real characters', () => {
+    const G = require('../matchup-guide.js')._test.GAMES.find(g => g.id === '3s');
+    const per = {};
+    Object.keys(G.pairs).forEach(k => {
+        const [mine, theirs] = k.split('|');
+        assert.ok(G.chars[mine] && G.chars[theirs], 'unknown character in ' + k);
+        assert.ok(G.pairs[k].length >= 1 && G.pairs[k].every(t => typeof t === 'string' && t.length >= 20), 'thin tips in ' + k);
+        per[mine] = (per[mine] || 0) + 1;
+    });
+    Object.keys(G.chars).filter(c => c !== 'Gill').forEach(c => assert.ok((per[c] || 0) >= 10, c + ' has only ' + (per[c] || 0) + ' matchups of its own'));
 });
